@@ -164,6 +164,19 @@ export function useBuildPulse<T extends HTMLElement>(enabled: boolean = true) {
 }
 
 /**
+ * Hook for glow pulse animation
+ */
+export function useGlowPulse<T extends HTMLElement>(
+  enabled: boolean = true,
+  options?: { color?: string; intensity?: number }
+) {
+  return useInfiniteAnimation<T>(
+    (el) => animations.glowPulse(el, options),
+    enabled
+  );
+}
+
+/**
  * Hook for hover animations
  */
 export function useHoverAnimation<T extends HTMLElement>(
@@ -354,6 +367,171 @@ export function useTimeline(options?: gsap.TimelineVars) {
   }, []);
 
   return timelineRef;
+}
+
+// ============================================================================
+// ANIMATION HOOKS
+// ============================================================================
+
+/**
+ * Hook for blur reveal animation
+ */
+export function useBlurReveal<T extends HTMLElement>(
+  options?: Parameters<typeof animations.blurReveal>[1]
+) {
+  return useAnimateOnMount<T>(
+    (el) => animations.blurReveal(el, options),
+    [options?.duration, options?.delay]
+  );
+}
+
+/**
+ * Hook for elastic bounce in animation
+ */
+export function useElasticBounceIn<T extends HTMLElement>(
+  options?: Parameters<typeof animations.elasticBounceIn>[1]
+) {
+  return useAnimateOnMount<T>(
+    (el) => animations.elasticBounceIn(el, options),
+    [options?.delay, options?.from]
+  );
+}
+
+/**
+ * Hook for ripple effect animation
+ */
+export function useRippleEffect<T extends HTMLElement>() {
+  return useAnimateOnMount<T>(
+    (el) => animations.rippleEffect(el),
+    []
+  );
+}
+
+/**
+ * Hook for 3D flip animation on mount
+ */
+export function useFlip3D<T extends HTMLElement>(
+  options?: Parameters<typeof animations.flip3D>[1]
+) {
+  return useAnimateOnMount<T>(
+    (el) => animations.flip3D(el, options),
+    [options?.direction, options?.degrees, options?.duration]
+  );
+}
+
+/**
+ * Hook for text reveal animation
+ */
+export function useTextReveal<T extends HTMLElement>(
+  options?: Parameters<typeof animations.textReveal>[1]
+) {
+  return useAnimateOnMount<T>(
+    (el) => animations.textReveal(el as HTMLElement, options),
+    [options?.stagger, options?.duration]
+  );
+}
+
+/**
+ * Hook for wobble animation (imperative)
+ */
+export function useWobble<T extends HTMLElement>() {
+  const elementRef = useRef<T>(null);
+
+  const wobble = useCallback(() => {
+    if (elementRef.current) {
+      return animations.wobble(elementRef.current);
+    }
+    return null;
+  }, []);
+
+  return {
+    elementRef,
+    wobble,
+  };
+}
+
+/**
+ * Hook for glitch effect (imperative)
+ */
+export function useGlitch<T extends HTMLElement>() {
+  const elementRef = useRef<T>(null);
+
+  const glitch = useCallback(() => {
+    if (elementRef.current) {
+      return animations.glitchEffect(elementRef.current);
+    }
+    return null;
+  }, []);
+
+  return {
+    elementRef,
+    glitch,
+  };
+}
+
+/**
+ * Hook for particle burst effect (imperative)
+ */
+export function useParticleBurst<T extends HTMLElement>() {
+  const elementRef = useRef<T>(null);
+
+  const burst = useCallback(
+    (options?: Parameters<typeof animations.particleBurst>[1]) => {
+      if (elementRef.current) {
+        return animations.particleBurst(elementRef.current, options);
+      }
+      return null;
+    },
+    []
+  );
+
+  return {
+    elementRef,
+    burst,
+  };
+}
+
+/**
+ * Hook for magnetic hover effect
+ */
+export function useMagneticHover<T extends HTMLElement>(
+  options?: Parameters<typeof animations.magneticHover>[1]
+) {
+  const elementRef = useRef<T>(null);
+
+  useEffect(() => {
+    if (elementRef.current) {
+      const cleanup = animations.magneticHover(elementRef.current, options);
+      return cleanup;
+    }
+  }, [options?.strength, options?.speed]);
+
+  return elementRef;
+}
+
+/**
+ * Hook for smooth morph animation
+ */
+export function useSmoothMorph<T extends HTMLElement>() {
+  const elementRef = useRef<T>(null);
+
+  const morph = useCallback(
+    (
+      toProps: gsap.TweenVars,
+      options?: Parameters<typeof animations.smoothMorph>[2]
+    ) => {
+      if (elementRef.current) {
+        return animations.smoothMorph(elementRef.current, toProps, options);
+      }
+      return null;
+    },
+    []
+  );
+
+  return {
+    elementRef,
+    morph,
+  };
 }
 
 /**

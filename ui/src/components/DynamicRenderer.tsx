@@ -30,6 +30,11 @@ import {
   useBuildPulse,
   useImperativeAnimation,
   useStaggerSlideUp,
+  useBlurReveal,
+  useElasticBounceIn,
+  useGlowPulse,
+  useWobble,
+  useParticleBurst,
 } from "../hooks/useGSAP";
 import { SaveAppDialog } from "./SaveAppDialog";
 import {
@@ -879,23 +884,27 @@ const DynamicRenderer: React.FC = () => {
   }, [uiSpec, toolExecutor]);
 
   // GSAP Animation refs and hooks
-  const desktopIconRef = useFloat<HTMLDivElement>(true);
-  const desktopMessageRef = useFadeIn<HTMLDivElement>({ duration: 0.8 });
+  const desktopIconRef = useFloat<HTMLDivElement>(true, { distance: 15, duration: 4.5 });
+  const desktopMessageRef = useBlurReveal<HTMLDivElement>({ duration: 0.9 });
   const errorRef = useImperativeAnimation<HTMLDivElement>();
+  const { elementRef: wobbleRef, wobble } = useWobble<HTMLDivElement>();
   const buildContainerRef = useRef<HTMLDivElement>(null);
   const buildProgressRef = useRef<HTMLDivElement>(null);
   const renderedAppRef = useRef<HTMLDivElement>(null);
-  const spinnerRef = useSpin<HTMLDivElement>(isLoading || isStreaming);
-  const buildSpinnerRef = useSpin<HTMLDivElement>(true);
+  const spinnerRef = useSpin<HTMLDivElement>(isLoading || isStreaming, { duration: 1.0 });
+  const buildSpinnerRef = useSpin<HTMLDivElement>(true, { duration: 1.0 });
   const buildIconRef = useBuildPulse<HTMLDivElement>(isStreaming);
-  const thoughtsListRef = useStaggerSlideUp<HTMLDivElement>('.thought-item', { stagger: 0.1 });
+  const thoughtsListRef = useStaggerSlideUp<HTMLDivElement>('.thought-item', { stagger: 0.08, distance: 25 });
+  const saveButtonRef = useGlowPulse<HTMLButtonElement>(false, { color: '99, 102, 241', intensity: 15 });
+  const { elementRef: burstRef, burst } = useParticleBurst<HTMLDivElement>();
   
-  // Animate error on appearance
+  // Animate error on appearance with wobble
   useEffect(() => {
-    if (error) {
+    if (error && errorRef.elementRef.current) {
       errorRef.shake();
+      setTimeout(() => wobble(), 300);
     }
-  }, [error]);
+  }, [error, wobble]);
 
   // Animate build container on appearance
   useEffect(() => {
@@ -904,12 +913,18 @@ const DynamicRenderer: React.FC = () => {
     }
   }, [isStreaming, partialUISpec]);
 
-  // Animate rendered app on appearance
+  // Animate rendered app on appearance with particle burst
   useEffect(() => {
     if (renderedAppRef.current && uiSpec) {
       gsapAnimations.appAppear(renderedAppRef.current);
+      // Add particle burst after a short delay
+      setTimeout(() => {
+        if (burstRef.current) {
+          burst({ count: 15, duration: 1.5 });
+        }
+      }, 400);
     }
-  }, [uiSpec]);
+  }, [uiSpec, burst]);
 
   // Animate progress bar width changes
   useEffect(() => {
@@ -918,7 +933,7 @@ const DynamicRenderer: React.FC = () => {
     }
   }, [buildProgress]);
 
-  // Animate components as they appear during build
+  // Animate components as they appear during build with enhanced animations
   const componentRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   
   useEffect(() => {
@@ -927,7 +942,8 @@ const DynamicRenderer: React.FC = () => {
         const key = `${component.id}-${idx}`;
         const element = componentRefs.current.get(key);
         if (element && !element.dataset.animated) {
-          gsapAnimations.componentAppear(element, { delay: idx * 0.05 });
+          // Use elastic bounce for more dynamic feel
+          gsapAnimations.elasticBounceIn(element, { delay: idx * 0.06, from: 'bottom' });
           element.dataset.animated = 'true';
         }
       });
@@ -979,7 +995,12 @@ const DynamicRenderer: React.FC = () => {
       
       <div className="renderer-canvas">
         {error && (
-          <div ref={errorRef.elementRef} className="renderer-error">
+          <div ref={(el) => {
+            if (el) {
+              errorRef.elementRef.current = el;
+              wobbleRef.current = el;
+            }
+          }} className="renderer-error">
             <strong>Error:</strong> {error}
           </div>
         )}
@@ -1093,12 +1114,28 @@ const DynamicRenderer: React.FC = () => {
         )}
 
         {uiSpec && (
-          <div ref={renderedAppRef} className="rendered-app" style={uiSpec.style}>
+          <div ref={(el) => {
+            if (el) {
+              renderedAppRef.current = el;
+              burstRef.current = el;
+            }
+          }} className="rendered-app" style={uiSpec.style}>
             <div className="app-header">
               <h2>{uiSpec.title}</h2>
               <button
+                ref={saveButtonRef}
                 className="save-app-btn"
                 onClick={() => setShowSaveAppDialog(true)}
+                onMouseEnter={() => {
+                  if (saveButtonRef.current) {
+                    gsapAnimations.buttonHoverIn(saveButtonRef.current);
+                  }
+                }}
+                onMouseLeave={() => {
+                  if (saveButtonRef.current) {
+                    gsapAnimations.buttonHoverOut(saveButtonRef.current);
+                  }
+                }}
                 title="Save this app to registry"
               >
                 <Save size={16} style={{ marginRight: '6px', verticalAlign: 'middle' }} />

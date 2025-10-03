@@ -4,9 +4,8 @@
  */
 
 import React, { useState } from "react";
-import { Save, FolderOpen, X } from "lucide-react";
-import { SessionClient } from "../utils/sessionClient";
-import type { SessionMetadata } from "../types/session";
+import { Save, FolderOpen, X, Trash2 } from "lucide-react";
+import { useSessions, useDeleteSession } from "../hooks/useSessionQueries";
 import { useLogger } from "../utils/useLogger";
 import { SaveSessionDialog } from "./SaveSessionDialog";
 import { controlButtonVariants, cn } from "../utils/componentVariants";
@@ -28,7 +27,12 @@ const TitleBar: React.FC<TitleBarProps> = ({ sessionManager }) => {
   const log = useLogger("TitleBar");
   const [showSessionMenu, setShowSessionMenu] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
-  const [sessions, setSessions] = useState<SessionMetadata[]>([]);
+  
+  // Use TanStack Query for sessions
+  const { data: sessionsData, refetch: refetchSessions, isLoading: isLoadingSessions } = useSessions();
+  const deleteSessionMutation = useDeleteSession();
+  
+  const sessions = sessionsData?.sessions ?? [];
 
   const handleMinimize = () => {
     if (window.electron) {
@@ -65,15 +69,26 @@ const TitleBar: React.FC<TitleBarProps> = ({ sessionManager }) => {
     }
   };
 
-  const handleShowSessions = async () => {
+  const handleShowSessions = () => {
     setShowSessionMenu(!showSessionMenu);
     if (!showSessionMenu) {
-      try {
-        const result = await SessionClient.listSessions();
-        setSessions(result.sessions);
-      } catch (err) {
-        log.error("Failed to load sessions", err as Error);
-      }
+      // Refetch to ensure fresh data when opening menu
+      refetchSessions();
+    }
+  };
+
+  const handleDeleteSession = async (sessionId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    
+    if (!confirm("Are you sure you want to delete this session?")) {
+      return;
+    }
+    
+    try {
+      await deleteSessionMutation.mutateAsync(sessionId);
+      log.info("Session deleted successfully", { sessionId });
+    } catch (err) {
+      log.error("Failed to delete session", err as Error);
     }
   };
 
@@ -135,7 +150,9 @@ const TitleBar: React.FC<TitleBarProps> = ({ sessionManager }) => {
               <button onClick={() => setShowSessionMenu(false)}><X size={16} /></button>
             </div>
             <div className="session-list">
-              {sessions.length === 0 ? (
+              {isLoadingSessions ? (
+                <p className="no-sessions">Loading sessions...</p>
+              ) : sessions.length === 0 ? (
                 <p className="no-sessions">No saved sessions</p>
               ) : (
                 sessions.map((session) => (
@@ -151,6 +168,14 @@ const TitleBar: React.FC<TitleBarProps> = ({ sessionManager }) => {
                         {new Date(session.updated_at).toLocaleDateString()}
                       </div>
                     </div>
+                    <button
+                      className="session-delete"
+                      onClick={(e) => handleDeleteSession(session.id, e)}
+                      title="Delete session"
+                      disabled={deleteSessionMutation.isPending}
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 ))
               )}

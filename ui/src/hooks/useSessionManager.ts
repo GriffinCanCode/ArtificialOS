@@ -87,11 +87,16 @@ export function useSessionManager(options: UseSessionManagerOptions = {}) {
     captureState();
 
     // Use TanStack Query mutation
-    await saveDefaultMutation.mutateAsync(undefined, {
-      onSuccess: () => {
-        setLastSaveTime(new Date());
-      },
-    });
+    try {
+      await saveDefaultMutation.mutateAsync(undefined);
+      setLastSaveTime(new Date());
+    } catch (error) {
+      // Error already logged by mutation
+      logger.warn("Auto-save failed", {
+        component: "SessionManager",
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }, [captureState, saveDefaultMutation]);
 
   /**
@@ -168,66 +173,59 @@ export function useSessionManager(options: UseSessionManagerOptions = {}) {
    * Restore default session on mount
    */
   useEffect(() => {
-    if (restoreOnMount && !hasRestoredRef.current) {
+    if (restoreOnMount && !hasRestoredRef.current && sessionsData) {
       hasRestoredRef.current = true;
 
       // Try to restore the most recent session
-      SessionClient.listSessions()
-        .then(({ sessions }) => {
-          if (sessions.length > 0) {
-            // Sort by updated_at and get most recent
-            const sorted = sessions.sort(
-              (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-            );
-            const latestId = sorted[0].id;
+      if (sessionsData.sessions.length > 0) {
+        // Sessions are already sorted by the query hook
+        const latestId = sessionsData.sessions[0].id;
 
-            logger.info("Restoring latest session on mount", {
-              component: "SessionManager",
-              sessionId: latestId,
-            });
+        logger.info("Restoring latest session on mount", {
+          component: "SessionManager",
+          sessionId: latestId,
+        });
 
-            return restore(latestId);
-          }
-        })
-        .catch((err) => {
-          logger.warn("No session to restore on mount", {
+        restore(latestId).catch((err) => {
+          logger.warn("Failed to restore session on mount", {
             component: "SessionManager",
             error: err instanceof Error ? err.message : String(err),
           });
         });
+      }
     }
-  }, [restoreOnMount, restore]);
+  }, [restoreOnMount, restore, sessionsData]);
 
   /**
    * Setup auto-save interval
    */
   useEffect(() => {
-    if (enableAutoSave) {
-      // Clear existing timer
+    if (!enableAutoSave) return;
+
+    // Clear existing timer
+    if (autoSaveTimerRef.current) {
+      clearInterval(autoSaveTimerRef.current);
+    }
+
+    // Setup new timer
+    autoSaveTimerRef.current = setInterval(() => {
+      // Only auto-save if there's something to save (has messages or an app loaded)
+      if (messages.length > 0 || uiSpec) {
+        saveDefault();
+      }
+    }, autoSaveInterval * 1000);
+
+    logger.info("Auto-save enabled", {
+      component: "SessionManager",
+      interval: autoSaveInterval,
+    });
+
+    return () => {
       if (autoSaveTimerRef.current) {
         clearInterval(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
       }
-
-      // Setup new timer
-      autoSaveTimerRef.current = setInterval(() => {
-        // Only auto-save if there's something to save (has messages or an app loaded)
-        if (messages.length > 0 || uiSpec) {
-          saveDefault();
-        }
-      }, autoSaveInterval * 1000);
-
-      logger.info("Auto-save enabled", {
-        component: "SessionManager",
-        interval: autoSaveInterval,
-      });
-
-      return () => {
-        if (autoSaveTimerRef.current) {
-          clearInterval(autoSaveTimerRef.current);
-          autoSaveTimerRef.current = null;
-        }
-      };
-    }
+    };
   }, [enableAutoSave, autoSaveInterval, saveDefault, messages.length, uiSpec]);
 
   return {

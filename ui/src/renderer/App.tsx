@@ -38,11 +38,14 @@ function AppContent() {
   const { addMessage, addThought, appendToLastMessage } = useAppActions();
 
   // Initialize session manager with auto-save every 30s
-  const sessionManager = useSessionManager({
+  // Memoize options to prevent hooks order issues during HMR
+  const sessionManagerOptions = React.useMemo(() => ({
     autoSaveInterval: 30,
     enableAutoSave: true,
     restoreOnMount: true,
-  });
+  }), []);
+  
+  const sessionManager = useSessionManager(sessionManagerOptions);
 
   // Handle incoming WebSocket messages with type safety
   const handleMessage = useCallback(
@@ -123,13 +126,15 @@ function AppContent() {
     },
   });
   
-  const inputRef = React.useRef<HTMLInputElement>(null);
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
   
   // Combine refs for both react-hook-form and keyboard shortcut
   const setInputRef = React.useCallback(
     (node: HTMLInputElement | null) => {
       inputRefCallback(node);
-      inputRef.current = node;
+      if (inputRef) {
+        inputRef.current = node;
+      }
     },
     [inputRefCallback]
   );

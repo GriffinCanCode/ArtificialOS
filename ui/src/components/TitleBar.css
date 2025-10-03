@@ -239,6 +239,10 @@
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 .session-item:hover {
@@ -247,15 +251,54 @@
   transform: translateY(-2px);
 }
 
+.session-info {
+  flex: 1;
+  min-width: 0;
+}
+
 .session-name {
   font-weight: 600;
   font-size: 1rem;
   margin-bottom: 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .session-meta {
   font-size: 0.875rem;
   color: rgba(255, 255, 255, 0.5);
+}
+
+.session-delete {
+  flex-shrink: 0;
+  padding: 0.5rem;
+  background: rgba(255, 59, 48, 0.1);
+  border: 1px solid rgba(255, 59, 48, 0.2);
+  border-radius: 8px;
+  color: rgba(255, 59, 48, 0.9);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+}
+
+.session-item:hover .session-delete {
+  opacity: 1;
+}
+
+.session-delete:hover {
+  background: rgba(255, 59, 48, 0.2);
+  border-color: rgba(255, 59, 48, 0.4);
+  color: #ff3b30;
+  transform: scale(1.05);
+}
+
+.session-delete:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 /* ============================================================================

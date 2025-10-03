@@ -4,15 +4,11 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { SessionClient } from "../utils/sessionClient";
 import type {
-  SessionMetadata,
-  Session,
   SaveSessionRequest,
-  SaveSessionResponse,
-  RestoreSessionResponse,
   ListSessionsResponse,
 } from "../types/session";
+import { SessionClient } from "../utils/sessionClient";
 import { logger } from "../utils/logger";
 
 // ============================================================================
@@ -40,6 +36,9 @@ export function useSessions() {
   return useQuery({
     queryKey: sessionKeys.list(),
     queryFn: async () => {
+      if (!SessionClient) {
+        throw new Error("SessionClient not available (HMR)");
+      }
       logger.info("Fetching sessions list", {
         component: "useSessions",
       });
@@ -48,6 +47,7 @@ export function useSessions() {
     staleTime: 10 * 1000, // Sessions list fresh for 10 seconds
     gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
     retry: 2,
+    enabled: !!SessionClient, // Only enable if SessionClient is available
     select: (data) => {
       // Sort sessions by updated_at (most recent first)
       return {
@@ -93,6 +93,9 @@ export function useSaveSession() {
 
   return useMutation({
     mutationFn: async (request: SaveSessionRequest) => {
+      if (!SessionClient) {
+        throw new Error("SessionClient not available (HMR)");
+      }
       logger.info("Saving session", {
         component: "useSaveSession",
         name: request.name,
@@ -154,6 +157,9 @@ export function useSaveDefaultSession() {
 
   return useMutation({
     mutationFn: async () => {
+      if (!SessionClient) {
+        throw new Error("SessionClient not available (HMR)");
+      }
       logger.info("Saving default session", {
         component: "useSaveDefaultSession",
       });
@@ -188,6 +194,9 @@ export function useRestoreSession() {
 
   return useMutation({
     mutationFn: async (sessionId: string) => {
+      if (!SessionClient) {
+        throw new Error("SessionClient not available (HMR)");
+      }
       logger.info("Restoring session", {
         component: "useRestoreSession",
         sessionId,

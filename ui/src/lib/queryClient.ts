@@ -19,9 +19,13 @@ export const queryClient = new QueryClient({
       retry: 1,
       staleTime: 0, // Data is considered stale immediately by default
       gcTime: 5 * 60 * 1000, // 5 minutes cache time
+      // Prevent errors during HMR
+      throwOnError: false,
     },
     mutations: {
       retry: 0,
+      // Prevent errors during HMR
+      throwOnError: false,
       onError: (error) => {
         logger.error("Mutation error", error as Error, {
           component: "QueryClient",
