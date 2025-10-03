@@ -172,13 +172,16 @@ class AIServiceImpl(ai_pb2_grpc.AIServiceServicer):
                 timestamp=int(time.time())
             )
             
-            # Load LLM and create agent
+            # Load LLM and create agent - use fresh instance to prevent cache pollution
             llm = self.model_loader.load(ModelConfig(
                 backend=ModelBackend.OLLAMA,
                 size=ModelSize.SMALL,
-                streaming=True
+                streaming=True,
+                cache_prompt=False,  # Disable caching to prevent context pollution
+                keep_alive="0"  # Unload model immediately after request
             ))
             
+            logger.debug("Using fresh LLM instance for chat streaming (cache_prompt=False)")
             agent = ChatAgent(llm)
             
             # Stream response - run async in sync context

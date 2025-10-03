@@ -246,7 +246,7 @@ export const useAppStore = create<AppState>()(
             console.log("🎯 STORE: Appending to preview", {
               newContent: content,
               newLength: content.length,
-              currentPreviewLength: state.generationPreview.length
+              currentPreviewLength: state.generationPreview.length,
             });
             const newPreview = state.generationPreview + content;
             console.log("✅ STORE: New preview length:", newPreview.length);
@@ -304,11 +304,7 @@ export const useAppStore = create<AppState>()(
           hasTitle: !!partial.title,
           componentCount: partial.components?.length || 0,
         });
-        return set(
-          { partialUISpec: partial },
-          false,
-          "setPartialUISpec"
-        );
+        return set({ partialUISpec: partial }, false, "setPartialUISpec");
       },
 
       addComponentToPartial: (component) => {
@@ -338,19 +334,11 @@ export const useAppStore = create<AppState>()(
           component: "AppStore",
           streaming,
         });
-        return set(
-          { isStreaming: streaming },
-          false,
-          "setStreaming"
-        );
+        return set({ isStreaming: streaming }, false, "setStreaming");
       },
 
       setBuildProgress: (progress) => {
-        return set(
-          { buildProgress: progress },
-          false,
-          "setBuildProgress"
-        );
+        return set({ buildProgress: progress }, false, "setBuildProgress");
       },
 
       // Reset entire state

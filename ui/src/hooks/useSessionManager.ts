@@ -3,30 +3,26 @@
  * Handles auto-save, manual save/restore, and session management
  */
 
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { SessionClient } from '../utils/sessionClient';
-import { useAppStore } from '../store/appStore';
-import type { ChatState, UIState } from '../types/session';
-import { logger } from '../utils/logger';
+import { useEffect, useState, useCallback, useRef } from "react";
+import { SessionClient } from "../utils/sessionClient";
+import { useAppStore } from "../store/appStore";
+import type { ChatState, UIState } from "../types/session";
+import { logger } from "../utils/logger";
 
 interface UseSessionManagerOptions {
   autoSaveInterval?: number; // in seconds, default 30
-  enableAutoSave?: boolean;   // default true
-  restoreOnMount?: boolean;   // default true
+  enableAutoSave?: boolean; // default true
+  restoreOnMount?: boolean; // default true
 }
 
 export function useSessionManager(options: UseSessionManagerOptions = {}) {
-  const {
-    autoSaveInterval = 30,
-    enableAutoSave = true,
-    restoreOnMount = true,
-  } = options;
+  const { autoSaveInterval = 30, enableAutoSave = true, restoreOnMount = true } = options;
 
   const [isSaving, setIsSaving] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
   const [lastSaveTime, setLastSaveTime] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
-  
+
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hasRestoredRef = useRef(false);
 
@@ -44,12 +40,12 @@ export function useSessionManager(options: UseSessionManagerOptions = {}) {
    */
   const captureState = useCallback(() => {
     const chatState: ChatState = {
-      messages: messages.map(m => ({
+      messages: messages.map((m) => ({
         type: m.type,
         content: m.content,
         timestamp: m.timestamp,
       })),
-      thoughts: thoughts.map(t => ({
+      thoughts: thoughts.map((t) => ({
         content: t.content,
         timestamp: t.timestamp,
       })),
@@ -80,11 +76,11 @@ export function useSessionManager(options: UseSessionManagerOptions = {}) {
       await SessionClient.saveDefault();
 
       setLastSaveTime(new Date());
-      logger.info('Auto-saved session', { component: 'SessionManager' });
+      logger.info("Auto-saved session", { component: "SessionManager" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save session';
+      const message = err instanceof Error ? err.message : "Failed to save session";
       setError(message);
-      logger.error('Auto-save failed', err, { component: 'SessionManager' });
+      logger.error("Auto-save failed", err, { component: "SessionManager" });
     } finally {
       setIsSaving(false);
     }
@@ -93,36 +89,39 @@ export function useSessionManager(options: UseSessionManagerOptions = {}) {
   /**
    * Save session with custom name (for manual save)
    */
-  const save = useCallback(async (name: string, description?: string) => {
-    try {
-      setIsSaving(true);
-      setError(null);
+  const save = useCallback(
+    async (name: string, description?: string) => {
+      try {
+        setIsSaving(true);
+        setError(null);
 
-      const { chatState, uiState } = captureState();
+        const { chatState, uiState } = captureState();
 
-      const result = await SessionClient.saveSession({
-        name,
-        description,
-        chat_state: chatState,
-        ui_state: uiState,
-      });
+        const result = await SessionClient.saveSession({
+          name,
+          description,
+          chat_state: chatState,
+          ui_state: uiState,
+        });
 
-      setLastSaveTime(new Date());
-      logger.info('Manually saved session', { 
-        component: 'SessionManager',
-        sessionId: result.session.id,
-      });
+        setLastSaveTime(new Date());
+        logger.info("Manually saved session", {
+          component: "SessionManager",
+          sessionId: result.session.id,
+        });
 
-      return result;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save session';
-      setError(message);
-      logger.error('Manual save failed', err, { component: 'SessionManager' });
-      throw err;
-    } finally {
-      setIsSaving(false);
-    }
-  }, [captureState]);
+        return result;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to save session";
+        setError(message);
+        logger.error("Manual save failed", err, { component: "SessionManager" });
+        throw err;
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [captureState]
+  );
 
   /**
    * Restore a session
@@ -136,21 +135,21 @@ export function useSessionManager(options: UseSessionManagerOptions = {}) {
 
       // Restore frontend state
       const { workspace } = result;
-      
+
       if (workspace.chat_state) {
         // Restore messages and thoughts
         const store = useAppStore.getState();
         store.resetState();
-        
-        workspace.chat_state.messages.forEach(msg => {
+
+        workspace.chat_state.messages.forEach((msg) => {
           store.addMessage({
-            type: msg.type as 'user' | 'assistant' | 'system',
+            type: msg.type as "user" | "assistant" | "system",
             content: msg.content,
             timestamp: msg.timestamp,
           });
         });
 
-        workspace.chat_state.thoughts.forEach(thought => {
+        workspace.chat_state.thoughts.forEach((thought) => {
           store.addThought({
             content: thought.content,
             timestamp: thought.timestamp,
@@ -169,23 +168,23 @@ export function useSessionManager(options: UseSessionManagerOptions = {}) {
 
       // Restore focused app UI
       if (workspace.focused_app_id && workspace.apps.length > 0) {
-        const focusedApp = workspace.apps.find(app => app.id === workspace.focused_app_id);
+        const focusedApp = workspace.apps.find((app) => app.id === workspace.focused_app_id);
         if (focusedApp) {
           useAppStore.getState().setUISpec(focusedApp.ui_spec as any, focusedApp.id);
         }
       }
 
-      logger.info('Restored session', { 
-        component: 'SessionManager',
+      logger.info("Restored session", {
+        component: "SessionManager",
         sessionId,
         appCount: workspace.apps.length,
       });
 
       return result;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to restore session';
+      const message = err instanceof Error ? err.message : "Failed to restore session";
       setError(message);
-      logger.error('Restore failed', err, { component: 'SessionManager' });
+      logger.error("Restore failed", err, { component: "SessionManager" });
       throw err;
     } finally {
       setIsRestoring(false);
@@ -204,22 +203,22 @@ export function useSessionManager(options: UseSessionManagerOptions = {}) {
         .then(({ sessions }) => {
           if (sessions.length > 0) {
             // Sort by updated_at and get most recent
-            const sorted = sessions.sort((a, b) => 
-              new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+            const sorted = sessions.sort(
+              (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
             );
             const latestId = sorted[0].id;
-            
-            logger.info('Restoring latest session on mount', { 
-              component: 'SessionManager',
+
+            logger.info("Restoring latest session on mount", {
+              component: "SessionManager",
               sessionId: latestId,
             });
 
             return restore(latestId);
           }
         })
-        .catch(err => {
-          logger.warn('No session to restore on mount', { 
-            component: 'SessionManager',
+        .catch((err) => {
+          logger.warn("No session to restore on mount", {
+            component: "SessionManager",
             error: err instanceof Error ? err.message : String(err),
           });
         });
@@ -244,8 +243,8 @@ export function useSessionManager(options: UseSessionManagerOptions = {}) {
         }
       }, autoSaveInterval * 1000);
 
-      logger.info('Auto-save enabled', { 
-        component: 'SessionManager',
+      logger.info("Auto-save enabled", {
+        component: "SessionManager",
         interval: autoSaveInterval,
       });
 
@@ -268,4 +267,3 @@ export function useSessionManager(options: UseSessionManagerOptions = {}) {
     error,
   };
 }
-

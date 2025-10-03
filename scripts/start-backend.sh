@@ -14,12 +14,36 @@ echo ""
 # Create logs directory
 mkdir -p logs
 
-# Kill any existing backend processes
+# Kill any existing backend processes by port (more reliable)
 echo "🧹 Cleaning up existing processes..."
-pkill -f "ai_os_kernel" 2>/dev/null
-pkill -f "backend/bin/server" 2>/dev/null
-pkill -f "grpc_server" 2>/dev/null
-sleep 1
+
+# Kill process on port 50051 (Kernel)
+KERNEL_PORT_PID=$(lsof -ti :50051 2>/dev/null)
+if [ ! -z "$KERNEL_PORT_PID" ]; then
+    echo "   🔴 Killing old kernel process on port 50051 (PID: $KERNEL_PORT_PID)"
+    kill -9 $KERNEL_PORT_PID 2>/dev/null || true
+fi
+
+# Kill process on port 50052 (AI gRPC)
+AI_PORT_PID=$(lsof -ti :50052 2>/dev/null)
+if [ ! -z "$AI_PORT_PID" ]; then
+    echo "   🔴 Killing old AI service process on port 50052 (PID: $AI_PORT_PID)"
+    kill -9 $AI_PORT_PID 2>/dev/null || true
+fi
+
+# Kill process on port 8000 (Backend)
+BACKEND_PORT_PID=$(lsof -ti :8000 2>/dev/null)
+if [ ! -z "$BACKEND_PORT_PID" ]; then
+    echo "   🔴 Killing old backend process on port 8000 (PID: $BACKEND_PORT_PID)"
+    kill -9 $BACKEND_PORT_PID 2>/dev/null || true
+fi
+
+# Also try pattern matching as backup
+pkill -f "ai_os_kernel" 2>/dev/null || true
+pkill -f "backend/bin/server" 2>/dev/null || true
+pkill -f "grpc_server" 2>/dev/null || true
+
+sleep 2
 
 # Start Kernel (Rust)
 echo "1️⃣  Starting Rust Kernel..."

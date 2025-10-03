@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/GriffinCanCode/AgentOS/backend/internal/app"
@@ -31,6 +32,16 @@ func NewHandler(appManager *app.Manager, aiClient *grpc.AIClient) *Handler {
 		appManager: appManager,
 		aiClient:   aiClient,
 	}
+}
+
+// convertTokenType converts protobuf enum token types to frontend-expected format
+func convertTokenType(protoType string) string {
+	// Convert UPPERCASE to lowercase
+	lower := strings.ToLower(protoType)
+
+	// Handle special case: TOKEN in chat context should be "token"
+	// but TOKEN in UI generation context is already handled as "generation_token" by the caller
+	return lower
 }
 
 // HandleConnection handles WebSocket upgrade and messages
@@ -88,7 +99,7 @@ func (h *Handler) handleChat(conn *websocket.Conn, msg types.WSMessage) {
 	// Forward tokens to client
 	err = grpc.HandleChatStream(stream, func(tokenType, content string) error {
 		return h.send(conn, map[string]interface{}{
-			"type":      tokenType,
+			"type":      convertTokenType(tokenType),
 			"content":   content,
 			"timestamp": time.Now().Unix(),
 		})
@@ -138,7 +149,7 @@ func (h *Handler) handleGenerateUI(conn *websocket.Conn, msg types.WSMessage) {
 
 	// Collect tokens and forward to client
 	err = grpc.HandleUIStream(stream, func(tokenType, content string) error {
-		switch tokenType {
+		switch strings.ToUpper(tokenType) {
 		case "THOUGHT":
 			thoughts = append(thoughts, content)
 			return h.send(conn, map[string]interface{}{
@@ -200,7 +211,8 @@ func (h *Handler) send(conn *websocket.Conn, data interface{}) error {
 
 func (h *Handler) sendError(conn *websocket.Conn, msg string) error {
 	return h.send(conn, map[string]interface{}{
-		"type":    "error",
-		"message": msg,
+		"type":      "error",
+		"message":   msg,
+		"timestamp": time.Now().Unix(),
 	})
 }

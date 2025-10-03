@@ -1,29 +1,182 @@
+/**
+ * Thought Stream - Slide-out Notification Panel
+ * Inspired by macOS Notification Center
+ */
+
+/* Toggle Button - Fixed in top-right */
+.thought-toggle {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 999;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.thought-toggle:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: scale(1.05);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.thought-toggle:active {
+  transform: scale(0.95);
+}
+
+.thought-toggle.has-thoughts {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.thought-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #ef4444;
+  color: white;
+  border-radius: 10px;
+  padding: 2px 6px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  min-width: 20px;
+  text-align: center;
+  border: 2px solid #0a0a0a;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+}
+
+/* Slide-out Panel */
+.thought-stream-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 380px;
+  height: 100vh;
+  background: rgba(15, 15, 15, 0.95);
+  backdrop-filter: blur(40px) saturate(150%);
+  -webkit-backdrop-filter: blur(40px) saturate(150%);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.5);
+  transform: translateX(100%);
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 998;
+  display: flex;
+  flex-direction: column;
+}
+
+.thought-stream-panel.visible {
+  transform: translateX(0);
+}
+
+/* Responsive - full width on mobile */
+@media (max-width: 768px) {
+  .thought-stream-panel {
+    width: 100%;
+    border-left: none;
+  }
+
+  .thought-toggle {
+    top: 0.75rem;
+    right: 0.75rem;
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* Backdrop */
+.thought-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 997;
+  animation: fadeIn 0.3s ease;
+}
+
+/* Thought Stream Content */
 .thought-stream {
   display: flex;
   flex-direction: column;
   height: 100%;
+  overflow: hidden;
 }
 
 .thought-header {
-  padding: 1rem;
-  border-bottom: 1px solid var(--color-dark-border);
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
 }
 
 .thought-header h3 {
-  font-size: 1rem;
+  font-size: 1.125rem;
   font-weight: 600;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.thought-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .thought-count {
-  font-size: 0.75rem;
-  padding: 0.25rem 0.5rem;
-  background: var(--color-dark-hover);
-  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 500;
 }
 
+.thought-close {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1.25rem;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.thought-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Thoughts Container */
 .thoughts-container {
   flex: 1;
   overflow-y: auto;
@@ -39,67 +192,79 @@
   align-items: center;
   justify-content: center;
   height: 100%;
-  opacity: 0.5;
-  gap: 0.75rem;
+  gap: 1rem;
+  color: rgba(255, 255, 255, 0.4);
 }
 
 .empty-icon {
   font-size: 3rem;
+  opacity: 0.3;
 }
 
 .empty-state p {
   font-size: 0.875rem;
+  text-align: center;
 }
 
+/* Individual Thought Item */
 .thought-item {
   display: flex;
   gap: 0.75rem;
-  animation: slide-in 0.3s ease-out;
+  padding: 0.875rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-@keyframes slide-in {
+@keyframes slideInRight {
   from {
+    transform: translateX(20px);
     opacity: 0;
-    transform: translateY(10px);
   }
   to {
+    transform: translateX(0);
     opacity: 1;
-    transform: translateY(0);
   }
+}
+
+.thought-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 .thought-index {
   flex-shrink: 0;
-  width: 1.75rem;
-  height: 1.75rem;
-  background: linear-gradient(
-    135deg,
-    var(--color-purple-gradient-start) 0%,
-    var(--color-purple-gradient-end) 100%
-  );
-  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: rgba(99, 102, 241, 0.15);
+  color: rgba(99, 102, 241, 1);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.75rem;
   font-weight: 600;
+  border: 1px solid rgba(99, 102, 241, 0.2);
 }
 
 .thought-content {
   flex: 1;
-  padding: 0.75rem;
-  background: var(--color-dark-hover);
-  border-radius: 0.5rem;
-  border-left: 2px solid var(--color-purple-gradient-start);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .thought-text {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.875rem;
   line-height: 1.5;
-  margin-bottom: 0.5rem;
+  word-wrap: break-word;
 }
 
 .thought-time {
-  font-size: 0.6875rem;
-  opacity: 0.5;
-  font-family: var(--font-mono);
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.75rem;
+  font-weight: 500;
 }

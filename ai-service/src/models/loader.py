@@ -38,10 +38,16 @@ class ModelLoader:
         Returns:
             Initialized LLM instance
         """
-        # Cache model instance (singleton pattern for resource efficiency)
-        if cls._instance is not None and cls._config == config:
+        # Cache model instance only if cache_prompt is enabled
+        # When disabled, create new instance to prevent context pollution
+        if config.cache_prompt and cls._instance is not None and cls._config == config:
             logger.info("Returning cached model instance")
             return cls._instance
+        
+        # Force unload if switching to non-cached mode
+        if not config.cache_prompt and cls._instance is not None:
+            logger.info("Unloading cached model for fresh instance (cache_prompt=False)")
+            cls.unload()
         
         backend_name = config.backend if isinstance(config.backend, str) else config.backend.value
         logger.info(f"Loading {config.model_name} via {backend_name}...")
@@ -75,17 +81,29 @@ class ModelLoader:
         model_name = f"gpt-oss:{size_str.split('-')[-1]}"  # gpt-oss:20b
         
         logger.info(f"Connecting to Ollama: {model_name}")
+        logger.info(f"Cache prompt: {config.cache_prompt}, Keep alive: {config.keep_alive}")
+        
+        # Build kwargs for ChatOllama
+        ollama_kwargs = {
+            "model": model_name,
+            "base_url": config.ollama_base_url,
+            "temperature": config.temperature,
+            "num_predict": config.max_tokens,
+            "callbacks": callbacks or [],
+        }
+        
+        # Add optional parameters
+        if config.num_ctx:
+            ollama_kwargs["num_ctx"] = config.num_ctx
+        
+        # Control model persistence (0 = unload immediately, prevents cache pollution)
+        if config.keep_alive:
+            ollama_kwargs["keep_alive"] = config.keep_alive
         
         # Note: ChatOllama doesn't support streaming parameter in constructor
         # It handles streaming automatically based on how you call it
         # (.stream() vs .invoke())
-        return ChatOllama(
-            model=model_name,
-            base_url=config.ollama_base_url,
-            temperature=config.temperature,
-            num_predict=config.max_tokens,
-            callbacks=callbacks or [],
-        )
+        return ChatOllama(**ollama_kwargs)
     
     @classmethod
     def _load_llama_cpp(

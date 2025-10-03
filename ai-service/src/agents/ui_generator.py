@@ -717,11 +717,26 @@ Output the complete UI specification as valid JSON now:"""
         logger.info(f"Sending prompt to LLM for: {request}")
         logger.debug(f"Full prompt length: {len(full_prompt)} characters")
         
+        # CRITICAL: Get a fresh LLM instance for each request to prevent cache pollution
+        # Import here to avoid circular dependency
+        from models import ModelLoader, ModelConfig
+        from models.config import ModelBackend, ModelSize
+        
+        llm = ModelLoader.load(ModelConfig(
+            backend=ModelBackend.OLLAMA,
+            size=ModelSize.SMALL,
+            streaming=True,
+            cache_prompt=False,  # Disable caching to prevent context pollution
+            keep_alive="0"  # Unload immediately after request
+        ))
+        
+        logger.debug("Using fresh LLM instance for streaming (cache_prompt=False)")
+        
         # Stream tokens in real-time
         content = ""
         chunk_count = 0
         
-        for chunk in self.llm.stream(full_prompt):
+        for chunk in llm.stream(full_prompt):
             chunk_count += 1
             if hasattr(chunk, 'content'):
                 token = chunk.content

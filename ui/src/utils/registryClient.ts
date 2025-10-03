@@ -9,9 +9,9 @@ import type {
   SaveAppResponse,
   ListAppsResponse,
   LaunchAppResponse,
-} from '../types/registry';
+} from "../types/registry";
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = "http://localhost:8000";
 
 export class RegistryClient {
   /**
@@ -19,14 +19,14 @@ export class RegistryClient {
    */
   static async saveApp(request: SaveAppRequest): Promise<SaveAppResponse> {
     const response = await fetch(`${API_BASE}/registry/save`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Failed to save app');
+      throw new Error(error.error || "Failed to save app");
     }
 
     return response.json();
@@ -38,14 +38,14 @@ export class RegistryClient {
   static async listApps(category?: string): Promise<ListAppsResponse> {
     const url = new URL(`${API_BASE}/registry/apps`);
     if (category) {
-      url.searchParams.set('category', category);
+      url.searchParams.set("category", category);
     }
 
     const response = await fetch(url.toString());
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Failed to list apps');
+      throw new Error(error.error || "Failed to list apps");
     }
 
     return response.json();
@@ -59,7 +59,7 @@ export class RegistryClient {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Failed to get app');
+      throw new Error(error.error || "Failed to get app");
     }
 
     return response.json();
@@ -70,13 +70,13 @@ export class RegistryClient {
    */
   static async launchApp(packageId: string): Promise<LaunchAppResponse> {
     const response = await fetch(`${API_BASE}/registry/apps/${packageId}/launch`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Failed to launch app');
+      throw new Error(error.error || "Failed to launch app");
     }
 
     return response.json();
@@ -87,15 +87,14 @@ export class RegistryClient {
    */
   static async deleteApp(packageId: string): Promise<{ success: boolean }> {
     const response = await fetch(`${API_BASE}/registry/apps/${packageId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Failed to delete app');
+      throw new Error(error.error || "Failed to delete app");
     }
 
     return response.json();
   }
 }
-

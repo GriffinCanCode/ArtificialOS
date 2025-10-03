@@ -8,15 +8,30 @@ import { useThoughts, useAppActions } from "../store/appStore";
 import { useWebSocket } from "../contexts/WebSocketContext";
 import "./ThoughtStream.css";
 
-const ThoughtStream: React.FC = () => {
+interface ThoughtStreamProps {
+  isVisible: boolean;
+  onToggle: () => void;
+}
+
+const ThoughtStream: React.FC<ThoughtStreamProps> = ({ isVisible, onToggle }) => {
   const thoughts = useThoughts();
   const { addThought } = useAppActions();
   const { client } = useWebSocket();
   const streamEndRef = useRef<HTMLDivElement>(null);
+  const prevThoughtsLength = useRef(0);
 
   useEffect(() => {
     scrollToBottom();
   }, [thoughts]);
+
+  // Auto-open panel when new thoughts arrive (optional - can be disabled)
+  useEffect(() => {
+    // Only auto-open on first thought
+    if (thoughts.length === 1 && prevThoughtsLength.current === 0 && !isVisible) {
+      onToggle();
+    }
+    prevThoughtsLength.current = thoughts.length;
+  }, [thoughts.length, isVisible, onToggle]);
 
   // Listen for thought messages from WebSocket
   useEffect(() => {
@@ -48,32 +63,55 @@ const ThoughtStream: React.FC = () => {
   };
 
   return (
-    <div className="thought-stream">
-      <div className="thought-header">
-        <h3>💭 Thought Stream</h3>
-        <span className="thought-count">{thoughts.length} steps</span>
+    <>
+      {/* Toggle Button - Fixed in top-right corner */}
+      <button
+        className={`thought-toggle ${thoughts.length > 0 ? "has-thoughts" : ""}`}
+        onClick={onToggle}
+        title="Toggle thought stream"
+      >
+        <span className="thought-icon">💭</span>
+        {thoughts.length > 0 && <span className="thought-badge">{thoughts.length}</span>}
+      </button>
+
+      {/* Slide-out Panel */}
+      <div className={`thought-stream-panel ${isVisible ? "visible" : ""}`}>
+        <div className="thought-stream">
+          <div className="thought-header">
+            <h3>💭 Thought Stream</h3>
+            <div className="thought-header-actions">
+              <span className="thought-count">{thoughts.length} steps</span>
+              <button className="thought-close" onClick={onToggle}>
+                ✕
+              </button>
+            </div>
+          </div>
+
+          <div className="thoughts-container">
+            {thoughts.length === 0 ? (
+              <div className="empty-state">
+                <span className="empty-icon">🧠</span>
+                <p>AI thoughts will appear here...</p>
+              </div>
+            ) : (
+              thoughts.map((thought, idx) => (
+                <div key={idx} className="thought-item">
+                  <div className="thought-index">{idx + 1}</div>
+                  <div className="thought-content">
+                    <div className="thought-text">{thought.content}</div>
+                    <div className="thought-time">{formatTime(thought.timestamp)}</div>
+                  </div>
+                </div>
+              ))
+            )}
+            <div ref={streamEndRef} />
+          </div>
+        </div>
       </div>
 
-      <div className="thoughts-container">
-        {thoughts.length === 0 ? (
-          <div className="empty-state">
-            <span className="empty-icon">🧠</span>
-            <p>AI thoughts will appear here...</p>
-          </div>
-        ) : (
-          thoughts.map((thought, idx) => (
-            <div key={idx} className="thought-item">
-              <div className="thought-index">{idx + 1}</div>
-              <div className="thought-content">
-                <div className="thought-text">{thought.content}</div>
-                <div className="thought-time">{formatTime(thought.timestamp)}</div>
-              </div>
-            </div>
-          ))
-        )}
-        <div ref={streamEndRef} />
-      </div>
-    </div>
+      {/* Backdrop */}
+      {isVisible && <div className="thought-backdrop" onClick={onToggle} />}
+    </>
   );
 };
 

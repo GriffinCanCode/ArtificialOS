@@ -60,4 +60,3 @@ export interface LaunchAppResponse {
   ui_spec: Record<string, any>;
   title: string;
 }
-

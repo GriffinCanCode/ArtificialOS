@@ -48,9 +48,13 @@ class ModelConfig(BaseModel):
     streaming: bool = Field(default=True)
     stream_chunk_size: int = Field(default=1)
     
-    # Caching
-    cache_prompt: bool = Field(default=True)
+    # Caching - DISABLED by default to prevent context pollution
+    cache_prompt: bool = Field(default=False)
     seed: Optional[int] = Field(default=None)
+    
+    # Ollama-specific parameters
+    keep_alive: str = Field(default="0")  # Don't keep model in memory between requests
+    num_ctx: Optional[int] = Field(default=None)  # Context window size
     
     class Config:
         """Pydantic config."""

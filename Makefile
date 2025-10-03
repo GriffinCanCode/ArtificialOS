@@ -102,6 +102,16 @@ build-ui: ## Build UI for production
 
 ##@ Run & Start
 
+start: ## Start everything (backend + electron UI)
+	@echo "$(RED)      Closing shit quickly... $(NC)"
+	@./scripts/stop.sh
+	@echo "$(YELLOW)🚀 Starting backend stack...$(NC)"
+	@./scripts/start-backend.sh
+	@echo "$(YELLOW)⏳ Waiting for backend to be ready...$(NC)"
+	@sleep 3
+	@echo "$(YELLOW)🚀 Starting Electron UI...$(NC)"
+	@./scripts/start-ui.sh
+
 start-backend: ## Start complete backend stack (kernel + ai-service + backend)
 	@./scripts/start-backend.sh
 
@@ -249,17 +259,17 @@ status: ## Check status of all services
 	@echo "$(CYAN)║                    Service Status                        ║$(NC)"
 	@echo "$(CYAN)╚═══════════════════════════════════════════════════════════╝$(NC)"
 	@echo ""
-	@echo "$(YELLOW)Kernel:$(NC)"
-	@pgrep -f "ai_os_kernel" > /dev/null && echo "  $(GREEN)✅ Running$(NC)" || echo "  $(RED)❌ Not running$(NC)"
+	@echo "$(YELLOW)Kernel (port 50051):$(NC)"
+	@lsof -i :50051 > /dev/null 2>&1 && echo "  $(GREEN)✅ Running$(NC)" || echo "  $(RED)❌ Not running$(NC)"
 	@echo ""
-	@echo "$(YELLOW)AI Service:$(NC)"
-	@pgrep -f "grpc_server" > /dev/null && echo "  $(GREEN)✅ Running$(NC)" || echo "  $(RED)❌ Not running$(NC)"
+	@echo "$(YELLOW)AI Service (port 50052):$(NC)"
+	@lsof -i :50052 > /dev/null 2>&1 && echo "  $(GREEN)✅ Running$(NC)" || echo "  $(RED)❌ Not running$(NC)"
 	@echo ""
-	@echo "$(YELLOW)Backend:$(NC)"
-	@pgrep -f "backend/bin/server" > /dev/null && echo "  $(GREEN)✅ Running$(NC)" || echo "  $(RED)❌ Not running$(NC)"
+	@echo "$(YELLOW)Backend (port 8000):$(NC)"
+	@lsof -i :8000 > /dev/null 2>&1 && echo "  $(GREEN)✅ Running$(NC)" || echo "  $(RED)❌ Not running$(NC)"
 	@echo ""
-	@echo "$(YELLOW)UI:$(NC)"
-	@pgrep -f "vite" > /dev/null && echo "  $(GREEN)✅ Running$(NC)" || echo "  $(RED)❌ Not running$(NC)"
+	@echo "$(YELLOW)UI (port 5173):$(NC)"
+	@lsof -i :5173 > /dev/null 2>&1 && echo "  $(GREEN)✅ Running$(NC)" || echo "  $(RED)❌ Not running$(NC)"
 	@echo ""
 
 ps: ## Show running processes

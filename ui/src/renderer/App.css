@@ -1,86 +1,185 @@
-.app {
+/* OS Interface - Full Screen Desktop */
+.app.os-interface {
   width: 100vw;
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--color-dark-bg);
+  background: 
+    radial-gradient(circle at 20% 80%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(168, 85, 247, 0.06) 0%, transparent 50%),
+    linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
   color: #ffffff;
   overflow: hidden;
+  position: relative;
 }
 
-.app-layout {
-  display: grid;
-  grid-template-columns: 1fr 2fr 1fr;
-  height: calc(100vh - 40px);
-  gap: 1px;
-  background: var(--color-dark-hover);
+/* Subtle desktop texture */
+.app.os-interface::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.02) 1px, transparent 0);
+  background-size: 40px 40px;
+  pointer-events: none;
+  opacity: 0.3;
 }
 
-.panel {
-  background: var(--color-dark-panel);
+/* Full-screen canvas for apps */
+.os-canvas {
+  flex: 1;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
+  position: relative;
+  padding-top: 40px; /* Account for minimal title bar */
+}
+
+/* Spotlight-style Input Bar (inspired by macOS Spotlight) */
+.spotlight-input-container {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%) scale(0.98);
+  z-index: 1000;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0.8;
+}
+
+.spotlight-input-container:hover,
+.spotlight-input-container.focused {
+  transform: translateX(-50%) scale(1);
+  opacity: 1;
+}
+
+.spotlight-input-wrapper {
+  min-width: 600px;
+  max-width: 700px;
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1.25rem;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 2px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.chat-panel {
-  border-right: 1px solid var(--color-dark-border);
+.spotlight-input-container.focused .spotlight-input-wrapper {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow:
+    0 12px 48px rgba(99, 102, 241, 0.2),
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
-.renderer-panel {
-  border-right: 1px solid var(--color-dark-border);
+.spotlight-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  opacity: 0.7;
 }
 
-/* Responsive design */
-@media (max-width: 1200px) {
-  .app-layout {
-    grid-template-columns: 1fr 1fr;
+.spotlight-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.spotlight-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.spotlight-send {
+  background: rgba(99, 102, 241, 0.8);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.25rem;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.spotlight-send:hover {
+  background: rgba(99, 102, 241, 1);
+  transform: scale(1.05);
+}
+
+.spotlight-send:active {
+  transform: scale(0.95);
+}
+
+.spotlight-hint {
+  text-align: center;
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.02em;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
   }
-
-  .thoughts-panel {
-    display: none;
-  }
-}
-
-@media (max-width: 768px) {
-  .app-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .chat-panel,
-  .thoughts-panel {
-    display: none;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
 /* Session Status Indicator */
 .session-status {
   position: fixed;
-  bottom: 1rem;
-  right: 1rem;
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 12px;
   font-size: 0.875rem;
   font-weight: 500;
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid;
-  animation: slideIn 0.3s ease-out;
-  z-index: 1000;
+  animation: slideInUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 999;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
 .session-status.saving {
-  background: rgba(59, 130, 246, 0.2);
-  color: rgb(96, 165, 250);
-  border-color: rgba(59, 130, 246, 0.3);
+  background: rgba(99, 102, 241, 0.15);
+  color: rgb(167, 169, 255);
+  border-color: rgba(99, 102, 241, 0.3);
 }
 
 .session-status.saved {
-  background: rgba(16, 185, 129, 0.2);
+  background: rgba(16, 185, 129, 0.15);
   color: rgb(52, 211, 153);
   border-color: rgba(16, 185, 129, 0.3);
 }
 
-@keyframes slideIn {
+@keyframes slideInUp {
   from {
     transform: translateY(1rem);
     opacity: 0;
@@ -88,5 +187,24 @@
   to {
     transform: translateY(0);
     opacity: 1;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .spotlight-input-wrapper {
+    min-width: calc(100vw - 4rem);
+    max-width: calc(100vw - 4rem);
+  }
+
+  .spotlight-input-container {
+    bottom: 1rem;
+  }
+
+  .session-status {
+    bottom: 6rem;
+    right: 1rem;
+    left: 1rem;
+    text-align: center;
   }
 }

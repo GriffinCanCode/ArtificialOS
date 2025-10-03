@@ -3,10 +3,10 @@
  * Grid-based launcher for installed apps from the registry
  */
 
-import React, { useEffect, useState } from 'react';
-import { RegistryClient } from '../utils/registryClient';
-import type { PackageMetadata } from '../types/registry';
-import './Launcher.css';
+import React, { useEffect, useState } from "react";
+import { RegistryClient } from "../utils/registryClient";
+import type { PackageMetadata } from "../types/registry";
+import "./Launcher.css";
 
 interface LauncherProps {
   onAppLaunch?: (appId: string, uiSpec: Record<string, any>) => void;
@@ -30,7 +30,7 @@ export const Launcher: React.FC<LauncherProps> = ({ onAppLaunch, onCreateNew }) 
       const response = await RegistryClient.listApps(selectedCategory || undefined);
       setApps(response.apps);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load apps');
+      setError(err instanceof Error ? err.message : "Failed to load apps");
       setApps([]);
     } finally {
       setLoading(false);
@@ -44,14 +44,14 @@ export const Launcher: React.FC<LauncherProps> = ({ onAppLaunch, onCreateNew }) 
         onAppLaunch(response.app_id, response.ui_spec);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to launch app');
+      setError(err instanceof Error ? err.message : "Failed to launch app");
     }
   };
 
   const handleDeleteApp = async (packageId: string, event: React.MouseEvent) => {
     event.stopPropagation();
-    
-    if (!confirm('Are you sure you want to delete this app?')) {
+
+    if (!confirm("Are you sure you want to delete this app?")) {
       return;
     }
 
@@ -59,18 +59,18 @@ export const Launcher: React.FC<LauncherProps> = ({ onAppLaunch, onCreateNew }) 
       await RegistryClient.deleteApp(packageId);
       loadApps();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete app');
+      setError(err instanceof Error ? err.message : "Failed to delete app");
     }
   };
 
-  const categories = ['all', 'productivity', 'utilities', 'games', 'creative', 'general'];
+  const categories = ["all", "productivity", "utilities", "games", "creative", "general"];
 
   return (
     <div className="launcher">
       <div className="launcher-header">
         <h1 className="launcher-title">🚀 App Launcher</h1>
         <p className="launcher-subtitle">
-          {apps.length} {apps.length === 1 ? 'app' : 'apps'} installed
+          {apps.length} {apps.length === 1 ? "app" : "apps"} installed
         </p>
       </div>
 
@@ -78,8 +78,8 @@ export const Launcher: React.FC<LauncherProps> = ({ onAppLaunch, onCreateNew }) 
         {categories.map((cat) => (
           <button
             key={cat}
-            className={`category-btn ${selectedCategory === (cat === 'all' ? null : cat) ? 'active' : ''}`}
-            onClick={() => setSelectedCategory(cat === 'all' ? null : cat)}
+            className={`category-btn ${selectedCategory === (cat === "all" ? null : cat) ? "active" : ""}`}
+            onClick={() => setSelectedCategory(cat === "all" ? null : cat)}
           >
             {cat}
           </button>
@@ -101,11 +101,7 @@ export const Launcher: React.FC<LauncherProps> = ({ onAppLaunch, onCreateNew }) 
       ) : (
         <div className="app-grid">
           {apps.map((app) => (
-            <div
-              key={app.id}
-              className="app-card"
-              onClick={() => handleLaunchApp(app.id)}
-            >
+            <div key={app.id} className="app-card" onClick={() => handleLaunchApp(app.id)}>
               <button
                 className="app-delete"
                 onClick={(e) => handleDeleteApp(app.id, e)}
@@ -133,4 +129,3 @@ export const Launcher: React.FC<LauncherProps> = ({ onAppLaunch, onCreateNew }) 
     </div>
   );
 };
-

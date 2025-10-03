@@ -92,4 +92,3 @@ export interface RestoreSessionResponse {
   success: boolean;
   workspace: Workspace;
 }
-

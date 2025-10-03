@@ -40,7 +40,41 @@ AgentOS/
 
 ### Setup & Running
 
-**Simple 2-Script System**
+**Option 1: Using Makefile (Recommended)**
+
+The project includes a comprehensive Makefile with all commands:
+
+```bash
+# See all available commands
+make help
+
+# One-time setup: Install all dependencies
+make setup
+
+# Compile protocol buffers
+make proto
+
+# Build all components
+make build
+
+# Start everything in development mode
+make dev
+
+# Or start components separately:
+make start-backend    # Terminal 1: Backend stack
+make start-ui         # Terminal 2: UI
+
+# Stop all services
+make stop
+
+# Check service status
+make status
+
+# View logs
+make logs
+```
+
+**Option 2: Using Scripts Directly**
 
 ```bash
 # Terminal 1: Start backend stack (Kernel + AI + Go)
@@ -85,13 +119,81 @@ AgentOS/
 * True concurrency with goroutines
 * **NEW:** App Registry - Save & launch apps instantly! ⚡
 
+## Makefile Commands
+
+The Makefile provides a comprehensive set of commands for managing the entire project:
+
+**Setup & Installation**
+```bash
+make setup              # Install all dependencies (kernel, AI, backend, UI)
+make install-kernel     # Install Rust dependencies only
+make install-ai         # Setup Python venv and dependencies
+make install-backend    # Install Go dependencies
+make install-ui         # Install Node.js dependencies
+```
+
+**Building**
+```bash
+make build              # Build all components
+make build-kernel       # Build Rust kernel (release)
+make build-backend      # Build Go backend
+make build-ui           # Build UI for production
+```
+
+**Running**
+```bash
+make dev                # Start everything (backend + UI)
+make start-backend      # Start backend stack only
+make start-ui           # Start UI dev server only
+make electron           # Start Electron app
+```
+
+**Protocol Buffers**
+```bash
+make proto              # Compile all protocol buffers
+make proto-go           # Compile Go protobufs only
+make proto-python       # Compile Python protobufs only
+```
+
+**Testing & Quality**
+```bash
+make test               # Run all tests
+make test-backend       # Run Go tests
+make test-kernel        # Run Rust tests
+make format             # Format all code
+make lint-backend       # Lint Go code
+```
+
+**Monitoring & Logs**
+```bash
+make status             # Check service status
+make logs               # Tail all logs
+make logs-kernel        # Tail kernel logs only
+make logs-backend       # Tail backend logs only
+make show-logs          # Show recent logs from all services
+make ports              # Check which ports are in use
+```
+
+**Cleaning**
+```bash
+make clean              # Clean all build artifacts
+make deep-clean         # Remove node_modules and venv
+make stop               # Stop all services
+make restart            # Restart everything
+```
+
+Run `make help` to see all available commands with descriptions.
+
 ## Testing
 
 ```bash
-# Backend tests (Go)
-cd backend && go test ./...
+# Using Makefile
+make test               # Run all tests
+make test-backend       # Backend tests only
+make test-kernel        # Kernel tests only
 
-# AI service tests (Python)
+# Or directly:
+cd backend && go test ./...
 cd ai-service && pytest
 
 # Health check

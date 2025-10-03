@@ -9,9 +9,9 @@ import type {
   SaveSessionResponse,
   ListSessionsResponse,
   RestoreSessionResponse,
-} from '../types/session';
+} from "../types/session";
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = "http://localhost:8000";
 
 export class SessionClient {
   /**
@@ -19,14 +19,14 @@ export class SessionClient {
    */
   static async saveSession(request: SaveSessionRequest): Promise<SaveSessionResponse> {
     const response = await fetch(`${API_BASE}/sessions/save`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Failed to save session');
+      throw new Error(error.error || "Failed to save session");
     }
 
     return response.json();
@@ -37,13 +37,13 @@ export class SessionClient {
    */
   static async saveDefault(): Promise<SaveSessionResponse> {
     const response = await fetch(`${API_BASE}/sessions/save-default`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Failed to save session');
+      throw new Error(error.error || "Failed to save session");
     }
 
     return response.json();
@@ -57,7 +57,7 @@ export class SessionClient {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Failed to list sessions');
+      throw new Error(error.error || "Failed to list sessions");
     }
 
     return response.json();
@@ -71,7 +71,7 @@ export class SessionClient {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Failed to get session');
+      throw new Error(error.error || "Failed to get session");
     }
 
     return response.json();
@@ -82,13 +82,13 @@ export class SessionClient {
    */
   static async restoreSession(sessionId: string): Promise<RestoreSessionResponse> {
     const response = await fetch(`${API_BASE}/sessions/${sessionId}/restore`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Failed to restore session');
+      throw new Error(error.error || "Failed to restore session");
     }
 
     return response.json();
@@ -99,15 +99,14 @@ export class SessionClient {
    */
   static async deleteSession(sessionId: string): Promise<{ success: boolean }> {
     const response = await fetch(`${API_BASE}/sessions/${sessionId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Failed to delete session');
+      throw new Error(error.error || "Failed to delete session");
     }
 
     return response.json();
   }
 }
-
