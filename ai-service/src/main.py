@@ -3,6 +3,7 @@ AI Service - Main Entry Point
 Handles LLM inference, streaming, and MCP protocol
 """
 
+import asyncio
 import logging
 import time
 import signal
@@ -387,8 +388,31 @@ async def stream_ui_generation(
             except Exception as e:
                 logger.warning(f"Could not load LLM: {e}. Using rule-based generation.")
         
-        # Generate UI spec with LLM
-        ui_spec = app.state.ui_generator.generate_ui(message)
+        # Create streaming callback to send tokens in real-time
+        async def token_callback(token: str):
+            """Send each token as it's generated"""
+            try:
+                await websocket.send_json({
+                    "type": "generation_token",
+                    "content": token,
+                    "timestamp": time.time()
+                })
+            except Exception as e:
+                logger.warning(f"Failed to send token: {e}")
+        
+        # Send thought: generating UI
+        await websocket.send_json({
+            "type": "thought",
+            "content": "Generating UI specification with AI...",
+            "timestamp": time.time()
+        })
+        
+        # Generate UI spec with LLM and streaming callback
+        # Note: generate_ui is synchronous but calls stream_callback for each token
+        ui_spec = app.state.ui_generator.generate_ui(
+            message,
+            stream_callback=lambda token: asyncio.create_task(token_callback(token))
+        )
         
         # Send thought: components identified
         await websocket.send_json({

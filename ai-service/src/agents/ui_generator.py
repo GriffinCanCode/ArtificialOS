@@ -616,12 +616,13 @@ REQUIRED ROOT STRUCTURE:
         
         return base_prompt
     
-    def generate_ui(self, request: str) -> UISpec:
+    def generate_ui(self, request: str, stream_callback=None) -> UISpec:
         """
         Generate UI specification from natural language request.
         
         Args:
             request: User's natural language request (e.g., "create a calculator")
+            stream_callback: Optional callback(token) for real-time streaming
             
         Returns:
             UISpec: Structured UI specification
@@ -630,7 +631,7 @@ REQUIRED ROOT STRUCTURE:
         if self.use_llm:
             try:
                 logger.info(f"Generating UI with LLM for: {request}")
-                return self._generate_with_llm(request)
+                return self._generate_with_llm(request, stream_callback=stream_callback)
             except Exception as e:
                 logger.warning(f"LLM generation failed: {e}. Falling back to rules.")
                 # Fall through to rule-based generation
@@ -648,12 +649,13 @@ REQUIRED ROOT STRUCTURE:
         else:
             return self._generate_placeholder(request)
     
-    def _generate_with_llm(self, request: str) -> UISpec:
+    def _generate_with_llm(self, request: str, stream_callback=None) -> UISpec:
         """
         Generate UI using LLM with structured output.
         
         Args:
             request: User's natural language request
+            stream_callback: Optional callback(token) for real-time streaming
             
         Returns:
             UISpec: Generated UI specification
@@ -699,7 +701,11 @@ Output the complete UI specification as valid JSON now:"""
         for chunk in self.llm.stream(full_prompt):
             chunk_count += 1
             if hasattr(chunk, 'content'):
-                content += chunk.content
+                token = chunk.content
+                content += token
+                # Send token to callback for real-time streaming
+                if stream_callback and token:
+                    stream_callback(token)
         
         logger.info(f"LLM response: {chunk_count} chunks, {len(content)} characters")
         if content:
