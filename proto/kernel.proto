@@ -1,0 +1,226 @@
+syntax = "proto3";
+
+package kernel;
+
+// Kernel service for executing syscalls
+service KernelService {
+  // Execute a system call
+  rpc ExecuteSyscall(SyscallRequest) returns (SyscallResponse);
+  
+  // Create a sandboxed process
+  rpc CreateProcess(CreateProcessRequest) returns (CreateProcessResponse);
+  
+  // Manage sandbox permissions
+  rpc UpdateSandbox(UpdateSandboxRequest) returns (UpdateSandboxResponse);
+  
+  // Stream kernel events (optional, for future)
+  rpc StreamEvents(EventStreamRequest) returns (stream KernelEvent);
+}
+
+// ============================================================================
+// Syscall Types
+// ============================================================================
+
+message SyscallRequest {
+  uint32 pid = 1;
+  oneof syscall {
+    ReadFileCall read_file = 10;
+    WriteFileCall write_file = 11;
+    CreateFileCall create_file = 12;
+    DeleteFileCall delete_file = 13;
+    ListDirectoryCall list_directory = 14;
+    FileExistsCall file_exists = 15;
+    SpawnProcessCall spawn_process = 20;
+    KillProcessCall kill_process = 21;
+    GetSystemInfoCall get_system_info = 30;
+    GetCurrentTimeCall get_current_time = 31;
+    GetEnvVarCall get_env_var = 32;
+    NetworkRequestCall network_request = 40;
+  }
+}
+
+message SyscallResponse {
+  oneof result {
+    SuccessResult success = 1;
+    ErrorResult error = 2;
+    PermissionDeniedResult permission_denied = 3;
+  }
+}
+
+message SuccessResult {
+  bytes data = 1;
+}
+
+message ErrorResult {
+  string message = 1;
+}
+
+message PermissionDeniedResult {
+  string reason = 1;
+}
+
+// ============================================================================
+// File System Calls
+// ============================================================================
+
+message ReadFileCall {
+  string path = 1;
+}
+
+message WriteFileCall {
+  string path = 1;
+  bytes data = 2;
+}
+
+message CreateFileCall {
+  string path = 1;
+}
+
+message DeleteFileCall {
+  string path = 1;
+}
+
+message ListDirectoryCall {
+  string path = 1;
+}
+
+message FileExistsCall {
+  string path = 1;
+}
+
+// ============================================================================
+// Process Calls
+// ============================================================================
+
+message SpawnProcessCall {
+  string command = 1;
+  repeated string args = 2;
+}
+
+message KillProcessCall {
+  uint32 target_pid = 1;
+}
+
+// ============================================================================
+// System Info Calls
+// ============================================================================
+
+message GetSystemInfoCall {}
+
+message GetCurrentTimeCall {}
+
+message GetEnvVarCall {
+  string key = 1;
+}
+
+// ============================================================================
+// Network Calls
+// ============================================================================
+
+message NetworkRequestCall {
+  string url = 1;
+}
+
+// ============================================================================
+// Process Management
+// ============================================================================
+
+message CreateProcessRequest {
+  string name = 1;
+  uint32 priority = 2;
+  SandboxLevel sandbox_level = 3;
+}
+
+message CreateProcessResponse {
+  uint32 pid = 1;
+  bool success = 2;
+  string error = 3;
+}
+
+enum SandboxLevel {
+  MINIMAL = 0;
+  STANDARD = 1;
+  PRIVILEGED = 2;
+}
+
+// ============================================================================
+// Sandbox Management
+// ============================================================================
+
+message UpdateSandboxRequest {
+  uint32 pid = 1;
+  repeated Capability capabilities = 2;
+  repeated string allowed_paths = 3;
+  repeated string blocked_paths = 4;
+  ResourceLimits limits = 5;
+}
+
+message UpdateSandboxResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+enum Capability {
+  READ_FILE = 0;
+  WRITE_FILE = 1;
+  CREATE_FILE = 2;
+  DELETE_FILE = 3;
+  LIST_DIRECTORY = 4;
+  SPAWN_PROCESS = 5;
+  KILL_PROCESS = 6;
+  NETWORK_ACCESS = 7;
+  BIND_PORT = 8;
+  SYSTEM_INFO = 9;
+  TIME_ACCESS = 10;
+  SEND_MESSAGE = 11;
+  RECEIVE_MESSAGE = 12;
+}
+
+message ResourceLimits {
+  uint64 max_memory_bytes = 1;
+  uint64 max_cpu_time_ms = 2;
+  uint32 max_file_descriptors = 3;
+  uint32 max_processes = 4;
+  uint32 max_network_connections = 5;
+}
+
+// ============================================================================
+// Event Streaming (for future use)
+// ============================================================================
+
+message EventStreamRequest {
+  repeated string event_types = 1;
+}
+
+message KernelEvent {
+  uint64 timestamp = 1;
+  oneof event {
+    ProcessCreatedEvent process_created = 10;
+    ProcessTerminatedEvent process_terminated = 11;
+    SyscallExecutedEvent syscall_executed = 12;
+    PermissionDeniedEvent permission_denied = 13;
+  }
+}
+
+message ProcessCreatedEvent {
+  uint32 pid = 1;
+  string name = 2;
+}
+
+message ProcessTerminatedEvent {
+  uint32 pid = 1;
+  int32 exit_code = 2;
+}
+
+message SyscallExecutedEvent {
+  uint32 pid = 1;
+  string syscall_type = 2;
+  bool success = 3;
+}
+
+message PermissionDeniedEvent {
+  uint32 pid = 1;
+  string syscall_type = 2;
+  string reason = 3;
+}
+
