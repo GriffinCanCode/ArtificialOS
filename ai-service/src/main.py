@@ -5,6 +5,10 @@ Handles LLM inference, streaming, and MCP protocol
 
 import logging
 import time
+import signal
+import sys
+import atexit
+from typing import Any, Dict, Optional
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -15,12 +19,17 @@ from pydantic import BaseModel
 from agents import ChatAgent
 from agents.chat import ChatHistory, ChatMessage
 from agents.ui_generator import UIGeneratorAgent, ToolRegistry
-from agents.app_manager import AppManager, get_app_manager
+from agents.app_manager import AppManager
+from agents.kernel_tools import get_kernel_tools
+from agents.context import ContextBuilder
+from kernel_client import get_kernel_client
 from models import ModelConfig, ModelLoader
 from models.config import ModelSize, ModelBackend
 from streaming.callbacks import StreamCallback
 from streaming.thought_stream import ThoughtStreamManager
 from mcp.protocol import MCPHandler
+from services import ServiceRegistry, ServiceContext
+from services.builtin import StorageService, AIService, AuthService
 
 # Configure logging
 logging.basicConfig(
@@ -28,6 +37,32 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+
+# Graceful shutdown handlers
+def cleanup_on_exit():
+    """Ensure model is unloaded on any exit."""
+    try:
+        logger.info("🧹 Emergency cleanup: Unloading model...")
+        ModelLoader.unload()
+    except Exception as e:
+        logger.error(f"Error during emergency cleanup: {e}")
+
+
+def signal_handler(signum, frame):
+    """Handle shutdown signals (SIGTERM, SIGINT)."""
+    signal_name = "SIGTERM" if signum == signal.SIGTERM else "SIGINT"
+    logger.info(f"⚠️  Received {signal_name}, initiating graceful shutdown...")
+    cleanup_on_exit()
+    sys.exit(0)
+
+
+# Register signal handlers for graceful shutdown
+signal.signal(signal.SIGTERM, signal_handler)
+signal.signal(signal.SIGINT, signal_handler)
+
+# Register atexit handler as last resort
+atexit.register(cleanup_on_exit)
 
 
 # Lifespan context manager for startup/shutdown
@@ -42,8 +77,8 @@ async def lifespan(app: FastAPI):
         backend=ModelBackend.OLLAMA,  # Use Ollama (better quality)
         size=ModelSize.SMALL,  # 20B model
         context_length=8192,
-        max_tokens=2048,
-        temperature=0.7,
+        max_tokens=4096,  # Increased to prevent JSON truncation
+        temperature=0.3,  # Lower temperature for more consistent JSON output
         streaming=True,
     )
     
@@ -53,18 +88,108 @@ async def lifespan(app: FastAPI):
     app.state.mcp_handler = MCPHandler()
     app.state.model_loader = ModelLoader
     app.state.tool_registry = ToolRegistry()
-    app.state.ui_generator = UIGeneratorAgent(app.state.tool_registry)
-    app.state.app_manager = get_app_manager()
+    
+    # Initialize service system
+    app.state.service_registry = ServiceRegistry()
+    app.state.context_builder = None  # Will be initialized after kernel
     
     logger.info(f"Configuration: {config.model_name}")
     logger.info(f"Tools registered: {len(app.state.tool_registry.tools)}")
+    
+    # Initialize kernel connection
+    try:
+        kernel_client = get_kernel_client()
+        kernel_tools = get_kernel_tools()
+        
+        # Create default sandboxed process for AI operations
+        default_pid = kernel_tools.create_sandboxed_process(
+            name="ai-service-default",
+            sandbox_level="STANDARD"
+        )
+        
+        if default_pid:
+            app.state.kernel_client = kernel_client
+            app.state.kernel_tools = kernel_tools
+            app.state.default_pid = default_pid
+            logger.info(f"✅ Connected to kernel (default PID: {default_pid})")
+            
+            # Register kernel-dependent services
+            storage_service = StorageService(kernel_tools=kernel_tools)
+            app.state.service_registry.register(storage_service)
+            logger.info("✅ Storage service registered")
+        else:
+            logger.warning("⚠️  Could not create default kernel process")
+            app.state.kernel_client = None
+            app.state.kernel_tools = None
+            app.state.default_pid = None
+    except Exception as e:
+        logger.warning(f"⚠️  Kernel connection failed: {e}")
+        logger.warning("AI Service will run without kernel integration")
+        app.state.kernel_client = None
+        app.state.kernel_tools = None
+        app.state.default_pid = None
+    
+    # Register non-kernel services
+    auth_service = AuthService()
+    app.state.service_registry.register(auth_service)
+    logger.info("✅ Auth service registered")
+    
+    # AI service will be registered when LLM loads
+    
+    # Initialize context builder and managers
+    app.state.context_builder = ContextBuilder(app.state.service_registry)
+    app.state.ui_generator = UIGeneratorAgent(
+        tool_registry=app.state.tool_registry,
+        service_registry=app.state.service_registry,
+        context_builder=app.state.context_builder
+    )
+    app.state.app_manager = AppManager(
+        service_registry=app.state.service_registry,
+        kernel_tools=app.state.kernel_tools
+    )
+    
+    # Log service statistics
+    stats = app.state.service_registry.get_stats()
+    logger.info(f"✅ Services: {stats['total_services']} services, {stats['total_tools']} tools")
+    
     logger.info("✅ AI Service ready!")
     logger.info("Note: Model will load on first request")
     
     yield
     
+    # Shutdown cleanup
     logger.info("🛑 AI Service shutting down...")
-    ModelLoader.unload()
+    
+    # 1. Close all active WebSocket connections
+    try:
+        active_conns = list(app.state.stream_manager.active_connections.values())
+        logger.info(f"Closing {len(active_conns)} active WebSocket connections...")
+        for ws in active_conns:
+            try:
+                await ws.close()
+            except:
+                pass
+    except Exception as e:
+        logger.error(f"Error closing WebSocket connections: {e}")
+    
+    # 2. Unload model and free memory
+    try:
+        logger.info("Unloading LLM model...")
+        ModelLoader.unload()
+        logger.info("✅ Model unloaded")
+    except Exception as e:
+        logger.error(f"Error unloading model: {e}")
+    
+    # 3. Close kernel connection
+    try:
+        if hasattr(app.state, 'kernel_client') and app.state.kernel_client:
+            logger.info("Closing kernel connection...")
+            await app.state.kernel_client.close()
+            logger.info("✅ Kernel connection closed")
+    except Exception as e:
+        logger.error(f"Error closing kernel connection: {e}")
+    
+    logger.info("✅ Shutdown complete")
 
 
 app = FastAPI(
@@ -110,14 +235,29 @@ async def root():
 @app.get("/health")
 async def health():
     """Detailed health check"""
-    return {
+    health_data = {
         "status": "healthy",
         "model": app.state.config.model_name,
         "model_loaded": app.state.model_loader._instance is not None,
         "active_connections": len(app.state.stream_manager.active_connections),
         "gpu_enabled": app.state.config.requires_gpu,
         "app_manager": app.state.app_manager.get_stats(),
+        "kernel": {
+            "connected": app.state.kernel_client is not None,
+            "default_pid": app.state.default_pid
+        }
     }
+    
+    # Get kernel system info if available
+    if app.state.kernel_tools and app.state.default_pid:
+        try:
+            kernel_info = app.state.kernel_tools.system_info()
+            if kernel_info:
+                health_data["kernel"]["system_info"] = kernel_info
+        except:
+            pass
+    
+    return health_data
 
 
 @app.websocket("/stream")
@@ -462,6 +602,66 @@ async def close_app(app_id: str):
     """Close and destroy an app."""
     success = app.state.app_manager.close_app(app_id)
     return {"success": success, "app_id": app_id}
+
+
+@app.get("/services")
+async def list_services(category: Optional[str] = None):
+    """List all available services."""
+    from services import ServiceCategory
+    
+    cat = ServiceCategory(category) if category else None
+    services = app.state.service_registry.list_all(category=cat)
+    
+    return {
+        "services": [s.model_dump() for s in services],
+        "stats": app.state.service_registry.get_stats()
+    }
+
+
+@app.post("/services/discover")
+async def discover_services(request: ChatRequest):
+    """Discover relevant services for a request."""
+    services = app.state.service_registry.discover(
+        request.message,
+        limit=5
+    )
+    
+    return {
+        "query": request.message,
+        "services": [s.model_dump() for s in services]
+    }
+
+
+class ServiceExecuteRequest(BaseModel):
+    """Service tool execution request"""
+    tool_id: str
+    params: Dict[str, Any]
+    app_id: Optional[str] = None
+
+
+@app.post("/services/execute")
+async def execute_service_tool(request: ServiceExecuteRequest):
+    """Execute a service tool."""
+    from services import ServiceContext
+    
+    # Build context
+    context = None
+    if request.app_id:
+        app_instance = app.state.app_manager.get_app(request.app_id)
+        if app_instance:
+            context = ServiceContext(
+                app_id=request.app_id,
+                sandbox_pid=app_instance.sandbox_pid
+            )
+    
+    # Execute tool
+    result = await app.state.service_registry.execute(
+        tool_id=request.tool_id,
+        params=request.params,
+        context=context
+    )
+    
+    return result.model_dump()
 
 
 if __name__ == "__main__":

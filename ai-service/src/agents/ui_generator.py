@@ -35,6 +35,9 @@ class UISpec(BaseModel):
     layout: str = Field(default="vertical", description="Layout direction")
     components: List[UIComponent] = Field(default_factory=list, description="Root components")
     style: Dict[str, Any] = Field(default_factory=dict, description="Global styles")
+    services: List[str] = Field(default_factory=list, description="Required service IDs")
+    service_bindings: Dict[str, str] = Field(default_factory=dict, description="Component to service tool mapping")
+    lifecycle_hooks: Dict[str, List[str]] = Field(default_factory=dict, description="Lifecycle event hooks")
     
 
 # Make UIComponent work with forward references
@@ -134,7 +137,7 @@ class ToolRegistry:
             category="system"
         ))
         
-        # App management tools (NEW)
+        # App management tools
         self.register_tool(ToolDefinition(
             id="app.spawn",
             name="Spawn App",
@@ -159,6 +162,73 @@ class ToolRegistry:
             category="app"
         ))
         
+        # Storage tools
+        self.register_tool(ToolDefinition(
+            id="storage.set",
+            name="Set Storage",
+            description="Store data in local storage",
+            parameters={"key": "string", "value": "any"},
+            category="storage"
+        ))
+        
+        self.register_tool(ToolDefinition(
+            id="storage.get",
+            name="Get Storage",
+            description="Retrieve data from local storage",
+            parameters={"key": "string"},
+            category="storage"
+        ))
+        
+        self.register_tool(ToolDefinition(
+            id="storage.remove",
+            name="Remove Storage",
+            description="Remove data from local storage",
+            parameters={"key": "string"},
+            category="storage"
+        ))
+        
+        # Network tools
+        self.register_tool(ToolDefinition(
+            id="http.get",
+            name="HTTP GET",
+            description="Fetch data from a URL",
+            parameters={"url": "string"},
+            category="network"
+        ))
+        
+        self.register_tool(ToolDefinition(
+            id="http.post",
+            name="HTTP POST",
+            description="Send data to a URL",
+            parameters={"url": "string", "data": "any"},
+            category="network"
+        ))
+        
+        # Timer tools
+        self.register_tool(ToolDefinition(
+            id="timer.set",
+            name="Set Timer",
+            description="Execute action after delay",
+            parameters={"delay": "number", "action": "string"},
+            category="timer"
+        ))
+        
+        self.register_tool(ToolDefinition(
+            id="timer.interval",
+            name="Set Interval",
+            description="Execute action repeatedly",
+            parameters={"interval": "number", "action": "string"},
+            category="timer"
+        ))
+        
+        self.register_tool(ToolDefinition(
+            id="timer.clear",
+            name="Clear Timer",
+            description="Stop a timer or interval",
+            parameters={"timer_id": "string"},
+            category="timer"
+        ))
+        
     def register_tool(self, tool: ToolDefinition):
         """Register a new tool."""
         self.tools[tool.id] = tool
@@ -178,7 +248,7 @@ class ToolRegistry:
     def get_tools_description(self) -> str:
         """Get formatted description of all tools for AI context."""
         lines = ["Available Tools:"]
-        for category in ["compute", "ui", "system", "app"]:
+        for category in ["compute", "ui", "system", "app", "storage", "network", "timer"]:
             category_tools = self.list_tools(category)
             if category_tools:
                 lines.append(f"\n{category.upper()}:")
@@ -405,13 +475,13 @@ class UIGeneratorAgent:
     5. User: Clicks button -> calls tool via IPC -> updates UI
     """
     
-    SYSTEM_PROMPT = """You are a UI generation expert. Your job is to create structured UI specifications from natural language descriptions.
+    SYSTEM_PROMPT = """You are a UI generation expert. Your ONLY job is to output valid JSON for UI specifications.
 
-CRITICAL SCHEMA RULES:
-1. EVERY component MUST have an "id" field (unique identifier)
-2. Use "children" (not "components") for nested components
-3. Put component properties in "props" object
-4. Use "on_event" for event handlers (format: {{"click": "tool.name"}})
+CRITICAL RULES:
+1. Output ONLY valid JSON - no explanations, no markdown, no extra text
+2. EVERY component MUST have: "id", "type", "props", "children", "on_event"
+3. Keep JSON concise - avoid deeply nested structures
+4. For calculator: maximum 16 buttons (4x4 grid)
 
 {tools_description}
 
@@ -492,46 +562,59 @@ COMPLETE EXAMPLE - Calculator:
 }}
 
 INSTRUCTIONS:
-1. Analyze the user's request
-2. Design appropriate components
-3. Assign unique IDs to ALL components
-4. Put properties in "props" object
-5. Use "children" array for nested components
-6. Bind event handlers using "on_event"
-7. Return ONLY valid JSON (no markdown, no extra text)
+1. Keep it SIMPLE - fewer components means valid JSON
+2. Return COMPLETE JSON - don't truncate
+3. Use short IDs: "btn-1" not "button-number-1"
+4. Minimal props: only value, text, readonly, type, columns, gap
+5. Output ONLY the JSON object - nothing else
 
-Return format:
+REQUIRED ROOT STRUCTURE:
 {{
   "type": "app",
   "title": "App Name",
   "layout": "vertical",
-  "components": [/* component array */],
+  "components": [/* max 10 components */],
   "style": {{}}
 }}"""
     
-    def __init__(self, tool_registry: Optional[ToolRegistry] = None, llm: Optional[BaseLLM] = None):
+    def __init__(
+        self,
+        tool_registry: Optional[ToolRegistry] = None,
+        llm: Optional[BaseLLM] = None,
+        service_registry: Optional[Any] = None,
+        context_builder: Optional[Any] = None
+    ):
         """
         Initialize the UI generator agent.
         
         Args:
             tool_registry: Registry of available tools
             llm: Optional LLM for generating UIs (if None, uses rule-based generation)
+            service_registry: Service registry for BaaS
+            context_builder: Context builder for intelligent prompts
         """
         self.tool_registry = tool_registry or ToolRegistry()
         self.templates = ComponentTemplates()
         self.llm = llm
         self.use_llm = llm is not None
+        self.service_registry = service_registry
+        self.context_builder = context_builder
         
         if self.use_llm:
             logger.info("UIGeneratorAgent: LLM-based generation enabled")
         else:
             logger.info("UIGeneratorAgent: Using rule-based generation")
     
-    def get_system_prompt(self) -> str:
-        """Get system prompt with current tool descriptions."""
-        return self.SYSTEM_PROMPT.format(
+    def get_system_prompt(self, context_str: str = "") -> str:
+        """Get system prompt with current tool descriptions and service context."""
+        base_prompt = self.SYSTEM_PROMPT.format(
             tools_description=self.tool_registry.get_tools_description()
         )
+        
+        if context_str:
+            return f"{base_prompt}\n\n{context_str}"
+        
+        return base_prompt
     
     def generate_ui(self, request: str) -> UISpec:
         """
@@ -575,8 +658,18 @@ Return format:
         Returns:
             UISpec: Generated UI specification
         """
+        # Build context with services if available
+        context_str = ""
+        if self.context_builder and self.service_registry:
+            try:
+                context = self.context_builder.build(request)
+                context_str = self.context_builder.format_prompt(context)
+                logger.info(f"Enhanced context with {len(context.services)} services")
+            except Exception as e:
+                logger.warning(f"Context building failed: {e}")
+        
         # Create a single combined prompt (works better with Ollama)
-        system_prompt = self.get_system_prompt()
+        system_prompt = self.get_system_prompt(context_str)
         
         # Combine system and user prompts into one
         full_prompt = f"""{system_prompt}
@@ -589,7 +682,8 @@ Requirements:
 1. Analyze what components are needed
 2. Design the layout and arrangement
 3. Add interactivity by binding appropriate tools
-4. Return ONLY the JSON specification (no extra text)
+4. If services are available, bind components to service tools
+5. Return ONLY the JSON specification (no extra text)
 
 Output the complete UI specification as valid JSON now:"""
         
@@ -658,17 +752,32 @@ Output the complete UI specification as valid JSON now:"""
         end = text.rfind("}")
         
         if start == -1 or end == -1:
+            logger.error(f"No JSON braces found in: {text[:200]}...")
             raise ValueError("No JSON object found in response")
         
         json_str = text[start:end+1]
         
         # Try to parse JSON
         try:
-            return json.loads(json_str)
+            parsed = json.loads(json_str)
+            logger.info(f"Successfully parsed JSON with {len(json_str)} characters")
+            return parsed
         except json.JSONDecodeError as e:
-            logger.error(f"JSON parse error: {e}")
-            logger.error(f"Attempted to parse: {json_str[:500]}...")
-            raise ValueError(f"Invalid JSON in response: {e}")
+            logger.error(f"JSON parse error at position {e.pos}: {e.msg}")
+            logger.error(f"Error context: ...{json_str[max(0, e.pos-50):e.pos+50]}...")
+            
+            # Try to fix common issues
+            # 1. Trailing commas
+            fixed_str = json_str.replace(",]", "]").replace(",}", "}")
+            try:
+                parsed = json.loads(fixed_str)
+                logger.info("Fixed JSON by removing trailing commas")
+                return parsed
+            except:
+                pass
+            
+            logger.error(f"Full JSON attempt ({len(json_str)} chars): {json_str[:1000]}...")
+            raise ValueError(f"Invalid JSON in response: {e.msg} at position {e.pos}")
     
     def _generate_calculator(self) -> UISpec:
         """Generate a calculator UI."""

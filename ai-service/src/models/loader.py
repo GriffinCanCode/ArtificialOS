@@ -84,7 +84,7 @@ class ModelLoader:
             base_url=config.ollama_base_url,
             temperature=config.temperature,
             num_predict=config.max_tokens,
-            # Don't pass callbacks - they can interfere with response handling
+            callbacks=callbacks or [],
         )
     
     @classmethod
@@ -128,8 +128,24 @@ class ModelLoader:
         """Unload model and free resources."""
         if cls._instance is not None:
             logger.info("Unloading model...")
+            
+            # Explicit cleanup for llama-cpp models
+            if hasattr(cls._instance, '_model'):
+                try:
+                    # LlamaCpp has internal cleanup
+                    logger.info("Freeing llama-cpp model memory...")
+                    del cls._instance._model
+                except Exception as e:
+                    logger.warning(f"Error freeing llama-cpp model: {e}")
+            
+            # Clear instance references
             cls._instance = None
             cls._config = None
+            
+            # Force garbage collection to free memory immediately
+            import gc
+            gc.collect()
+            logger.info("Model unloaded and memory freed")
     
     @staticmethod
     def _resolve_model_path(config: ModelConfig) -> Path:

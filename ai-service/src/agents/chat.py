@@ -105,7 +105,13 @@ class ChatAgent:
         
         # Stream tokens
         full_response = ""
-        async for token in self.llm.astream(prompt_text):
+        async for chunk in self.llm.astream(prompt_text):
+            # Extract content from chunk (handles AIMessageChunk objects)
+            if hasattr(chunk, 'content'):
+                token = chunk.content
+            else:
+                token = str(chunk)
+            
             full_response += token
             yield token
         

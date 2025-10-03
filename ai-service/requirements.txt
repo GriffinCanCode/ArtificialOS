@@ -14,6 +14,10 @@ uvicorn[standard]>=0.27.0
 websockets>=13.0,<14
 python-multipart>=0.0.6
 
+# gRPC for kernel communication
+grpcio>=1.60.0
+grpcio-tools>=1.60.0
+
 # Data & Validation
 pydantic>=2.5.0
 pydantic-settings>=2.1.0

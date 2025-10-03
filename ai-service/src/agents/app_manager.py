@@ -5,7 +5,7 @@ Handles app spawning, state management, and inter-app communication
 
 import logging
 import uuid
-from typing import Dict, Optional, List
+from typing import Any, Dict, Optional, List
 from enum import Enum
 from pydantic import BaseModel, Field
 
@@ -31,6 +31,8 @@ class AppInstance(BaseModel):
     parent_id: Optional[str] = Field(default=None, description="Parent app ID if spawned by another app")
     created_at: float = Field(default_factory=lambda: __import__('time').time())
     metadata: Dict = Field(default_factory=dict, description="Additional metadata")
+    services: List[str] = Field(default_factory=list, description="Required service IDs")
+    sandbox_pid: Optional[int] = Field(default=None, description="Kernel sandbox process ID")
     
     class Config:
         use_enum_values = True
@@ -55,9 +57,11 @@ class AppManager:
     - DynamicRenderer subscribes to AppManager, renders active apps
     """
     
-    def __init__(self):
+    def __init__(self, service_registry: Optional[Any] = None, kernel_tools: Optional[Any] = None):
         self.apps: Dict[str, AppInstance] = {}
         self.focused_app_id: Optional[str] = None
+        self.service_registry = service_registry
+        self.kernel_tools = kernel_tools
         logger.info("AppManager initialized")
     
     def spawn_app(
@@ -68,7 +72,7 @@ class AppManager:
         metadata: Optional[Dict] = None
     ) -> AppInstance:
         """
-        Spawn a new app instance.
+        Spawn a new app instance with service initialization.
         
         Args:
             request: User's original request (for logging)
@@ -80,19 +84,37 @@ class AppManager:
             AppInstance: The newly created app
         """
         title = ui_spec.get("title", "Untitled App")
+        services = ui_spec.get("services", [])
+        
+        # Create sandboxed process if kernel tools available
+        sandbox_pid = None
+        if self.kernel_tools and services:
+            try:
+                sandbox_pid = self.kernel_tools.create_sandboxed_process(
+                    name=f"app-{title.lower().replace(' ', '-')}",
+                    sandbox_level="STANDARD"
+                )
+                logger.info(f"Created sandbox for app (PID: {sandbox_pid})")
+            except Exception as e:
+                logger.warning(f"Could not create sandbox: {e}")
         
         app = AppInstance(
             title=title,
             ui_spec=ui_spec,
             state=AppState.ACTIVE,
             parent_id=parent_id,
-            metadata=metadata or {"request": request}
+            metadata=metadata or {"request": request},
+            services=services,
+            sandbox_pid=sandbox_pid
         )
         
         self.apps[app.id] = app
         self.focused_app_id = app.id
         
-        logger.info(f"Spawned app: {app.title} (id={app.id})")
+        logger.info(
+            f"Spawned app: {app.title} (id={app.id}, "
+            f"services={len(services)}, sandbox_pid={sandbox_pid})"
+        )
         if parent_id:
             logger.info(f"  ↳ Spawned by app: {parent_id}")
         
