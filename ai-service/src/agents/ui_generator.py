@@ -423,12 +423,19 @@ class ComponentTemplates:
         )
     
     @staticmethod
-    def text(id: str, content: str, variant: str = "body") -> UIComponent:
-        """Create a text component."""
+    def text(id: str, content: str, variant: str = "body", weight: Optional[str] = None, color: Optional[str] = None, align: Optional[str] = None) -> UIComponent:
+        """Create a text component with CVA variant support."""
+        props = {"content": content, "variant": variant}
+        if weight:
+            props["weight"] = weight
+        if color:
+            props["color"] = color
+        if align:
+            props["align"] = align
         return UIComponent(
             type="text",
             id=id,
-            props={"content": content, "variant": variant}
+            props=props
         )
     
     @staticmethod
@@ -436,13 +443,28 @@ class ComponentTemplates:
         id: str,
         children: List[UIComponent],
         layout: str = "vertical",
-        gap: int = 8
+        gap: Optional[int] = None,
+        spacing: Optional[str] = None,
+        padding: Optional[str] = None,
+        align: Optional[str] = None,
+        justify: Optional[str] = None
     ) -> UIComponent:
-        """Create a container component."""
+        """Create a container component with CVA variant support."""
+        props = {"layout": layout}
+        if gap is not None:
+            props["gap"] = gap
+        if spacing:
+            props["spacing"] = spacing
+        if padding:
+            props["padding"] = padding
+        if align:
+            props["align"] = align
+        if justify:
+            props["justify"] = justify
         return UIComponent(
             type="container",
             id=id,
-            props={"layout": layout, "gap": gap},
+            props=props,
             children=children
         )
     
@@ -451,13 +473,20 @@ class ComponentTemplates:
         id: str,
         children: List[UIComponent],
         columns: int = 3,
-        gap: int = 8
+        gap: Optional[int] = None,
+        spacing: Optional[str] = None,
+        responsive: bool = False
     ) -> UIComponent:
-        """Create a grid component."""
+        """Create a grid component with CVA variant support."""
+        props = {"columns": columns, "responsive": responsive}
+        if gap is not None:
+            props["gap"] = gap
+        if spacing:
+            props["spacing"] = spacing
         return UIComponent(
             type="grid",
             id=id,
-            props={"columns": columns, "gap": gap},
+            props=props,
             children=children
         )
 
