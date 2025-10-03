@@ -55,22 +55,24 @@ install-ui: ## Install Node.js UI dependencies
 
 proto: ## Compile all protocol buffer definitions
 	@echo "$(YELLOW)🔨 Compiling protocol buffers...$(NC)"
-	@./scripts/compile-protos.sh
+	@export PATH=$$PATH:$$(go env GOPATH)/bin && ./scripts/compile-protos.sh
 	@echo "$(GREEN)✅ Protocol buffers compiled$(NC)"
 
 proto-go: ## Compile protocol buffers for Go only
 	@echo "$(YELLOW)🔨 Compiling protocol buffers for Go...$(NC)"
-	@cd proto && protoc --go_out=../backend/proto/kernel --go_opt=paths=source_relative \
+	@export PATH=$$PATH:$$(go env GOPATH)/bin && \
+		cd proto && protoc --go_out=../backend/proto/kernel --go_opt=paths=source_relative \
 		--go-grpc_out=../backend/proto/kernel --go-grpc_opt=paths=source_relative \
 		kernel.proto
-	@cd backend/proto && protoc --go_out=. --go_opt=paths=source_relative \
+	@export PATH=$$PATH:$$(go env GOPATH)/bin && \
+		cd backend/proto && protoc --go_out=. --go_opt=paths=source_relative \
 		--go-grpc_out=. --go-grpc_opt=paths=source_relative \
 		ai.proto
 	@echo "$(GREEN)✅ Go protocol buffers compiled$(NC)"
 
 proto-python: ## Compile protocol buffers for Python only
 	@echo "$(YELLOW)🔨 Compiling protocol buffers for Python...$(NC)"
-	@cd ai-service/proto && python3 -m grpc_tools.protoc -I. --python_out=../src --grpc_python_out=../src ai.proto
+	@cd ai-service && . venv/bin/activate && cd proto && python3 -m grpc_tools.protoc -I. --python_out=../src --grpc_python_out=../src ai.proto
 	@echo "$(GREEN)✅ Python protocol buffers compiled$(NC)"
 
 ##@ Build
