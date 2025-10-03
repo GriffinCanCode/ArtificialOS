@@ -8,17 +8,19 @@ import (
 	"github.com/GriffinCanCode/AgentOS/backend/internal/grpc"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/registry"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/service"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/session"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/types"
 	"github.com/gin-gonic/gin"
 )
 
 // Handlers contains all HTTP handlers
 type Handlers struct {
-	appManager  *app.Manager
-	registry    *service.Registry
-	appRegistry *registry.Manager
-	aiClient    *grpc.AIClient
-	kernel      *grpc.KernelClient
+	appManager     *app.Manager
+	registry       *service.Registry
+	appRegistry    *registry.Manager
+	sessionManager *session.Manager
+	aiClient       *grpc.AIClient
+	kernel         *grpc.KernelClient
 }
 
 // NewHandlers creates a new handler set
@@ -26,15 +28,17 @@ func NewHandlers(
 	appManager *app.Manager,
 	registry *service.Registry,
 	appRegistry *registry.Manager,
+	sessionManager *session.Manager,
 	aiClient *grpc.AIClient,
 	kernel *grpc.KernelClient,
 ) *Handlers {
 	return &Handlers{
-		appManager:  appManager,
-		registry:    registry,
-		appRegistry: appRegistry,
-		aiClient:    aiClient,
-		kernel:      kernel,
+		appManager:     appManager,
+		registry:       registry,
+		appRegistry:    appRegistry,
+		sessionManager: sessionManager,
+		aiClient:       aiClient,
+		kernel:         kernel,
 	}
 }
 
@@ -380,4 +384,131 @@ func sanitizeID(s string) string {
 		}
 	}
 	return result
+}
+
+// SaveSession saves current workspace state
+func (h *Handlers) SaveSession(c *gin.Context) {
+	var req struct {
+		Name        string                 `json:"name"`
+		Description string                 `json:"description"`
+		ChatState   *types.ChatState       `json:"chat_state"`
+		UIState     *types.UIState         `json:"ui_state"`
+		AppStates   map[string]interface{} `json:"app_states"` // Component state per app
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Save session
+	session, err := h.sessionManager.Save(req.Name, req.Description)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Update session with frontend state (if provided)
+	if req.ChatState != nil {
+		session.Workspace.ChatState = req.ChatState
+	}
+	if req.UIState != nil {
+		session.Workspace.UIState = req.UIState
+	}
+
+	// Update app component states (if provided)
+	if req.AppStates != nil {
+		for i := range session.Workspace.Apps {
+			if state, ok := req.AppStates[session.Workspace.Apps[i].ID]; ok {
+				if stateMap, ok := state.(map[string]interface{}); ok {
+					session.Workspace.Apps[i].ComponentState = stateMap
+				}
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"session": session.ToMetadata(),
+	})
+}
+
+// SaveDefaultSession saves session with default name
+func (h *Handlers) SaveDefaultSession(c *gin.Context) {
+	session, err := h.sessionManager.SaveDefault()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"session": session.ToMetadata(),
+	})
+}
+
+// ListSessions lists all saved sessions
+func (h *Handlers) ListSessions(c *gin.Context) {
+	sessions, err := h.sessionManager.List()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	stats := h.sessionManager.Stats()
+
+	c.JSON(http.StatusOK, gin.H{
+		"sessions": sessions,
+		"stats":    stats,
+	})
+}
+
+// GetSession gets details of a specific session
+func (h *Handlers) GetSession(c *gin.Context) {
+	sessionID := c.Param("id")
+
+	session, err := h.sessionManager.Load(sessionID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "session not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, session)
+}
+
+// RestoreSession restores a saved session
+func (h *Handlers) RestoreSession(c *gin.Context) {
+	sessionID := c.Param("id")
+
+	if err := h.sessionManager.Restore(sessionID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Load session to return workspace state to frontend
+	session, err := h.sessionManager.Load(sessionID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "session restored but failed to load details"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":   true,
+		"workspace": session.Workspace,
+	})
+}
+
+// DeleteSession deletes a saved session
+func (h *Handlers) DeleteSession(c *gin.Context) {
+	sessionID := c.Param("id")
+
+	if err := h.sessionManager.Delete(sessionID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":    true,
+		"session_id": sessionID,
+	})
 }

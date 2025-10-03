@@ -8,18 +8,20 @@ import (
 	"github.com/GriffinCanCode/AgentOS/backend/internal/http"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/registry"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/service"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/session"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/ws"
 	"github.com/gin-gonic/gin"
 )
 
 // Server wraps the HTTP server and dependencies
 type Server struct {
-	router      *gin.Engine
-	appManager  *app.Manager
-	registry    *service.Registry
-	appRegistry *registry.Manager
-	aiClient    *grpc.AIClient
-	kernel      *grpc.KernelClient
+	router         *gin.Engine
+	appManager     *app.Manager
+	registry       *service.Registry
+	appRegistry    *registry.Manager
+	sessionManager *session.Manager
+	aiClient       *grpc.AIClient
+	kernel         *grpc.KernelClient
 }
 
 // Config contains server configuration
@@ -66,6 +68,9 @@ func NewServer(cfg Config) (*Server, error) {
 	}
 	appRegistry := registry.NewManager(kernelClient, storagePID, "/tmp/ai-os-storage/system")
 
+	// Initialize session manager
+	sessionManager := session.NewManager(appManager, kernelClient, storagePID, "/tmp/ai-os-storage/system")
+
 	// Create router
 	router := gin.Default()
 
@@ -73,7 +78,7 @@ func NewServer(cfg Config) (*Server, error) {
 	router.Use(corsMiddleware())
 
 	// Create handlers
-	handlers := http.NewHandlers(appManager, serviceRegistry, appRegistry, aiClient, kernelClient)
+	handlers := http.NewHandlers(appManager, serviceRegistry, appRegistry, sessionManager, aiClient, kernelClient)
 	wsHandler := ws.NewHandler(appManager, aiClient)
 
 	// Register routes
@@ -100,16 +105,25 @@ func NewServer(cfg Config) (*Server, error) {
 	router.POST("/registry/apps/:id/launch", handlers.LaunchRegistryApp)
 	router.DELETE("/registry/apps/:id", handlers.DeleteRegistryApp)
 
+	// Session endpoints
+	router.POST("/sessions/save", handlers.SaveSession)
+	router.POST("/sessions/save-default", handlers.SaveDefaultSession)
+	router.GET("/sessions", handlers.ListSessions)
+	router.GET("/sessions/:id", handlers.GetSession)
+	router.POST("/sessions/:id/restore", handlers.RestoreSession)
+	router.DELETE("/sessions/:id", handlers.DeleteSession)
+
 	// WebSocket
 	router.GET("/stream", wsHandler.HandleConnection)
 
 	return &Server{
-		router:      router,
-		appManager:  appManager,
-		registry:    serviceRegistry,
-		appRegistry: appRegistry,
-		aiClient:    aiClient,
-		kernel:      kernelClient,
+		router:         router,
+		appManager:     appManager,
+		registry:       serviceRegistry,
+		appRegistry:    appRegistry,
+		sessionManager: sessionManager,
+		aiClient:       aiClient,
+		kernel:         kernelClient,
 	}, nil
 }
 
