@@ -11,7 +11,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint src --ext js,jsx,ts,tsx",
-    "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,css}\""
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,css,json,html}\"",
+    "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,css,json,html}\""
   },
   "keywords": [
     "ai",
@@ -41,7 +42,8 @@
     "electron": "^28.0.0",
     "eslint": "^8.55.0",
     "eslint-plugin-react": "^7.33.2",
-    "prettier": "^3.1.1",
+    "prettier": "^3.6.2",
+    "prettier-plugin-tailwindcss": "^0.6.14",
     "tailwindcss": "^4.1.14",
     "typescript": "^5.3.3",
     "vite": "^5.0.8",
