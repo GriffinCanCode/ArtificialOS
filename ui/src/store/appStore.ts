@@ -243,13 +243,12 @@ export const useAppStore = create<AppState>()(
       appendGenerationPreview: (content) => {
         return set(
           (state) => {
-            console.log("🎯 STORE: Appending to preview", {
-              newContent: content,
-              newLength: content.length,
+            logger.debugThrottled("Appending to generation preview", {
+              component: "AppStore",
+              newContentLength: content.length,
               currentPreviewLength: state.generationPreview.length,
             });
             const newPreview = state.generationPreview + content;
-            console.log("✅ STORE: New preview length:", newPreview.length);
             return { generationPreview: newPreview };
           },
           false,

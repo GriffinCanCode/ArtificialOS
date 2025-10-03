@@ -3,19 +3,29 @@
  * User input and message history
  */
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useRef, useEffect } from "react";
+import { useForm } from "react-hook-form";
 import { useMessages, useAppActions } from "../store/appStore";
 import { useWebSocket } from "../contexts/WebSocketContext";
 import { useLogger } from "../utils/useLogger";
 import "./ChatInterface.css";
+
+interface ChatFormData {
+  message: string;
+}
 
 const ChatInterface: React.FC = () => {
   const log = useLogger("ChatInterface");
   const messages = useMessages();
   const { addMessage, appendToLastMessage } = useAppActions();
   const { client, sendChat, isConnected } = useWebSocket();
-  const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const { register, handleSubmit, reset, watch } = useForm<ChatFormData>({
+    defaultValues: { message: "" },
+  });
+
+  const inputValue = watch("message");
 
   useEffect(() => {
     scrollToBottom();
@@ -53,11 +63,9 @@ const ChatInterface: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (input.trim() && isConnected) {
-      const message = input.trim();
-
+  const onSubmit = (data: ChatFormData) => {
+    const message = data.message.trim();
+    if (message && isConnected) {
       log.info("User sending message", {
         messageLength: message.length,
         messagePreview: message.substring(0, 50),
@@ -74,11 +82,10 @@ const ChatInterface: React.FC = () => {
       try {
         sendChat(message, {});
         log.debug("Message sent successfully");
+        reset(); // Clear form after successful send
       } catch (error) {
         log.error("Failed to send message", error as Error);
       }
-
-      setInput("");
     } else if (!isConnected) {
       log.warn("Attempted to send message while disconnected");
     }
@@ -113,16 +120,22 @@ const ChatInterface: React.FC = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      <form className="chat-input-form" onSubmit={handleSubmit}>
+      <form className="chat-input-form" onSubmit={handleSubmit(onSubmit)}>
         <input
           type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
           placeholder={isConnected ? "Type a message..." : "Connecting..."}
           disabled={!isConnected}
           className="chat-input"
+          {...register("message", {
+            required: true,
+            validate: (value) => value.trim().length > 0,
+          })}
         />
-        <button type="submit" disabled={!isConnected || !input.trim()} className="send-button">
+        <button
+          type="submit"
+          disabled={!isConnected || !inputValue?.trim()}
+          className="send-button"
+        >
           Send
         </button>
       </form>

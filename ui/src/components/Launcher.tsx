@@ -3,9 +3,10 @@
  * Grid-based launcher for installed apps from the registry
  */
 
-import React, { useEffect, useState } from "react";
-import { RegistryClient } from "../utils/registryClient";
-import type { PackageMetadata } from "../types/registry";
+import React, { useState } from "react";
+import { Rocket, Plus, AlertTriangle } from "lucide-react";
+import { useRegistryApps, useRegistryMutations } from "../hooks/useRegistryQueries";
+import { cardVariants, categoryButtonVariants, cn } from "../utils/componentVariants";
 import "./Launcher.css";
 
 interface LauncherProps {
@@ -14,38 +15,30 @@ interface LauncherProps {
 }
 
 export const Launcher: React.FC<LauncherProps> = ({ onAppLaunch, onCreateNew }) => {
-  const [apps, setApps] = useState<PackageMetadata[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  
+  // Use TanStack Query for data fetching with automatic caching
+  const { 
+    data, 
+    isLoading, 
+    error: queryError, 
+    refetch 
+  } = useRegistryApps(selectedCategory || undefined);
+  
+  // Use mutation hooks for app actions
+  const { launchApp, deleteApp } = useRegistryMutations();
 
-  useEffect(() => {
-    loadApps();
-  }, [selectedCategory]);
-
-  const loadApps = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await RegistryClient.listApps(selectedCategory || undefined);
-      setApps(response.apps);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load apps");
-      setApps([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const apps = data?.apps ?? [];
+  const error = queryError?.message ?? (launchApp.error?.message || deleteApp.error?.message);
 
   const handleLaunchApp = async (packageId: string) => {
-    try {
-      const response = await RegistryClient.launchApp(packageId);
-      if (onAppLaunch) {
-        onAppLaunch(response.app_id, response.ui_spec);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to launch app");
-    }
+    launchApp.mutate(packageId, {
+      onSuccess: (response) => {
+        if (onAppLaunch) {
+          onAppLaunch(response.app_id, response.ui_spec);
+        }
+      },
+    });
   };
 
   const handleDeleteApp = async (packageId: string, event: React.MouseEvent) => {
@@ -55,12 +48,7 @@ export const Launcher: React.FC<LauncherProps> = ({ onAppLaunch, onCreateNew }) 
       return;
     }
 
-    try {
-      await RegistryClient.deleteApp(packageId);
-      loadApps();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete app");
-    }
+    deleteApp.mutate(packageId);
   };
 
   const categories = ["all", "productivity", "utilities", "games", "creative", "general"];
@@ -68,7 +56,7 @@ export const Launcher: React.FC<LauncherProps> = ({ onAppLaunch, onCreateNew }) 
   return (
     <div className="launcher">
       <div className="launcher-header">
-        <h1 className="launcher-title">🚀 App Launcher</h1>
+        <h1 className="launcher-title"><Rocket size={28} style={{ display: 'inline-block', marginRight: '12px', verticalAlign: 'middle' }} />App Launcher</h1>
         <p className="launcher-subtitle">
           {apps.length} {apps.length === 1 ? "app" : "apps"} installed
         </p>
@@ -78,7 +66,11 @@ export const Launcher: React.FC<LauncherProps> = ({ onAppLaunch, onCreateNew }) 
         {categories.map((cat) => (
           <button
             key={cat}
-            className={`category-btn ${selectedCategory === (cat === "all" ? null : cat) ? "active" : ""}`}
+            className={cn(
+              categoryButtonVariants({
+                active: selectedCategory === (cat === "all" ? null : cat),
+              })
+            )}
             onClick={() => setSelectedCategory(cat === "all" ? null : cat)}
           >
             {cat}
@@ -88,12 +80,12 @@ export const Launcher: React.FC<LauncherProps> = ({ onAppLaunch, onCreateNew }) 
 
       {error && (
         <div className="launcher-error">
-          <span>⚠️ {error}</span>
-          <button onClick={loadApps}>Retry</button>
+          <span><AlertTriangle size={16} style={{ marginRight: '6px', verticalAlign: 'middle' }} />{error}</span>
+          <button onClick={() => refetch()}>Retry</button>
         </div>
       )}
 
-      {loading ? (
+      {isLoading ? (
         <div className="launcher-loading">
           <div className="spinner" />
           <p>Loading apps...</p>
@@ -101,7 +93,18 @@ export const Launcher: React.FC<LauncherProps> = ({ onAppLaunch, onCreateNew }) 
       ) : (
         <div className="app-grid">
           {apps.map((app) => (
-            <div key={app.id} className="app-card" onClick={() => handleLaunchApp(app.id)}>
+            <div
+              key={app.id}
+              className={cn(
+                "app-card",
+                cardVariants({
+                  variant: "default",
+                  padding: "medium",
+                  interactive: true,
+                })
+              )}
+              onClick={() => handleLaunchApp(app.id)}
+            >
               <button
                 className="app-delete"
                 onClick={(e) => handleDeleteApp(app.id, e)}
@@ -119,8 +122,18 @@ export const Launcher: React.FC<LauncherProps> = ({ onAppLaunch, onCreateNew }) 
             </div>
           ))}
 
-          <div className="app-card app-card-new" onClick={onCreateNew}>
-            <div className="app-icon">➕</div>
+          <div
+            className={cn(
+              "app-card app-card-new",
+              cardVariants({
+                variant: "outlined",
+                padding: "medium",
+                interactive: true,
+              })
+            )}
+            onClick={onCreateNew}
+          >
+            <div className="app-icon"><Plus size={32} /></div>
             <div className="app-name">Create New App</div>
             <div className="app-description">Generate a new app with AI</div>
           </div>

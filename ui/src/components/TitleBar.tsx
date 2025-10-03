@@ -4,8 +4,12 @@
  */
 
 import React, { useState } from "react";
+import { Save, FolderOpen, X } from "lucide-react";
 import { SessionClient } from "../utils/sessionClient";
 import type { SessionMetadata } from "../types/session";
+import { useLogger } from "../utils/useLogger";
+import { SaveSessionDialog } from "./SaveSessionDialog";
+import { controlButtonVariants, cn } from "../utils/componentVariants";
 import "./TitleBar.css";
 
 interface TitleBarProps {
@@ -21,7 +25,9 @@ interface TitleBarProps {
 }
 
 const TitleBar: React.FC<TitleBarProps> = ({ sessionManager }) => {
+  const log = useLogger("TitleBar");
   const [showSessionMenu, setShowSessionMenu] = useState(false);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [sessions, setSessions] = useState<SessionMetadata[]>([]);
 
   const handleMinimize = () => {
@@ -42,18 +48,20 @@ const TitleBar: React.FC<TitleBarProps> = ({ sessionManager }) => {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!sessionManager) return;
+    setShowSaveDialog(true);
+  };
 
-    const name = prompt("Enter session name:", "Work Session");
-    if (name) {
-      const description = prompt("Enter description (optional):");
-      try {
-        await sessionManager.save(name, description || undefined);
-        alert("✅ Session saved!");
-      } catch (err) {
-        alert("Failed to save: " + (err instanceof Error ? err.message : String(err)));
-      }
+  const handleSaveSubmit = async (data: { name: string; description?: string }) => {
+    if (!sessionManager) return;
+    
+    try {
+      await sessionManager.save(data.name, data.description);
+      log.info("Session saved successfully", { name: data.name });
+    } catch (err) {
+      log.error("Failed to save session", err as Error);
+      throw err; // Let the dialog handle error display
     }
   };
 
@@ -64,7 +72,7 @@ const TitleBar: React.FC<TitleBarProps> = ({ sessionManager }) => {
         const result = await SessionClient.listSessions();
         setSessions(result.sessions);
       } catch (err) {
-        console.error("Failed to load sessions:", err);
+        log.error("Failed to load sessions", err as Error);
       }
     }
   };
@@ -75,26 +83,44 @@ const TitleBar: React.FC<TitleBarProps> = ({ sessionManager }) => {
     try {
       await sessionManager.restore(sessionId);
       setShowSessionMenu(false);
-      alert("✅ Session restored!");
+      log.info("Session restored successfully", { sessionId });
     } catch (err) {
-      alert("Failed to restore: " + (err instanceof Error ? err.message : String(err)));
+      log.error("Failed to restore session", err as Error);
     }
   };
 
   return (
     <>
+      <SaveSessionDialog
+        isOpen={showSaveDialog}
+        onClose={() => setShowSaveDialog(false)}
+        onSave={handleSaveSubmit}
+        isLoading={sessionManager?.isSaving}
+      />
       {/* Minimal title bar - just window controls on hover */}
       <div className="title-bar minimal">
         <div className="title-bar-drag" />
 
         <div className="window-controls">
-          <button className="control-btn minimize" onClick={handleMinimize} aria-label="Minimize">
+          <button
+            className={cn("control-btn", controlButtonVariants({ type: "minimize" }))}
+            onClick={handleMinimize}
+            aria-label="Minimize"
+          >
             <span></span>
           </button>
-          <button className="control-btn maximize" onClick={handleMaximize} aria-label="Maximize">
+          <button
+            className={cn("control-btn", controlButtonVariants({ type: "maximize" }))}
+            onClick={handleMaximize}
+            aria-label="Maximize"
+          >
             <span></span>
           </button>
-          <button className="control-btn close" onClick={handleClose} aria-label="Close">
+          <button
+            className={cn("control-btn", controlButtonVariants({ type: "close" }))}
+            onClick={handleClose}
+            aria-label="Close"
+          >
             <span></span>
           </button>
         </div>
@@ -106,7 +132,7 @@ const TitleBar: React.FC<TitleBarProps> = ({ sessionManager }) => {
           <div className="session-menu">
             <div className="session-menu-header">
               <h3>Saved Sessions</h3>
-              <button onClick={() => setShowSessionMenu(false)}>✕</button>
+              <button onClick={() => setShowSessionMenu(false)}><X size={16} /></button>
             </div>
             <div className="session-list">
               {sessions.length === 0 ? (
@@ -142,7 +168,7 @@ const TitleBar: React.FC<TitleBarProps> = ({ sessionManager }) => {
             disabled={sessionManager.isSaving}
             title="Save current session (⌘S)"
           >
-            💾
+            <Save size={18} />
           </button>
           <button
             className="session-btn"
@@ -150,7 +176,7 @@ const TitleBar: React.FC<TitleBarProps> = ({ sessionManager }) => {
             disabled={sessionManager.isRestoring}
             title="Load saved session (⌘O)"
           >
-            📂
+            <FolderOpen size={18} />
           </button>
         </div>
       )}

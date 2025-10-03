@@ -3,7 +3,8 @@
  * Renders AI-generated applications on the fly
  */
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import { Construction, MessageCircle, Palette, Save, Sparkles, Zap } from "lucide-react";
 import { useWebSocket } from "../contexts/WebSocketContext";
 import {
   useUISpec,
@@ -20,6 +21,25 @@ import {
   UISpec,
 } from "../store/appStore";
 import { logger } from "../utils/logger";
+import { useSaveApp } from "../hooks/useRegistryQueries";
+import * as gsapAnimations from "../utils/gsapAnimations";
+import {
+  useFadeIn,
+  useFloat,
+  useSpin,
+  useBuildPulse,
+  useImperativeAnimation,
+  useStaggerSlideUp,
+} from "../hooks/useGSAP";
+import { SaveAppDialog } from "./SaveAppDialog";
+import {
+  buttonVariants,
+  inputVariants,
+  textVariants,
+  containerVariants,
+  gridVariants,
+  cn,
+} from "../utils/componentVariants";
 import "./DynamicRenderer.css";
 
 // ============================================================================
@@ -150,7 +170,10 @@ class ToolExecutor {
   }
 
   private async executeServiceTool(toolId: string, params: Record<string, any>): Promise<any> {
-    console.log(`[ToolExecutor] Executing service tool: ${toolId}`);
+    logger.debug("Executing service tool", {
+      component: "ToolExecutor",
+      toolId,
+    });
 
     try {
       const response = await fetch("http://localhost:8000/services/execute", {
@@ -173,10 +196,17 @@ class ToolExecutor {
         throw new Error(result.error || "Service execution failed");
       }
 
-      console.log(`[ToolExecutor] Service tool result:`, result.data);
+      logger.debug("Service tool executed successfully", {
+        component: "ToolExecutor",
+        toolId,
+        hasData: !!result.data,
+      });
       return result.data;
     } catch (error) {
-      console.error(`[ToolExecutor] Service tool error:`, error);
+      logger.error("Service tool execution failed", error as Error, {
+        component: "ToolExecutor",
+        toolId,
+      });
       throw error;
     }
   }
@@ -246,7 +276,7 @@ class ToolExecutor {
         alert(params.message);
         return true;
       case "log":
-        console.log(`[System] ${params.message}`);
+        logger.info("System log", { component: "SystemTool", message: params.message });
         return true;
       default:
         return null;
@@ -256,7 +286,10 @@ class ToolExecutor {
   private async executeAppTool(action: string, params: Record<string, any>): Promise<any> {
     switch (action) {
       case "spawn":
-        console.log(`[App] Spawning new app: ${params.request}`);
+        logger.info("Spawning new app", {
+          component: "AppTool",
+          request: params.request,
+        });
         // Use HTTP endpoint for app spawning instead of creating new WebSocket
         const response = await fetch("http://localhost:8000/generate-ui", {
           method: "POST",
@@ -285,13 +318,13 @@ class ToolExecutor {
         return data.ui_spec;
 
       case "close":
-        console.log("[App] Closing current app");
+        logger.info("Closing current app", { component: "AppTool" });
         // Notify parent to close this app
         window.postMessage({ type: "close_app" }, "*");
         return true;
 
       case "list":
-        console.log("[App] Listing apps");
+        logger.info("Listing apps", { component: "AppTool" });
         const appsResponse = await fetch("http://localhost:8000/apps");
         const appsData = await appsResponse.json();
         return appsData.apps;
@@ -325,13 +358,19 @@ class ToolExecutor {
       case "set":
         const timerId = setTimeout(() => {
           // Execute the action (would need tool executor reference)
-          console.log(`[Timer] Executing delayed action: ${params.action}`);
+          logger.debug("Executing delayed action", {
+            component: "TimerTool",
+            action: params.action,
+          });
         }, params.delay);
         this.componentState.set(`timer_${timerId}`, timerId);
         return timerId;
       case "interval":
         const intervalId = setInterval(() => {
-          console.log(`[Timer] Executing interval action: ${params.action}`);
+          logger.debug("Executing interval action", {
+            component: "TimerTool",
+            action: params.action,
+          });
         }, params.interval);
         this.componentState.set(`interval_${intervalId}`, intervalId);
         return intervalId;
@@ -392,7 +431,13 @@ const ComponentRenderer: React.FC<RendererProps> = ({ component, state, executor
     case "button":
       return (
         <button
-          className="dynamic-button"
+          className={cn(
+            buttonVariants({
+              variant: component.props?.variant as any,
+              size: component.props?.size as any,
+              fullWidth: component.props?.fullWidth,
+            })
+          )}
           onClick={() => handleEvent("click")}
           style={component.props?.style}
         >
@@ -404,21 +449,39 @@ const ComponentRenderer: React.FC<RendererProps> = ({ component, state, executor
       const value = state.get(component.id, component.props?.value || "");
       return (
         <input
-          className="dynamic-input"
+          className={cn(
+            inputVariants({
+              variant: component.props?.variant as any,
+              size: component.props?.size as any,
+              error: component.props?.error,
+              disabled: component.props?.disabled,
+            })
+          )}
           type={component.props?.type || "text"}
           placeholder={component.props?.placeholder}
           value={value}
           readOnly={component.props?.readonly}
+          disabled={component.props?.disabled}
           onChange={(e) => state.set(component.id, e.target.value)}
           style={component.props?.style}
         />
       );
 
     case "text":
-      const variant = component.props?.variant || "body";
-      const Tag = variant === "h1" ? "h1" : variant === "h2" ? "h2" : "p";
+      const textVariant = component.props?.variant || "body";
+      const Tag = textVariant === "h1" ? "h1" : textVariant === "h2" ? "h2" : textVariant === "h3" ? "h3" : "p";
       return (
-        <Tag className={`dynamic-text dynamic-text-${variant}`} style={component.props?.style}>
+        <Tag
+          className={cn(
+            textVariants({
+              variant: textVariant as any,
+              weight: component.props?.weight as any,
+              color: component.props?.color as any,
+              align: component.props?.align as any,
+            })
+          )}
+          style={component.props?.style}
+        >
           {component.props?.content}
         </Tag>
       );
@@ -426,8 +489,19 @@ const ComponentRenderer: React.FC<RendererProps> = ({ component, state, executor
     case "container":
       return (
         <div
-          className={`dynamic-container dynamic-container-${component.props?.layout || "vertical"}`}
-          style={{ gap: `${component.props?.gap || 8}px`, ...component.props?.style }}
+          className={cn(
+            containerVariants({
+              layout: component.props?.layout as any,
+              spacing: component.props?.spacing as any,
+              padding: component.props?.padding as any,
+              align: component.props?.align as any,
+              justify: component.props?.justify as any,
+            })
+          )}
+          style={{
+            gap: component.props?.gap ? `${component.props.gap}px` : undefined,
+            ...component.props?.style,
+          }}
         >
           {component.children?.map((child: UIComponent, idx: number) => (
             <ComponentRenderer
@@ -443,10 +517,18 @@ const ComponentRenderer: React.FC<RendererProps> = ({ component, state, executor
     case "grid":
       return (
         <div
-          className="dynamic-grid"
+          className={cn(
+            gridVariants({
+              columns: component.props?.columns as any,
+              spacing: component.props?.spacing as any,
+              responsive: component.props?.responsive,
+            })
+          )}
           style={{
-            gridTemplateColumns: `repeat(${component.props?.columns || 3}, 1fr)`,
-            gap: `${component.props?.gap || 8}px`,
+            gridTemplateColumns: component.props?.columns
+              ? `repeat(${component.props.columns}, 1fr)`
+              : undefined,
+            gap: component.props?.gap ? `${component.props.gap}px` : undefined,
             ...component.props?.style,
           }}
         >
@@ -493,6 +575,11 @@ const DynamicRenderer: React.FC = () => {
     appendGenerationPreview,
   } = useAppActions();
 
+  const [showSaveAppDialog, setShowSaveAppDialog] = useState(false);
+  
+  // Use TanStack Query for save operation
+  const saveAppMutation = useSaveApp();
+
   const [componentState] = useState(() => {
     logger.info("Initializing component state", { component: "DynamicRenderer" });
     return new ComponentState();
@@ -510,9 +597,9 @@ const DynamicRenderer: React.FC = () => {
   // Auto-scroll preview as content is added
   const previewRef = React.useRef<HTMLPreElement>(null);
   React.useEffect(() => {
-    console.log("📺 PREVIEW UPDATED:", {
+    logger.debugThrottled("Preview updated", {
+      component: "DynamicRenderer",
       length: generationPreview.length,
-      preview: generationPreview.substring(0, 100),
     });
     if (previewRef.current && generationPreview) {
       previewRef.current.scrollTop = previewRef.current.scrollHeight;
@@ -565,9 +652,11 @@ const DynamicRenderer: React.FC = () => {
               .filter((c): c is UIComponent => c !== null);
           }
 
-          console.log(
-            `🔧 PARSER: Found ${components.length} complete components from ${componentsStr.length} chars`
-          );
+          logger.debugThrottled("Partial JSON parsing progress", {
+            component: "DynamicRenderer",
+            componentsFound: components.length,
+            charsProcessed: componentsStr.length,
+          });
         }
 
         if (title || layout || components.length > 0) {
@@ -607,14 +696,16 @@ const DynamicRenderer: React.FC = () => {
             component: "DynamicRenderer",
             message: message.message,
           });
-          console.log("🚀 GENERATION START - Setting streaming=true");
           addGenerationThought(message.message);
           setStreaming(true);
           setBuildProgress(0);
           setPartialUISpec({ components: [] });
           renderedComponentIdsRef.current = new Set(); // Reset for new generation
           setLastComponentCount(0);
-          console.log("📊 State after generation start:", { isLoading, isStreaming: true });
+          logger.debug("Generation state initialized", {
+            component: "DynamicRenderer",
+            isStreaming: true,
+          });
           break;
 
         case "thought":
@@ -627,29 +718,22 @@ const DynamicRenderer: React.FC = () => {
 
         case "generation_token":
           // Real-time token streaming during UI generation
-          console.log("🔥 RECEIVED TOKEN:", {
-            type: message.type,
-            content: message.content,
-            contentLength: message.content?.length || 0,
-            preview: message.content?.substring(0, 50),
-          });
           logger.verboseThrottled("Generation token received", {
             component: "DynamicRenderer",
             contentLength: message.content?.length || 0,
           });
           // Accumulate tokens for real-time display
           if (message.content) {
-            console.log("📝 APPENDING TO PREVIEW:", message.content);
             appendGenerationPreview(message.content);
 
             // Try to parse partial JSON and update partial UI spec
             const currentPreview = useAppStore.getState().generationPreview + message.content;
             const parseResult = parsePartialJSON(currentPreview);
 
-            console.log("🔍 PARSE RESULT:", {
+            logger.debugThrottled("Parse result", {
+              component: "DynamicRenderer",
               complete: parseResult.complete,
               hasData: !!parseResult.data,
-              title: parseResult.data?.title,
               componentCount: parseResult.data?.components?.length || 0,
               previewLength: currentPreview.length,
             });
@@ -668,16 +752,20 @@ const DynamicRenderer: React.FC = () => {
                 const newComponentCount = currentCount - prevCount;
 
                 if (newComponentCount > 0) {
-                  console.log(
-                    `✨ ${newComponentCount} NEW components! (${prevCount} → ${currentCount})`
-                  );
-                  console.log(
-                    `📊 State check: isLoading=${isLoading}, isStreaming=${isStreaming}, partialComponents=${currentCount}`
-                  );
+                  logger.info("New components parsed", {
+                    component: "DynamicRenderer",
+                    newComponents: newComponentCount,
+                    totalComponents: currentCount,
+                    previousCount: prevCount,
+                  });
                   setLastComponentCount(currentCount);
                 }
 
-                console.log("✅ UPDATING PARTIAL UI SPEC:", partial);
+                logger.debugThrottled("Updating partial UI spec", {
+                  component: "DynamicRenderer",
+                  hasTitle: !!partial.title,
+                  componentCount: currentCount,
+                });
                 setPartialUISpec(partial);
 
                 // Track component IDs in ref (immediate, no re-render needed)
@@ -741,9 +829,8 @@ const DynamicRenderer: React.FC = () => {
           logger.error("UI generation error", undefined, {
             component: "DynamicRenderer",
             message: message.message,
+            previewLength: useAppStore.getState().generationPreview.length,
           });
-          console.error("❌ GENERATION ERROR:", message.message);
-          console.error("📄 Generated content so far:", useAppStore.getState().generationPreview);
           setError(message.message);
           setStreaming(false);
           break;
@@ -773,35 +860,126 @@ const DynamicRenderer: React.FC = () => {
   useEffect(() => {
     return () => {
       if (uiSpec?.lifecycle_hooks?.on_unmount) {
-        console.log("[DynamicRenderer] Executing on_unmount hooks");
+        logger.info("Executing on_unmount hooks", {
+          component: "DynamicRenderer",
+          hookCount: uiSpec.lifecycle_hooks.on_unmount.length,
+        });
         uiSpec.lifecycle_hooks.on_unmount.forEach(async (toolId: string) => {
           try {
             await toolExecutor.execute(toolId, {});
           } catch (error) {
-            console.error(`[DynamicRenderer] Error executing on_unmount hook ${toolId}:`, error);
+            logger.error(`Error executing on_unmount hook: ${toolId}`, error as Error, {
+              component: "DynamicRenderer",
+              toolId,
+            });
           }
         });
       }
     };
   }, [uiSpec, toolExecutor]);
 
+  // GSAP Animation refs and hooks
+  const desktopIconRef = useFloat<HTMLDivElement>(true);
+  const desktopMessageRef = useFadeIn<HTMLDivElement>({ duration: 0.8 });
+  const errorRef = useImperativeAnimation<HTMLDivElement>();
+  const buildContainerRef = useRef<HTMLDivElement>(null);
+  const buildProgressRef = useRef<HTMLDivElement>(null);
+  const renderedAppRef = useRef<HTMLDivElement>(null);
+  const spinnerRef = useSpin<HTMLDivElement>(isLoading || isStreaming);
+  const buildSpinnerRef = useSpin<HTMLDivElement>(true);
+  const buildIconRef = useBuildPulse<HTMLDivElement>(isStreaming);
+  const thoughtsListRef = useStaggerSlideUp<HTMLDivElement>('.thought-item', { stagger: 0.1 });
+  
+  // Animate error on appearance
+  useEffect(() => {
+    if (error) {
+      errorRef.shake();
+    }
+  }, [error]);
+
+  // Animate build container on appearance
+  useEffect(() => {
+    if (buildContainerRef.current && (isStreaming || partialUISpec)) {
+      gsapAnimations.buildContainerAppear(buildContainerRef.current);
+    }
+  }, [isStreaming, partialUISpec]);
+
+  // Animate rendered app on appearance
+  useEffect(() => {
+    if (renderedAppRef.current && uiSpec) {
+      gsapAnimations.appAppear(renderedAppRef.current);
+    }
+  }, [uiSpec]);
+
+  // Animate progress bar width changes
+  useEffect(() => {
+    if (buildProgressRef.current) {
+      gsapAnimations.setProps(buildProgressRef.current, { width: `${buildProgress || 20}%` });
+    }
+  }, [buildProgress]);
+
+  // Animate components as they appear during build
+  const componentRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  
+  useEffect(() => {
+    if (partialUISpec?.components) {
+      partialUISpec.components.forEach((component, idx) => {
+        const key = `${component.id}-${idx}`;
+        const element = componentRefs.current.get(key);
+        if (element && !element.dataset.animated) {
+          gsapAnimations.componentAppear(element, { delay: idx * 0.05 });
+          element.dataset.animated = 'true';
+        }
+      });
+    }
+  }, [partialUISpec?.components]);
+
+  // Handle save app form submission
+  const handleSaveApp = async (data: {
+    description: string;
+    category: string;
+    icon: string;
+    tags: string[];
+  }) => {
+    const appId = useAppStore.getState().appId;
+    if (!appId) {
+      throw new Error("No app ID found");
+    }
+
+    await saveAppMutation.mutateAsync({
+      app_id: appId,
+      description: data.description,
+      category: data.category,
+      icon: data.icon,
+      tags: data.tags,
+    });
+  };
+
   // Clean desktop - no auto-loading
 
   // Debug: Log render state
-  console.log("🎬 RENDER:", {
+  logger.verboseThrottled("Render state", {
+    component: "DynamicRenderer",
     isLoading,
     isStreaming,
     hasPartialComponents: (partialUISpec?.components?.length || 0) > 0,
     partialCount: partialUISpec?.components?.length,
     hasUISpec: !!uiSpec,
-    error: !!error,
+    hasError: !!error,
   });
 
   return (
     <div className="dynamic-renderer fullscreen">
+      <SaveAppDialog
+        isOpen={showSaveAppDialog}
+        onClose={() => setShowSaveAppDialog(false)}
+        onSave={handleSaveApp}
+        isLoading={saveAppMutation.isPending}
+      />
+      
       <div className="renderer-canvas">
         {error && (
-          <div className="renderer-error">
+          <div ref={errorRef.elementRef} className="renderer-error">
             <strong>Error:</strong> {error}
           </div>
         )}
@@ -810,9 +988,9 @@ const DynamicRenderer: React.FC = () => {
           <>
             {/* Visual Build Mode - Show partial UI being constructed */}
             {isStreaming || partialUISpec ? (
-              <div className="building-app-preview">
+              <div ref={buildContainerRef} className="building-app-preview">
                 <div className="build-progress-header">
-                  <div className="build-status-icon">🏗️</div>
+                  <div ref={buildIconRef} className="build-status-icon"><Construction size={24} /></div>
                   <div className="build-status-text">
                     <h3>Building Your App...</h3>
                     <p>{partialUISpec?.components?.length || 0} components assembled</p>
@@ -821,6 +999,7 @@ const DynamicRenderer: React.FC = () => {
 
                 <div className="build-progress-bar">
                   <div
+                    ref={buildProgressRef}
                     className="build-progress-fill"
                     style={{ width: `${buildProgress || 20}%` }}
                   />
@@ -834,10 +1013,10 @@ const DynamicRenderer: React.FC = () => {
                     {partialUISpec?.components?.map((component, idx) => (
                       <div
                         key={`building-${component.id}-${idx}`}
-                        className="component-building"
-                        style={{
-                          animationDelay: `${idx * 0.05}s`,
+                        ref={(el) => {
+                          if (el) componentRefs.current.set(`${component.id}-${idx}`, el);
                         }}
+                        className="component-building"
                       >
                         <ComponentRenderer
                           component={component}
@@ -851,7 +1030,7 @@ const DynamicRenderer: React.FC = () => {
                         className="component-assembling"
                         style={{ padding: "2rem", textAlign: "center" }}
                       >
-                        <div className="spinner" style={{ margin: "0 auto 1rem" }}></div>
+                        <div ref={buildSpinnerRef} className="spinner" style={{ margin: "0 auto 1rem" }}></div>
                         <p style={{ opacity: 0.7 }}>Assembling components...</p>
                       </div>
                     )}
@@ -860,10 +1039,10 @@ const DynamicRenderer: React.FC = () => {
 
                 {/* Thoughts stream below */}
                 {generationThoughts.length > 0 && (
-                  <div className="thoughts-list" style={{ marginTop: "1rem", opacity: 0.7 }}>
+                  <div ref={thoughtsListRef} className="thoughts-list" style={{ marginTop: "1rem", opacity: 0.7 }}>
                     {generationThoughts.slice(-3).map((thought, i) => (
-                      <div key={i} className="thought-item fade-in">
-                        <span className="thought-icon">💭</span>
+                      <div key={i} className="thought-item">
+                        <span className="thought-icon"><MessageCircle size={16} /></span>
                         <span className="thought-text">{thought}</span>
                       </div>
                     ))}
@@ -874,13 +1053,13 @@ const DynamicRenderer: React.FC = () => {
               /* Fallback to traditional loading screen if no partial data yet */
               <div className="generation-progress">
                 <div className="generation-header">
-                  <div className="spinner"></div>
-                  <h3>🎨 Generating Application...</h3>
+                  <div ref={spinnerRef} className="spinner"></div>
+                  <h3><Palette size={20} style={{ display: 'inline-block', marginRight: '8px', verticalAlign: 'middle' }} />Generating Application...</h3>
                 </div>
-                <div className="thoughts-list">
+                <div ref={thoughtsListRef} className="thoughts-list">
                   {generationThoughts.map((thought, i) => (
-                    <div key={i} className="thought-item fade-in">
-                      <span className="thought-icon">💭</span>
+                    <div key={i} className="thought-item">
+                      <span className="thought-icon"><MessageCircle size={16} /></span>
                       <span className="thought-text">{thought}</span>
                     </div>
                   ))}
@@ -888,7 +1067,7 @@ const DynamicRenderer: React.FC = () => {
                 {generationPreview && (
                   <div className="generation-preview">
                     <div className="preview-header">
-                      <span className="preview-icon">⚡</span>
+                      <span className="preview-icon"><Zap size={16} /></span>
                       <span className="preview-label">
                         Live Generation ({generationPreview.length} chars)
                       </span>
@@ -905,8 +1084,8 @@ const DynamicRenderer: React.FC = () => {
 
         {!uiSpec && !isLoading && !isStreaming && !error && (
           <div className="desktop-empty-state">
-            <div className="desktop-message">
-              <div className="desktop-icon">✨</div>
+            <div ref={desktopMessageRef} className="desktop-message">
+              <div ref={desktopIconRef} className="desktop-icon"><Sparkles size={48} /></div>
               <h2>Welcome to Griffin's AgentOS</h2>
               <p>Press ⌘K or click below to create something</p>
             </div>
@@ -914,50 +1093,16 @@ const DynamicRenderer: React.FC = () => {
         )}
 
         {uiSpec && (
-          <div className="rendered-app" style={uiSpec.style}>
+          <div ref={renderedAppRef} className="rendered-app" style={uiSpec.style}>
             <div className="app-header">
               <h2>{uiSpec.title}</h2>
               <button
                 className="save-app-btn"
-                onClick={async () => {
-                  try {
-                    const { RegistryClient } = await import("../utils/registryClient");
-                    const appId = useAppStore.getState().appId;
-                    if (!appId) {
-                      alert("No app ID found");
-                      return;
-                    }
-
-                    const description = prompt("Enter a description for this app:");
-                    if (description === null) return;
-
-                    const category = prompt(
-                      "Enter a category (productivity/utilities/games/creative/general):",
-                      "general"
-                    );
-                    if (category === null) return;
-
-                    const icon = prompt("Enter an emoji icon:", "📦");
-                    if (icon === null) return;
-
-                    await RegistryClient.saveApp({
-                      app_id: appId,
-                      description,
-                      category,
-                      icon,
-                    });
-
-                    alert("✅ App saved to registry!");
-                  } catch (err) {
-                    alert(
-                      "Failed to save app: " +
-                        (err instanceof Error ? err.message : "Unknown error")
-                    );
-                  }
-                }}
+                onClick={() => setShowSaveAppDialog(true)}
                 title="Save this app to registry"
               >
-                💾 Save
+                <Save size={16} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+                Save
               </button>
             </div>
             <div className={`app-content app-layout-${uiSpec.layout}`}>

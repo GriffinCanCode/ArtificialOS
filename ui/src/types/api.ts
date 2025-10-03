@@ -306,8 +306,8 @@ export function parseServerMessage(data: unknown): ServerMessage | null {
   try {
     return ServerMessageSchema.parse(data);
   } catch (error) {
-    console.error("Failed to parse server message:", error);
-    console.error("Received data:", data);
+    // Note: logger is not imported here to avoid circular dependencies
+    // Validation errors are logged by the WebSocket client
     return null;
   }
 }
@@ -319,7 +319,8 @@ export function parseClientMessage(data: unknown): ClientMessage | null {
   try {
     return ClientMessageSchema.parse(data);
   } catch (error) {
-    console.error("Failed to parse client message:", error);
+    // Note: logger is not imported here to avoid circular dependencies
+    // Validation errors are logged by the calling code
     return null;
   }
 }

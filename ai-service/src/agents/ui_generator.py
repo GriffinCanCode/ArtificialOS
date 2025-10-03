@@ -397,25 +397,28 @@ class ComponentTemplates:
     """Pre-built component templates for common UI patterns."""
     
     @staticmethod
-    def button(id: str, text: str, on_click: Optional[str] = None) -> UIComponent:
-        """Create a button component."""
+    def button(id: str, text: str, on_click: Optional[str] = None, variant: str = "default", size: str = "medium") -> UIComponent:
+        """Create a button component with CVA variant support."""
         return UIComponent(
             type="button",
             id=id,
-            props={"text": text},
+            props={"text": text, "variant": variant, "size": size},
             on_event={"click": on_click} if on_click else None
         )
     
     @staticmethod
-    def input(id: str, placeholder: str = "", value: str = "") -> UIComponent:
-        """Create an input component."""
+    def input(id: str, placeholder: str = "", value: str = "", variant: str = "default", size: str = "medium", readonly: bool = False) -> UIComponent:
+        """Create an input component with CVA variant support."""
         return UIComponent(
             type="input",
             id=id,
             props={
                 "placeholder": placeholder,
                 "value": value,
-                "type": "text"
+                "type": "text",
+                "variant": variant,
+                "size": size,
+                "readonly": readonly
             }
         )
     

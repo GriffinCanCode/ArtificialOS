@@ -1,13 +1,19 @@
 /**
  * Session Manager Hook
  * Handles auto-save, manual save/restore, and session management
+ * Now powered by TanStack Query for better caching and state management
  */
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { SessionClient } from "../utils/sessionClient";
 import { useAppStore } from "../store/appStore";
 import type { ChatState, UIState } from "../types/session";
 import { logger } from "../utils/logger";
+import {
+  useSaveSession,
+  useSaveDefaultSession,
+  useRestoreSession,
+  useSessions,
+} from "./useSessionQueries";
 
 interface UseSessionManagerOptions {
   autoSaveInterval?: number; // in seconds, default 30
@@ -18,10 +24,13 @@ interface UseSessionManagerOptions {
 export function useSessionManager(options: UseSessionManagerOptions = {}) {
   const { autoSaveInterval = 30, enableAutoSave = true, restoreOnMount = true } = options;
 
-  const [isSaving, setIsSaving] = useState(false);
-  const [isRestoring, setIsRestoring] = useState(false);
+  // TanStack Query mutations
+  const saveSessionMutation = useSaveSession();
+  const saveDefaultMutation = useSaveDefaultSession();
+  const restoreSessionMutation = useRestoreSession();
+  const { data: sessionsData } = useSessions();
+
   const [lastSaveTime, setLastSaveTime] = useState<Date | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hasRestoredRef = useRef(false);
@@ -34,6 +43,15 @@ export function useSessionManager(options: UseSessionManagerOptions = {}) {
   const storeError = useAppStore((state) => state.error);
   const generationThoughts = useAppStore((state) => state.generationThoughts);
   const generationPreview = useAppStore((state) => state.generationPreview);
+
+  // Derive state from mutations
+  const isSaving = saveSessionMutation.isPending || saveDefaultMutation.isPending;
+  const isRestoring = restoreSessionMutation.isPending;
+  const error = 
+    saveSessionMutation.error?.message ||
+    saveDefaultMutation.error?.message ||
+    restoreSessionMutation.error?.message ||
+    null;
 
   /**
    * Capture current frontend state
@@ -65,131 +83,86 @@ export function useSessionManager(options: UseSessionManagerOptions = {}) {
    * Save session with default name (for auto-save)
    */
   const saveDefault = useCallback(async () => {
-    try {
-      setIsSaving(true);
-      setError(null);
+    // Capture state (for potential future use)
+    captureState();
 
-      // Capture state (for potential future use)
-      captureState();
-
-      // For auto-save, we use the simplified endpoint
-      await SessionClient.saveDefault();
-
-      setLastSaveTime(new Date());
-      logger.info("Auto-saved session", { component: "SessionManager" });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to save session";
-      setError(message);
-      logger.error("Auto-save failed", err, { component: "SessionManager" });
-    } finally {
-      setIsSaving(false);
-    }
-  }, [captureState]);
+    // Use TanStack Query mutation
+    await saveDefaultMutation.mutateAsync(undefined, {
+      onSuccess: () => {
+        setLastSaveTime(new Date());
+      },
+    });
+  }, [captureState, saveDefaultMutation]);
 
   /**
    * Save session with custom name (for manual save)
    */
   const save = useCallback(
     async (name: string, description?: string) => {
-      try {
-        setIsSaving(true);
-        setError(null);
+      const { chatState, uiState } = captureState();
 
-        const { chatState, uiState } = captureState();
+      const result = await saveSessionMutation.mutateAsync({
+        name,
+        description,
+        chat_state: chatState,
+        ui_state: uiState,
+      });
 
-        const result = await SessionClient.saveSession({
-          name,
-          description,
-          chat_state: chatState,
-          ui_state: uiState,
-        });
-
-        setLastSaveTime(new Date());
-        logger.info("Manually saved session", {
-          component: "SessionManager",
-          sessionId: result.session.id,
-        });
-
-        return result;
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to save session";
-        setError(message);
-        logger.error("Manual save failed", err, { component: "SessionManager" });
-        throw err;
-      } finally {
-        setIsSaving(false);
-      }
+      setLastSaveTime(new Date());
+      return result;
     },
-    [captureState]
+    [captureState, saveSessionMutation]
   );
 
   /**
    * Restore a session
    */
   const restore = useCallback(async (sessionId: string) => {
-    try {
-      setIsRestoring(true);
-      setError(null);
+    const result = await restoreSessionMutation.mutateAsync(sessionId);
 
-      const result = await SessionClient.restoreSession(sessionId);
+    // Restore frontend state
+    const { workspace } = result;
 
-      // Restore frontend state
-      const { workspace } = result;
+    if (workspace.chat_state) {
+      // Restore messages and thoughts
+      const store = useAppStore.getState();
+      store.resetState();
 
-      if (workspace.chat_state) {
-        // Restore messages and thoughts
-        const store = useAppStore.getState();
-        store.resetState();
-
-        workspace.chat_state.messages.forEach((msg) => {
-          store.addMessage({
-            type: msg.type as "user" | "assistant" | "system",
-            content: msg.content,
-            timestamp: msg.timestamp,
-          });
+      workspace.chat_state.messages.forEach((msg) => {
+        store.addMessage({
+          type: msg.type as "user" | "assistant" | "system",
+          content: msg.content,
+          timestamp: msg.timestamp,
         });
-
-        workspace.chat_state.thoughts.forEach((thought) => {
-          store.addThought({
-            content: thought.content,
-            timestamp: thought.timestamp,
-          });
-        });
-      }
-
-      if (workspace.ui_state) {
-        // Restore UI state
-        const store = useAppStore.getState();
-        store.setLoading(workspace.ui_state.is_loading);
-        if (workspace.ui_state.error) {
-          store.setError(workspace.ui_state.error);
-        }
-      }
-
-      // Restore focused app UI
-      if (workspace.focused_app_id && workspace.apps.length > 0) {
-        const focusedApp = workspace.apps.find((app) => app.id === workspace.focused_app_id);
-        if (focusedApp) {
-          useAppStore.getState().setUISpec(focusedApp.ui_spec as any, focusedApp.id);
-        }
-      }
-
-      logger.info("Restored session", {
-        component: "SessionManager",
-        sessionId,
-        appCount: workspace.apps.length,
       });
 
-      return result;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to restore session";
-      setError(message);
-      logger.error("Restore failed", err, { component: "SessionManager" });
-      throw err;
-    } finally {
-      setIsRestoring(false);
+      workspace.chat_state.thoughts.forEach((thought) => {
+        store.addThought({
+          content: thought.content,
+          timestamp: thought.timestamp,
+        });
+      });
     }
-  }, []);
+
+    if (workspace.ui_state) {
+      // Restore UI state
+      const store = useAppStore.getState();
+      store.setLoading(workspace.ui_state.is_loading);
+      if (workspace.ui_state.error) {
+        store.setError(workspace.ui_state.error);
+      }
+    }
+
+    // Restore focused app UI
+    if (workspace.focused_app_id && workspace.apps.length > 0) {
+      const focusedApp = workspace.apps.find((app) => app.id === workspace.focused_app_id);
+      if (focusedApp) {
+        useAppStore.getState().setUISpec(focusedApp.ui_spec as any, focusedApp.id);
+      }
+    }
+
+    return result;
+  }, [restoreSessionMutation]);
 
   /**
    * Restore default session on mount

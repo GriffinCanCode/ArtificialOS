@@ -3,6 +3,9 @@
  */
 
 import React, { useCallback, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { Save, Sparkles, CheckCircle } from "lucide-react";
+import { QueryClientProvider } from "@tanstack/react-query";
 import ThoughtStream from "../components/ThoughtStream";
 import DynamicRenderer from "../components/DynamicRenderer";
 import TitleBar from "../components/TitleBar";
@@ -10,17 +13,27 @@ import { WebSocketProvider, useWebSocket } from "../contexts/WebSocketContext";
 import { useAppActions } from "../store/appStore";
 import { useSessionManager } from "../hooks/useSessionManager";
 import { ServerMessage } from "../types/api";
+import { useLogger } from "../utils/useLogger";
+import { useFadeIn, useSlideInUp } from "../hooks/useGSAP";
+import { queryClient } from "../lib/queryClient";
 import "./App.css";
+
+interface SpotlightFormData {
+  prompt: string;
+}
 
 function App() {
   return (
-    <WebSocketProvider>
-      <AppContent />
-    </WebSocketProvider>
+    <QueryClientProvider client={queryClient}>
+      <WebSocketProvider>
+        <AppContent />
+      </WebSocketProvider>
+    </QueryClientProvider>
   );
 }
 
 function AppContent() {
+  const log = useLogger("AppContent");
   const { client, generateUI } = useWebSocket();
   const { addMessage, addThought, appendToLastMessage } = useAppActions();
 
@@ -55,11 +68,11 @@ function AppContent() {
           break;
 
         case "complete":
-          console.log("✨ Generation complete");
+          log.info("Generation complete");
           break;
 
         case "error":
-          console.error("❌ Error from server:", message.message);
+          log.error("Error from server", undefined, { message: message.message });
           addMessage({
             type: "system",
             content: `Error: ${message.message}`,
@@ -68,7 +81,7 @@ function AppContent() {
           break;
 
         case "history_update":
-          console.log("📜 History updated");
+          log.debug("History updated");
           break;
 
         default:
@@ -88,9 +101,43 @@ function AppContent() {
   }, [client, handleMessage]);
 
   const [showThoughts, setShowThoughts] = React.useState(false);
-  const [inputValue, setInputValue] = React.useState("");
   const [inputFocused, setInputFocused] = React.useState(false);
+  
+  // React Hook Form for spotlight input
+  const { register, handleSubmit: handleFormSubmit, reset, watch } = useForm<SpotlightFormData>({
+    defaultValues: { prompt: "" },
+  });
+
+  const inputValue = watch("prompt");
+  
+  // Get ref from register for keyboard shortcut access
+  const { ref: inputRefCallback, ...inputRegisterProps } = register("prompt", {
+    required: true,
+    validate: (value) => value.trim().length > 0,
+    onBlur: (e) => {
+      // Don't blur if clicking the send button
+      if (e.relatedTarget?.classList.contains("spotlight-send")) {
+        return;
+      }
+      setInputFocused(false);
+    },
+  });
+  
   const inputRef = React.useRef<HTMLInputElement>(null);
+  
+  // Combine refs for both react-hook-form and keyboard shortcut
+  const setInputRef = React.useCallback(
+    (node: HTMLInputElement | null) => {
+      inputRefCallback(node);
+      inputRef.current = node;
+    },
+    [inputRefCallback]
+  );
+  
+  // GSAP Animation hooks
+  const spotlightContainerRef = useFadeIn<HTMLDivElement>({ duration: 0.3 });
+  const hintRef = useFadeIn<HTMLDivElement>({ duration: 0.3 });
+  const sessionStatusRef = useSlideInUp<HTMLDivElement>({ duration: 0.3 });
 
   // Global keyboard shortcut: Cmd/Ctrl + K to focus input
   React.useEffect(() => {
@@ -112,11 +159,12 @@ function AppContent() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [inputFocused]);
 
-  const handleSendMessage = (message: string) => {
-    if (message.trim()) {
+  const onSubmitSpotlight = (data: SpotlightFormData) => {
+    const message = data.prompt.trim();
+    if (message) {
       // Send to AI for UI generation using the context method
       generateUI(message, {});
-      setInputValue("");
+      reset(); // Clear form after submission
     }
   };
 
@@ -131,46 +179,29 @@ function AppContent() {
       </div>
 
       {/* Floating Spotlight-style Input Bar */}
-      <div className={`spotlight-input-container ${inputFocused ? "focused" : ""}`}>
-        <div className="spotlight-input-wrapper">
-          <div className="spotlight-icon">✨</div>
+      <div ref={spotlightContainerRef} className={`spotlight-input-container ${inputFocused ? "focused" : ""}`}>
+        <form className="spotlight-input-wrapper" onSubmit={handleFormSubmit(onSubmitSpotlight)}>
+          <div className="spotlight-icon"><Sparkles size={20} /></div>
           <input
-            ref={inputRef}
             type="text"
             className="spotlight-input"
             placeholder="Ask AI to create something... (⌘K)"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
             onFocus={() => setInputFocused(true)}
-            onBlur={(e) => {
-              // Don't blur if clicking the send button
-              if (e.relatedTarget?.classList.contains("spotlight-send")) {
-                return;
-              }
-              setInputFocused(false);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && inputValue.trim()) {
-                handleSendMessage(inputValue);
-              }
-            }}
+            ref={setInputRef}
+            {...inputRegisterProps}
           />
           {inputValue && (
             <button
+              type="submit"
               className="spotlight-send"
-              onMouseDown={(e) => {
-                // Prevent blur on click
-                e.preventDefault();
-                handleSendMessage(inputValue);
-              }}
               aria-label="Send message"
             >
               →
             </button>
           )}
-        </div>
+        </form>
         {inputFocused && (
-          <div className="spotlight-hint">Press Enter to generate • Esc to close</div>
+          <div ref={hintRef} className="spotlight-hint">Press Enter to generate • Esc to close</div>
         )}
       </div>
 
@@ -178,10 +209,10 @@ function AppContent() {
       <ThoughtStream isVisible={showThoughts} onToggle={() => setShowThoughts(!showThoughts)} />
 
       {/* Session Status Indicator */}
-      {sessionManager.isSaving && <div className="session-status saving">💾 Saving...</div>}
+      {sessionManager.isSaving && <div ref={sessionStatusRef} className="session-status saving"><Save size={14} style={{ marginRight: '6px', verticalAlign: 'middle' }} />Saving...</div>}
       {sessionManager.lastSaveTime && !sessionManager.isSaving && (
-        <div className="session-status saved">
-          ✅ Saved {formatTimeSince(sessionManager.lastSaveTime)}
+        <div ref={sessionStatusRef} className="session-status saved">
+          <CheckCircle size={14} style={{ marginRight: '6px', verticalAlign: 'middle' }} />Saved {formatTimeSince(sessionManager.lastSaveTime)}
         </div>
       )}
     </div>

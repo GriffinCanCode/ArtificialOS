@@ -1,0 +1,92 @@
+.save-app-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form-select {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background: rgb(31, 41, 55);
+  border: 1px solid rgb(55, 65, 81);
+  color: white;
+  outline: none;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.form-select:focus {
+  border-color: rgb(59, 130, 246);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-select.error {
+  border-color: rgb(239, 68, 68);
+}
+
+.form-select option {
+  background: rgb(31, 41, 55);
+}
+
+.icon-selector {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.icon-input {
+  flex: 1;
+}
+
+.icon-preview {
+  font-size: 1.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 0.5rem;
+  background: rgb(31, 41, 55);
+  border: 1px solid rgb(55, 65, 81);
+}
+
+.icon-suggestions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.icon-option {
+  font-size: 1.5rem;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  background: rgb(31, 41, 55);
+  border: 1px solid rgb(55, 65, 81);
+  transition: all 0.15s ease;
+  cursor: pointer;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-option:hover {
+  border-color: rgb(75, 85, 99);
+  background: rgb(55, 65, 81);
+}
+
+.icon-option.active {
+  border-color: rgb(59, 130, 246);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.form-hint {
+  font-size: 0.75rem;
+  color: rgb(107, 114, 128);
+  margin-top: 0.25rem;
+}
+

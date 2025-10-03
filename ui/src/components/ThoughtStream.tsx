@@ -4,8 +4,10 @@
  */
 
 import React, { useRef, useEffect } from "react";
+import { MessageCircle, Brain, X } from "lucide-react";
 import { useThoughts, useAppActions } from "../store/appStore";
 import { useWebSocket } from "../contexts/WebSocketContext";
+import { usePulse, useFadeIn, useStaggerSlideUp } from "../hooks/useGSAP";
 import "./ThoughtStream.css";
 
 interface ThoughtStreamProps {
@@ -19,6 +21,11 @@ const ThoughtStream: React.FC<ThoughtStreamProps> = ({ isVisible, onToggle }) =>
   const { client } = useWebSocket();
   const streamEndRef = useRef<HTMLDivElement>(null);
   const prevThoughtsLength = useRef(0);
+  
+  // GSAP Animation hooks
+  const toggleButtonRef = usePulse<HTMLButtonElement>(thoughts.length > 0);
+  const backdropRef = useFadeIn<HTMLDivElement>({ duration: 0.3 });
+  const thoughtsListRef = useStaggerSlideUp<HTMLDivElement>('.thought-item', { stagger: 0.05, distance: 20 });
 
   useEffect(() => {
     scrollToBottom();
@@ -66,11 +73,12 @@ const ThoughtStream: React.FC<ThoughtStreamProps> = ({ isVisible, onToggle }) =>
     <>
       {/* Toggle Button - Fixed in top-right corner */}
       <button
+        ref={toggleButtonRef}
         className={`thought-toggle ${thoughts.length > 0 ? "has-thoughts" : ""}`}
         onClick={onToggle}
         title="Toggle thought stream"
       >
-        <span className="thought-icon">💭</span>
+        <span className="thought-icon"><MessageCircle size={20} /></span>
         {thoughts.length > 0 && <span className="thought-badge">{thoughts.length}</span>}
       </button>
 
@@ -78,19 +86,19 @@ const ThoughtStream: React.FC<ThoughtStreamProps> = ({ isVisible, onToggle }) =>
       <div className={`thought-stream-panel ${isVisible ? "visible" : ""}`}>
         <div className="thought-stream">
           <div className="thought-header">
-            <h3>💭 Thought Stream</h3>
+            <h3><MessageCircle size={18} style={{ display: 'inline-block', marginRight: '8px', verticalAlign: 'middle' }} />Thought Stream</h3>
             <div className="thought-header-actions">
               <span className="thought-count">{thoughts.length} steps</span>
               <button className="thought-close" onClick={onToggle}>
-                ✕
+                <X size={16} />
               </button>
             </div>
           </div>
 
-          <div className="thoughts-container">
+          <div ref={thoughtsListRef} className="thoughts-container">
             {thoughts.length === 0 ? (
               <div className="empty-state">
-                <span className="empty-icon">🧠</span>
+                <span className="empty-icon"><Brain size={48} /></span>
                 <p>AI thoughts will appear here...</p>
               </div>
             ) : (
@@ -110,7 +118,7 @@ const ThoughtStream: React.FC<ThoughtStreamProps> = ({ isVisible, onToggle }) =>
       </div>
 
       {/* Backdrop */}
-      {isVisible && <div className="thought-backdrop" onClick={onToggle} />}
+      {isVisible && <div ref={backdropRef} className="thought-backdrop" onClick={onToggle} />}
     </>
   );
 };

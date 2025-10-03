@@ -24,6 +24,7 @@ import {
   ServiceExecuteResponse,
   ServiceExecuteResponseSchema,
 } from "../types/api";
+import { logger } from "./logger";
 
 const API_BASE_URL = "http://localhost:8000";
 
@@ -47,7 +48,10 @@ async function fetchWithValidation<T>(url: string, schema: any, options?: Reques
     const data = await response.json();
     return schema.parse(data);
   } catch (error) {
-    console.error(`API Error [${url}]:`, error);
+    logger.error("API request failed", error as Error, {
+      component: "APIClient",
+      url,
+    });
     throw error;
   }
 }

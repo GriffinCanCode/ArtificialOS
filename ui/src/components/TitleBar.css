@@ -107,6 +107,10 @@
 .session-btn {
   width: 40px;
   height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.9);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(20px);
@@ -252,4 +256,43 @@
 .session-meta {
   font-size: 0.875rem;
   color: rgba(255, 255, 255, 0.5);
+}
+
+/* ============================================================================
+   CVA VARIANT CLASSES FOR TITLE BAR
+   ============================================================================ */
+
+/* Control Button Variants */
+.control-btn-base {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.control-btn-minimize {
+  background: #ffbd2e;
+}
+
+.control-btn-maximize {
+  background: #28c840;
+}
+
+.control-btn-close {
+  background: #ff5f57;
+}
+
+.control-btn-hover:hover {
+  filter: brightness(1.1);
+  transform: scale(1.1);
+}
+
+.control-btn-active:active {
+  transform: scale(0.95);
 }
