@@ -249,7 +249,7 @@ export const appAppear = (
 };
 
 /**
- * Build container animation
+ * Build container animation - optimized for smooth performance
  */
 export const buildContainerAppear = (
   element: gsap.TweenTarget,
@@ -259,22 +259,24 @@ export const buildContainerAppear = (
     element,
     {
       opacity: 0,
-      scale: 0.95,
-      y: 20,
+      scale: 0.96,
+      y: 15,
     },
     {
       opacity: 1,
       scale: 1,
       y: 0,
       duration: ANIMATION_TIMING.moderate,
-      ease: EASING.bounce,
+      ease: EASING.smoothOut,
       delay: options.delay ?? 0,
+      force3D: true,
+      willChange: 'transform, opacity',
     }
   );
 };
 
 /**
- * Component appear animation (for building components)
+ * Component appear animation (for building components) - optimized for smooth performance
  */
 export const componentAppear = (
   element: gsap.TweenTarget,
@@ -285,7 +287,7 @@ export const componentAppear = (
     {
       opacity: 0,
       y: 20,
-      scale: 0.95,
+      scale: 0.96,
     },
     {
       opacity: 1,
@@ -294,6 +296,8 @@ export const componentAppear = (
       duration: ANIMATION_TIMING.moderate,
       ease: EASING.smoothOut,
       delay: options.delay ?? 0,
+      force3D: true,
+      willChange: 'transform, opacity',
     }
   );
 };
@@ -586,14 +590,16 @@ export const staggerSlideUp = (
 // ============================================================================
 
 /**
- * Button hover animation
+ * Button hover animation - optimized for smooth performance
  */
 export const buttonHoverIn = (element: gsap.TweenTarget) => {
   return gsap.to(element, {
-    y: -3,
+    y: -2,
     scale: 1.01,
     duration: ANIMATION_TIMING.quick,
-    ease: EASING.standard,
+    ease: EASING.smoothOut,
+    force3D: true,
+    willChange: 'transform',
   });
 };
 
@@ -602,26 +608,32 @@ export const buttonHoverOut = (element: gsap.TweenTarget) => {
     y: 0,
     scale: 1,
     duration: ANIMATION_TIMING.quick,
-    ease: EASING.standard,
+    ease: EASING.smoothOut,
+    force3D: true,
+    clearProps: 'willChange',
   });
 };
 
 /**
- * Scale hover animation
+ * Scale hover animation - optimized for smooth performance
  */
-export const scaleHoverIn = (element: gsap.TweenTarget, scale: number = 1.05) => {
+export const scaleHoverIn = (element: gsap.TweenTarget, scale: number = 1.02) => {
   return gsap.to(element, {
     scale,
-    duration: ANIMATION_TIMING.fast,
-    ease: EASING.standard,
+    duration: ANIMATION_TIMING.quick,
+    ease: EASING.smoothOut,
+    force3D: true,
+    willChange: 'transform',
   });
 };
 
 export const scaleHoverOut = (element: gsap.TweenTarget) => {
   return gsap.to(element, {
     scale: 1,
-    duration: ANIMATION_TIMING.fast,
-    ease: EASING.standard,
+    duration: ANIMATION_TIMING.quick,
+    ease: EASING.smoothOut,
+    force3D: true,
+    clearProps: 'willChange',
   });
 };
 
@@ -841,27 +853,27 @@ export const flip3D = (
 };
 
 /**
- * Elastic bounce in
+ * Elastic bounce in - optimized for smooth performance
  */
 export const elasticBounceIn = (
   element: gsap.TweenTarget,
   options: { delay?: number; from?: 'top' | 'bottom' | 'left' | 'right' } = {}
 ) => {
   const from = options.from ?? 'bottom';
-  const initialProps: gsap.TweenVars = { opacity: 0, scale: 0.3 };
+  const initialProps: gsap.TweenVars = { opacity: 0, scale: 0.92 };
   
   switch (from) {
     case 'top':
-      initialProps.y = -100;
+      initialProps.y = -30;
       break;
     case 'bottom':
-      initialProps.y = 100;
+      initialProps.y = 30;
       break;
     case 'left':
-      initialProps.x = -100;
+      initialProps.x = -30;
       break;
     case 'right':
-      initialProps.x = 100;
+      initialProps.x = 30;
       break;
   }
   
@@ -870,10 +882,11 @@ export const elasticBounceIn = (
     scale: 1,
     x: 0,
     y: 0,
-    duration: ANIMATION_TIMING.slow,
-    ease: 'elastic.out(1, 0.6)',
+    duration: ANIMATION_TIMING.moderate,
+    ease: EASING.bounceSoft,
     delay: options.delay ?? 0,
     force3D: true,
+    willChange: 'transform, opacity',
   });
 };
 
@@ -950,5 +963,335 @@ export const setProps = (element: gsap.TweenTarget, props: gsap.TweenVars) => {
  */
 export const createTimeline = (options?: gsap.TimelineVars) => {
   return gsap.timeline(options);
+};
+
+// ============================================================================
+// ADVANCED CREATIVE EFFECTS - Bespoke & Original
+// ============================================================================
+
+/**
+ * Liquid morph effect - smooth organic transformation
+ */
+export const liquidMorph = (
+  element: gsap.TweenTarget,
+  options: {
+    duration?: number;
+    intensity?: number;
+  } = {}
+) => {
+  const intensity = options.intensity ?? 15;
+  const tl = gsap.timeline();
+  
+  tl.to(element, {
+    filter: `blur(${intensity * 0.3}px) contrast(1.2)`,
+    scale: 1.05,
+    duration: options.duration ? options.duration * 0.3 : 0.3,
+    ease: 'power2.out',
+  })
+  .to(element, {
+    filter: `blur(${intensity * 0.6}px) contrast(1.3) saturate(1.2)`,
+    scale: 0.98,
+    skewX: 2,
+    duration: options.duration ? options.duration * 0.4 : 0.4,
+    ease: 'sine.inOut',
+  })
+  .to(element, {
+    filter: 'blur(0px) contrast(1) saturate(1)',
+    scale: 1,
+    skewX: 0,
+    duration: options.duration ? options.duration * 0.3 : 0.3,
+    ease: 'power3.out',
+  });
+  
+  return tl;
+};
+
+/**
+ * Chromatic aberration effect - RGB split like a glitch
+ */
+export const chromaticAberration = (
+  element: gsap.TweenTarget,
+  options: { intensity?: number; duration?: number } = {}
+) => {
+  const intensity = options.intensity ?? 8;
+  const tl = gsap.timeline();
+  
+  tl.to(element, {
+    filter: `drop-shadow(${intensity}px 0 0 rgba(255, 0, 0, 0.8)) drop-shadow(-${intensity}px 0 0 rgba(0, 255, 255, 0.8))`,
+    duration: 0.1,
+    ease: 'power2.in',
+  })
+  .to(element, {
+    filter: `drop-shadow(${intensity * 1.5}px 0 0 rgba(255, 0, 0, 0.6)) drop-shadow(-${intensity * 1.5}px 0 0 rgba(0, 255, 255, 0.6))`,
+    duration: 0.08,
+    ease: 'none',
+  })
+  .to(element, {
+    filter: 'drop-shadow(0px 0 0 rgba(255, 0, 0, 0)) drop-shadow(0px 0 0 rgba(0, 255, 255, 0))',
+    duration: options.duration ?? 0.4,
+    ease: 'power3.out',
+  });
+  
+  return tl;
+};
+
+/**
+ * Perspective flip with depth - 3D card flip effect
+ */
+export const perspectiveFlip = (
+  element: gsap.TweenTarget,
+  options: {
+    direction?: 'x' | 'y';
+    distance?: number;
+    duration?: number;
+  } = {}
+) => {
+  const direction = options.direction ?? 'y';
+  const distance = options.distance ?? 1200;
+  const tl = gsap.timeline();
+  
+  // Set perspective container
+  gsap.set(element, { 
+    transformPerspective: distance,
+    transformStyle: 'preserve-3d',
+  });
+  
+  tl.to(element, {
+    [direction === 'x' ? 'rotateX' : 'rotateY']: 90,
+    z: -100,
+    opacity: 0.8,
+    duration: (options.duration ?? 0.8) * 0.5,
+    ease: 'power2.in',
+  })
+  .to(element, {
+    [direction === 'x' ? 'rotateX' : 'rotateY']: 180,
+    z: 0,
+    opacity: 1,
+    duration: (options.duration ?? 0.8) * 0.5,
+    ease: 'power2.out',
+  });
+  
+  return tl;
+};
+
+/**
+ * Organic breathing animation - subtle, natural pulsing
+ */
+export const organicBreathe = (
+  element: gsap.TweenTarget,
+  options: {
+    scale?: number;
+    duration?: number;
+  } = {}
+) => {
+  return gsap.to(element, {
+    scale: options.scale ?? 1.03,
+    filter: 'brightness(1.08) saturate(1.1)',
+    duration: (options.duration ?? 3) / 2,
+    ease: 'sine.inOut',
+    repeat: -1,
+    yoyo: true,
+    force3D: true,
+  });
+};
+
+/**
+ * Kinetic typography - letters scatter and reform
+ */
+export const kineticType = (
+  element: HTMLElement,
+  options: {
+    scatter?: number;
+    duration?: number;
+    stagger?: number;
+  } = {}
+) => {
+  const text = element.textContent || '';
+  const chars = text.split('');
+  
+  element.innerHTML = chars.map(char => 
+    `<span style="display:inline-block;white-space:pre;">${char === ' ' ? '&nbsp;' : char}</span>`
+  ).join('');
+  
+  const spans = element.querySelectorAll('span');
+  const scatter = options.scatter ?? 100;
+  const tl = gsap.timeline();
+  
+  // Scatter
+  tl.to(spans, {
+    x: () => (Math.random() - 0.5) * scatter,
+    y: () => (Math.random() - 0.5) * scatter,
+    rotation: () => (Math.random() - 0.5) * 180,
+    opacity: 0,
+    duration: 0.01,
+  })
+  // Reform
+  .to(spans, {
+    x: 0,
+    y: 0,
+    rotation: 0,
+    opacity: 1,
+    duration: options.duration ?? 1.2,
+    ease: 'elastic.out(1, 0.5)',
+    stagger: {
+      each: options.stagger ?? 0.03,
+      from: 'random',
+    },
+    force3D: true,
+  });
+  
+  return tl;
+};
+
+/**
+ * Ink blot reveal - organic spreading effect
+ */
+export const inkBlotReveal = (
+  element: gsap.TweenTarget,
+  options: { duration?: number; from?: 'center' | 'corner' } = {}
+) => {
+  const tl = gsap.timeline();
+  const from = options.from ?? 'center';
+  
+  tl.fromTo(element, {
+    clipPath: from === 'center' 
+      ? 'circle(0% at 50% 50%)'
+      : 'circle(0% at 0% 0%)',
+    opacity: 0,
+    scale: 1.2,
+    filter: 'blur(20px) contrast(0.8)',
+  }, {
+    clipPath: 'circle(100% at 50% 50%)',
+    opacity: 1,
+    scale: 1,
+    filter: 'blur(0px) contrast(1)',
+    duration: options.duration ?? 1.2,
+    ease: 'power3.out',
+    force3D: true,
+  });
+  
+  return tl;
+};
+
+/**
+ * Holographic shimmer - futuristic iridescent effect
+ */
+export const holographicShimmer = (
+  element: gsap.TweenTarget,
+  options: { duration?: number } = {}
+) => {
+  const tl = gsap.timeline({ repeat: -1 });
+  
+  tl.to(element, {
+    filter: 'hue-rotate(0deg) saturate(1.3) brightness(1.1)',
+    duration: 0,
+  })
+  .to(element, {
+    filter: 'hue-rotate(180deg) saturate(1.5) brightness(1.2)',
+    duration: (options.duration ?? 4) / 2,
+    ease: 'sine.inOut',
+  })
+  .to(element, {
+    filter: 'hue-rotate(360deg) saturate(1.3) brightness(1.1)',
+    duration: (options.duration ?? 4) / 2,
+    ease: 'sine.inOut',
+  });
+  
+  return tl;
+};
+
+/**
+ * Quantum flicker - subtle reality-bending effect
+ */
+export const quantumFlicker = (
+  element: gsap.TweenTarget,
+  options: { intensity?: number } = {}
+) => {
+  const intensity = options.intensity ?? 0.05;
+  
+  return gsap.to(element, {
+    opacity: 1 - intensity,
+    x: () => (Math.random() - 0.5) * 2,
+    y: () => (Math.random() - 0.5) * 2,
+    filter: 'blur(0.5px)',
+    duration: 0.05,
+    repeat: -1,
+    yoyo: true,
+    ease: 'none',
+  });
+};
+
+/**
+ * Elastic morph - bouncy shape transformation
+ */
+export const elasticMorph = (
+  element: gsap.TweenTarget,
+  toProps: { scaleX?: number; scaleY?: number; skewX?: number; skewY?: number },
+  options: { duration?: number } = {}
+) => {
+  const tl = gsap.timeline();
+  
+  tl.to(element, {
+    ...toProps,
+    duration: (options.duration ?? 0.8) * 0.6,
+    ease: 'elastic.out(1, 0.4)',
+    force3D: true,
+  })
+  .to(element, {
+    scaleX: 1,
+    scaleY: 1,
+    skewX: 0,
+    skewY: 0,
+    duration: (options.duration ?? 0.8) * 0.4,
+    ease: 'elastic.out(1, 0.6)',
+  });
+  
+  return tl;
+};
+
+/**
+ * Vortex spiral in - element spirals into existence
+ */
+export const vortexSpiral = (
+  element: gsap.TweenTarget,
+  options: { duration?: number; clockwise?: boolean } = {}
+) => {
+  const direction = options.clockwise ? 1 : -1;
+  
+  return gsap.fromTo(element, {
+    opacity: 0,
+    scale: 0,
+    rotation: direction * 720,
+    filter: 'blur(20px)',
+  }, {
+    opacity: 1,
+    scale: 1,
+    rotation: 0,
+    filter: 'blur(0px)',
+    duration: options.duration ?? 1,
+    ease: 'power4.out',
+    force3D: true,
+  });
+};
+
+/**
+ * Energy pulse - radiating waves effect
+ */
+export const energyPulse = (
+  element: gsap.TweenTarget,
+  options: { color?: string; count?: number } = {}
+) => {
+  const color = options.color ?? '139, 92, 246';
+  const tl = gsap.timeline({ repeat: options.count ? options.count - 1 : -1 });
+  
+  tl.fromTo(element, {
+    boxShadow: `0 0 0 0 rgba(${color}, 0.7)`,
+  }, {
+    boxShadow: `0 0 0 40px rgba(${color}, 0), 0 0 0 80px rgba(${color}, 0)`,
+    duration: 1.5,
+    ease: 'power2.out',
+  });
+  
+  return tl;
 };
 

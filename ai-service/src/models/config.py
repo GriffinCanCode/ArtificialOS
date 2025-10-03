@@ -40,8 +40,8 @@ class ModelConfig(BaseModel):
     top_p: float = Field(default=0.95, ge=0.0, le=1.0)
     
     # Performance
-    batch_size: int = Field(default=512, ge=1, le=2048)
-    gpu_layers: int = Field(default=35, ge=0, le=200)
+    batch_size: int = Field(default=1024, ge=1, le=2048)  # Increased for better throughput
+    gpu_layers: int = Field(default=-1, ge=-1, le=200)  # -1 = all layers on M4 Max GPU
     threads: Optional[int] = Field(default=None)
     
     # Streaming

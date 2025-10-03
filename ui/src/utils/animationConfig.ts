@@ -78,11 +78,11 @@ export const EASING = {
 // ============================================================================
 
 export const STAGGER = {
-  quick: 0.05,
-  fast: 0.1,
-  normal: 0.15,
-  slow: 0.2,
-  dramatic: 0.3,
+  quick: 0.03,
+  fast: 0.05,
+  normal: 0.08,
+  slow: 0.12,
+  dramatic: 0.2,
 } as const;
 
 // ============================================================================
@@ -136,7 +136,7 @@ export const COMPONENT_TIMINGS = {
   // Build preview animations
   buildContainer: {
     duration: ANIMATION_TIMING.moderate,
-    ease: EASING.bounce,
+    ease: EASING.smoothOut,
   },
   
   // Component building animations
@@ -155,7 +155,7 @@ export const COMPONENT_TIMINGS = {
   // Button interactions
   buttonHover: {
     duration: ANIMATION_TIMING.quick,
-    ease: EASING.standard,
+    ease: EASING.smoothOut,
   },
   
   // Input focus

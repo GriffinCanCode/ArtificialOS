@@ -24,16 +24,13 @@ import { logger } from "../utils/logger";
 import { useSaveApp } from "../hooks/useRegistryQueries";
 import * as gsapAnimations from "../utils/gsapAnimations";
 import {
-  useFadeIn,
   useFloat,
   useSpin,
   useBuildPulse,
   useImperativeAnimation,
   useStaggerSlideUp,
   useBlurReveal,
-  useElasticBounceIn,
   useGlowPulse,
-  useWobble,
   useParticleBurst,
 } from "../hooks/useGSAP";
 import { SaveAppDialog } from "./SaveAppDialog";
@@ -887,10 +884,8 @@ const DynamicRenderer: React.FC = () => {
   const desktopIconRef = useFloat<HTMLDivElement>(true, { distance: 15, duration: 4.5 });
   const desktopMessageRef = useBlurReveal<HTMLDivElement>({ duration: 0.9 });
   const errorRef = useImperativeAnimation<HTMLDivElement>();
-  const { elementRef: wobbleRef, wobble } = useWobble<HTMLDivElement>();
   const buildContainerRef = useRef<HTMLDivElement>(null);
   const buildProgressRef = useRef<HTMLDivElement>(null);
-  const renderedAppRef = useRef<HTMLDivElement>(null);
   const spinnerRef = useSpin<HTMLDivElement>(isLoading || isStreaming, { duration: 1.0 });
   const buildSpinnerRef = useSpin<HTMLDivElement>(true, { duration: 1.0 });
   const buildIconRef = useBuildPulse<HTMLDivElement>(isStreaming);
@@ -898,13 +893,18 @@ const DynamicRenderer: React.FC = () => {
   const saveButtonRef = useGlowPulse<HTMLButtonElement>(false, { color: '99, 102, 241', intensity: 15 });
   const { elementRef: burstRef, burst } = useParticleBurst<HTMLDivElement>();
   
-  // Animate error on appearance with wobble
+  // Animate error with chromatic aberration and wobble
   useEffect(() => {
     if (error && errorRef.elementRef.current) {
-      errorRef.shake();
-      setTimeout(() => wobble(), 300);
+      gsapAnimations.chromaticAberration(errorRef.elementRef.current, { intensity: 6, duration: 0.5 });
+      setTimeout(() => {
+        if (errorRef.elementRef.current) {
+          errorRef.shake();
+          gsapAnimations.wobble(errorRef.elementRef.current);
+        }
+      }, 300);
     }
-  }, [error, wobble]);
+  }, [error]);
 
   // Animate build container on appearance
   useEffect(() => {
@@ -913,18 +913,26 @@ const DynamicRenderer: React.FC = () => {
     }
   }, [isStreaming, partialUISpec]);
 
-  // Animate rendered app on appearance with particle burst
+  // Animate rendered app on appearance with creative effects
   useEffect(() => {
-    if (renderedAppRef.current && uiSpec) {
-      gsapAnimations.appAppear(renderedAppRef.current);
+    if (burstRef.current && uiSpec) {
+      // Use ink blot reveal for a more organic appearance
+      gsapAnimations.inkBlotReveal(burstRef.current, { duration: 1.2, from: 'center' });
+      
       // Add particle burst after a short delay
       setTimeout(() => {
         if (burstRef.current) {
-          burst({ count: 15, duration: 1.5 });
+          burst({ count: 18, duration: 1.8 });
         }
-      }, 400);
+      }, 500);
+      
+      // Add subtle energy pulse to the app title
+      const appTitle = burstRef.current.querySelector('.app-header h2');
+      if (appTitle) {
+        gsapAnimations.energyPulse(appTitle, { color: '139, 92, 246', count: 2 });
+      }
     }
-  }, [uiSpec, burst]);
+  }, [uiSpec, burst, burstRef]);
 
   // Animate progress bar width changes
   useEffect(() => {
@@ -933,7 +941,7 @@ const DynamicRenderer: React.FC = () => {
     }
   }, [buildProgress]);
 
-  // Animate components as they appear during build with enhanced animations
+  // Animate components as they appear during build - with varied creative effects
   const componentRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   
   useEffect(() => {
@@ -942,8 +950,22 @@ const DynamicRenderer: React.FC = () => {
         const key = `${component.id}-${idx}`;
         const element = componentRefs.current.get(key);
         if (element && !element.dataset.animated) {
-          // Use elastic bounce for more dynamic feel
-          gsapAnimations.elasticBounceIn(element, { delay: idx * 0.06, from: 'bottom' });
+          // Vary animations for visual interest
+          const animationType = idx % 3;
+          const delay = idx * 0.05;
+          
+          switch (animationType) {
+            case 0:
+              gsapAnimations.vortexSpiral(element, { duration: 0.8, clockwise: idx % 2 === 0 });
+              break;
+            case 1:
+              gsapAnimations.liquidMorph(element, { duration: 0.9, intensity: 12 });
+              break;
+            case 2:
+              gsapAnimations.elasticBounceIn(element, { delay, from: 'bottom' });
+              break;
+          }
+          
           element.dataset.animated = 'true';
         }
       });
@@ -995,12 +1017,7 @@ const DynamicRenderer: React.FC = () => {
       
       <div className="renderer-canvas">
         {error && (
-          <div ref={(el) => {
-            if (el) {
-              errorRef.elementRef.current = el;
-              wobbleRef.current = el;
-            }
-          }} className="renderer-error">
+          <div ref={errorRef.elementRef} className="renderer-error">
             <strong>Error:</strong> {error}
           </div>
         )}
@@ -1114,12 +1131,7 @@ const DynamicRenderer: React.FC = () => {
         )}
 
         {uiSpec && (
-          <div ref={(el) => {
-            if (el) {
-              renderedAppRef.current = el;
-              burstRef.current = el;
-            }
-          }} className="rendered-app" style={uiSpec.style}>
+          <div ref={burstRef} className="rendered-app" style={uiSpec.style}>
             <div className="app-header">
               <h2>{uiSpec.title}</h2>
               <button
