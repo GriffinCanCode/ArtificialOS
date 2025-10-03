@@ -1,0 +1,49 @@
+.title-bar {
+  height: 40px;
+  background: #0a0a0a;
+  border-bottom: 1px solid #2a2a2a;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+.title-bar-drag {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #ffffff;
+}
+
+.window-controls {
+  display: flex;
+  -webkit-app-region: no-drag;
+}
+
+.control-btn {
+  width: 46px;
+  height: 40px;
+  border: none;
+  background: transparent;
+  color: #ffffff;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.control-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.control-btn.close:hover {
+  background: #e81123;
+  color: white;
+}
+

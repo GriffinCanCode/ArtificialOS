@@ -1,0 +1,59 @@
+.app {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #0a0a0a;
+  color: #ffffff;
+  overflow: hidden;
+}
+
+.app-layout {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  height: calc(100vh - 40px);
+  gap: 1px;
+  background: #1a1a1a;
+}
+
+.panel {
+  background: #0f0f0f;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-panel {
+  border-right: 1px solid #2a2a2a;
+}
+
+.renderer-panel {
+  border-right: 1px solid #2a2a2a;
+}
+
+.thoughts-panel {
+  /* Right panel styling */
+}
+
+/* Responsive design */
+@media (max-width: 1200px) {
+  .app-layout {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .thoughts-panel {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-layout {
+    grid-template-columns: 1fr;
+  }
+  
+  .chat-panel,
+  .thoughts-panel {
+    display: none;
+  }
+}
+

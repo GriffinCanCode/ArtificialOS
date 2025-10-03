@@ -1,0 +1,102 @@
+.thought-stream {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.thought-header {
+  padding: 16px;
+  border-bottom: 1px solid #2a2a2a;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.thought-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.thought-count {
+  font-size: 12px;
+  padding: 4px 8px;
+  background: #1a1a1a;
+  border-radius: 4px;
+}
+
+.thoughts-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  opacity: 0.5;
+  gap: 12px;
+}
+
+.empty-icon {
+  font-size: 48px;
+}
+
+.empty-state p {
+  font-size: 14px;
+}
+
+.thought-item {
+  display: flex;
+  gap: 12px;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.thought-index {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.thought-content {
+  flex: 1;
+  padding: 12px;
+  background: #1a1a1a;
+  border-radius: 8px;
+  border-left: 2px solid #667eea;
+}
+
+.thought-text {
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.thought-time {
+  font-size: 11px;
+  opacity: 0.5;
+  font-family: 'Fira Code', monospace;
+}
+
