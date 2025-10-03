@@ -504,6 +504,11 @@ const DynamicRenderer: React.FC = () => {
     logger.info("Initializing tool executor", { component: "DynamicRenderer" });
     return new ToolExecutor(componentState);
   });
+  
+  // Track which component IDs we've already rendered to avoid re-animating
+  // Use ref so it updates immediately without waiting for React re-render
+  const renderedComponentIdsRef = React.useRef<Set<string>>(new Set());
+  const [lastComponentCount, setLastComponentCount] = useState(0);
 
   // Auto-scroll preview as content is added
   const previewRef = React.useRef<HTMLPreElement>(null);
@@ -534,15 +539,23 @@ const DynamicRenderer: React.FC = () => {
         const layoutMatch = jsonStr.match(/"layout"\s*:\s*"([^"]+)"/);
         const layout = layoutMatch ? layoutMatch[1] : undefined;
 
-        // Try to extract complete components array
-        const componentsMatch = jsonStr.match(/"components"\s*:\s*\[([\s\S]*?)\]/);
+        // Try to extract components from array (even if unclosed during streaming)
+        // Match: "components": [ ... (may be unclosed)
+        const componentsMatch = jsonStr.match(/"components"\s*:\s*\[([\s\S]*)/);
         let components: UIComponent[] = [];
         
         if (componentsMatch) {
-          const componentsStr = componentsMatch[1];
-          // Try to parse individual complete component objects
-          const componentRegex = /\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g;
+          let componentsStr = componentsMatch[1];
+          // Remove trailing incomplete data after last complete object
+          const lastBraceIdx = componentsStr.lastIndexOf('}');
+          if (lastBraceIdx !== -1) {
+            componentsStr = componentsStr.substring(0, lastBraceIdx + 1);
+          }
+          
+          // Extract complete component objects (handles nested objects in props/on_event)
+          const componentRegex = /\{(?:[^{}]|\{[^{}]*\})*\}/g;
           const matches = componentsStr.match(componentRegex);
+          
           if (matches) {
             components = matches
               .map(m => {
@@ -554,6 +567,8 @@ const DynamicRenderer: React.FC = () => {
               })
               .filter((c): c is UIComponent => c !== null);
           }
+          
+          console.log(`🔧 PARSER: Found ${components.length} complete components from ${componentsStr.length} chars`);
         }
 
         if (title || layout || components.length > 0) {
@@ -633,10 +648,14 @@ const DynamicRenderer: React.FC = () => {
             component: "DynamicRenderer",
             message: message.message,
           });
+          console.log("🚀 GENERATION START - Setting streaming=true");
           addGenerationThought(message.message);
           setStreaming(true);
           setBuildProgress(0);
           setPartialUISpec({ components: [] });
+          renderedComponentIdsRef.current = new Set(); // Reset for new generation
+          setLastComponentCount(0);
+          console.log("📊 State after generation start:", { isLoading, isStreaming: true });
           break;
 
         case "thought":
@@ -668,12 +687,38 @@ const DynamicRenderer: React.FC = () => {
             const currentPreview = useAppStore.getState().generationPreview + message.content;
             const parseResult = parsePartialJSON(currentPreview);
             
+            console.log("🔍 PARSE RESULT:", {
+              complete: parseResult.complete,
+              hasData: !!parseResult.data,
+              title: parseResult.data?.title,
+              componentCount: parseResult.data?.components?.length || 0,
+              previewLength: currentPreview.length
+            });
+            
             if (parseResult.data) {
               const partial = parseResult.data as Partial<UISpec>;
               
               // Update partial UI spec if we have new data
               if (partial.title || partial.layout || (partial.components && partial.components.length > 0)) {
+                const currentCount = partial.components?.length || 0;
+                const prevCount = lastComponentCount;
+                const newComponentCount = currentCount - prevCount;
+                
+                if (newComponentCount > 0) {
+                  console.log(`✨ ${newComponentCount} NEW components! (${prevCount} → ${currentCount})`);
+                  console.log(`📊 State check: isLoading=${isLoading}, isStreaming=${isStreaming}, partialComponents=${currentCount}`);
+                  setLastComponentCount(currentCount);
+                }
+                
+                console.log("✅ UPDATING PARTIAL UI SPEC:", partial);
                 setPartialUISpec(partial);
+                
+                // Track component IDs in ref (immediate, no re-render needed)
+                if (partial.components) {
+                  partial.components.forEach(comp => {
+                    renderedComponentIdsRef.current.add(comp.id);
+                  });
+                }
                 
                 // Calculate progress based on components found
                 if (partial.components && partial.components.length > 0) {
@@ -730,7 +775,10 @@ const DynamicRenderer: React.FC = () => {
             component: "DynamicRenderer",
             message: message.message,
           });
+          console.error("❌ GENERATION ERROR:", message.message);
+          console.error("📄 Generated content so far:", useAppStore.getState().generationPreview);
           setError(message.message);
+          setStreaming(false);
           break;
 
         default:
@@ -795,6 +843,16 @@ const DynamicRenderer: React.FC = () => {
     }
   }, [isConnected, client, uiSpec, isLoading, loadUISpec]);
 
+  // Debug: Log render state
+  console.log("🎬 RENDER:", { 
+    isLoading, 
+    isStreaming, 
+    hasPartialComponents: (partialUISpec?.components?.length || 0) > 0,
+    partialCount: partialUISpec?.components?.length,
+    hasUISpec: !!uiSpec,
+    error: !!error
+  });
+
   return (
     <div className="dynamic-renderer">
       <div className="renderer-header">
@@ -811,33 +869,39 @@ const DynamicRenderer: React.FC = () => {
           </div>
         )}
 
-        {isLoading && (
+        {(isLoading || isStreaming || (partialUISpec && !uiSpec)) && (
           <>
             {/* Visual Build Mode - Show partial UI being constructed */}
-            {isStreaming && partialUISpec && (partialUISpec.title || (partialUISpec.components && partialUISpec.components.length > 0)) ? (
+            {(isStreaming || partialUISpec) ? (
               <div className="building-app-preview">
                 <div className="build-progress-header">
                   <div className="build-status-icon">🏗️</div>
                   <div className="build-status-text">
                     <h3>Building Your App...</h3>
-                    <p>{partialUISpec.components?.length || 0} components assembled</p>
+                    <p>{partialUISpec?.components?.length || 0} components assembled</p>
                   </div>
                 </div>
                 
                 <div className="build-progress-bar">
                   <div 
                     className="build-progress-fill" 
-                    style={{ width: `${buildProgress}%` }}
+                    style={{ width: `${buildProgress || 20}%` }}
                   />
                 </div>
 
                 <div className="building-app-container">
-                  {partialUISpec.title && (
+                  {partialUISpec?.title && (
                     <h2 className="building-app-title">{partialUISpec.title}</h2>
                   )}
-                  <div className={`app-content app-layout-${partialUISpec.layout || 'vertical'}`}>
-                    {partialUISpec.components?.map((component, idx) => (
-                      <div key={`building-${component.id}-${idx}`} className="component-building">
+                  <div className={`app-content app-layout-${partialUISpec?.layout || 'vertical'}`}>
+                    {partialUISpec?.components?.map((component, idx) => (
+                      <div 
+                        key={`building-${component.id}-${idx}`} 
+                        className="component-building"
+                        style={{
+                          animationDelay: `${idx * 0.05}s`
+                        }}
+                      >
                         <ComponentRenderer
                           component={component}
                           state={componentState}
@@ -845,6 +909,12 @@ const DynamicRenderer: React.FC = () => {
                         />
                       </div>
                     ))}
+                    {(!partialUISpec?.components || partialUISpec.components.length === 0) && (
+                      <div className="component-assembling" style={{ padding: '2rem', textAlign: 'center' }}>
+                        <div className="spinner" style={{ margin: '0 auto 1rem' }}></div>
+                        <p style={{ opacity: 0.7 }}>Assembling components...</p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -893,7 +963,7 @@ const DynamicRenderer: React.FC = () => {
           </>
         )}
 
-        {!uiSpec && !isLoading && !error && (
+        {!uiSpec && !isLoading && !error && hasAutoLoadedRef.current && (
           <Launcher
             onAppLaunch={(appId, rawUISpec) => {
               // Cast to UISpec since we know the structure from the backend
@@ -904,6 +974,15 @@ const DynamicRenderer: React.FC = () => {
               loadUISpec("create a new app");
             }}
           />
+        )}
+        
+        {!uiSpec && !isLoading && !error && !hasAutoLoadedRef.current && (
+          <div className="generation-progress">
+            <div className="generation-header">
+              <div className="spinner"></div>
+              <h3>🚀 Starting AI-OS...</h3>
+            </div>
+          </div>
         )}
 
         {uiSpec && (

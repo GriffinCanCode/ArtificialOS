@@ -82,34 +82,48 @@ class AIServiceImpl(ai_pb2_grpc.AIServiceServicer):
                 timestamp=int(time.time())
             )
             
-            # Collect tokens during generation
-            tokens = []
+            # Stream tokens in real-time using the generator
+            # Batch tokens to avoid gRPC buffering small messages
+            ui_spec = None
+            token_buffer = ""
+            token_count = 0
+            BATCH_SIZE = 50  # chars per batch
             
-            def stream_callback(token: str):
-                tokens.append(token)
+            for item in self.ui_generator.generate_ui_stream(request.message):
+                if isinstance(item, str):
+                    token_count += 1
+                    token_buffer += item
+                    
+                    # Send when buffer reaches batch size
+                    if len(token_buffer) >= BATCH_SIZE:
+                        if token_count % 100 == 0:
+                            logger.info(f"Sent {token_count} tokens ({len(token_buffer)} chars)...")
+                        yield ai_pb2.UIToken(
+                            type=ai_pb2.UIToken.TOKEN,
+                            content=token_buffer,
+                            timestamp=int(time.time())
+                        )
+                        token_buffer = ""
+                else:
+                    # UISpec - flush any remaining tokens first
+                    if token_buffer:
+                        yield ai_pb2.UIToken(
+                            type=ai_pb2.UIToken.TOKEN,
+                            content=token_buffer,
+                            timestamp=int(time.time())
+                        )
+                        token_buffer = ""
+                    ui_spec = item
             
-            # Generate UI (with streaming if LLM available)
-            ui_spec = self.ui_generator.generate_ui(
-                request.message,
-                stream_callback=stream_callback if self.ui_generator.use_llm else None
-            )
-            
-            # Send collected tokens
-            for token in tokens:
+            # Flush any remaining buffered tokens
+            if token_buffer:
                 yield ai_pb2.UIToken(
                     type=ai_pb2.UIToken.TOKEN,
-                    content=token,
+                    content=token_buffer,
                     timestamp=int(time.time())
                 )
             
-            # If no tokens (rule-based), send the full JSON
-            if not tokens:
-                ui_json = json.dumps(ui_spec.model_dump())
-                yield ai_pb2.UIToken(
-                    type=ai_pb2.UIToken.TOKEN,
-                    content=ui_json,
-                    timestamp=int(time.time())
-                )
+            logger.info(f"Finished streaming {token_count} tokens")
             
             # Send thoughts
             yield ai_pb2.UIToken(

@@ -21,7 +21,9 @@ protoc --go_out=. --go_opt=paths=source_relative \
 
 # Compile AI proto for Python
 echo "📦 Compiling ai.proto for Python..."
-cd ../../ai-service/proto
+cd ../../ai-service
+source venv/bin/activate
+cd proto
 python3 -m grpc_tools.protoc -I. --python_out=../src --grpc_python_out=../src ai.proto
 
 echo "✅ Protocol buffer compilation complete!"

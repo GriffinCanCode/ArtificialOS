@@ -618,38 +618,63 @@ REQUIRED ROOT STRUCTURE:
     
     def generate_ui(self, request: str, stream_callback=None) -> UISpec:
         """
-        Generate UI specification from natural language request.
+        Non-streaming version - collects all tokens then returns UISpec.
+        For streaming, use generate_ui_stream() instead.
+        """
+        # If callback provided, collect tokens
+        if stream_callback:
+            for item in self.generate_ui_stream(request):
+                if isinstance(item, str):
+                    stream_callback(item)
+                else:
+                    return item
+        else:
+            # No streaming, just return the spec
+            for item in self.generate_ui_stream(request):
+                if isinstance(item, UISpec):
+                    return item
+        
+    def generate_ui_stream(self, request: str):
+        """
+        Generator that yields tokens (str) during generation, then yields final UISpec.
         
         Args:
             request: User's natural language request (e.g., "create a calculator")
-            stream_callback: Optional callback(token) for real-time streaming
             
-        Returns:
-            UISpec: Structured UI specification
+        Yields:
+            str: JSON tokens during generation
+            UISpec: Final UI specification
         """
         # Use LLM-based generation if available
         if self.use_llm:
             try:
                 logger.info(f"Generating UI with LLM for: {request}")
-                return self._generate_with_llm(request, stream_callback=stream_callback)
+                # Stream tokens from LLM
+                for item in self._generate_with_llm_stream(request):
+                    yield item  # Yield tokens (str) or UISpec
+                return
             except Exception as e:
                 logger.warning(f"LLM generation failed: {e}. Falling back to rules.")
                 # Fall through to rule-based generation
         
-        # Rule-based generation (fallback)
+        # Rule-based generation (fallback) - yield the JSON then the spec
         logger.info(f"Using rule-based generation for: {request}")
         request_lower = request.lower()
         
         if "calculator" in request_lower:
-            return self._generate_calculator()
+            ui_spec = self._generate_calculator()
         elif "todo" in request_lower or "task" in request_lower:
-            return self._generate_todo_app()
+            ui_spec = self._generate_todo_app()
         elif "counter" in request_lower:
-            return self._generate_counter()
+            ui_spec = self._generate_counter()
         else:
-            return self._generate_placeholder(request)
+            ui_spec = self._generate_placeholder(request)
+        
+        # Yield the JSON as a single token for rule-based
+        yield json.dumps(ui_spec.model_dump())
+        yield ui_spec
     
-    def _generate_with_llm(self, request: str, stream_callback=None) -> UISpec:
+    def _generate_with_llm_stream(self, request: str):
         """
         Generate UI using LLM with structured output.
         
@@ -692,9 +717,7 @@ Output the complete UI specification as valid JSON now:"""
         logger.info(f"Sending prompt to LLM for: {request}")
         logger.debug(f"Full prompt length: {len(full_prompt)} characters")
         
-        # Use streaming to avoid empty content when hitting max_tokens
-        # Bug: invoke() returns empty content when done_reason=='length'
-        # Fix: stream() and accumulate chunks works even when hitting limit
+        # Stream tokens in real-time
         content = ""
         chunk_count = 0
         
@@ -703,9 +726,9 @@ Output the complete UI specification as valid JSON now:"""
             if hasattr(chunk, 'content'):
                 token = chunk.content
                 content += token
-                # Send token to callback for real-time streaming
-                if stream_callback and token:
-                    stream_callback(token)
+                # Yield token immediately for real-time streaming
+                if token:
+                    yield token
         
         logger.info(f"LLM response: {chunk_count} chunks, {len(content)} characters")
         if content:
@@ -720,7 +743,7 @@ Output the complete UI specification as valid JSON now:"""
         try:
             ui_spec = UISpec.model_validate(ui_spec_json)
             logger.info(f"Successfully generated UI: {ui_spec.title}")
-            return ui_spec
+            yield ui_spec  # Yield the final UISpec
         except Exception as e:
             logger.error(f"Failed to validate UISpec: {e}")
             logger.error(f"Response content: {content}")
