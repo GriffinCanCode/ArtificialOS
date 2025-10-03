@@ -9,7 +9,7 @@ import type {
   SaveAppResponse,
   ListAppsResponse,
   LaunchAppResponse,
-} from "../types/registry";
+} from "../../types/registry";
 
 const API_BASE = "http://localhost:8000";
 

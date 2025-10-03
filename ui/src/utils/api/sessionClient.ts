@@ -9,7 +9,7 @@ import type {
   SaveSessionResponse,
   ListSessionsResponse,
   RestoreSessionResponse,
-} from "../types/session";
+} from "../../types/session";
 
 const API_BASE = "http://localhost:8000";
 

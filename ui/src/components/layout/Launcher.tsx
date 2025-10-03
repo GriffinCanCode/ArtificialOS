@@ -5,8 +5,8 @@
 
 import React, { useState, useCallback } from "react";
 import { Rocket, Plus, AlertTriangle } from "lucide-react";
-import { useRegistryApps, useRegistryMutations } from "../hooks/useRegistryQueries";
-import { cardVariants, categoryButtonVariants, cn } from "../utils/componentVariants";
+import { useRegistryApps, useRegistryMutations } from "../../hooks/useRegistryQueries";
+import { cardVariants, categoryButtonVariants, cn } from "../../utils/animation/componentVariants";
 import "./Launcher.css";
 
 interface LauncherProps {

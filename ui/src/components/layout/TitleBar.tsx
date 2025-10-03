@@ -5,10 +5,10 @@
 
 import React, { useState, useCallback } from "react";
 import { Save, FolderOpen, X, Trash2 } from "lucide-react";
-import { useSessions, useDeleteSession } from "../hooks/useSessionQueries";
-import { useLogger } from "../utils/useLogger";
-import { SaveSessionDialog } from "./SaveSessionDialog";
-import { controlButtonVariants, cn } from "../utils/componentVariants";
+import { useSessions, useDeleteSession } from "../../hooks/useSessionQueries";
+import { useLogger } from "../../utils/monitoring/useLogger";
+import { SaveSessionDialog } from "../dialogs/SaveSessionDialog";
+import { controlButtonVariants, cn } from "../../utils/animation/componentVariants";
 import "./TitleBar.css";
 
 interface TitleBarProps {

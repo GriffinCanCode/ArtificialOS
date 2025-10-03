@@ -23,8 +23,8 @@ import {
   ServiceExecuteRequest,
   ServiceExecuteResponse,
   ServiceExecuteResponseSchema,
-} from "../types/api";
-import { logger } from "./logger";
+} from "../../types/api";
+import { logger } from "../monitoring/logger";
 
 const API_BASE_URL = "http://localhost:8000";
 

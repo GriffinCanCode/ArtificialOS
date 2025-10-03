@@ -8,8 +8,8 @@ import type {
   SaveSessionRequest,
   ListSessionsResponse,
 } from "../types/session";
-import { SessionClient } from "../utils/sessionClient";
-import { logger } from "../utils/logger";
+import { SessionClient } from "../utils/api/sessionClient";
+import { logger } from "../utils/monitoring/logger";
 
 // ============================================================================
 // Query Keys - Centralized for consistency

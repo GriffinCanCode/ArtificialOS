@@ -5,9 +5,9 @@
 
 import React, { useRef, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
-import { useMessages, useAppActions } from "../store/appStore";
-import { useWebSocket } from "../contexts/WebSocketContext";
-import { useLogger } from "../utils/useLogger";
+import { useMessages, useAppActions } from "../../store/appStore";
+import { useWebSocket } from "../../contexts/WebSocketContext";
+import { useLogger } from "../../utils/monitoring/useLogger";
 import "./ChatInterface.css";
 
 interface ChatFormData {

@@ -5,9 +5,9 @@
 
 import React, { useRef, useEffect, useCallback } from "react";
 import { MessageCircle, Brain, X } from "lucide-react";
-import { useThoughts, useAppActions } from "../store/appStore";
-import { useWebSocket } from "../contexts/WebSocketContext";
-import { usePulse, useFadeIn, useStaggerSlideUp } from "../hooks/useGSAP";
+import { useThoughts, useAppActions } from "../../store/appStore";
+import { useWebSocket } from "../../contexts/WebSocketContext";
+import { usePulse, useFadeIn, useStaggerSlideUp } from "../../hooks/useGSAP";
 import "./ThoughtStream.css";
 
 interface ThoughtStreamProps {

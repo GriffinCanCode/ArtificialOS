@@ -7,7 +7,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useAppStore } from "../store/appStore";
 import type { ChatState, UIState } from "../types/session";
-import { logger } from "../utils/logger";
+import { logger } from "../utils/monitoring/logger";
 import {
   useSaveSession,
   useSaveDefaultSession,

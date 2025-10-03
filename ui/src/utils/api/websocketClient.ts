@@ -10,8 +10,8 @@ import {
   createChatMessage,
   createGenerateUIMessage,
   createPingMessage,
-} from "../types/api";
-import { logger } from "./logger";
+} from "../../types/api";
+import { logger } from "../monitoring/logger";
 
 export type MessageHandler = (message: ServerMessage) => void;
 export type ConnectionHandler = (connected: boolean) => void;

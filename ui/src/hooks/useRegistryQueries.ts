@@ -4,7 +4,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { RegistryClient } from "../utils/registryClient";
+import { RegistryClient } from "../utils/api/registryClient";
 import type {
   Package,
   PackageMetadata,
@@ -13,7 +13,7 @@ import type {
   ListAppsResponse,
   LaunchAppResponse,
 } from "../types/registry";
-import { logger } from "../utils/logger";
+import { logger } from "../utils/monitoring/logger";
 
 // ============================================================================
 // Query Keys - Centralized for consistency

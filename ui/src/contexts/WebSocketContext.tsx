@@ -5,8 +5,8 @@
  */
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { WebSocketClient } from "../utils/websocketClient";
-import { logger } from "../utils/logger";
+import { WebSocketClient } from "../utils/api/websocketClient";
+import { logger } from "../utils/monitoring/logger";
 
 interface WebSocketContextType {
   client: WebSocketClient | null;

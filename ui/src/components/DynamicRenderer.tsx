@@ -27,9 +27,10 @@ import {
   UIComponent,
   UISpec,
 } from "../store/appStore";
-import { logger } from "../utils/logger";
+import { logger } from "../utils/monitoring/logger";
+import { startPerf, endPerf } from "../utils/monitoring/performanceMonitor";
 import { useSaveApp } from "../hooks/useRegistryQueries";
-import * as gsapAnimations from "../utils/gsapAnimations";
+import * as gsapAnimations from "../utils/animation/gsapAnimations";
 import {
   useFloat,
   useSpin,
@@ -40,598 +41,21 @@ import {
   useGlowPulse,
   useParticleBurst,
 } from "../hooks/useGSAP";
-import { SaveAppDialog } from "./SaveAppDialog";
-import {
-  buttonVariants,
-  inputVariants,
-  textVariants,
-  containerVariants,
-  gridVariants,
-  cn,
-} from "../utils/componentVariants";
+import { SaveAppDialog } from "./dialogs/SaveAppDialog";
 import "./DynamicRenderer.css";
 
-// ============================================================================
-// Constants
-// ============================================================================
-
-// JSON size limits (in bytes) - must match backend
-const MAX_UI_SPEC_SIZE = 512 * 1024; // 512KB
-const MAX_JSON_DEPTH = 20; // Maximum nesting depth
-
-/**
- * Validate JSON size to prevent DoS
- */
-function validateJSONSize(jsonStr: string, maxSize: number = MAX_UI_SPEC_SIZE): void {
-  const size = new Blob([jsonStr]).size;
-  if (size > maxSize) {
-    throw new Error(`JSON size ${size} bytes exceeds maximum ${maxSize} bytes`);
-  }
-}
-
-/**
- * Validate JSON nesting depth
- */
-function validateJSONDepth(obj: any, maxDepth: number = MAX_JSON_DEPTH, currentDepth: number = 0): void {
-  if (currentDepth > maxDepth) {
-    throw new Error(`JSON nesting depth ${currentDepth} exceeds maximum ${maxDepth}`);
-  }
-  
-  if (typeof obj === 'object' && obj !== null) {
-    if (Array.isArray(obj)) {
-      obj.forEach(item => validateJSONDepth(item, maxDepth, currentDepth + 1));
-    } else {
-      Object.values(obj).forEach(value => validateJSONDepth(value, maxDepth, currentDepth + 1));
-    }
-  }
-}
-
-// ============================================================================
-// Component State Manager
-// ============================================================================
-
-class ComponentState {
-  private state: Map<string, any> = new Map();
-  private listeners: Map<string, Set<(value: any) => void>> = new Map();
-
-  get(key: string, defaultValue: any = null): any {
-    return this.state.get(key) ?? defaultValue;
-  }
-
-  set(key: string, value: any): void {
-    this.state.set(key, value);
-    // Notify listeners
-    const listeners = this.listeners.get(key);
-    if (listeners) {
-      listeners.forEach((listener) => listener(value));
-    }
-  }
-
-  subscribe(key: string, listener: (value: any) => void): () => void {
-    if (!this.listeners.has(key)) {
-      this.listeners.set(key, new Set());
-    }
-    this.listeners.get(key)!.add(listener);
-
-    // Return unsubscribe function
-    return () => {
-      const listeners = this.listeners.get(key);
-      if (listeners) {
-        listeners.delete(listener);
-      }
-    };
-  }
-
-  clear(): void {
-    this.state.clear();
-    this.listeners.clear();
-  }
-}
-
-// ============================================================================
-// Tool Execution
-// ============================================================================
-
-class ToolExecutor {
-  private componentState: ComponentState;
-  private appId: string | null = null;
-  private activeTimers: Set<number> = new Set(); // Track active timers for cleanup
-
-  constructor(componentState: ComponentState) {
-    this.componentState = componentState;
-  }
-
-  setAppId(appId: string): void {
-    this.appId = appId;
-  }
-
-  /**
-   * Clean up all active timers (call on unmount)
-   */
-  cleanup(): void {
-    this.activeTimers.forEach(timerId => {
-      clearTimeout(timerId);
-      clearInterval(timerId);
-    });
-    this.activeTimers.clear();
-    logger.info("Cleaned up all active timers", {
-      component: "ToolExecutor",
-      count: this.activeTimers.size
-    });
-  }
-
-  async execute(toolId: string, params: Record<string, any> = {}): Promise<any> {
-    const startTime = performance.now();
-    try {
-      logger.debug("Executing tool", {
-        component: "ToolExecutor",
-        toolId,
-        paramsCount: Object.keys(params).length,
-      });
-
-      // Check if this is a service tool (contains service prefix like storage.*, auth.*, ai.*)
-      const servicePrefixes = ["storage", "auth", "ai", "sync", "media"];
-      const [category] = toolId.split(".");
-
-      let result;
-      if (servicePrefixes.includes(category)) {
-        result = await this.executeServiceTool(toolId, params);
-      } else {
-        // Handle built-in tools
-        switch (category) {
-          case "calc":
-            result = this.executeCalcTool(toolId.split(".")[1], params);
-            break;
-          case "ui":
-            result = this.executeUITool(toolId.split(".")[1], params);
-            break;
-          case "system":
-            result = this.executeSystemTool(toolId.split(".")[1], params);
-            break;
-          case "app":
-            result = await this.executeAppTool(toolId.split(".")[1], params);
-            break;
-          case "http":
-            result = await this.executeNetworkTool(toolId.split(".")[1], params);
-            break;
-          case "timer":
-            result = this.executeTimerTool(toolId.split(".")[1], params);
-            break;
-          default:
-            logger.warn("Unknown tool category", {
-              component: "ToolExecutor",
-              category,
-              toolId,
-            });
-            result = null;
-        }
-      }
-
-      const duration = performance.now() - startTime;
-      logger.performance("Tool execution", duration, {
-        component: "ToolExecutor",
-        toolId,
-      });
-
-      return result;
-    } catch (error) {
-      const duration = performance.now() - startTime;
-      logger.error("Tool execution failed", error as Error, {
-        component: "ToolExecutor",
-        toolId,
-        duration,
-      });
-      this.componentState.set(
-        "error",
-        `Tool ${toolId} failed: ${error instanceof Error ? error.message : "Unknown error"}`
-      );
-      return null;
-    }
-  }
-
-  private async executeServiceTool(toolId: string, params: Record<string, any>): Promise<any> {
-    logger.debug("Executing service tool", {
-      component: "ToolExecutor",
-      toolId,
-    });
-
-    try {
-      const response = await fetch("http://localhost:8000/services/execute", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tool_id: toolId,
-          params: params,
-          app_id: this.appId,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Service call failed: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error || "Service execution failed");
-      }
-
-      logger.debug("Service tool executed successfully", {
-        component: "ToolExecutor",
-        toolId,
-        hasData: !!result.data,
-      });
-      return result.data;
-    } catch (error) {
-      logger.error("Service tool execution failed", error as Error, {
-        component: "ToolExecutor",
-        toolId,
-      });
-      throw error;
-    }
-  }
-
-  private executeCalcTool(action: string, params: Record<string, any>): any {
-    const a = params.a || 0;
-    const b = params.b || 0;
-
-    switch (action) {
-      case "add":
-        return a + b;
-      case "subtract":
-        return a - b;
-      case "multiply":
-        return a * b;
-      case "divide":
-        return b !== 0 ? a / b : "Error";
-      case "append_digit":
-        const current = this.componentState.get("display", "0");
-        const digit = params.digit || "";
-        const newValue = current === "0" ? digit : current + digit;
-        this.componentState.set("display", newValue);
-        return newValue;
-      case "clear":
-        this.componentState.set("display", "0");
-        return "0";
-      case "evaluate":
-        try {
-          const expression = this.componentState.get("display", "0");
-          // Simple eval (in production, use a proper math parser!)
-          const result = eval(expression.replace("×", "*").replace("÷", "/").replace("−", "-"));
-          this.componentState.set("display", String(result));
-          return result;
-        } catch {
-          this.componentState.set("display", "Error");
-          return "Error";
-        }
-      default:
-        return null;
-    }
-  }
-
-  private executeUITool(action: string, params: Record<string, any>): any {
-    switch (action) {
-      case "set_state":
-        this.componentState.set(params.key, params.value);
-        return params.value;
-      case "get_state":
-        return this.componentState.get(params.key);
-      case "add_todo":
-        const todos = this.componentState.get("todos", []);
-        const newTask = this.componentState.get("task-input", "");
-        if (newTask.trim()) {
-          todos.push({ id: Date.now(), text: newTask, done: false });
-          this.componentState.set("todos", [...todos]);
-          this.componentState.set("task-input", "");
-        }
-        return todos;
-      default:
-        return null;
-    }
-  }
-
-  private executeSystemTool(action: string, params: Record<string, any>): any {
-    switch (action) {
-      case "alert":
-        alert(params.message);
-        return true;
-      case "log":
-        logger.info("System log", { component: "SystemTool", message: params.message });
-        return true;
-      default:
-        return null;
-    }
-  }
-
-  private async executeAppTool(action: string, params: Record<string, any>): Promise<any> {
-    switch (action) {
-      case "spawn":
-        logger.info("Spawning new app", {
-          component: "AppTool",
-          request: params.request,
-        });
-        // Use HTTP endpoint for app spawning instead of creating new WebSocket
-        const response = await fetch("http://localhost:8000/generate-ui", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message: params.request,
-            context: { parent_app_id: this.componentState.get("app_id") },
-          }),
-        });
-        const data = await response.json();
-
-        if (data.error) {
-          throw new Error(data.error);
-        }
-
-        // Notify parent component to render new app
-        window.postMessage(
-          {
-            type: "spawn_app",
-            app_id: data.app_id,
-            ui_spec: data.ui_spec,
-          },
-          "*"
-        );
-
-        return data.ui_spec;
-
-      case "close":
-        logger.info("Closing current app", { component: "AppTool" });
-        // Notify parent to close this app
-        window.postMessage({ type: "close_app" }, "*");
-        return true;
-
-      case "list":
-        logger.info("Listing apps", { component: "AppTool" });
-        const appsResponse = await fetch("http://localhost:8000/apps");
-        const appsData = await appsResponse.json();
-        return appsData.apps;
-
-      default:
-        return null;
-    }
-  }
-
-  // Storage tools now handled by service system via executeServiceTool()
-
-  private async executeNetworkTool(action: string, params: Record<string, any>): Promise<any> {
-    switch (action) {
-      case "get":
-        const getResponse = await fetch(params.url);
-        return await getResponse.json();
-      case "post":
-        const postResponse = await fetch(params.url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(params.data),
-        });
-        return await postResponse.json();
-      default:
-        return null;
-    }
-  }
-
-  private executeTimerTool(action: string, params: Record<string, any>): any {
-    switch (action) {
-      case "set":
-        const timerId = setTimeout(() => {
-          // Execute the action (would need tool executor reference)
-          logger.debug("Executing delayed action", {
-            component: "TimerTool",
-            action: params.action,
-          });
-          // Remove from active timers after execution
-          this.activeTimers.delete(timerId);
-        }, params.delay) as unknown as number;
-        
-        // Track this timer for cleanup
-        this.activeTimers.add(timerId);
-        this.componentState.set(`timer_${timerId}`, timerId);
-        return timerId;
-        
-      case "interval":
-        const intervalId = setInterval(() => {
-          logger.debug("Executing interval action", {
-            component: "TimerTool",
-            action: params.action,
-          });
-        }, params.interval) as unknown as number;
-        
-        // Track this interval for cleanup
-        this.activeTimers.add(intervalId);
-        this.componentState.set(`interval_${intervalId}`, intervalId);
-        return intervalId;
-        
-      case "clear":
-        const id = this.componentState.get(params.timer_id);
-        if (id) {
-          clearTimeout(id);
-          clearInterval(id);
-          this.activeTimers.delete(id);
-        }
-        return true;
-      default:
-        return null;
-    }
-  }
-}
-
-// ============================================================================
-// Component Renderers
-// ============================================================================
-
-interface RendererProps {
-  component: UIComponent;
-  state: ComponentState;
-  executor: ToolExecutor;
-}
-
-const ComponentRenderer: React.FC<RendererProps> = React.memo(({ component, state, executor }) => {
-  const [, forceUpdate] = useState({});
-
-  // Subscribe to state changes for this component
-  React.useEffect(() => {
-    if (component.id) {
-      const unsubscribe = state.subscribe(component.id, () => {
-        forceUpdate({});
-      });
-      return unsubscribe;
-    }
-  }, [component.id, state]);
-
-  const handleEvent = useCallback(
-    (eventName: string, eventData?: any) => {
-      const toolId = component.on_event?.[eventName];
-      if (toolId) {
-        // Extract params from event or component
-        const params = {
-          ...eventData,
-          componentId: component.id,
-          digit: component.props?.text, // For calculator buttons
-        };
-        executor.execute(toolId, params);
-      }
-    },
-    [component, executor]
-  );
-
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    state.set(component.id, e.target.value);
-  }, [component.id, state]);
-
-  // Render based on component type
-  switch (component.type) {
-    case "button":
-      return (
-        <button
-          className={cn(
-            buttonVariants({
-              variant: component.props?.variant as any,
-              size: component.props?.size as any,
-              fullWidth: component.props?.fullWidth,
-            })
-          )}
-          onClick={() => handleEvent("click")}
-          style={component.props?.style}
-        >
-          {component.props?.text || "Button"}
-        </button>
-      );
-
-    case "input":
-      const value = state.get(component.id, component.props?.value || "");
-      return (
-        <input
-          className={cn(
-            inputVariants({
-              variant: component.props?.variant as any,
-              size: component.props?.size as any,
-              error: component.props?.error,
-              disabled: component.props?.disabled,
-            })
-          )}
-          type={component.props?.type || "text"}
-          placeholder={component.props?.placeholder}
-          value={value}
-          readOnly={component.props?.readonly}
-          disabled={component.props?.disabled}
-          onChange={handleInputChange}
-          style={component.props?.style}
-        />
-      );
-
-    case "text":
-      const textVariant = component.props?.variant || "body";
-      const Tag = textVariant === "h1" ? "h1" : textVariant === "h2" ? "h2" : textVariant === "h3" ? "h3" : "p";
-      return (
-        <Tag
-          className={cn(
-            textVariants({
-              variant: textVariant as any,
-              weight: component.props?.weight as any,
-              color: component.props?.color as any,
-              align: component.props?.align as any,
-            })
-          )}
-          style={component.props?.style}
-        >
-          {component.props?.content}
-        </Tag>
-      );
-
-    case "container":
-      return (
-        <div
-          className={cn(
-            containerVariants({
-              layout: component.props?.layout as any,
-              spacing: component.props?.spacing as any,
-              padding: component.props?.padding as any,
-              align: component.props?.align as any,
-              justify: component.props?.justify as any,
-            })
-          )}
-          style={{
-            gap: component.props?.gap ? `${component.props.gap}px` : undefined,
-            ...component.props?.style,
-          }}
-        >
-          {component.children?.map((child: UIComponent, idx: number) => (
-            <ComponentRenderer
-              key={`${child.id}-${idx}`}
-              component={child}
-              state={state}
-              executor={executor}
-            />
-          ))}
-        </div>
-      );
-
-    case "grid":
-      return (
-        <div
-          className={cn(
-            gridVariants({
-              columns: component.props?.columns as any,
-              spacing: component.props?.spacing as any,
-              responsive: component.props?.responsive,
-            })
-          )}
-          style={{
-            gridTemplateColumns: component.props?.columns
-              ? `repeat(${component.props.columns}, 1fr)`
-              : undefined,
-            gap: component.props?.gap ? `${component.props.gap}px` : undefined,
-            ...component.props?.style,
-          }}
-        >
-          {component.children?.map((child: UIComponent, idx: number) => (
-            <ComponentRenderer
-              key={`${child.id}-${idx}`}
-              component={child}
-              state={state}
-              executor={executor}
-            />
-          ))}
-        </div>
-      );
-
-    default:
-      return <div className="dynamic-unknown">Unknown component: {component.type}</div>;
-  }
-}, (prevProps, nextProps) => {
-  // Custom comparison for better memoization
-  return (
-    prevProps.component.id === nextProps.component.id &&
-    prevProps.component.type === nextProps.component.type &&
-    JSON.stringify(prevProps.component.props) === JSON.stringify(nextProps.component.props) &&
-    prevProps.component.children?.length === nextProps.component.children?.length
-  );
-});
-
-ComponentRenderer.displayName = 'ComponentRenderer';
+// Import split modules
+import {
+  VIRTUAL_SCROLL_THRESHOLD,
+  DEFAULT_ITEM_HEIGHT,
+  PARSE_DEBOUNCE_MS,
+  validateJSONSize,
+  validateJSONDepth,
+} from "./DynamicRenderer.constants";
+import { ComponentState } from "./DynamicRenderer.state";
+import { ToolExecutor } from "./DynamicRenderer.executor";
+import { ComponentRenderer } from "./DynamicRenderer.renderer";
+import { VirtualizedList } from "./DynamicRenderer.virtual";
 
 // ============================================================================
 // Main DynamicRenderer Component
@@ -667,8 +91,35 @@ const DynamicRenderer: React.FC = () => {
 
   const [componentState] = useState(() => {
     logger.info("Initializing component state", { component: "DynamicRenderer" });
-    return new ComponentState();
+    const state = new ComponentState();
+    
+    // Configure state management
+    state.setMaxHistorySize(100); // Keep history for undo/redo
+    
+    // Setup global computed values
+    state.defineComputed('formValid', ['error.*'], (stateMap) => {
+      for (const [key, value] of stateMap.entries()) {
+        if (key.startsWith('error.') && value) {
+          return false;
+        }
+      }
+      return true;
+    });
+
+    // Setup global wildcard listeners for debugging
+    if (process.env.NODE_ENV === 'development') {
+      state.subscribeWildcard('error.*', (event) => {
+        logger.error("Error state changed", undefined, {
+          component: "ComponentState",
+          key: event.key,
+          error: event.newValue,
+        });
+      });
+    }
+
+    return state;
   });
+  
   const [toolExecutor] = useState(() => {
     logger.info("Initializing tool executor", { component: "DynamicRenderer" });
     return new ToolExecutor(componentState);
@@ -681,7 +132,13 @@ const DynamicRenderer: React.FC = () => {
 
   // Debounce partial JSON parsing
   const parseDebounceTimerRef = React.useRef<number | null>(null);
-  const PARSE_DEBOUNCE_MS = 150; // Parse at most every 150ms
+  
+  // Cache last parse result to avoid redundant parsing
+  const lastParseResultRef = React.useRef<{
+    preview: string;
+    result: any;
+    hash: string;
+  } | null>(null);
 
   // Auto-scroll preview as content is added
   const previewRef = React.useRef<HTMLPreElement>(null);
@@ -696,15 +153,30 @@ const DynamicRenderer: React.FC = () => {
   }, [generationPreview]);
 
   // Helper to extract partial UI spec from streaming JSON
+  // Optimized with result caching to avoid redundant parsing
   const parsePartialJSON = useCallback((jsonStr: string) => {
+    // Performance monitoring
+    startPerf('json_parse', { size: jsonStr.length });
+    
+    // Quick hash for cache check (simple but effective)
+    const hash = `${jsonStr.length}-${jsonStr.slice(0, 50)}`;
+    
+    // Return cached result if input hasn't changed significantly
+    if (lastParseResultRef.current?.hash === hash) {
+      endPerf('json_parse', { cached: true });
+      return lastParseResultRef.current.result;
+    }
+    
+    let result;
+    
     try {
       // Try to parse complete JSON first
       const parsed = JSON.parse(jsonStr);
-      return { complete: true, data: parsed };
+      result = { complete: true, data: parsed };
     } catch (e) {
       // If incomplete, try to extract what we can
       try {
-        // Look for title
+        // Look for title (cached regex for performance)
         const titleMatch = jsonStr.match(/"title"\s*:\s*"([^"]+)"/);
         const title = titleMatch ? titleMatch[1] : undefined;
 
@@ -726,11 +198,20 @@ const DynamicRenderer: React.FC = () => {
           }
 
           // Extract complete component objects (handles nested objects in props/on_event)
+          // Optimized: Only parse new components beyond what we've already parsed
           const componentRegex = /\{(?:[^{}]|\{[^{}]*\})*\}/g;
           const matches = componentsStr.match(componentRegex);
 
           if (matches) {
-            components = matches
+            // Only parse components we haven't seen before
+            const previousCount = lastParseResultRef.current?.result?.data?.components?.length || 0;
+            const newMatches = matches.slice(previousCount);
+            
+            // Reuse previously parsed components if available
+            const previousComponents = lastParseResultRef.current?.result?.data?.components || [];
+            
+            // Parse only new components for efficiency
+            const newComponents = newMatches
               .map((m) => {
                 try {
                   return JSON.parse(m);
@@ -739,17 +220,21 @@ const DynamicRenderer: React.FC = () => {
                 }
               })
               .filter((c): c is UIComponent => c !== null);
-          }
+            
+            components = [...previousComponents, ...newComponents];
 
-          logger.debugThrottled("Partial JSON parsing progress", {
-            component: "DynamicRenderer",
-            componentsFound: components.length,
-            charsProcessed: componentsStr.length,
-          });
+            logger.debugThrottled("Partial JSON parsing progress", {
+              component: "DynamicRenderer",
+              componentsFound: components.length,
+              newComponents: newComponents.length,
+              cached: previousComponents.length,
+              charsProcessed: componentsStr.length,
+            });
+          }
         }
 
         if (title || layout || components.length > 0) {
-          return {
+          result = {
             complete: false,
             data: {
               title,
@@ -758,12 +243,28 @@ const DynamicRenderer: React.FC = () => {
               type: "app",
             },
           };
+        } else {
+          result = { complete: false, data: null };
         }
       } catch (parseError) {
         // Silent fail - we'll try again with more data
+        result = { complete: false, data: null };
       }
     }
-    return { complete: false, data: null };
+    
+    // Cache result for next call
+    lastParseResultRef.current = {
+      preview: jsonStr,
+      result,
+      hash,
+    };
+    
+    endPerf('json_parse', { 
+      cached: false,
+      componentsFound: result?.data?.components?.length || 0 
+    });
+    
+    return result;
   }, []);
 
 
@@ -791,6 +292,7 @@ const DynamicRenderer: React.FC = () => {
           setPartialUISpec({ components: [] });
           renderedComponentIdsRef.current = new Set(); // Reset for new generation
           setLastComponentCount(0);
+          lastParseResultRef.current = null; // Clear parse cache for new generation
           logger.debug("Generation state initialized", {
             component: "DynamicRenderer",
             isStreaming: true,
@@ -899,8 +401,22 @@ const DynamicRenderer: React.FC = () => {
               componentCount: message.ui_spec.components.length,
             });
             setUISpec(message.ui_spec, message.app_id);
-            componentState.clear();
-            componentState.set("app_id", message.app_id);
+            
+            // Use batch update for initialization
+            componentState.batch(() => {
+              componentState.clear();
+              componentState.set("app_id", message.app_id);
+              componentState.set("app_title", message.ui_spec.title);
+              componentState.set("app_initialized", Date.now());
+              
+              // Setup computed values specific to this app
+              if (message.ui_spec.components) {
+                componentState.defineComputed('componentCount', ['app_initialized'], () => {
+                  return message.ui_spec.components.length;
+                });
+              }
+            });
+            
             toolExecutor.setAppId(message.app_id);
           } catch (validationError) {
             logger.error("UI spec validation failed", validationError as Error, {
@@ -982,6 +498,11 @@ const DynamicRenderer: React.FC = () => {
     setError,
     addGenerationThought,
     appendGenerationPreview,
+    parsePartialJSON,
+    setStreaming,
+    setBuildProgress,
+    setPartialUISpec,
+    lastComponentCount,
   ]);
 
   // Cleanup: Execute on_unmount hooks when component unmounts or UI changes
@@ -1040,7 +561,7 @@ const DynamicRenderer: React.FC = () => {
         }
       }, 300);
     }
-  }, [error]);
+  }, [error, errorRef]);
 
   // Animate build container on appearance
   useEffect(() => {
@@ -1196,29 +717,46 @@ const DynamicRenderer: React.FC = () => {
                     <h2 className="building-app-title">{partialUISpec.title}</h2>
                   )}
                   <div className={`app-content app-layout-${partialUISpec?.layout || "vertical"}`}>
-                    {partialUISpec?.components?.map((component, idx) => (
-                      <div
-                        key={`building-${component.id}-${idx}`}
-                        ref={(el) => {
-                          if (el) componentRefs.current.set(`${component.id}-${idx}`, el);
-                        }}
-                        className="component-building"
-                      >
-                        <ComponentRenderer
-                          component={component}
-                          state={componentState}
-                          executor={toolExecutor}
-                        />
-                      </div>
-                    ))}
-                    {(!partialUISpec?.components || partialUISpec.components.length === 0) && (
-                      <div
-                        className="component-assembling"
-                        style={{ padding: "2rem", textAlign: "center" }}
-                      >
-                        <div ref={buildSpinnerRef} className="spinner" style={{ margin: "0 auto 1rem" }}></div>
-                        <p style={{ opacity: 0.7 }}>Assembling components...</p>
-                      </div>
+                    {partialUISpec?.components && partialUISpec.components.length >= VIRTUAL_SCROLL_THRESHOLD ? (
+                      // Use virtual scrolling for large component lists during build
+                      <VirtualizedList
+                        children={partialUISpec.components}
+                        state={componentState}
+                        executor={toolExecutor}
+                        itemHeight={DEFAULT_ITEM_HEIGHT}
+                        maxHeight={600}
+                        layout={(partialUISpec.layout || 'vertical') as 'vertical' | 'horizontal' | 'grid'}
+                        className="building-components-list"
+                        ComponentRenderer={ComponentRenderer}
+                      />
+                    ) : (
+                      // Normal rendering for small lists
+                      <>
+                        {partialUISpec?.components?.map((component, idx) => (
+                          <div
+                            key={`building-${component.id}-${idx}`}
+                            ref={(el) => {
+                              if (el) componentRefs.current.set(`${component.id}-${idx}`, el);
+                            }}
+                            className="component-building"
+                          >
+                            <ComponentRenderer
+                              component={component}
+                              state={componentState}
+                              executor={toolExecutor}
+                            />
+                          </div>
+                        ))}
+                        {(!partialUISpec?.components || partialUISpec.components.length === 0) && (
+                          <div
+                            className="component-assembling"
+                            style={{ padding: "2rem", textAlign: "center" }}
+                          >
+                            <div ref={buildSpinnerRef} className="spinner" style={{ margin: "0 auto 1rem" }}></div>
+                            <p style={{ opacity: 0.7 }}>Assembling components...</p>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -1310,14 +848,29 @@ const DynamicRenderer: React.FC = () => {
               </animated.button>
             </div>
             <div className={`app-content app-layout-${uiSpec.layout}`}>
-              {uiSpec.components.map((component, idx) => (
-                <ComponentRenderer
-                  key={`${component.id}-${idx}`}
-                  component={component}
+              {uiSpec.components.length >= VIRTUAL_SCROLL_THRESHOLD ? (
+                // Use virtual scrolling for large apps
+                <VirtualizedList
+                  children={uiSpec.components}
                   state={componentState}
                   executor={toolExecutor}
+                  itemHeight={DEFAULT_ITEM_HEIGHT}
+                  maxHeight={700}
+                  layout={(uiSpec.layout || 'vertical') as 'vertical' | 'horizontal' | 'grid'}
+                  className="app-components-list"
+                  ComponentRenderer={ComponentRenderer}
                 />
-              ))}
+              ) : (
+                // Normal rendering for small apps
+                uiSpec.components.map((component, idx) => (
+                  <ComponentRenderer
+                    key={`${component.id}-${idx}`}
+                    component={component}
+                    state={componentState}
+                    executor={toolExecutor}
+                  />
+                ))
+              )}
             </div>
           </div>
         )}
@@ -1327,3 +880,4 @@ const DynamicRenderer: React.FC = () => {
 };
 
 export default DynamicRenderer;
+

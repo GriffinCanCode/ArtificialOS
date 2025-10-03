@@ -6,7 +6,7 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { useMemo } from "react";
-import { logger } from "../utils/logger";
+import { logger } from "../utils/monitoring/logger";
 
 // ============================================================================
 // Type Definitions

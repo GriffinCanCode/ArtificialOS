@@ -1584,3 +1584,70 @@
 .grid-responsive {
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 }
+
+/* ============================================================================
+   Virtual Scrolling Styles
+   ============================================================================ */
+
+/* Smooth scrolling for virtual lists */
+.building-components-list,
+.app-components-list {
+  width: 100%;
+  scroll-behavior: smooth;
+}
+
+/* Ensure virtual list container integrates with existing layout */
+.building-components-list > div,
+.app-components-list > div {
+  width: 100% !important;
+}
+
+/* Virtual list rows should fill width */
+.building-components-list > div > div,
+.app-components-list > div > div {
+  width: 100% !important;
+}
+
+/* Smooth transitions for virtualized items */
+.component-building,
+.component-building > * {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+/* Ensure virtual scrollbar matches theme */
+.building-components-list::-webkit-scrollbar,
+.app-components-list::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.building-components-list::-webkit-scrollbar-track,
+.app-components-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.building-components-list::-webkit-scrollbar-thumb,
+.app-components-list::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.4);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.building-components-list::-webkit-scrollbar-thumb:hover,
+.app-components-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.6);
+}
+
+/* Performance optimization for large lists */
+.building-components-list > div,
+.app-components-list > div {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* Ensure grid items in virtual lists maintain proper layout */
+.building-components-list .component-building,
+.app-components-list .component-building {
+  contain: layout style paint;
+}

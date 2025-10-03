@@ -5,8 +5,8 @@
 
 import { useEffect, useRef, useCallback, RefObject } from 'react';
 import gsap from 'gsap';
-import * as animations from '../utils/gsapAnimations';
-import { ANIMATION_TIMING } from '../utils/animationConfig';
+import * as animations from '../utils/animation/gsapAnimations';
+import { ANIMATION_TIMING } from '../utils/animation/animationConfig';
 
 /**
  * Hook to animate element on mount
