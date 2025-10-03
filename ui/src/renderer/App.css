@@ -52,3 +52,41 @@
     display: none;
   }
 }
+
+/* Session Status Indicator */
+.session-status {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  backdrop-filter: blur(12px);
+  border: 1px solid;
+  animation: slideIn 0.3s ease-out;
+  z-index: 1000;
+}
+
+.session-status.saving {
+  background: rgba(59, 130, 246, 0.2);
+  color: rgb(96, 165, 250);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.session-status.saved {
+  background: rgba(16, 185, 129, 0.2);
+  color: rgb(52, 211, 153);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(1rem);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}

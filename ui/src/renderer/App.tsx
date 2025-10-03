@@ -9,6 +9,7 @@ import ChatInterface from "../components/ChatInterface";
 import TitleBar from "../components/TitleBar";
 import { WebSocketProvider, useWebSocket } from "../contexts/WebSocketContext";
 import { useAppActions } from "../store/appStore";
+import { useSessionManager } from "../hooks/useSessionManager";
 import { ServerMessage } from "../types/api";
 import "./App.css";
 
@@ -23,6 +24,13 @@ function App() {
 function AppContent() {
   const { client } = useWebSocket();
   const { addMessage, addThought, appendToLastMessage } = useAppActions();
+  
+  // Initialize session manager with auto-save every 30s
+  const sessionManager = useSessionManager({
+    autoSaveInterval: 30,
+    enableAutoSave: true,
+    restoreOnMount: true,
+  });
 
   // Handle incoming WebSocket messages with type safety
   const handleMessage = useCallback(
@@ -82,7 +90,9 @@ function AppContent() {
 
   return (
     <div className="app">
-      <TitleBar />
+      <TitleBar 
+        sessionManager={sessionManager}
+      />
 
       <div className="app-layout">
         {/* Left Panel: Chat Interface */}
@@ -100,8 +110,30 @@ function AppContent() {
           <ThoughtStream />
         </div>
       </div>
+      
+      {/* Session Status Indicator */}
+      {sessionManager.isSaving && (
+        <div className="session-status saving">
+          💾 Saving...
+        </div>
+      )}
+      {sessionManager.lastSaveTime && !sessionManager.isSaving && (
+        <div className="session-status saved">
+          ✅ Saved {formatTimeSince(sessionManager.lastSaveTime)}
+        </div>
+      )}
     </div>
   );
+}
+
+// Helper to format time since last save
+function formatTimeSince(date: Date): string {
+  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ago`;
 }
 
 export default App;

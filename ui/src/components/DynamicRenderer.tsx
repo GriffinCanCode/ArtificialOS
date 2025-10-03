@@ -7,7 +7,10 @@ import React, { useState, useCallback, useEffect } from "react";
 import { useWebSocket } from "../contexts/WebSocketContext";
 import {
   useUISpec,
+  usePartialUISpec,
   useIsLoading,
+  useIsStreaming,
+  useBuildProgress,
   useError,
   useGenerationThoughts,
   useGenerationPreview,
@@ -473,13 +476,19 @@ const DynamicRenderer: React.FC = () => {
 
   // Zustand store hooks - only re-render when these specific values change
   const uiSpec = useUISpec();
+  const partialUISpec = usePartialUISpec();
   const isLoading = useIsLoading();
+  const isStreaming = useIsStreaming();
+  const buildProgress = useBuildProgress();
   const error = useError();
   const generationThoughts = useGenerationThoughts();
   const generationPreview = useGenerationPreview();
   const {
     setUISpec,
+    setPartialUISpec,
     setLoading,
+    setStreaming,
+    setBuildProgress,
     setError,
     addGenerationThought,
     appendGenerationPreview,
@@ -507,6 +516,63 @@ const DynamicRenderer: React.FC = () => {
       previewRef.current.scrollTop = previewRef.current.scrollHeight;
     }
   }, [generationPreview]);
+
+  // Helper to extract partial UI spec from streaming JSON
+  const parsePartialJSON = useCallback((jsonStr: string) => {
+    try {
+      // Try to parse complete JSON first
+      const parsed = JSON.parse(jsonStr);
+      return { complete: true, data: parsed };
+    } catch (e) {
+      // If incomplete, try to extract what we can
+      try {
+        // Look for title
+        const titleMatch = jsonStr.match(/"title"\s*:\s*"([^"]+)"/);
+        const title = titleMatch ? titleMatch[1] : undefined;
+
+        // Look for layout
+        const layoutMatch = jsonStr.match(/"layout"\s*:\s*"([^"]+)"/);
+        const layout = layoutMatch ? layoutMatch[1] : undefined;
+
+        // Try to extract complete components array
+        const componentsMatch = jsonStr.match(/"components"\s*:\s*\[([\s\S]*?)\]/);
+        let components: UIComponent[] = [];
+        
+        if (componentsMatch) {
+          const componentsStr = componentsMatch[1];
+          // Try to parse individual complete component objects
+          const componentRegex = /\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g;
+          const matches = componentsStr.match(componentRegex);
+          if (matches) {
+            components = matches
+              .map(m => {
+                try {
+                  return JSON.parse(m);
+                } catch {
+                  return null;
+                }
+              })
+              .filter((c): c is UIComponent => c !== null);
+          }
+        }
+
+        if (title || layout || components.length > 0) {
+          return {
+            complete: false,
+            data: {
+              title,
+              layout,
+              components,
+              type: "app",
+            },
+          };
+        }
+      } catch (parseError) {
+        // Silent fail - we'll try again with more data
+      }
+    }
+    return { complete: false, data: null };
+  }, []);
 
   const loadUISpec = useCallback(
     async (request: string) => {
@@ -568,6 +634,9 @@ const DynamicRenderer: React.FC = () => {
             message: message.message,
           });
           addGenerationThought(message.message);
+          setStreaming(true);
+          setBuildProgress(0);
+          setPartialUISpec({ components: [] });
           break;
 
         case "thought":
@@ -594,6 +663,27 @@ const DynamicRenderer: React.FC = () => {
           if (message.content) {
             console.log("📝 APPENDING TO PREVIEW:", message.content);
             appendGenerationPreview(message.content);
+            
+            // Try to parse partial JSON and update partial UI spec
+            const currentPreview = useAppStore.getState().generationPreview + message.content;
+            const parseResult = parsePartialJSON(currentPreview);
+            
+            if (parseResult.data) {
+              const partial = parseResult.data as Partial<UISpec>;
+              
+              // Update partial UI spec if we have new data
+              if (partial.title || partial.layout || (partial.components && partial.components.length > 0)) {
+                setPartialUISpec(partial);
+                
+                // Calculate progress based on components found
+                if (partial.components && partial.components.length > 0) {
+                  // Estimate total components (we'll refine this as we get more data)
+                  const estimatedTotal = Math.max(10, partial.components.length + 5);
+                  const progress = Math.min(90, (partial.components.length / estimatedTotal) * 100);
+                  setBuildProgress(progress);
+                }
+              }
+            }
           }
           break;
 
@@ -631,6 +721,8 @@ const DynamicRenderer: React.FC = () => {
         case "complete":
           logger.info("UI generation complete", { component: "DynamicRenderer" });
           setLoading(false);
+          setStreaming(false);
+          setBuildProgress(100);
           break;
 
         case "error":
@@ -720,33 +812,85 @@ const DynamicRenderer: React.FC = () => {
         )}
 
         {isLoading && (
-          <div className="generation-progress">
-            <div className="generation-header">
-              <div className="spinner"></div>
-              <h3>🎨 Generating Application...</h3>
-            </div>
-            <div className="thoughts-list">
-              {generationThoughts.map((thought, i) => (
-                <div key={i} className="thought-item fade-in">
-                  <span className="thought-icon">💭</span>
-                  <span className="thought-text">{thought}</span>
+          <>
+            {/* Visual Build Mode - Show partial UI being constructed */}
+            {isStreaming && partialUISpec && (partialUISpec.title || (partialUISpec.components && partialUISpec.components.length > 0)) ? (
+              <div className="building-app-preview">
+                <div className="build-progress-header">
+                  <div className="build-status-icon">🏗️</div>
+                  <div className="build-status-text">
+                    <h3>Building Your App...</h3>
+                    <p>{partialUISpec.components?.length || 0} components assembled</p>
+                  </div>
                 </div>
-              ))}
-            </div>
-            {generationPreview && (
-              <div className="generation-preview">
-                <div className="preview-header">
-                  <span className="preview-icon">⚡</span>
-                  <span className="preview-label">
-                    Live Generation ({generationPreview.length} chars)
-                  </span>
+                
+                <div className="build-progress-bar">
+                  <div 
+                    className="build-progress-fill" 
+                    style={{ width: `${buildProgress}%` }}
+                  />
                 </div>
-                <pre className="preview-content" ref={previewRef}>
-                  <code>{generationPreview}</code>
-                </pre>
+
+                <div className="building-app-container">
+                  {partialUISpec.title && (
+                    <h2 className="building-app-title">{partialUISpec.title}</h2>
+                  )}
+                  <div className={`app-content app-layout-${partialUISpec.layout || 'vertical'}`}>
+                    {partialUISpec.components?.map((component, idx) => (
+                      <div key={`building-${component.id}-${idx}`} className="component-building">
+                        <ComponentRenderer
+                          component={component}
+                          state={componentState}
+                          executor={toolExecutor}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Thoughts stream below */}
+                {generationThoughts.length > 0 && (
+                  <div className="thoughts-list" style={{ marginTop: '1rem', opacity: 0.7 }}>
+                    {generationThoughts.slice(-3).map((thought, i) => (
+                      <div key={i} className="thought-item fade-in">
+                        <span className="thought-icon">💭</span>
+                        <span className="thought-text">{thought}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Fallback to traditional loading screen if no partial data yet */
+              <div className="generation-progress">
+                <div className="generation-header">
+                  <div className="spinner"></div>
+                  <h3>🎨 Generating Application...</h3>
+                </div>
+                <div className="thoughts-list">
+                  {generationThoughts.map((thought, i) => (
+                    <div key={i} className="thought-item fade-in">
+                      <span className="thought-icon">💭</span>
+                      <span className="thought-text">{thought}</span>
+                    </div>
+                  ))}
+                </div>
+                {generationPreview && (
+                  <div className="generation-preview">
+                    <div className="preview-header">
+                      <span className="preview-icon">⚡</span>
+                      <span className="preview-label">
+                        Live Generation ({generationPreview.length} chars)
+                      </span>
+                    </div>
+                    <pre className="preview-content" ref={previewRef}>
+                      <code>{generationPreview}</code>
+                    </pre>
+                  </div>
+                )}
               </div>
             )}
-          </div>
+          </>
         )}
 
         {!uiSpec && !isLoading && !error && (

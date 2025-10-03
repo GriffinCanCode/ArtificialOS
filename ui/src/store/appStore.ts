@@ -391,7 +391,11 @@ export const useAppActions = () => {
   const appendToLastMessage = useAppStore((state) => state.appendToLastMessage);
   const addThought = useAppStore((state) => state.addThought);
   const setUISpec = useAppStore((state) => state.setUISpec);
+  const setPartialUISpec = useAppStore((state) => state.setPartialUISpec);
+  const addComponentToPartial = useAppStore((state) => state.addComponentToPartial);
   const setLoading = useAppStore((state) => state.setLoading);
+  const setStreaming = useAppStore((state) => state.setStreaming);
+  const setBuildProgress = useAppStore((state) => state.setBuildProgress);
   const setError = useAppStore((state) => state.setError);
   const addGenerationThought = useAppStore((state) => state.addGenerationThought);
   const appendGenerationPreview = useAppStore((state) => state.appendGenerationPreview);
@@ -406,7 +410,11 @@ export const useAppActions = () => {
       appendToLastMessage,
       addThought,
       setUISpec,
+      setPartialUISpec,
+      addComponentToPartial,
       setLoading,
+      setStreaming,
+      setBuildProgress,
       setError,
       addGenerationThought,
       appendGenerationPreview,
@@ -420,7 +428,11 @@ export const useAppActions = () => {
       appendToLastMessage,
       addThought,
       setUISpec,
+      setPartialUISpec,
+      addComponentToPartial,
       setLoading,
+      setStreaming,
+      setBuildProgress,
       setError,
       addGenerationThought,
       appendGenerationPreview,

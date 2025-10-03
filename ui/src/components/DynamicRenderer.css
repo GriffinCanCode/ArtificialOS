@@ -425,3 +425,298 @@
 .preview-content::-webkit-scrollbar-thumb:hover {
   background: color-mix(in srgb, var(--color-success-green) 50%, transparent);
 }
+
+/* ============================================================================
+   VISUAL BUILD MODE - Watch the app get constructed in real-time
+   ============================================================================ */
+
+/* Container for the building app preview */
+.building-app-preview {
+  position: relative;
+  padding: 2rem;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-electric-blue) 8%, transparent),
+    color-mix(in srgb, var(--color-neon-purple) 8%, transparent)
+  );
+  border-radius: 16px;
+  border: 2px solid color-mix(in srgb, var(--color-electric-blue) 20%, transparent);
+  overflow: hidden;
+}
+
+/* Animated construction grid background */
+.building-app-preview::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    linear-gradient(color-mix(in srgb, var(--color-electric-blue) 10%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--color-electric-blue) 10%, transparent) 1px, transparent 1px);
+  background-size: 20px 20px;
+  opacity: 0.3;
+  animation: grid-scan 3s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes grid-scan {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 20px 20px;
+  }
+}
+
+/* Build progress header */
+.build-progress-header {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.build-status-icon {
+  font-size: 2rem;
+  animation: build-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes build-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+.build-status-text h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.build-status-text p {
+  margin: 0.25rem 0 0 0;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+/* Progress bar */
+.build-progress-bar {
+  position: relative;
+  height: 6px;
+  background: color-mix(in srgb, #000 40%, transparent);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+  z-index: 1;
+}
+
+.build-progress-fill {
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    var(--color-electric-blue),
+    var(--color-neon-purple),
+    var(--color-electric-blue)
+  );
+  background-size: 200% 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease-out;
+  animation: progress-shimmer 2s linear infinite;
+  position: relative;
+}
+
+.build-progress-fill::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 20px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4));
+  animation: progress-glow 1s ease-in-out infinite;
+}
+
+@keyframes progress-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes progress-glow {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Building app container */
+.building-app-container {
+  position: relative;
+  z-index: 1;
+  background: var(--color-surface);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.building-app-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 1rem 0;
+  animation: slide-in-fade-in 0.5s ease-out;
+}
+
+/* Component animations - each component slides in and fades in */
+.component-building {
+  animation: component-appear 0.5s ease-out forwards;
+  transform-origin: top center;
+}
+
+@keyframes component-appear {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Skeleton/wireframe effect for components being built */
+.component-skeleton {
+  position: relative;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-electric-blue) 10%, transparent) 0%,
+    color-mix(in srgb, var(--color-electric-blue) 20%, transparent) 50%,
+    color-mix(in srgb, var(--color-electric-blue) 10%, transparent) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.component-skeleton::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 100%
+  );
+  animation: skeleton-wave 2s linear infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes skeleton-wave {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Component "materialization" effect - goes from skeleton to real */
+.component-materializing {
+  animation: component-materialize 0.6s ease-out forwards;
+}
+
+@keyframes component-materialize {
+  0% {
+    opacity: 0.6;
+    filter: blur(4px) brightness(1.2);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0) brightness(1);
+  }
+}
+
+/* Stagger animation for multiple components */
+.component-building:nth-child(1) { animation-delay: 0s; }
+.component-building:nth-child(2) { animation-delay: 0.1s; }
+.component-building:nth-child(3) { animation-delay: 0.2s; }
+.component-building:nth-child(4) { animation-delay: 0.3s; }
+.component-building:nth-child(5) { animation-delay: 0.4s; }
+.component-building:nth-child(n+6) { animation-delay: 0.5s; }
+
+/* Slide in from top animation */
+@keyframes slide-in-fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* "Assembly" indicator for specific component types */
+.component-assembling {
+  position: relative;
+  border: 2px dashed color-mix(in srgb, var(--color-electric-blue) 40%, transparent);
+  background: color-mix(in srgb, var(--color-electric-blue) 5%, transparent);
+  animation: assembly-pulse 1s ease-in-out infinite;
+}
+
+@keyframes assembly-pulse {
+  0%, 100% {
+    border-color: color-mix(in srgb, var(--color-electric-blue) 40%, transparent);
+    background: color-mix(in srgb, var(--color-electric-blue) 5%, transparent);
+  }
+  50% {
+    border-color: color-mix(in srgb, var(--color-neon-purple) 40%, transparent);
+    background: color-mix(in srgb, var(--color-neon-purple) 5%, transparent);
+  }
+}
+
+/* Final completion flash */
+.build-complete-flash {
+  animation: completion-flash 0.8s ease-out;
+}
+
+@keyframes completion-flash {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 40px 10px rgba(138, 101, 255, 0.6);
+  }
+  100% {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+}
