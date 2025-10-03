@@ -45,6 +45,7 @@ out/
 *.gguf
 *.bin
 
-# Logs
+# Logs & Runtime files
 *.log
+*.pid
 

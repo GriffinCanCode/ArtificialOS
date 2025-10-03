@@ -3,7 +3,7 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #0a0a0a;
+  background: var(--color-dark-bg);
   color: #ffffff;
   overflow: hidden;
 }
@@ -13,26 +13,22 @@
   grid-template-columns: 1fr 2fr 1fr;
   height: calc(100vh - 40px);
   gap: 1px;
-  background: #1a1a1a;
+  background: var(--color-dark-hover);
 }
 
 .panel {
-  background: #0f0f0f;
+  background: var(--color-dark-panel);
   overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
 .chat-panel {
-  border-right: 1px solid #2a2a2a;
+  border-right: 1px solid var(--color-dark-border);
 }
 
 .renderer-panel {
-  border-right: 1px solid #2a2a2a;
-}
-
-.thoughts-panel {
-  /* Right panel styling */
+  border-right: 1px solid var(--color-dark-border);
 }
 
 /* Responsive design */
@@ -56,4 +52,3 @@
     display: none;
   }
 }
-

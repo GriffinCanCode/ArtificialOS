@@ -3,28 +3,11 @@
  * Renders AI-generated applications on the fly
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { useWebSocket } from '../contexts/WebSocketContext';
+import { useUISpec, useIsLoading, useError, useGenerationThoughts, useAppActions, UIComponent } from '../store/appStore';
+import { logger } from '../utils/logger';
 import './DynamicRenderer.css';
-
-// ============================================================================
-// Type Definitions
-// ============================================================================
-
-interface UIComponent {
-  type: string;
-  id: string;
-  props: Record<string, any>;
-  children?: UIComponent[];
-  on_event?: Record<string, string>; // event name -> tool_id
-}
-
-interface UISpec {
-  type: string;
-  title: string;
-  layout: string;
-  components: UIComponent[];
-  style?: Record<string, any>;
-}
 
 // ============================================================================
 // Component State Manager
@@ -74,29 +57,112 @@ class ComponentState {
 
 class ToolExecutor {
   private componentState: ComponentState;
+  private appId: string | null = null;
 
   constructor(componentState: ComponentState) {
     this.componentState = componentState;
   }
 
+  setAppId(appId: string): void {
+    this.appId = appId;
+  }
+
   async execute(toolId: string, params: Record<string, any> = {}): Promise<any> {
-    console.log(`[ToolExecutor] Executing tool: ${toolId}`, params);
+    const startTime = performance.now();
+    try {
+      logger.debug('Executing tool', {
+        component: 'ToolExecutor',
+        toolId,
+        paramsCount: Object.keys(params).length
+      });
 
-    // Parse tool ID (category.action)
-    const [category, action] = toolId.split('.');
+      // Check if this is a service tool (contains service prefix like storage.*, auth.*, ai.*)
+      const servicePrefixes = ['storage', 'auth', 'ai', 'sync', 'media'];
+      const [category] = toolId.split('.');
+      
+      let result;
+      if (servicePrefixes.includes(category)) {
+        result = await this.executeServiceTool(toolId, params);
+      } else {
+        // Handle built-in tools
+        switch (category) {
+          case 'calc':
+            result = this.executeCalcTool(toolId.split('.')[1], params);
+            break;
+          case 'ui':
+            result = this.executeUITool(toolId.split('.')[1], params);
+            break;
+          case 'system':
+            result = this.executeSystemTool(toolId.split('.')[1], params);
+            break;
+          case 'app':
+            result = await this.executeAppTool(toolId.split('.')[1], params);
+            break;
+          case 'http':
+            result = await this.executeNetworkTool(toolId.split('.')[1], params);
+            break;
+          case 'timer':
+            result = this.executeTimerTool(toolId.split('.')[1], params);
+            break;
+          default:
+            logger.warn('Unknown tool category', { 
+              component: 'ToolExecutor',
+              category,
+              toolId 
+            });
+            result = null;
+        }
+      }
 
-    switch (category) {
-      case 'calc':
-        return this.executeCalcTool(action, params);
-      case 'ui':
-        return this.executeUITool(action, params);
-      case 'system':
-        return this.executeSystemTool(action, params);
-      case 'app':
-        return await this.executeAppTool(action, params);
-      default:
-        console.warn(`Unknown tool category: ${category}`);
-        return null;
+      const duration = performance.now() - startTime;
+      logger.performance('Tool execution', duration, {
+        component: 'ToolExecutor',
+        toolId
+      });
+
+      return result;
+    } catch (error) {
+      const duration = performance.now() - startTime;
+      logger.error('Tool execution failed', error as Error, {
+        component: 'ToolExecutor',
+        toolId,
+        duration
+      });
+      this.componentState.set('error', `Tool ${toolId} failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return null;
+    }
+  }
+
+  private async executeServiceTool(toolId: string, params: Record<string, any>): Promise<any> {
+    console.log(`[ToolExecutor] Executing service tool: ${toolId}`);
+    
+    try {
+      const response = await fetch('http://localhost:8000/services/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tool_id: toolId,
+          params: params,
+          app_id: this.appId
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Service call failed: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Service execution failed');
+      }
+
+      console.log(`[ToolExecutor] Service tool result:`, result.data);
+      return result.data;
+      
+    } catch (error) {
+      console.error(`[ToolExecutor] Service tool error:`, error);
+      throw error;
     }
   }
 
@@ -175,48 +241,30 @@ class ToolExecutor {
   private async executeAppTool(action: string, params: Record<string, any>): Promise<any> {
     switch (action) {
       case 'spawn':
-        // Spawn a new app via WebSocket for real-time updates
         console.log(`[App] Spawning new app: ${params.request}`);
-        
-        // Connect to WebSocket
-        const ws = new WebSocket('ws://localhost:8000/stream');
-        
-        return new Promise((resolve, reject) => {
-          ws.onopen = () => {
-            ws.send(JSON.stringify({
-              type: 'generate_ui',
-              message: params.request,
-              context: { parent_app_id: this.componentState.get('app_id') }
-            }));
-          };
-          
-          ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            
-            if (data.type === 'thought') {
-              console.log(`[App.spawn] 💭 ${data.content}`);
-            } else if (data.type === 'ui_generated') {
-              console.log(`[App.spawn] ✅ Spawned: ${data.ui_spec.title}`);
-              // Notify parent component to render new app
-              window.postMessage({ 
-                type: 'spawn_app', 
-                app_id: data.app_id,
-                ui_spec: data.ui_spec 
-              }, '*');
-              resolve(data.ui_spec);
-            } else if (data.type === 'error') {
-              console.error(`[App.spawn] ❌ ${data.message}`);
-              reject(new Error(data.message));
-            } else if (data.type === 'complete') {
-              ws.close();
-            }
-          };
-          
-          ws.onerror = (err) => {
-            console.error('[App.spawn] WebSocket error:', err);
-            reject(err);
-          };
+        // Use HTTP endpoint for app spawning instead of creating new WebSocket
+        const response = await fetch('http://localhost:8000/generate-ui', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: params.request,
+            context: { parent_app_id: this.componentState.get('app_id') }
+          })
         });
+        const data = await response.json();
+        
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        
+        // Notify parent component to render new app
+        window.postMessage({ 
+          type: 'spawn_app', 
+          app_id: data.app_id,
+          ui_spec: data.ui_spec 
+        }, '*');
+        
+        return data.ui_spec;
         
       case 'close':
         console.log('[App] Closing current app');
@@ -226,10 +274,56 @@ class ToolExecutor {
         
       case 'list':
         console.log('[App] Listing apps');
-        const response = await fetch('http://localhost:8000/apps');
-        const data = await response.json();
-        return data.apps;
+        const appsResponse = await fetch('http://localhost:8000/apps');
+        const appsData = await appsResponse.json();
+        return appsData.apps;
         
+      default:
+        return null;
+    }
+  }
+
+  // Storage tools now handled by service system via executeServiceTool()
+
+  private async executeNetworkTool(action: string, params: Record<string, any>): Promise<any> {
+    switch (action) {
+      case 'get':
+        const getResponse = await fetch(params.url);
+        return await getResponse.json();
+      case 'post':
+        const postResponse = await fetch(params.url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(params.data)
+        });
+        return await postResponse.json();
+      default:
+        return null;
+    }
+  }
+
+  private executeTimerTool(action: string, params: Record<string, any>): any {
+    switch (action) {
+      case 'set':
+        const timerId = setTimeout(() => {
+          // Execute the action (would need tool executor reference)
+          console.log(`[Timer] Executing delayed action: ${params.action}`);
+        }, params.delay);
+        this.componentState.set(`timer_${timerId}`, timerId);
+        return timerId;
+      case 'interval':
+        const intervalId = setInterval(() => {
+          console.log(`[Timer] Executing interval action: ${params.action}`);
+        }, params.interval);
+        this.componentState.set(`interval_${intervalId}`, intervalId);
+        return intervalId;
+      case 'clear':
+        const id = this.componentState.get(params.timer_id);
+        if (id) {
+          clearTimeout(id);
+          clearInterval(id);
+        }
+        return true;
       default:
         return null;
     }
@@ -314,7 +408,7 @@ const ComponentRenderer: React.FC<RendererProps> = ({ component, state, executor
           className={`dynamic-container dynamic-container-${component.props.layout || 'vertical'}`}
           style={{ gap: `${component.props.gap || 8}px`, ...component.props.style }}
         >
-          {component.children?.map((child, idx) => (
+          {component.children?.map((child: UIComponent, idx: number) => (
             <ComponentRenderer
               key={`${child.id}-${idx}`}
               component={child}
@@ -335,7 +429,7 @@ const ComponentRenderer: React.FC<RendererProps> = ({ component, state, executor
             ...component.props.style,
           }}
         >
-          {component.children?.map((child, idx) => (
+          {component.children?.map((child: UIComponent, idx: number) => (
             <ComponentRenderer
               key={`${child.id}-${idx}`}
               component={child}
@@ -360,86 +454,183 @@ const ComponentRenderer: React.FC<RendererProps> = ({ component, state, executor
 // ============================================================================
 
 const DynamicRenderer: React.FC = () => {
-  const [uiSpec, setUiSpec] = useState<UISpec | null>(null);
-  const [componentState] = useState(() => new ComponentState());
-  const [toolExecutor] = useState(() => new ToolExecutor(componentState));
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { client, isConnected, generateUI } = useWebSocket();
+  
+  // Zustand store hooks - only re-render when these specific values change
+  const uiSpec = useUISpec();
+  const isLoading = useIsLoading();
+  const error = useError();
+  const generationThoughts = useGenerationThoughts();
+  const { 
+    setUISpec, 
+    setLoading, 
+    setError, 
+    addGenerationThought, 
+    clearGenerationThoughts 
+  } = useAppActions();
+  
+  const [componentState] = useState(() => {
+    logger.info('Initializing component state', { component: 'DynamicRenderer' });
+    return new ComponentState();
+  });
+  const [toolExecutor] = useState(() => {
+    logger.info('Initializing tool executor', { component: 'DynamicRenderer' });
+    return new ToolExecutor(componentState);
+  });
 
   const loadUISpec = useCallback(async (request: string) => {
-    setIsLoading(true);
+    // Check connection - only use React state for reliability in strict mode
+    if (!isConnected || !client) {
+      const errorMsg = 'Not connected to AI service';
+      setError(errorMsg);
+      logger.error(errorMsg, undefined, {
+        component: 'DynamicRenderer',
+        isConnected,
+        hasClient: !!client
+      });
+      return;
+    }
+
+    logger.info('Loading UI spec', {
+      component: 'DynamicRenderer',
+      request,
+      requestLength: request.length
+    });
+
+    setLoading(true);
     setError(null);
+    clearGenerationThoughts();
     
     try {
-      // Connect to WebSocket for real-time streaming
-      const ws = new WebSocket('ws://localhost:8000/stream');
-      
-      ws.onopen = () => {
-        console.log('[DynamicRenderer] WebSocket connected');
-        // Request UI generation via WebSocket
-        ws.send(JSON.stringify({
-          type: 'generate_ui',
-          message: request,
-          context: {}
-        }));
-      };
-      
-      ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        console.log('[DynamicRenderer] Received:', data.type, data);
-        
-        switch (data.type) {
-          case 'generation_start':
-            console.log('[DynamicRenderer] 🎨 Generation started:', data.message);
-            break;
-            
-          case 'thought':
-            console.log('[DynamicRenderer] 💭 Thought:', data.content);
-            // Could show these in UI as status updates!
-            break;
-            
-          case 'ui_generated':
-            console.log('[DynamicRenderer] ✅ UI generated:', data.ui_spec.title);
-            setUiSpec(data.ui_spec);
-            componentState.clear();
-            break;
-            
-          case 'complete':
-            console.log('[DynamicRenderer] ✨ Generation complete');
-            setIsLoading(false);
-            ws.close();
-            break;
-            
-          case 'error':
-            console.error('[DynamicRenderer] ❌ Error:', data.message);
-            setError(data.message);
-            setIsLoading(false);
-            ws.close();
-            break;
-        }
-      };
-      
-      ws.onerror = (err) => {
-        console.error('[DynamicRenderer] WebSocket error:', err);
-        setError('WebSocket connection failed');
-        setIsLoading(false);
-      };
-      
-      ws.onclose = () => {
-        console.log('[DynamicRenderer] WebSocket closed');
-      };
-      
+      // Use type-safe WebSocket client
+      generateUI(request, {});
+      logger.debug('UI generation request sent', { component: 'DynamicRenderer' });
     } catch (err) {
-      console.error('[DynamicRenderer] Error loading UI:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load UI');
-      setIsLoading(false);
+      logger.error('Failed to send UI generation request', err as Error, { 
+        component: 'DynamicRenderer',
+        request 
+      });
+      setError(err instanceof Error ? err.message : 'Failed to send request');
+      setLoading(false);
     }
-  }, [componentState]);
+  }, [isConnected, client, generateUI, setLoading, setError, clearGenerationThoughts]);
+
+  // Listen for WebSocket messages
+  useEffect(() => {
+    if (!client) return;
+
+    logger.debug('Setting up WebSocket message listener', { component: 'DynamicRenderer' });
+
+    const unsubscribe = client.onMessage((message) => {
+      logger.debugThrottled('Received WebSocket message', {
+        component: 'DynamicRenderer',
+        messageType: message.type
+      });
+      
+      switch (message.type) {
+        case 'generation_start':
+          logger.info('UI generation started', {
+            component: 'DynamicRenderer',
+            message: message.message
+          });
+          addGenerationThought(message.message);
+          break;
+          
+        case 'thought':
+          logger.verboseThrottled('Generation thought received', {
+            component: 'DynamicRenderer',
+            content: message.content
+          });
+          addGenerationThought(message.content);
+          break;
+          
+        case 'ui_generated':
+          logger.info('UI generated successfully', {
+            component: 'DynamicRenderer',
+            title: message.ui_spec.title,
+            appId: message.app_id,
+            componentCount: message.ui_spec.components.length
+          });
+          setUISpec(message.ui_spec, message.app_id);
+          componentState.clear();
+          componentState.set('app_id', message.app_id);
+          toolExecutor.setAppId(message.app_id);
+          
+          // Execute lifecycle hooks (on_mount)
+          if (message.ui_spec.lifecycle_hooks?.on_mount) {
+            logger.info('Executing on_mount lifecycle hooks', {
+              component: 'DynamicRenderer',
+              hookCount: message.ui_spec.lifecycle_hooks.on_mount.length
+            });
+            message.ui_spec.lifecycle_hooks.on_mount.forEach(async (toolId: string) => {
+              try {
+                await toolExecutor.execute(toolId, {});
+              } catch (error) {
+                logger.error(`Failed to execute on_mount hook: ${toolId}`, error as Error, {
+                  component: 'DynamicRenderer',
+                  toolId
+                });
+              }
+            });
+          }
+          break;
+          
+        case 'complete':
+          logger.info('UI generation complete', { component: 'DynamicRenderer' });
+          setLoading(false);
+          break;
+          
+        case 'error':
+          logger.error('UI generation error', undefined, {
+            component: 'DynamicRenderer',
+            message: message.message
+          });
+          setError(message.message);
+          break;
+          
+        default:
+          // Ignore other message types
+          break;
+      }
+    });
+
+    return () => {
+      logger.debug('Cleaning up WebSocket message listener', { component: 'DynamicRenderer' });
+      unsubscribe();
+    };
+  }, [client, componentState, toolExecutor, setUISpec, setLoading, setError, addGenerationThought]);
+
+  // Cleanup: Execute on_unmount hooks when component unmounts or UI changes
+  useEffect(() => {
+    return () => {
+      if (uiSpec?.lifecycle_hooks?.on_unmount) {
+        console.log('[DynamicRenderer] Executing on_unmount hooks');
+        uiSpec.lifecycle_hooks.on_unmount.forEach(async (toolId: string) => {
+          try {
+            await toolExecutor.execute(toolId, {});
+          } catch (error) {
+            console.error(`[DynamicRenderer] Error executing on_unmount hook ${toolId}:`, error);
+          }
+        });
+      }
+    };
+  }, [uiSpec, toolExecutor]);
 
   // Example: Load calculator on mount (for testing)
+  // Wait for WebSocket connection before attempting to load
+  const hasAutoLoadedRef = React.useRef(false);
+  
   React.useEffect(() => {
-    loadUISpec('create a calculator');
-  }, [loadUISpec]);
+    if (isConnected && client && !uiSpec && !isLoading && !hasAutoLoadedRef.current) {
+      // Add a longer delay to ensure connection is fully stable (especially in React Strict Mode)
+      const timer = setTimeout(() => {
+        console.log('[DynamicRenderer] Auto-loading calculator...');
+        hasAutoLoadedRef.current = true;
+        loadUISpec('create a calculator');
+      }, 1000); // Increased from 500ms to 1000ms for React Strict Mode
+      return () => clearTimeout(timer);
+    }
+  }, [isConnected, client, uiSpec, isLoading, loadUISpec]);
 
   return (
     <div className="dynamic-renderer">
@@ -454,6 +645,23 @@ const DynamicRenderer: React.FC = () => {
         {error && (
           <div className="renderer-error">
             <strong>Error:</strong> {error}
+          </div>
+        )}
+
+        {isLoading && (
+          <div className="generation-progress">
+            <div className="generation-header">
+              <div className="spinner"></div>
+              <h3>🎨 Generating Application...</h3>
+            </div>
+            <div className="thoughts-list">
+              {generationThoughts.map((thought, i) => (
+                <div key={i} className="thought-item fade-in">
+                  <span className="thought-icon">💭</span>
+                  <span className="thought-text">{thought}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

@@ -5,32 +5,32 @@
 }
 
 .thought-header {
-  padding: 16px;
-  border-bottom: 1px solid #2a2a2a;
+  padding: 1rem;
+  border-bottom: 1px solid var(--color-dark-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
 .thought-header h3 {
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
 }
 
 .thought-count {
-  font-size: 12px;
-  padding: 4px 8px;
-  background: #1a1a1a;
-  border-radius: 4px;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  background: var(--color-dark-hover);
+  border-radius: 0.25rem;
 }
 
 .thoughts-container {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: 1rem;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0.75rem;
 }
 
 .empty-state {
@@ -40,24 +40,24 @@
   justify-content: center;
   height: 100%;
   opacity: 0.5;
-  gap: 12px;
+  gap: 0.75rem;
 }
 
 .empty-icon {
-  font-size: 48px;
+  font-size: 3rem;
 }
 
 .empty-state p {
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .thought-item {
   display: flex;
-  gap: 12px;
-  animation: slideIn 0.3s ease-out;
+  gap: 0.75rem;
+  animation: slide-in 0.3s ease-out;
 }
 
-@keyframes slideIn {
+@keyframes slide-in {
   from {
     opacity: 0;
     transform: translateY(10px);
@@ -70,33 +70,32 @@
 
 .thought-index {
   flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  width: 1.75rem;
+  height: 1.75rem;
+  background: linear-gradient(135deg, var(--color-purple-gradient-start) 0%, var(--color-purple-gradient-end) 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
 }
 
 .thought-content {
   flex: 1;
-  padding: 12px;
-  background: #1a1a1a;
-  border-radius: 8px;
-  border-left: 2px solid #667eea;
+  padding: 0.75rem;
+  background: var(--color-dark-hover);
+  border-radius: 0.5rem;
+  border-left: 2px solid var(--color-purple-gradient-start);
 }
 
 .thought-text {
   line-height: 1.5;
-  margin-bottom: 8px;
+  margin-bottom: 0.5rem;
 }
 
 .thought-time {
-  font-size: 11px;
+  font-size: 0.6875rem;
   opacity: 0.5;
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
 }
-

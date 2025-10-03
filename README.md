@@ -8,7 +8,10 @@ A lightweight operating system powered by local AI (GPT-OSS) with real-time thou
 os/
 ├── kernel/          # Rust-based microkernel (OS core)
 ├── ai-service/      # Python AI integration layer with LangChain
-└── ui/              # Electron/React dynamic UI renderer
+├── ui/              # Electron/React dynamic UI renderer
+├── proto/           # Protocol buffer definitions (gRPC)
+├── scripts/         # System startup/shutdown scripts
+└── logs/            # Runtime logs and PID files (gitignored)
 ```
 
 ## 🚀 Quick Start
@@ -18,28 +21,35 @@ os/
 - Python 3.11+
 - Node.js 18+
 
-### Setup
+### Setup & Running
+
+**Option 1: Full System (Recommended)**
+```bash
+# Start kernel + AI service
+./scripts/start-system.sh
+
+# In another terminal, start UI
+./scripts/start-ui.sh
+
+# Stop the system
+./scripts/stop-system.sh
+```
+
+**Option 2: Individual Components**
 
 1. **AI Service** (Python Backend)
 ```bash
-cd ai-service
-python3 -m venv venv
-source venv/bin/activate  # On macOS/Linux
-pip install -r requirements.txt
-python3 src/main.py
+./scripts/start-ai-service.sh
 ```
 
 2. **UI** (Electron Frontend)
 ```bash
-cd ui
-npm install
-npm run dev
+./scripts/start-ui.sh
 ```
 
-3. **Kernel** (Rust - Coming Soon)
+3. **Kernel** (Rust)
 ```bash
 cd kernel
-cargo build --release
 cargo run
 ```
 

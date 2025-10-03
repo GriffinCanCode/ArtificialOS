@@ -1,7 +1,7 @@
 .title-bar {
-  height: 40px;
-  background: #0a0a0a;
-  border-bottom: 1px solid #2a2a2a;
+  height: 2.5rem;
+  background: var(--color-dark-bg);
+  border-bottom: 1px solid var(--color-dark-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -13,11 +13,11 @@
   flex: 1;
   display: flex;
   align-items: center;
-  padding: 0 16px;
+  padding: 0 1rem;
 }
 
 .title {
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 500;
   color: #ffffff;
 }
@@ -28,12 +28,12 @@
 }
 
 .control-btn {
-  width: 46px;
-  height: 40px;
+  width: 2.875rem;
+  height: 2.5rem;
   border: none;
   background: transparent;
   color: #ffffff;
-  font-size: 12px;
+  font-size: 0.75rem;
   cursor: pointer;
   transition: background-color 0.15s ease;
 }
@@ -46,4 +46,3 @@
   background: #e81123;
   color: white;
 }
-

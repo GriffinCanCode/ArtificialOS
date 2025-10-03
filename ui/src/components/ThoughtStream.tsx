@@ -4,18 +4,11 @@
  */
 
 import React, { useRef, useEffect } from 'react';
+import { useThoughts } from '../store/appStore';
 import './ThoughtStream.css';
 
-interface ThoughtStep {
-  content: string;
-  timestamp: number;
-}
-
-interface ThoughtStreamProps {
-  thoughts: ThoughtStep[];
-}
-
-const ThoughtStream: React.FC<ThoughtStreamProps> = ({ thoughts }) => {
+const ThoughtStream: React.FC = () => {
+  const thoughts = useThoughts();
   const streamEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -30,8 +23,7 @@ const ThoughtStream: React.FC<ThoughtStreamProps> = ({ thoughts }) => {
     return new Date(timestamp * 1000).toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit',
-      fractionalSecondDigits: 1
+      second: '2-digit'
     });
   };
 

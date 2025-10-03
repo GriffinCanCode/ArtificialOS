@@ -2,134 +2,80 @@
  * Main Application Component
  */
 
-import React, { useState, useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import ThoughtStream from '../components/ThoughtStream';
 import DynamicRenderer from '../components/DynamicRenderer';
 import ChatInterface from '../components/ChatInterface';
 import TitleBar from '../components/TitleBar';
+import { WebSocketProvider, useWebSocket } from '../contexts/WebSocketContext';
+import { useAppActions } from '../store/appStore';
+import { ServerMessage } from '../types/api';
 import './App.css';
 
-interface Message {
-  type: 'user' | 'assistant' | 'system';
-  content: string;
-  timestamp: number;
-}
-
-interface ThoughtStep {
-  content: string;
-  timestamp: number;
-}
-
 function App() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [thoughts, setThoughts] = useState<ThoughtStep[]>([]);
-  const [isConnected, setIsConnected] = useState(false);
-  const [ws, setWs] = useState<WebSocket | null>(null);
+  return (
+    <WebSocketProvider>
+      <AppContent />
+    </WebSocketProvider>
+  );
+}
 
-  useEffect(() => {
-    // Connect to AI service WebSocket
-    connectWebSocket();
+function AppContent() {
+  const { client } = useWebSocket();
+  const { addMessage, addThought, appendToLastMessage } = useAppActions();
 
-    return () => {
-      ws?.close();
-    };
-  }, []);
+  // Handle incoming WebSocket messages with type safety
+  const handleMessage = useCallback((message: ServerMessage) => {
+    switch (message.type) {
+      case 'system':
+        addMessage({
+          type: 'system',
+          content: message.message,
+          timestamp: Date.now()
+        });
+        break;
 
-  const connectWebSocket = () => {
-    const websocket = new WebSocket('ws://localhost:8000/stream');
+      case 'token':
+        appendToLastMessage(message.content);
+        break;
 
-    websocket.onopen = () => {
-      console.log('✅ Connected to AI service');
-      setIsConnected(true);
-      setMessages(prev => [...prev, {
-        type: 'system',
-        content: 'Connected to AI service',
-        timestamp: Date.now()
-      }]);
-    };
+      case 'thought':
+        addThought({
+          content: message.content,
+          timestamp: message.timestamp
+        });
+        break;
 
-    websocket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      
-      switch (data.type) {
-        case 'token':
-          // Append token to the latest assistant message
-          setMessages(prev => {
-            const last = prev[prev.length - 1];
-            if (last && last.type === 'assistant') {
-              return [
-                ...prev.slice(0, -1),
-                { ...last, content: last.content + data.content }
-              ];
-            } else {
-              return [...prev, {
-                type: 'assistant',
-                content: data.content,
-                timestamp: Date.now()
-              }];
-            }
-          });
-          break;
+      case 'complete':
+        console.log('✨ Generation complete');
+        break;
 
-        case 'thought':
-          setThoughts(prev => [...prev, {
-            content: data.content,
-            timestamp: data.timestamp
-          }]);
-          break;
+      case 'error':
+        console.error('❌ Error from server:', message.message);
+        addMessage({
+          type: 'system',
+          content: `Error: ${message.message}`,
+          timestamp: Date.now()
+        });
+        break;
 
-        case 'complete':
-          // Message generation complete
-          break;
+      case 'history_update':
+        console.log('📜 History updated');
+        break;
 
-        case 'system':
-          setMessages(prev => [...prev, {
-            type: 'system',
-            content: data.message,
-            timestamp: Date.now()
-          }]);
-          break;
-      }
-    };
-
-    websocket.onerror = (error) => {
-      console.error('❌ WebSocket error:', error);
-      setIsConnected(false);
-    };
-
-    websocket.onclose = () => {
-      console.log('🔌 Disconnected from AI service');
-      setIsConnected(false);
-      // Auto-reconnect after 3 seconds
-      setTimeout(connectWebSocket, 3000);
-    };
-
-    setWs(websocket);
-  };
-
-  const sendMessage = (message: string) => {
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
-      console.error('WebSocket not connected');
-      return;
+      default:
+        // Other message types handled by DynamicRenderer
+        break;
     }
+  }, [addMessage, addThought, appendToLastMessage]);
 
-    // Add user message to UI
-    setMessages(prev => [...prev, {
-      type: 'user',
-      content: message,
-      timestamp: Date.now()
-    }]);
-
-    // Clear previous thoughts
-    setThoughts([]);
-
-    // Send to AI service
-    ws.send(JSON.stringify({
-      type: 'chat',
-      message: message,
-      context: {}
-    }));
-  };
+  // Subscribe to WebSocket messages
+  useEffect(() => {
+    if (!client) return;
+    
+    const unsubscribe = client.onMessage(handleMessage);
+    return unsubscribe;
+  }, [client, handleMessage]);
 
   return (
     <div className="app">
@@ -138,11 +84,7 @@ function App() {
       <div className="app-layout">
         {/* Left Panel: Chat Interface */}
         <div className="panel chat-panel">
-          <ChatInterface
-            messages={messages}
-            onSendMessage={sendMessage}
-            isConnected={isConnected}
-          />
+          <ChatInterface />
         </div>
 
         {/* Center Panel: Dynamic App Renderer */}
@@ -152,7 +94,7 @@ function App() {
 
         {/* Right Panel: Thought Stream */}
         <div className="panel thoughts-panel">
-          <ThoughtStream thoughts={thoughts} />
+          <ThoughtStream />
         </div>
       </div>
     </div>
@@ -160,4 +102,3 @@ function App() {
 }
 
 export default App;
-

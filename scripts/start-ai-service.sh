@@ -4,7 +4,7 @@
 echo "🚀 Starting AI-Powered OS - AI Service"
 echo "========================================"
 
-cd "$(dirname "$0")/ai-service"
+cd "$(dirname "$0")/../ai-service"
 
 # Check if virtual environment exists
 if [ ! -d "venv" ]; then

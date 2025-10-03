@@ -4,31 +4,26 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
+import { useMessages, useAppActions } from '../store/appStore';
+import { useWebSocket } from '../contexts/WebSocketContext';
+import { useLogger } from '../utils/useLogger';
 import './ChatInterface.css';
 
-interface Message {
-  type: 'user' | 'assistant' | 'system';
-  content: string;
-  timestamp: number;
-}
-
-interface ChatInterfaceProps {
-  messages: Message[];
-  onSendMessage: (message: string) => void;
-  isConnected: boolean;
-}
-
-const ChatInterface: React.FC<ChatInterfaceProps> = ({
-  messages,
-  onSendMessage,
-  isConnected
-}) => {
+const ChatInterface: React.FC = () => {
+  const log = useLogger('ChatInterface');
+  const messages = useMessages();
+  const { addMessage } = useAppActions();
+  const { sendChat, isConnected } = useWebSocket();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    log.info('Connection status changed', { isConnected });
+  }, [isConnected, log]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -37,8 +32,31 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim() && isConnected) {
-      onSendMessage(input.trim());
+      const message = input.trim();
+      
+      log.info('User sending message', { 
+        messageLength: message.length,
+        messagePreview: message.substring(0, 50) 
+      });
+      
+      // Add user message to state immediately
+      addMessage({
+        type: 'user',
+        content: message,
+        timestamp: Date.now()
+      });
+      
+      // Send via WebSocket
+      try {
+        sendChat(message, {});
+        log.debug('Message sent successfully');
+      } catch (error) {
+        log.error('Failed to send message', error as Error);
+      }
+      
       setInput('');
+    } else if (!isConnected) {
+      log.warn('Attempted to send message while disconnected');
     }
   };
 
