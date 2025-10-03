@@ -21,6 +21,9 @@ env_logger = "0.11"
 # Will be used to communicate with Python AI service
 crossbeam = "0.8"
 
+# Shared state management
+parking_lot = "0.12"
+
 [lib]
 name = "ai_os_kernel"
 path = "src/lib.rs"
