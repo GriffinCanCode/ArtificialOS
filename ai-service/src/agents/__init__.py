@@ -2,7 +2,6 @@
 
 from .chat import ChatAgent, ChatHistory, ChatMessage
 from .ui_generator import UIGeneratorAgent, UISpec, ToolRegistry
-from .app_manager import AppManager, AppInstance, AppState, get_app_manager
 
 __all__ = [
     "ChatAgent",
@@ -11,9 +10,5 @@ __all__ = [
     "UIGeneratorAgent",
     "UISpec",
     "ToolRegistry",
-    "AppManager",
-    "AppInstance",
-    "AppState",
-    "get_app_manager",
 ]
 

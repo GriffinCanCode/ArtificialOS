@@ -6,6 +6,7 @@ import (
 	"github.com/GriffinCanCode/AgentOS/backend/internal/app"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/grpc"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/http"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/registry"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/service"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/ws"
 	"github.com/gin-gonic/gin"
@@ -13,11 +14,12 @@ import (
 
 // Server wraps the HTTP server and dependencies
 type Server struct {
-	router     *gin.Engine
-	appManager *app.Manager
-	registry   *service.Registry
-	aiClient   *grpc.AIClient
-	kernel     *grpc.KernelClient
+	router      *gin.Engine
+	appManager  *app.Manager
+	registry    *service.Registry
+	appRegistry *registry.Manager
+	aiClient    *grpc.AIClient
+	kernel      *grpc.KernelClient
 }
 
 // Config contains server configuration
@@ -50,7 +52,19 @@ func NewServer(cfg Config) (*Server, error) {
 
 	// Initialize app manager and service registry
 	appManager := app.NewManager(kernelClient)
-	registry := service.NewRegistry()
+	serviceRegistry := service.NewRegistry()
+
+	// Initialize app registry with storage
+	// Create a dummy PID for system storage operations
+	var storagePID uint32 = 1
+	if kernelClient != nil {
+		// In production, create a dedicated process for storage
+		pid, err := kernelClient.CreateProcess("storage-manager", 10, "PRIVILEGED")
+		if err == nil && pid != nil {
+			storagePID = *pid
+		}
+	}
+	appRegistry := registry.NewManager(kernelClient, storagePID, "/tmp/ai-os-storage/system")
 
 	// Create router
 	router := gin.Default()
@@ -59,7 +73,7 @@ func NewServer(cfg Config) (*Server, error) {
 	router.Use(corsMiddleware())
 
 	// Create handlers
-	handlers := http.NewHandlers(appManager, registry, aiClient, kernelClient)
+	handlers := http.NewHandlers(appManager, serviceRegistry, appRegistry, aiClient, kernelClient)
 	wsHandler := ws.NewHandler(appManager, aiClient)
 
 	// Register routes
@@ -79,15 +93,23 @@ func NewServer(cfg Config) (*Server, error) {
 	// AI operations
 	router.POST("/generate-ui", handlers.GenerateUI)
 
+	// App Registry endpoints
+	router.POST("/registry/save", handlers.SaveAppToRegistry)
+	router.GET("/registry/apps", handlers.ListRegistryApps)
+	router.GET("/registry/apps/:id", handlers.GetRegistryApp)
+	router.POST("/registry/apps/:id/launch", handlers.LaunchRegistryApp)
+	router.DELETE("/registry/apps/:id", handlers.DeleteRegistryApp)
+
 	// WebSocket
 	router.GET("/stream", wsHandler.HandleConnection)
 
 	return &Server{
-		router:     router,
-		appManager: appManager,
-		registry:   registry,
-		aiClient:   aiClient,
-		kernel:     kernelClient,
+		router:      router,
+		appManager:  appManager,
+		registry:    serviceRegistry,
+		appRegistry: appRegistry,
+		aiClient:    aiClient,
+		kernel:      kernelClient,
 	}, nil
 }
 

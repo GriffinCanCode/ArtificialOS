@@ -12,8 +12,11 @@ import {
   useGenerationThoughts,
   useGenerationPreview,
   useAppActions,
+  useAppStore,
   UIComponent,
+  UISpec,
 } from "../store/appStore";
+import { Launcher } from "./Launcher";
 import { logger } from "../utils/logger";
 import "./DynamicRenderer.css";
 
@@ -747,31 +750,58 @@ const DynamicRenderer: React.FC = () => {
         )}
 
         {!uiSpec && !isLoading && !error && (
-          <div className="placeholder">
-            <span className="placeholder-icon">🎨</span>
-            <h2>Dynamic App Canvas</h2>
-            <p>AI-generated applications will render here in real-time</p>
-            <div className="example-apps">
-              <button className="app-card" onClick={() => loadUISpec("create a calculator")}>
-                📱 Calculator
-              </button>
-              <button className="app-card" onClick={() => loadUISpec("create a todo app")}>
-                📝 Todo App
-              </button>
-              <button className="app-card" onClick={() => loadUISpec("create a counter")}>
-                🔢 Counter
-              </button>
-              <button className="app-card" onClick={() => loadUISpec("create a settings page")}>
-                ⚙️ Settings
-              </button>
-            </div>
-          </div>
+          <Launcher
+            onAppLaunch={(appId, rawUISpec) => {
+              // Cast to UISpec since we know the structure from the backend
+              setUISpec(rawUISpec as UISpec, appId);
+            }}
+            onCreateNew={() => {
+              // Focus the chat input or trigger a default prompt
+              loadUISpec("create a new app");
+            }}
+          />
         )}
 
         {uiSpec && (
           <div className="rendered-app" style={uiSpec.style}>
             <div className="app-header">
               <h2>{uiSpec.title}</h2>
+              <button
+                className="save-app-btn"
+                onClick={async () => {
+                  try {
+                    const { RegistryClient } = await import('../utils/registryClient');
+                    const appId = useAppStore.getState().appId;
+                    if (!appId) {
+                      alert('No app ID found');
+                      return;
+                    }
+                    
+                    const description = prompt('Enter a description for this app:');
+                    if (description === null) return;
+                    
+                    const category = prompt('Enter a category (productivity/utilities/games/creative/general):', 'general');
+                    if (category === null) return;
+                    
+                    const icon = prompt('Enter an emoji icon:', '📦');
+                    if (icon === null) return;
+                    
+                    await RegistryClient.saveApp({
+                      app_id: appId,
+                      description,
+                      category,
+                      icon,
+                    });
+                    
+                    alert('✅ App saved to registry!');
+                  } catch (err) {
+                    alert('Failed to save app: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                  }
+                }}
+                title="Save this app to registry"
+              >
+                💾 Save
+              </button>
             </div>
             <div className={`app-content app-layout-${uiSpec.layout}`}>
               {uiSpec.components.map((component, idx) => (

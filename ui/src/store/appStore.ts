@@ -55,10 +55,13 @@ interface AppState {
 
   // Dynamic renderer state
   uiSpec: UISpec | null;
+  partialUISpec: Partial<UISpec> | null; // Accumulates during streaming
   isLoading: boolean;
+  isStreaming: boolean; // True when actively building UI
   error: string | null;
   generationThoughts: string[];
   generationPreview: string; // Accumulates streaming tokens for real-time display
+  buildProgress: number; // 0-100 representing build progress
   appId: string | null;
 
   // Actions
@@ -66,7 +69,11 @@ interface AppState {
   appendToLastMessage: (content: string) => void;
   addThought: (thought: ThoughtStep) => void;
   setUISpec: (uiSpec: UISpec, appId: string) => void;
+  setPartialUISpec: (partial: Partial<UISpec>) => void;
+  addComponentToPartial: (component: UIComponent) => void;
   setLoading: (loading: boolean) => void;
+  setStreaming: (streaming: boolean) => void;
+  setBuildProgress: (progress: number) => void;
   setError: (error: string | null) => void;
   addGenerationThought: (thought: string) => void;
   appendGenerationPreview: (content: string) => void;
@@ -84,10 +91,13 @@ const initialState = {
   messages: [],
   thoughts: [],
   uiSpec: null,
+  partialUISpec: null,
   isLoading: false,
+  isStreaming: false,
   error: null,
   generationThoughts: [],
   generationPreview: "",
+  buildProgress: 0,
   appId: null,
 };
 
@@ -274,13 +284,72 @@ export const useAppStore = create<AppState>()(
         return set(
           {
             uiSpec: null,
+            partialUISpec: null,
             appId: null,
             error: null,
             generationThoughts: [],
             generationPreview: "",
+            buildProgress: 0,
+            isStreaming: false,
           },
           false,
           "clearUISpec"
+        );
+      },
+
+      // Partial UI spec actions for streaming
+      setPartialUISpec: (partial) => {
+        logger.debug("Setting partial UI spec", {
+          component: "AppStore",
+          hasTitle: !!partial.title,
+          componentCount: partial.components?.length || 0,
+        });
+        return set(
+          { partialUISpec: partial },
+          false,
+          "setPartialUISpec"
+        );
+      },
+
+      addComponentToPartial: (component) => {
+        logger.debug("Adding component to partial UI", {
+          component: "AppStore",
+          componentType: component.type,
+          componentId: component.id,
+        });
+        return set(
+          (state) => {
+            const current = state.partialUISpec || { components: [] };
+            const components = [...(current.components || []), component];
+            return {
+              partialUISpec: {
+                ...current,
+                components,
+              },
+            };
+          },
+          false,
+          "addComponentToPartial"
+        );
+      },
+
+      setStreaming: (streaming) => {
+        logger.debug("Setting streaming state", {
+          component: "AppStore",
+          streaming,
+        });
+        return set(
+          { isStreaming: streaming },
+          false,
+          "setStreaming"
+        );
+      },
+
+      setBuildProgress: (progress) => {
+        return set(
+          { buildProgress: progress },
+          false,
+          "setBuildProgress"
         );
       },
 
@@ -306,9 +375,12 @@ export const useThoughts = () => useAppStore((state) => state.thoughts);
 
 // Only re-render when UI spec changes
 export const useUISpec = () => useAppStore((state) => state.uiSpec);
+export const usePartialUISpec = () => useAppStore((state) => state.partialUISpec);
 
 // Individual loading state selectors to prevent unnecessary re-renders
 export const useIsLoading = () => useAppStore((state) => state.isLoading);
+export const useIsStreaming = () => useAppStore((state) => state.isStreaming);
+export const useBuildProgress = () => useAppStore((state) => state.buildProgress);
 export const useError = () => useAppStore((state) => state.error);
 export const useGenerationThoughts = () => useAppStore((state) => state.generationThoughts);
 export const useGenerationPreview = () => useAppStore((state) => state.generationPreview);
