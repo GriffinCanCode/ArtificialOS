@@ -1295,3 +1295,54 @@ export const energyPulse = (
   return tl;
 };
 
+// ============================================================================
+// REACT-SPRING CONFIGURATION PRESETS
+// Physics-based animation configs for natural motion
+// ============================================================================
+
+export const springConfigs = {
+  // Gentle, subtle spring
+  gentle: { tension: 120, friction: 14, precision: 0.01 },
+  
+  // Default spring - balanced
+  default: { tension: 170, friction: 26, precision: 0.01 },
+  
+  // Slow, smooth spring
+  slow: { tension: 100, friction: 30, precision: 0.01 },
+  
+  // Fast, snappy spring
+  fast: { tension: 300, friction: 30, precision: 0.01 },
+  
+  // Bouncy, playful spring
+  bouncy: { tension: 200, friction: 12, precision: 0.01 },
+  
+  // Molasses - very slow
+  molasses: { tension: 50, friction: 20, precision: 0.01 },
+  
+  // Stiff - minimal oscillation
+  stiff: { tension: 300, friction: 40, precision: 0.01 },
+  
+  // Wobbly - lots of oscillation
+  wobbly: { tension: 180, friction: 8, precision: 0.01 },
+  
+  // Rubber band effect
+  rubber: { tension: 150, friction: 10, clamp: false, precision: 0.01 },
+  
+  // Jello - very bouncy
+  jello: { tension: 200, friction: 6, precision: 0.01 },
+};
+
+// Pre-configured animation states for common patterns
+export const springStates = {
+  fadeIn: { opacity: 1, scale: 1 },
+  fadeOut: { opacity: 0, scale: 0.95 },
+  slideInFromLeft: { x: 0, opacity: 1 },
+  slideInFromRight: { x: 0, opacity: 1 },
+  slideInFromTop: { y: 0, opacity: 1 },
+  slideInFromBottom: { y: 0, opacity: 1 },
+  scaleIn: { scale: 1, opacity: 1 },
+  scaleOut: { scale: 0, opacity: 0 },
+  rotate: { rotate: 0 },
+  reset: { x: 0, y: 0, scale: 1, opacity: 1, rotate: 0 },
+};
+

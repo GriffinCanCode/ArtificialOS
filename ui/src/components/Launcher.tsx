@@ -3,7 +3,7 @@
  * Grid-based launcher for installed apps from the registry
  */
 
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { Rocket, Plus, AlertTriangle } from "lucide-react";
 import { useRegistryApps, useRegistryMutations } from "../hooks/useRegistryQueries";
 import { cardVariants, categoryButtonVariants, cn } from "../utils/componentVariants";
@@ -14,7 +14,7 @@ interface LauncherProps {
   onCreateNew?: () => void;
 }
 
-export const Launcher: React.FC<LauncherProps> = ({ onAppLaunch, onCreateNew }) => {
+export const Launcher: React.FC<LauncherProps> = React.memo(({ onAppLaunch, onCreateNew }) => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   
   // Use TanStack Query for data fetching with automatic caching
@@ -31,7 +31,7 @@ export const Launcher: React.FC<LauncherProps> = ({ onAppLaunch, onCreateNew }) 
   const apps = data?.apps ?? [];
   const error = queryError?.message ?? (launchApp.error?.message || deleteApp.error?.message);
 
-  const handleLaunchApp = async (packageId: string) => {
+  const handleLaunchApp = useCallback(async (packageId: string) => {
     launchApp.mutate(packageId, {
       onSuccess: (response) => {
         if (onAppLaunch) {
@@ -39,9 +39,9 @@ export const Launcher: React.FC<LauncherProps> = ({ onAppLaunch, onCreateNew }) 
         }
       },
     });
-  };
+  }, [launchApp, onAppLaunch]);
 
-  const handleDeleteApp = async (packageId: string, event: React.MouseEvent) => {
+  const handleDeleteApp = useCallback(async (packageId: string, event: React.MouseEvent) => {
     event.stopPropagation();
 
     if (!confirm("Are you sure you want to delete this app?")) {
@@ -49,7 +49,7 @@ export const Launcher: React.FC<LauncherProps> = ({ onAppLaunch, onCreateNew }) 
     }
 
     deleteApp.mutate(packageId);
-  };
+  }, [deleteApp]);
 
   const categories = ["all", "productivity", "utilities", "games", "creative", "general"];
 
@@ -141,4 +141,6 @@ export const Launcher: React.FC<LauncherProps> = ({ onAppLaunch, onCreateNew }) 
       )}
     </div>
   );
-};
+});
+
+Launcher.displayName = 'Launcher';

@@ -164,14 +164,23 @@ function AppContent() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [inputFocused]);
 
-  const onSubmitSpotlight = (data: SpotlightFormData) => {
+  const onSubmitSpotlight = useCallback((data: SpotlightFormData) => {
     const message = data.prompt.trim();
     if (message) {
       // Send to AI for UI generation using the context method
       generateUI(message, {});
       reset(); // Clear form after submission
     }
-  };
+  }, [generateUI, reset]);
+
+  const formatTimeSinceMemo = useCallback((date: Date): string => {
+    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+    if (seconds < 60) return "just now";
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours}h ago`;
+  }, []);
 
   return (
     <div className="app os-interface">
@@ -217,21 +226,11 @@ function AppContent() {
       {sessionManager.isSaving && <div ref={sessionStatusRef} className="session-status saving"><Save size={14} style={{ marginRight: '6px', verticalAlign: 'middle' }} />Saving...</div>}
       {sessionManager.lastSaveTime && !sessionManager.isSaving && (
         <div ref={sessionStatusRef} className="session-status saved">
-          <CheckCircle size={14} style={{ marginRight: '6px', verticalAlign: 'middle' }} />Saved {formatTimeSince(sessionManager.lastSaveTime)}
+          <CheckCircle size={14} style={{ marginRight: '6px', verticalAlign: 'middle' }} />Saved {formatTimeSinceMemo(sessionManager.lastSaveTime)}
         </div>
       )}
     </div>
   );
-}
-
-// Helper to format time since last save
-function formatTimeSince(date: Date): string {
-  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
-  if (seconds < 60) return "just now";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  return `${hours}h ago`;
 }
 
 export default App;

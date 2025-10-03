@@ -3,7 +3,7 @@
  * Form dialog for saving sessions using React Hook Form
  */
 
-import React from "react";
+import React, { useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { Modal } from "./Modal";
 import "./SaveSessionDialog.css";
@@ -20,7 +20,7 @@ interface SaveSessionDialogProps {
   isLoading?: boolean;
 }
 
-export const SaveSessionDialog: React.FC<SaveSessionDialogProps> = ({
+export const SaveSessionDialog: React.FC<SaveSessionDialogProps> = React.memo(({
   isOpen,
   onClose,
   onSave,
@@ -38,7 +38,7 @@ export const SaveSessionDialog: React.FC<SaveSessionDialogProps> = ({
     },
   });
 
-  const onSubmit = async (data: SaveSessionFormData) => {
+  const onSubmit = useCallback(async (data: SaveSessionFormData) => {
     try {
       await onSave(data);
       reset();
@@ -47,12 +47,12 @@ export const SaveSessionDialog: React.FC<SaveSessionDialogProps> = ({
       // Error handling is done in parent component
       console.error("Failed to save session:", error);
     }
-  };
+  }, [onSave, reset, onClose]);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     reset();
     onClose();
-  };
+  }, [reset, onClose]);
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Save Session">
@@ -125,5 +125,7 @@ export const SaveSessionDialog: React.FC<SaveSessionDialogProps> = ({
       </form>
     </Modal>
   );
-};
+});
+
+SaveSessionDialog.displayName = 'SaveSessionDialog';
 

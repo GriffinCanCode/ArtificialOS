@@ -3,7 +3,7 @@
  * Visualizes AI thinking process in real-time
  */
 
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useCallback } from "react";
 import { MessageCircle, Brain, X } from "lucide-react";
 import { useThoughts, useAppActions } from "../store/appStore";
 import { useWebSocket } from "../contexts/WebSocketContext";
@@ -15,7 +15,7 @@ interface ThoughtStreamProps {
   onToggle: () => void;
 }
 
-const ThoughtStream: React.FC<ThoughtStreamProps> = ({ isVisible, onToggle }) => {
+const ThoughtStream: React.FC<ThoughtStreamProps> = React.memo(({ isVisible, onToggle }) => {
   const thoughts = useThoughts();
   const { addThought } = useAppActions();
   const { client } = useWebSocket();
@@ -27,9 +27,21 @@ const ThoughtStream: React.FC<ThoughtStreamProps> = ({ isVisible, onToggle }) =>
   const backdropRef = useFadeIn<HTMLDivElement>({ duration: 0.3 });
   const thoughtsListRef = useStaggerSlideUp<HTMLDivElement>('.thought-item', { stagger: 0.05, distance: 20 });
 
+  const scrollToBottom = useCallback(() => {
+    streamEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
+  const formatTime = useCallback((timestamp: number) => {
+    return new Date(timestamp * 1000).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  }, []);
+
   useEffect(() => {
     scrollToBottom();
-  }, [thoughts]);
+  }, [thoughts, scrollToBottom]);
 
   // Auto-open panel when new thoughts arrive (optional - can be disabled)
   useEffect(() => {
@@ -56,18 +68,6 @@ const ThoughtStream: React.FC<ThoughtStreamProps> = ({ isVisible, onToggle }) =>
 
     return () => unsubscribe();
   }, [client, addThought]);
-
-  const scrollToBottom = () => {
-    streamEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  const formatTime = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-  };
 
   return (
     <>
@@ -121,6 +121,8 @@ const ThoughtStream: React.FC<ThoughtStreamProps> = ({ isVisible, onToggle }) =>
       {isVisible && <div ref={backdropRef} className="thought-backdrop" onClick={onToggle} />}
     </>
   );
-};
+});
+
+ThoughtStream.displayName = 'ThoughtStream';
 
 export default ThoughtStream;

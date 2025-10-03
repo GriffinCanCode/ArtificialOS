@@ -3,7 +3,7 @@
  * User input and message history
  */
 
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { useMessages, useAppActions } from "../store/appStore";
 import { useWebSocket } from "../contexts/WebSocketContext";
@@ -14,7 +14,7 @@ interface ChatFormData {
   message: string;
 }
 
-const ChatInterface: React.FC = () => {
+const ChatInterface: React.FC = React.memo(() => {
   const log = useLogger("ChatInterface");
   const messages = useMessages();
   const { addMessage, appendToLastMessage } = useAppActions();
@@ -27,9 +27,20 @@ const ChatInterface: React.FC = () => {
 
   const inputValue = watch("message");
 
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
+  const formatTime = useCallback((timestamp: number) => {
+    return new Date(timestamp).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }, []);
+
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, scrollToBottom]);
 
   useEffect(() => {
     log.info("Connection status changed", { isConnected });
@@ -59,11 +70,7 @@ const ChatInterface: React.FC = () => {
     return () => unsubscribe();
   }, [client, appendToLastMessage, addMessage, log]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  const onSubmit = (data: ChatFormData) => {
+  const onSubmit = useCallback((data: ChatFormData) => {
     const message = data.message.trim();
     if (message && isConnected) {
       log.info("User sending message", {
@@ -89,14 +96,7 @@ const ChatInterface: React.FC = () => {
     } else if (!isConnected) {
       log.warn("Attempted to send message while disconnected");
     }
-  };
-
-  const formatTime = (timestamp: number) => {
-    return new Date(timestamp).toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
+  }, [isConnected, log, addMessage, sendChat, reset]);
 
   return (
     <div className="chat-interface">
@@ -141,6 +141,8 @@ const ChatInterface: React.FC = () => {
       </form>
     </div>
   );
-};
+});
+
+ChatInterface.displayName = 'ChatInterface';
 
 export default ChatInterface;

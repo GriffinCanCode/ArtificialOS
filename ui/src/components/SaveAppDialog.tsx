@@ -3,7 +3,7 @@
  * Form dialog for saving apps to registry using React Hook Form
  */
 
-import React from "react";
+import React, { useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { Modal } from "./Modal";
 import "./SaveAppDialog.css";
@@ -32,7 +32,7 @@ const CATEGORIES = [
 
 const SUGGESTED_ICONS = ["📦", "⚡", "🎯", "🎨", "🎮", "🛠️", "📊", "🔧"];
 
-export const SaveAppDialog: React.FC<SaveAppDialogProps> = ({
+export const SaveAppDialog: React.FC<SaveAppDialogProps> = React.memo(({
   isOpen,
   onClose,
   onSave,
@@ -56,7 +56,7 @@ export const SaveAppDialog: React.FC<SaveAppDialogProps> = ({
 
   const currentIcon = watch("icon");
 
-  const onSubmit = async (data: SaveAppFormData) => {
+  const onSubmit = useCallback(async (data: SaveAppFormData) => {
     try {
       // Convert tags string to array
       const tags = data.tags
@@ -75,12 +75,16 @@ export const SaveAppDialog: React.FC<SaveAppDialogProps> = ({
       // Error handling is done in parent component
       console.error("Failed to save app:", error);
     }
-  };
+  }, [onSave, reset, onClose]);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     reset();
     onClose();
-  };
+  }, [reset, onClose]);
+
+  const handleIconSelect = useCallback((icon: string) => {
+    setValue("icon", icon);
+  }, [setValue]);
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Save App to Registry">
@@ -155,7 +159,7 @@ export const SaveAppDialog: React.FC<SaveAppDialogProps> = ({
                 key={icon}
                 type="button"
                 className={`icon-option ${currentIcon === icon ? "active" : ""}`}
-                onClick={() => setValue("icon", icon)}
+                onClick={() => handleIconSelect(icon)}
               >
                 {icon}
               </button>
@@ -202,5 +206,7 @@ export const SaveAppDialog: React.FC<SaveAppDialogProps> = ({
       </form>
     </Modal>
   );
-};
+});
+
+SaveAppDialog.displayName = 'SaveAppDialog';
 

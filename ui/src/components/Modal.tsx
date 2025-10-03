@@ -3,7 +3,7 @@
  * Base modal for dialogs and forms
  */
 
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback } from "react";
 import { X } from "lucide-react";
 import "./Modal.css";
 
@@ -15,13 +15,17 @@ interface ModalProps {
   maxWidth?: string;
 }
 
-export const Modal: React.FC<ModalProps> = ({
+export const Modal: React.FC<ModalProps> = React.memo(({
   isOpen,
   onClose,
   title,
   children,
   maxWidth = "500px",
 }) => {
+  const handleStopPropagation = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+  }, []);
+
   // Close on Escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -49,7 +53,7 @@ export const Modal: React.FC<ModalProps> = ({
       <div
         className="modal-content"
         style={{ maxWidth }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={handleStopPropagation}
       >
         <div className="modal-header">
           <h2 className="modal-title">{title}</h2>
@@ -66,5 +70,7 @@ export const Modal: React.FC<ModalProps> = ({
       </div>
     </div>
   );
-};
+});
+
+Modal.displayName = 'Modal';
 

@@ -6,6 +6,13 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Construction, MessageCircle, Palette, Save, Sparkles, Zap } from "lucide-react";
 import { useWebSocket } from "../contexts/WebSocketContext";
+import { animated } from '@react-spring/web';
+import { 
+  useSpringFadeIn,
+  useMagneticHover,
+  useJelloWobble,
+  useBounceAttention,
+} from "../hooks/useSpring";
 import {
   useUISpec,
   usePartialUISpec,
@@ -43,6 +50,41 @@ import {
   cn,
 } from "../utils/componentVariants";
 import "./DynamicRenderer.css";
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+// JSON size limits (in bytes) - must match backend
+const MAX_UI_SPEC_SIZE = 512 * 1024; // 512KB
+const MAX_JSON_DEPTH = 20; // Maximum nesting depth
+
+/**
+ * Validate JSON size to prevent DoS
+ */
+function validateJSONSize(jsonStr: string, maxSize: number = MAX_UI_SPEC_SIZE): void {
+  const size = new Blob([jsonStr]).size;
+  if (size > maxSize) {
+    throw new Error(`JSON size ${size} bytes exceeds maximum ${maxSize} bytes`);
+  }
+}
+
+/**
+ * Validate JSON nesting depth
+ */
+function validateJSONDepth(obj: any, maxDepth: number = MAX_JSON_DEPTH, currentDepth: number = 0): void {
+  if (currentDepth > maxDepth) {
+    throw new Error(`JSON nesting depth ${currentDepth} exceeds maximum ${maxDepth}`);
+  }
+  
+  if (typeof obj === 'object' && obj !== null) {
+    if (Array.isArray(obj)) {
+      obj.forEach(item => validateJSONDepth(item, maxDepth, currentDepth + 1));
+    } else {
+      Object.values(obj).forEach(value => validateJSONDepth(value, maxDepth, currentDepth + 1));
+    }
+  }
+}
 
 // ============================================================================
 // Component State Manager
@@ -93,6 +135,7 @@ class ComponentState {
 class ToolExecutor {
   private componentState: ComponentState;
   private appId: string | null = null;
+  private activeTimers: Set<number> = new Set(); // Track active timers for cleanup
 
   constructor(componentState: ComponentState) {
     this.componentState = componentState;
@@ -100,6 +143,21 @@ class ToolExecutor {
 
   setAppId(appId: string): void {
     this.appId = appId;
+  }
+
+  /**
+   * Clean up all active timers (call on unmount)
+   */
+  cleanup(): void {
+    this.activeTimers.forEach(timerId => {
+      clearTimeout(timerId);
+      clearInterval(timerId);
+    });
+    this.activeTimers.clear();
+    logger.info("Cleaned up all active timers", {
+      component: "ToolExecutor",
+      count: this.activeTimers.size
+    });
   }
 
   async execute(toolId: string, params: Record<string, any> = {}): Promise<any> {
@@ -364,23 +422,34 @@ class ToolExecutor {
             component: "TimerTool",
             action: params.action,
           });
-        }, params.delay);
+          // Remove from active timers after execution
+          this.activeTimers.delete(timerId);
+        }, params.delay) as unknown as number;
+        
+        // Track this timer for cleanup
+        this.activeTimers.add(timerId);
         this.componentState.set(`timer_${timerId}`, timerId);
         return timerId;
+        
       case "interval":
         const intervalId = setInterval(() => {
           logger.debug("Executing interval action", {
             component: "TimerTool",
             action: params.action,
           });
-        }, params.interval);
+        }, params.interval) as unknown as number;
+        
+        // Track this interval for cleanup
+        this.activeTimers.add(intervalId);
         this.componentState.set(`interval_${intervalId}`, intervalId);
         return intervalId;
+        
       case "clear":
         const id = this.componentState.get(params.timer_id);
         if (id) {
           clearTimeout(id);
           clearInterval(id);
+          this.activeTimers.delete(id);
         }
         return true;
       default:
@@ -399,7 +468,7 @@ interface RendererProps {
   executor: ToolExecutor;
 }
 
-const ComponentRenderer: React.FC<RendererProps> = ({ component, state, executor }) => {
+const ComponentRenderer: React.FC<RendererProps> = React.memo(({ component, state, executor }) => {
   const [, forceUpdate] = useState({});
 
   // Subscribe to state changes for this component
@@ -427,6 +496,10 @@ const ComponentRenderer: React.FC<RendererProps> = ({ component, state, executor
     },
     [component, executor]
   );
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    state.set(component.id, e.target.value);
+  }, [component.id, state]);
 
   // Render based on component type
   switch (component.type) {
@@ -464,7 +537,7 @@ const ComponentRenderer: React.FC<RendererProps> = ({ component, state, executor
           value={value}
           readOnly={component.props?.readonly}
           disabled={component.props?.disabled}
-          onChange={(e) => state.set(component.id, e.target.value)}
+          onChange={handleInputChange}
           style={component.props?.style}
         />
       );
@@ -548,7 +621,17 @@ const ComponentRenderer: React.FC<RendererProps> = ({ component, state, executor
     default:
       return <div className="dynamic-unknown">Unknown component: {component.type}</div>;
   }
-};
+}, (prevProps, nextProps) => {
+  // Custom comparison for better memoization
+  return (
+    prevProps.component.id === nextProps.component.id &&
+    prevProps.component.type === nextProps.component.type &&
+    JSON.stringify(prevProps.component.props) === JSON.stringify(nextProps.component.props) &&
+    prevProps.component.children?.length === nextProps.component.children?.length
+  );
+});
+
+ComponentRenderer.displayName = 'ComponentRenderer';
 
 // ============================================================================
 // Main DynamicRenderer Component
@@ -595,6 +678,10 @@ const DynamicRenderer: React.FC = () => {
   // Use ref so it updates immediately without waiting for React re-render
   const renderedComponentIdsRef = React.useRef<Set<string>>(new Set());
   const [lastComponentCount, setLastComponentCount] = useState(0);
+
+  // Debounce partial JSON parsing
+  const parseDebounceTimerRef = React.useRef<number | null>(null);
+  const PARSE_DEBOUNCE_MS = 150; // Parse at most every 150ms
 
   // Auto-scroll preview as content is added
   const previewRef = React.useRef<HTMLPreElement>(null);
@@ -728,78 +815,102 @@ const DynamicRenderer: React.FC = () => {
           if (message.content) {
             appendGenerationPreview(message.content);
 
-            // Try to parse partial JSON and update partial UI spec
-            const currentPreview = useAppStore.getState().generationPreview + message.content;
-            const parseResult = parsePartialJSON(currentPreview);
+            // Debounce partial JSON parsing to reduce CPU usage
+            if (parseDebounceTimerRef.current !== null) {
+              window.clearTimeout(parseDebounceTimerRef.current);
+            }
 
-            logger.debugThrottled("Parse result", {
-              component: "DynamicRenderer",
-              complete: parseResult.complete,
-              hasData: !!parseResult.data,
-              componentCount: parseResult.data?.components?.length || 0,
-              previewLength: currentPreview.length,
-            });
+            parseDebounceTimerRef.current = window.setTimeout(() => {
+              // Try to parse partial JSON and update partial UI spec
+              const currentPreview = useAppStore.getState().generationPreview;
+              const parseResult = parsePartialJSON(currentPreview);
 
-            if (parseResult.data) {
-              const partial = parseResult.data as Partial<UISpec>;
+              logger.debugThrottled("Parse result", {
+                component: "DynamicRenderer",
+                complete: parseResult.complete,
+                hasData: !!parseResult.data,
+                componentCount: parseResult.data?.components?.length || 0,
+                previewLength: currentPreview.length,
+              });
 
-              // Update partial UI spec if we have new data
-              if (
-                partial.title ||
-                partial.layout ||
-                (partial.components && partial.components.length > 0)
-              ) {
-                const currentCount = partial.components?.length || 0;
-                const prevCount = lastComponentCount;
-                const newComponentCount = currentCount - prevCount;
+              if (parseResult.data) {
+                const partial = parseResult.data as Partial<UISpec>;
 
-                if (newComponentCount > 0) {
-                  logger.info("New components parsed", {
+                // Update partial UI spec if we have new data
+                if (
+                  partial.title ||
+                  partial.layout ||
+                  (partial.components && partial.components.length > 0)
+                ) {
+                  const currentCount = partial.components?.length || 0;
+                  const prevCount = lastComponentCount;
+                  const newComponentCount = currentCount - prevCount;
+
+                  if (newComponentCount > 0) {
+                    logger.info("New components parsed", {
+                      component: "DynamicRenderer",
+                      newComponents: newComponentCount,
+                      totalComponents: currentCount,
+                      previousCount: prevCount,
+                    });
+                    setLastComponentCount(currentCount);
+                  }
+
+                  logger.debugThrottled("Updating partial UI spec", {
                     component: "DynamicRenderer",
-                    newComponents: newComponentCount,
-                    totalComponents: currentCount,
-                    previousCount: prevCount,
+                    hasTitle: !!partial.title,
+                    componentCount: currentCount,
                   });
-                  setLastComponentCount(currentCount);
-                }
+                  setPartialUISpec(partial);
 
-                logger.debugThrottled("Updating partial UI spec", {
-                  component: "DynamicRenderer",
-                  hasTitle: !!partial.title,
-                  componentCount: currentCount,
-                });
-                setPartialUISpec(partial);
+                  // Track component IDs in ref (immediate, no re-render needed)
+                  if (partial.components) {
+                    partial.components.forEach((comp) => {
+                      renderedComponentIdsRef.current.add(comp.id);
+                    });
+                  }
 
-                // Track component IDs in ref (immediate, no re-render needed)
-                if (partial.components) {
-                  partial.components.forEach((comp) => {
-                    renderedComponentIdsRef.current.add(comp.id);
-                  });
-                }
-
-                // Calculate progress based on components found
-                if (partial.components && partial.components.length > 0) {
-                  // Estimate total components (we'll refine this as we get more data)
-                  const estimatedTotal = Math.max(10, partial.components.length + 5);
-                  const progress = Math.min(90, (partial.components.length / estimatedTotal) * 100);
-                  setBuildProgress(progress);
+                  // Calculate progress based on components found
+                  if (partial.components && partial.components.length > 0) {
+                    // Estimate total components (we'll refine this as we get more data)
+                    const estimatedTotal = Math.max(10, partial.components.length + 5);
+                    const progress = Math.min(90, (partial.components.length / estimatedTotal) * 100);
+                    setBuildProgress(progress);
+                  }
                 }
               }
-            }
+
+              parseDebounceTimerRef.current = null;
+            }, PARSE_DEBOUNCE_MS);
           }
           break;
 
         case "ui_generated":
-          logger.info("UI generated successfully", {
-            component: "DynamicRenderer",
-            title: message.ui_spec.title,
-            appId: message.app_id,
-            componentCount: message.ui_spec.components.length,
-          });
-          setUISpec(message.ui_spec, message.app_id);
-          componentState.clear();
-          componentState.set("app_id", message.app_id);
-          toolExecutor.setAppId(message.app_id);
+          try {
+            // Validate UI spec size and depth
+            const uiSpecStr = JSON.stringify(message.ui_spec);
+            validateJSONSize(uiSpecStr);
+            validateJSONDepth(message.ui_spec);
+
+            logger.info("UI generated successfully", {
+              component: "DynamicRenderer",
+              title: message.ui_spec.title,
+              appId: message.app_id,
+              componentCount: message.ui_spec.components.length,
+            });
+            setUISpec(message.ui_spec, message.app_id);
+            componentState.clear();
+            componentState.set("app_id", message.app_id);
+            toolExecutor.setAppId(message.app_id);
+          } catch (validationError) {
+            logger.error("UI spec validation failed", validationError as Error, {
+              component: "DynamicRenderer",
+            });
+            setError(`UI spec validation failed: ${(validationError as Error).message}`);
+            setLoading(false);
+            setStreaming(false);
+            break;
+          }
 
           // Execute lifecycle hooks (on_mount)
           if (message.ui_spec.lifecycle_hooks?.on_mount) {
@@ -825,6 +936,11 @@ const DynamicRenderer: React.FC = () => {
           setLoading(false);
           setStreaming(false);
           setBuildProgress(100);
+          // Clear any pending parse operations
+          if (parseDebounceTimerRef.current !== null) {
+            window.clearTimeout(parseDebounceTimerRef.current);
+            parseDebounceTimerRef.current = null;
+          }
           break;
 
         case "error":
@@ -835,6 +951,11 @@ const DynamicRenderer: React.FC = () => {
           });
           setError(message.message);
           setStreaming(false);
+          // Clear any pending parse operations
+          if (parseDebounceTimerRef.current !== null) {
+            window.clearTimeout(parseDebounceTimerRef.current);
+            parseDebounceTimerRef.current = null;
+          }
           break;
 
         default:
@@ -845,6 +966,11 @@ const DynamicRenderer: React.FC = () => {
 
     return () => {
       logger.debug("Cleaning up WebSocket message listener", { component: "DynamicRenderer" });
+      // Clear any pending parse operations
+      if (parseDebounceTimerRef.current !== null) {
+        window.clearTimeout(parseDebounceTimerRef.current);
+        parseDebounceTimerRef.current = null;
+      }
       unsubscribe();
     };
   }, [
@@ -861,6 +987,10 @@ const DynamicRenderer: React.FC = () => {
   // Cleanup: Execute on_unmount hooks when component unmounts or UI changes
   useEffect(() => {
     return () => {
+      // Clean up timers first
+      toolExecutor.cleanup();
+      
+      // Then execute lifecycle hooks
       if (uiSpec?.lifecycle_hooks?.on_unmount) {
         logger.info("Executing on_unmount hooks", {
           component: "DynamicRenderer",
@@ -893,7 +1023,13 @@ const DynamicRenderer: React.FC = () => {
   const saveButtonRef = useGlowPulse<HTMLButtonElement>(false, { color: '99, 102, 241', intensity: 15 });
   const { elementRef: burstRef, burst } = useParticleBurst<HTMLDivElement>();
   
-  // Animate error with chromatic aberration and wobble
+  // React Spring animations
+  const errorJello = useJelloWobble(!!error);
+  const iconBounce = useBounceAttention(!uiSpec && !isLoading && !isStreaming);
+  const saveButtonMagnetic = useMagneticHover(0.15);
+  const desktopFadeIn = useSpringFadeIn(!uiSpec && !isLoading && !isStreaming);
+  
+  // Animate error with chromatic aberration and spring wobble
   useEffect(() => {
     if (error && errorRef.elementRef.current) {
       gsapAnimations.chromaticAberration(errorRef.elementRef.current, { intensity: 6, duration: 0.5 });
@@ -941,6 +1077,35 @@ const DynamicRenderer: React.FC = () => {
     }
   }, [buildProgress]);
 
+  // Handle save app form submission
+  const handleSaveApp = useCallback(async (data: {
+    description: string;
+    category: string;
+    icon: string;
+    tags: string[];
+  }) => {
+    const appId = useAppStore.getState().appId;
+    if (!appId) {
+      throw new Error("No app ID found");
+    }
+
+    await saveAppMutation.mutateAsync({
+      app_id: appId,
+      description: data.description,
+      category: data.category,
+      icon: data.icon,
+      tags: data.tags,
+    });
+  }, [saveAppMutation]);
+
+  const handleSaveDialogOpen = useCallback(() => {
+    setShowSaveAppDialog(true);
+  }, []);
+
+  const handleSaveDialogClose = useCallback(() => {
+    setShowSaveAppDialog(false);
+  }, []);
+
   // Animate components as they appear during build - with varied creative effects
   const componentRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   
@@ -972,27 +1137,6 @@ const DynamicRenderer: React.FC = () => {
     }
   }, [partialUISpec?.components]);
 
-  // Handle save app form submission
-  const handleSaveApp = async (data: {
-    description: string;
-    category: string;
-    icon: string;
-    tags: string[];
-  }) => {
-    const appId = useAppStore.getState().appId;
-    if (!appId) {
-      throw new Error("No app ID found");
-    }
-
-    await saveAppMutation.mutateAsync({
-      app_id: appId,
-      description: data.description,
-      category: data.category,
-      icon: data.icon,
-      tags: data.tags,
-    });
-  };
-
   // Clean desktop - no auto-loading
 
   // Debug: Log render state
@@ -1010,16 +1154,20 @@ const DynamicRenderer: React.FC = () => {
     <div className="dynamic-renderer fullscreen">
       <SaveAppDialog
         isOpen={showSaveAppDialog}
-        onClose={() => setShowSaveAppDialog(false)}
+        onClose={handleSaveDialogClose}
         onSave={handleSaveApp}
         isLoading={saveAppMutation.isPending}
       />
       
       <div className="renderer-canvas">
         {error && (
-          <div ref={errorRef.elementRef} className="renderer-error">
+          <animated.div 
+            ref={errorRef.elementRef} 
+            className="renderer-error"
+            style={errorJello}
+          >
             <strong>Error:</strong> {error}
-          </div>
+          </animated.div>
         )}
 
         {(isLoading || isStreaming || (partialUISpec && !uiSpec)) && (
@@ -1122,11 +1270,21 @@ const DynamicRenderer: React.FC = () => {
 
         {!uiSpec && !isLoading && !isStreaming && !error && (
           <div className="desktop-empty-state">
-            <div ref={desktopMessageRef} className="desktop-message">
-              <div ref={desktopIconRef} className="desktop-icon"><Sparkles size={48} /></div>
+            <animated.div 
+              ref={desktopMessageRef} 
+              className="desktop-message"
+              style={desktopFadeIn}
+            >
+              <animated.div 
+                ref={desktopIconRef} 
+                className="desktop-icon"
+                style={iconBounce}
+              >
+                <Sparkles size={48} />
+              </animated.div>
               <h2>Welcome to Griffin's AgentOS</h2>
               <p>Press ⌘K or click below to create something</p>
-            </div>
+            </animated.div>
           </div>
         )}
 
@@ -1134,25 +1292,22 @@ const DynamicRenderer: React.FC = () => {
           <div ref={burstRef} className="rendered-app" style={uiSpec.style}>
             <div className="app-header">
               <h2>{uiSpec.title}</h2>
-              <button
-                ref={saveButtonRef}
+              <animated.button
+                ref={(el: HTMLButtonElement) => {
+                  if (saveButtonRef.current !== el && el) {
+                    (saveButtonRef as React.MutableRefObject<HTMLButtonElement | null>).current = el;
+                  }
+                  (saveButtonMagnetic.ref as React.MutableRefObject<HTMLButtonElement | null>).current = el;
+                }}
                 className="save-app-btn"
-                onClick={() => setShowSaveAppDialog(true)}
-                onMouseEnter={() => {
-                  if (saveButtonRef.current) {
-                    gsapAnimations.buttonHoverIn(saveButtonRef.current);
-                  }
-                }}
-                onMouseLeave={() => {
-                  if (saveButtonRef.current) {
-                    gsapAnimations.buttonHoverOut(saveButtonRef.current);
-                  }
-                }}
+                onClick={handleSaveDialogOpen}
+                {...saveButtonMagnetic.handlers}
+                style={saveButtonMagnetic.style}
                 title="Save this app to registry"
               >
                 <Save size={16} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
                 Save
-              </button>
+              </animated.button>
             </div>
             <div className={`app-content app-layout-${uiSpec.layout}`}>
               {uiSpec.components.map((component, idx) => (

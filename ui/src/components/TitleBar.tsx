@@ -3,7 +3,7 @@
  * Provides window controls for frameless Electron window
  */
 
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { Save, FolderOpen, X, Trash2 } from "lucide-react";
 import { useSessions, useDeleteSession } from "../hooks/useSessionQueries";
 import { useLogger } from "../utils/useLogger";
@@ -23,7 +23,7 @@ interface TitleBarProps {
   };
 }
 
-const TitleBar: React.FC<TitleBarProps> = ({ sessionManager }) => {
+const TitleBar: React.FC<TitleBarProps> = React.memo(({ sessionManager }) => {
   const log = useLogger("TitleBar");
   const [showSessionMenu, setShowSessionMenu] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -34,30 +34,30 @@ const TitleBar: React.FC<TitleBarProps> = ({ sessionManager }) => {
   
   const sessions = sessionsData?.sessions ?? [];
 
-  const handleMinimize = () => {
+  const handleMinimize = useCallback(() => {
     if (window.electron) {
       window.electron.minimize();
     }
-  };
+  }, []);
 
-  const handleMaximize = () => {
+  const handleMaximize = useCallback(() => {
     if (window.electron) {
       window.electron.maximize();
     }
-  };
+  }, []);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     if (window.electron) {
       window.electron.close();
     }
-  };
+  }, []);
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     if (!sessionManager) return;
     setShowSaveDialog(true);
-  };
+  }, [sessionManager]);
 
-  const handleSaveSubmit = async (data: { name: string; description?: string }) => {
+  const handleSaveSubmit = useCallback(async (data: { name: string; description?: string }) => {
     if (!sessionManager) return;
     
     try {
@@ -67,17 +67,17 @@ const TitleBar: React.FC<TitleBarProps> = ({ sessionManager }) => {
       log.error("Failed to save session", err as Error);
       throw err; // Let the dialog handle error display
     }
-  };
+  }, [sessionManager, log]);
 
-  const handleShowSessions = () => {
+  const handleShowSessions = useCallback(() => {
     setShowSessionMenu(!showSessionMenu);
     if (!showSessionMenu) {
       // Refetch to ensure fresh data when opening menu
       refetchSessions();
     }
-  };
+  }, [showSessionMenu, refetchSessions]);
 
-  const handleDeleteSession = async (sessionId: string, event: React.MouseEvent) => {
+  const handleDeleteSession = useCallback(async (sessionId: string, event: React.MouseEvent) => {
     event.stopPropagation();
     
     if (!confirm("Are you sure you want to delete this session?")) {
@@ -90,9 +90,9 @@ const TitleBar: React.FC<TitleBarProps> = ({ sessionManager }) => {
     } catch (err) {
       log.error("Failed to delete session", err as Error);
     }
-  };
+  }, [deleteSessionMutation, log]);
 
-  const handleRestore = async (sessionId: string) => {
+  const handleRestore = useCallback(async (sessionId: string) => {
     if (!sessionManager) return;
 
     try {
@@ -102,13 +102,21 @@ const TitleBar: React.FC<TitleBarProps> = ({ sessionManager }) => {
     } catch (err) {
       log.error("Failed to restore session", err as Error);
     }
-  };
+  }, [sessionManager, log]);
+
+  const closeSaveDialog = useCallback(() => {
+    setShowSaveDialog(false);
+  }, []);
+
+  const closeSessionMenu = useCallback(() => {
+    setShowSessionMenu(false);
+  }, []);
 
   return (
     <>
       <SaveSessionDialog
         isOpen={showSaveDialog}
-        onClose={() => setShowSaveDialog(false)}
+        onClose={closeSaveDialog}
         onSave={handleSaveSubmit}
         isLoading={sessionManager?.isSaving}
       />
@@ -147,7 +155,7 @@ const TitleBar: React.FC<TitleBarProps> = ({ sessionManager }) => {
           <div className="session-menu">
             <div className="session-menu-header">
               <h3>Saved Sessions</h3>
-              <button onClick={() => setShowSessionMenu(false)}><X size={16} /></button>
+              <button onClick={closeSessionMenu}><X size={16} /></button>
             </div>
             <div className="session-list">
               {isLoadingSessions ? (
@@ -207,6 +215,8 @@ const TitleBar: React.FC<TitleBarProps> = ({ sessionManager }) => {
       )}
     </>
   );
-};
+});
+
+TitleBar.displayName = 'TitleBar';
 
 export default TitleBar;

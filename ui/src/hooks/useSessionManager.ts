@@ -123,16 +123,32 @@ export function useSessionManager(options: UseSessionManagerOptions = {}) {
    * Restore a session
    */
   const restore = useCallback(async (sessionId: string) => {
+    const store = useAppStore.getState();
+    
+    // Prevent restore during active generation to avoid interrupting streaming
+    if (store.isStreaming || store.isLoading) {
+      logger.warn("Cannot restore session while generation is in progress", {
+        component: "SessionManager",
+        isStreaming: store.isStreaming,
+        isLoading: store.isLoading,
+      });
+      throw new Error("Cannot restore session during active generation");
+    }
+
     const result = await restoreSessionMutation.mutateAsync(sessionId);
+
+    // Wait a bit for backend to finish restoring apps before updating frontend state
+    // This is non-blocking and won't interfere with any future streaming
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     // Restore frontend state
     const { workspace } = result;
 
+    // Reset state first to ensure clean slate
+    store.resetState();
+
     if (workspace.chat_state) {
       // Restore messages and thoughts
-      const store = useAppStore.getState();
-      store.resetState();
-
       workspace.chat_state.messages.forEach((msg) => {
         store.addMessage({
           type: msg.type as "user" | "assistant" | "system",
@@ -150,19 +166,36 @@ export function useSessionManager(options: UseSessionManagerOptions = {}) {
     }
 
     if (workspace.ui_state) {
-      // Restore UI state
-      const store = useAppStore.getState();
-      store.setLoading(workspace.ui_state.is_loading);
+      // Only restore error state, never loading/streaming state during restore
       if (workspace.ui_state.error) {
         store.setError(workspace.ui_state.error);
       }
     }
 
-    // Restore focused app UI
+    // Restore focused app UI - use requestAnimationFrame for next frame to prevent race
+    // This ensures we don't conflict with any React render cycles
     if (workspace.focused_app_id && workspace.apps.length > 0) {
       const focusedApp = workspace.apps.find((app) => app.id === workspace.focused_app_id);
       if (focusedApp) {
-        useAppStore.getState().setUISpec(focusedApp.ui_spec as any, focusedApp.id);
+        // Use requestAnimationFrame + setTimeout to schedule after current render cycle
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            // Double-check we're not in the middle of streaming before setting UI
+            const currentStore = useAppStore.getState();
+            if (!currentStore.isStreaming && !currentStore.isLoading) {
+              logger.info("Restoring focused app UI", {
+                component: "SessionManager",
+                appId: focusedApp.id,
+                title: focusedApp.title,
+              });
+              currentStore.setUISpec(focusedApp.ui_spec as any, focusedApp.id);
+            } else {
+              logger.warn("Skipped UI restore due to active generation", {
+                component: "SessionManager",
+              });
+            }
+          }, 100);
+        });
       }
     }
 
