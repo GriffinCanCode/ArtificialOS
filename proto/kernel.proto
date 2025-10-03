@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package kernel;
 
+option go_package = "github.com/GriffinCanCode/AgentOS/backend/proto/kernel";
+
 // Kernel service for executing syscalls
 service KernelService {
   // Execute a system call

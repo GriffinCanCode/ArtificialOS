@@ -496,6 +496,10 @@ const DynamicRenderer: React.FC = () => {
   // Auto-scroll preview as content is added
   const previewRef = React.useRef<HTMLPreElement>(null);
   React.useEffect(() => {
+    console.log("📺 PREVIEW UPDATED:", {
+      length: generationPreview.length,
+      preview: generationPreview.substring(0, 100)
+    });
     if (previewRef.current && generationPreview) {
       previewRef.current.scrollTop = previewRef.current.scrollHeight;
     }
@@ -573,12 +577,19 @@ const DynamicRenderer: React.FC = () => {
 
         case "generation_token":
           // Real-time token streaming during UI generation
+          console.log("🔥 RECEIVED TOKEN:", {
+            type: message.type,
+            content: message.content,
+            contentLength: message.content?.length || 0,
+            preview: message.content?.substring(0, 50)
+          });
           logger.verboseThrottled("Generation token received", {
             component: "DynamicRenderer",
             contentLength: message.content?.length || 0,
           });
           // Accumulate tokens for real-time display
           if (message.content) {
+            console.log("📝 APPENDING TO PREVIEW:", message.content);
             appendGenerationPreview(message.content);
           }
           break;
