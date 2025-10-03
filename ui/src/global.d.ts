@@ -16,4 +16,3 @@ interface Window {
     verbose: (message: string, ...args: any[]) => void;
   };
 }
-

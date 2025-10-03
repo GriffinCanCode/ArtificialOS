@@ -32,7 +32,11 @@
   flex: 1;
   overflow: auto;
   padding: 1.5rem;
-  background: radial-gradient(circle at center, var(--color-dark-hover) 0%, var(--color-dark-bg) 100%);
+  background: radial-gradient(
+    circle at center,
+    var(--color-dark-hover) 0%,
+    var(--color-dark-bg) 100%
+  );
 }
 
 .placeholder {
@@ -51,7 +55,8 @@
 }
 
 @keyframes float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0);
   }
   50% {
@@ -312,4 +317,85 @@
 
 .fade-in {
   animation: fade-in 0.3s ease-out;
+}
+
+/* Generation Preview - Live Streaming Display */
+.generation-preview {
+  width: 100%;
+  max-width: 700px;
+  margin-top: 1rem;
+  background: color-mix(in srgb, #000 40%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-success-green) 30%, transparent);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  animation: fade-in 0.3s ease-out;
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: color-mix(in srgb, var(--color-success-green) 10%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-success-green) 20%, transparent);
+}
+
+.preview-icon {
+  font-size: 1rem;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.preview-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-success-green);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.preview-content {
+  margin: 0;
+  padding: 1rem;
+  max-height: 400px;
+  overflow-y: auto;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--color-success-green) 90%, #fff);
+  background: color-mix(in srgb, #000 60%, transparent);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.preview-content code {
+  font-family: inherit;
+  color: inherit;
+}
+
+/* Scrollbar styling for preview */
+.preview-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.preview-content::-webkit-scrollbar-track {
+  background: color-mix(in srgb, #000 40%, transparent);
+}
+
+.preview-content::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--color-success-green) 30%, transparent);
+  border-radius: 4px;
+}
+
+.preview-content::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--color-success-green) 50%, transparent);
 }

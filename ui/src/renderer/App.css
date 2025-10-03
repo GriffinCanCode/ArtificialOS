@@ -36,7 +36,7 @@
   .app-layout {
     grid-template-columns: 1fr 1fr;
   }
-  
+
   .thoughts-panel {
     display: none;
   }
@@ -46,7 +46,7 @@
   .app-layout {
     grid-template-columns: 1fr;
   }
-  
+
   .chat-panel,
   .thoughts-panel {
     display: none;

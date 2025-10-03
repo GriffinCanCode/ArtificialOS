@@ -3,8 +3,8 @@
  * Provides window controls for frameless Electron window
  */
 
-import React from 'react';
-import './TitleBar.css';
+import React from "react";
+import "./TitleBar.css";
 
 const TitleBar: React.FC = () => {
   const handleMinimize = () => {
@@ -46,4 +46,3 @@ const TitleBar: React.FC = () => {
 };
 
 export default TitleBar;
-

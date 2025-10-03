@@ -4,11 +4,11 @@
  */
 
 export enum LogLevel {
-  ERROR = 'error',
-  WARN = 'warn',
-  INFO = 'info',
-  DEBUG = 'debug',
-  VERBOSE = 'verbose'
+  ERROR = "error",
+  WARN = "warn",
+  INFO = "info",
+  DEBUG = "debug",
+  VERBOSE = "verbose",
 }
 
 export interface LogContext {
@@ -23,7 +23,7 @@ class Logger {
   private context: LogContext = {};
   private throttleMap: Map<string, number> = new Map();
   private throttleWindow: number = 2000; // 2 seconds default
-  
+
   /**
    * Set persistent context for all log messages
    */
@@ -51,12 +51,12 @@ class Logger {
   private shouldThrottle(key: string): boolean {
     const now = Date.now();
     const lastLogged = this.throttleMap.get(key);
-    
+
     if (!lastLogged || now - lastLogged > this.throttleWindow) {
       this.throttleMap.set(key, now);
       return false;
     }
-    
+
     return true;
   }
 
@@ -98,7 +98,12 @@ class Logger {
   /**
    * Core logging method (non-blocking via setTimeout)
    */
-  private log(level: LogLevel, message: string, context?: LogContext, throttle: boolean = false): void {
+  private log(
+    level: LogLevel,
+    message: string,
+    context?: LogContext,
+    throttle: boolean = false
+  ): void {
     // Check throttling
     if (throttle) {
       const throttleKey = `${level}:${message}`;
@@ -111,7 +116,7 @@ class Logger {
     setTimeout(() => {
       const fullContext = { ...this.context, ...context };
       const timestamp = new Date().toISOString();
-      
+
       // If running in Electron with electron-log available
       if (window.electronLog) {
         window.electronLog[level](message, fullContext);
@@ -143,7 +148,7 @@ class Logger {
    */
   private serializeError(error: Error | unknown): any {
     if (!error) return undefined;
-    
+
     if (error instanceof Error) {
       return {
         name: error.name,
@@ -151,7 +156,7 @@ class Logger {
         stack: error.stack,
       };
     }
-    
+
     return { error: String(error) };
   }
 
@@ -172,7 +177,7 @@ class Logger {
       ...context,
       metric,
       duration,
-      unit: 'ms'
+      unit: "ms",
     });
   }
 
@@ -180,11 +185,11 @@ class Logger {
    * Log user interactions
    */
   interaction(action: string, target?: string, context?: LogContext): void {
-    this.info('User interaction', {
+    this.info("User interaction", {
       ...context,
       action,
       target,
-      type: 'interaction'
+      type: "interaction",
     });
   }
 
@@ -192,12 +197,12 @@ class Logger {
    * Log API calls
    */
   api(method: string, endpoint: string, status?: number, context?: LogContext): void {
-    this.info('API call', {
+    this.info("API call", {
       ...context,
       method,
       endpoint,
       status,
-      type: 'api'
+      type: "api",
     });
   }
 
@@ -205,11 +210,11 @@ class Logger {
    * Log WebSocket events
    */
   websocket(event: string, data?: any, context?: LogContext): void {
-    this.debug('WebSocket event', {
+    this.debug("WebSocket event", {
       ...context,
       event,
       data,
-      type: 'websocket'
+      type: "websocket",
     });
   }
 
@@ -242,12 +247,17 @@ class Logger {
    * Log WebSocket events with throttling
    */
   websocketThrottled(event: string, data?: any, context?: LogContext): void {
-    this.log(LogLevel.DEBUG, 'WebSocket event', {
-      ...context,
-      event,
-      data,
-      type: 'websocket'
-    }, true);
+    this.log(
+      LogLevel.DEBUG,
+      "WebSocket event",
+      {
+        ...context,
+        event,
+        data,
+        type: "websocket",
+      },
+      true
+    );
   }
 }
 
@@ -256,4 +266,3 @@ export const logger = new Logger();
 
 // Export default
 export default logger;
-

@@ -3,27 +3,47 @@
  * Visualizes AI thinking process in real-time
  */
 
-import React, { useRef, useEffect } from 'react';
-import { useThoughts } from '../store/appStore';
-import './ThoughtStream.css';
+import React, { useRef, useEffect } from "react";
+import { useThoughts, useAppActions } from "../store/appStore";
+import { useWebSocket } from "../contexts/WebSocketContext";
+import "./ThoughtStream.css";
 
 const ThoughtStream: React.FC = () => {
   const thoughts = useThoughts();
+  const { addThought } = useAppActions();
+  const { client } = useWebSocket();
   const streamEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     scrollToBottom();
   }, [thoughts]);
 
+  // Listen for thought messages from WebSocket
+  useEffect(() => {
+    if (!client) return;
+
+    const unsubscribe = client.onMessage((message) => {
+      // Add thoughts to the stream
+      if (message.type === "thought" || message.type === "reasoning") {
+        addThought({
+          content: message.content || "",
+          timestamp: Date.now() / 1000, // Convert to seconds
+        });
+      }
+    });
+
+    return () => unsubscribe();
+  }, [client, addThought]);
+
   const scrollToBottom = () => {
-    streamEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    streamEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   const formatTime = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
+    return new Date(timestamp * 1000).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
     });
   };
 
@@ -58,4 +78,3 @@ const ThoughtStream: React.FC = () => {
 };
 
 export default ThoughtStream;
-

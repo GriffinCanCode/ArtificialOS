@@ -3,17 +3,17 @@
  * Centralized state management with better performance and simpler API
  */
 
-import { create } from 'zustand';
-import { devtools } from 'zustand/middleware';
-import { useMemo } from 'react';
-import { logger } from '../utils/logger';
+import { create } from "zustand";
+import { devtools } from "zustand/middleware";
+import { useMemo } from "react";
+import { logger } from "../utils/logger";
 
 // ============================================================================
 // Type Definitions
 // ============================================================================
 
 export interface Message {
-  type: 'user' | 'assistant' | 'system';
+  type: "user" | "assistant" | "system";
   content: string;
   timestamp: number;
 }
@@ -49,17 +49,18 @@ export interface UISpec {
 interface AppState {
   // Chat state
   messages: Message[];
-  
+
   // Thought stream state
   thoughts: ThoughtStep[];
-  
+
   // Dynamic renderer state
   uiSpec: UISpec | null;
   isLoading: boolean;
   error: string | null;
   generationThoughts: string[];
+  generationPreview: string; // Accumulates streaming tokens for real-time display
   appId: string | null;
-  
+
   // Actions
   addMessage: (message: Message) => void;
   appendToLastMessage: (content: string) => void;
@@ -68,6 +69,8 @@ interface AppState {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   addGenerationThought: (thought: string) => void;
+  appendGenerationPreview: (content: string) => void;
+  clearGenerationPreview: () => void;
   clearGenerationThoughts: () => void;
   clearUISpec: () => void;
   resetState: () => void;
@@ -84,6 +87,7 @@ const initialState = {
   isLoading: false,
   error: null,
   generationThoughts: [],
+  generationPreview: "",
   appId: null,
 };
 
@@ -98,130 +102,192 @@ export const useAppStore = create<AppState>()(
 
       // Chat actions
       addMessage: (message) => {
-        logger.debug('Adding message to store', {
-          component: 'AppStore',
+        logger.debug("Adding message to store", {
+          component: "AppStore",
           messageType: message.type,
-          contentLength: message.content.length
+          contentLength: message.content.length,
         });
-        return set((state) => ({
-          messages: [...state.messages, message],
-        }), false, 'addMessage');
+        return set(
+          (state) => ({
+            messages: [...state.messages, message],
+          }),
+          false,
+          "addMessage"
+        );
       },
 
       appendToLastMessage: (content) => {
-        logger.verboseThrottled('Appending to last message', {
-          component: 'AppStore',
-          contentLength: content.length
+        logger.verboseThrottled("Appending to last message", {
+          component: "AppStore",
+          contentLength: content.length,
         });
-        return set((state) => {
-          const lastMessage = state.messages[state.messages.length - 1];
-          if (lastMessage && lastMessage.type === 'assistant') {
+        return set(
+          (state) => {
+            const lastMessage = state.messages[state.messages.length - 1];
+            if (lastMessage && lastMessage.type === "assistant") {
+              return {
+                messages: [
+                  ...state.messages.slice(0, -1),
+                  { ...lastMessage, content: lastMessage.content + content },
+                ],
+              };
+            }
+            // If no assistant message exists, create one
             return {
               messages: [
-                ...state.messages.slice(0, -1),
-                { ...lastMessage, content: lastMessage.content + content },
+                ...state.messages,
+                {
+                  type: "assistant",
+                  content,
+                  timestamp: Date.now(),
+                },
               ],
             };
-          }
-          // If no assistant message exists, create one
-          return {
-            messages: [
-              ...state.messages,
-              {
-                type: 'assistant',
-                content,
-                timestamp: Date.now(),
-              },
-            ],
-          };
-        }, false, 'appendToLastMessage');
+          },
+          false,
+          "appendToLastMessage"
+        );
       },
 
       // Thought stream actions
       addThought: (thought) => {
-        logger.verboseThrottled('Adding thought to stream', {
-          component: 'AppStore',
-          contentLength: thought.content.length
+        logger.verboseThrottled("Adding thought to stream", {
+          component: "AppStore",
+          contentLength: thought.content.length,
         });
-        return set((state) => ({
-          thoughts: [...state.thoughts, thought],
-        }), false, 'addThought');
+        return set(
+          (state) => ({
+            thoughts: [...state.thoughts, thought],
+          }),
+          false,
+          "addThought"
+        );
       },
 
       // Dynamic renderer actions
       setUISpec: (uiSpec, appId) => {
-        logger.info('Setting UI spec', {
-          component: 'AppStore',
+        logger.info("Setting UI spec", {
+          component: "AppStore",
           appId,
           uiType: uiSpec.type,
-          componentCount: uiSpec.components.length
+          componentCount: uiSpec.components.length,
         });
-        return set({
-          uiSpec,
-          appId,
-          isLoading: false,
-          error: null,
-        }, false, 'setUISpec');
+        return set(
+          {
+            uiSpec,
+            appId,
+            isLoading: false,
+            error: null,
+          },
+          false,
+          "setUISpec"
+        );
       },
 
       setLoading: (loading) => {
-        logger.debugThrottled('Setting loading state', {
-          component: 'AppStore',
-          loading
+        logger.debugThrottled("Setting loading state", {
+          component: "AppStore",
+          loading,
         });
-        return set((state) => ({
-          isLoading: loading,
-          error: loading ? null : state.error,
-        }), false, 'setLoading');
+        return set(
+          (state) => ({
+            isLoading: loading,
+            error: loading ? null : state.error,
+          }),
+          false,
+          "setLoading"
+        );
       },
 
       setError: (error) => {
         if (error) {
-          logger.error('Store error set', undefined, {
-            component: 'AppStore',
-            error
+          logger.error("Store error set", undefined, {
+            component: "AppStore",
+            error,
           });
         }
-        return set({
-          error,
-          isLoading: false,
-        }, false, 'setError');
+        return set(
+          {
+            error,
+            isLoading: false,
+          },
+          false,
+          "setError"
+        );
       },
 
       addGenerationThought: (thought) => {
-        logger.verboseThrottled('Adding generation thought', {
-          component: 'AppStore',
-          thoughtLength: thought.length
+        logger.verboseThrottled("Adding generation thought", {
+          component: "AppStore",
+          thoughtLength: thought.length,
         });
-        return set((state) => ({
-          generationThoughts: [...state.generationThoughts, thought],
-        }), false, 'addGenerationThought');
+        return set(
+          (state) => ({
+            generationThoughts: [...state.generationThoughts, thought],
+          }),
+          false,
+          "addGenerationThought"
+        );
+      },
+
+      appendGenerationPreview: (content) => {
+        logger.verboseThrottled("Appending to generation preview", {
+          component: "AppStore",
+          contentLength: content.length,
+        });
+        return set(
+          (state) => ({
+            generationPreview: state.generationPreview + content,
+          }),
+          false,
+          "appendGenerationPreview"
+        );
+      },
+
+      clearGenerationPreview: () => {
+        logger.debug("Clearing generation preview", { component: "AppStore" });
+        return set(
+          {
+            generationPreview: "",
+          },
+          false,
+          "clearGenerationPreview"
+        );
       },
 
       clearGenerationThoughts: () => {
-        logger.debug('Clearing generation thoughts', { component: 'AppStore' });
-        return set({
-          generationThoughts: [],
-        }, false, 'clearGenerationThoughts');
+        logger.debug("Clearing generation thoughts", { component: "AppStore" });
+        return set(
+          {
+            generationThoughts: [],
+          },
+          false,
+          "clearGenerationThoughts"
+        );
       },
 
       clearUISpec: () => {
-        logger.info('Clearing UI spec', { component: 'AppStore' });
-        return set({
-          uiSpec: null,
-          appId: null,
-          error: null,
-          generationThoughts: [],
-        }, false, 'clearUISpec');
+        logger.info("Clearing UI spec", { component: "AppStore" });
+        return set(
+          {
+            uiSpec: null,
+            appId: null,
+            error: null,
+            generationThoughts: [],
+            generationPreview: "",
+          },
+          false,
+          "clearUISpec"
+        );
       },
 
       // Reset entire state
       resetState: () => {
-        logger.info('Resetting store state', { component: 'AppStore' });
-        return set(initialState, false, 'resetState');
+        logger.info("Resetting store state", { component: "AppStore" });
+        return set(initialState, false, "resetState");
       },
     }),
-    { name: 'AppStore' }
+    { name: "AppStore" }
   )
 );
 
@@ -242,6 +308,7 @@ export const useUISpec = () => useAppStore((state) => state.uiSpec);
 export const useIsLoading = () => useAppStore((state) => state.isLoading);
 export const useError = () => useAppStore((state) => state.error);
 export const useGenerationThoughts = () => useAppStore((state) => state.generationThoughts);
+export const useGenerationPreview = () => useAppStore((state) => state.generationPreview);
 
 // Get all actions (actions are stable, memoized to prevent re-renders)
 export const useAppActions = () => {
@@ -252,21 +319,40 @@ export const useAppActions = () => {
   const setLoading = useAppStore((state) => state.setLoading);
   const setError = useAppStore((state) => state.setError);
   const addGenerationThought = useAppStore((state) => state.addGenerationThought);
+  const appendGenerationPreview = useAppStore((state) => state.appendGenerationPreview);
+  const clearGenerationPreview = useAppStore((state) => state.clearGenerationPreview);
   const clearGenerationThoughts = useAppStore((state) => state.clearGenerationThoughts);
   const clearUISpec = useAppStore((state) => state.clearUISpec);
   const resetState = useAppStore((state) => state.resetState);
-  
-  return useMemo(() => ({
-    addMessage,
-    appendToLastMessage,
-    addThought,
-    setUISpec,
-    setLoading,
-    setError,
-    addGenerationThought,
-    clearGenerationThoughts,
-    clearUISpec,
-    resetState,
-  }), [addMessage, appendToLastMessage, addThought, setUISpec, setLoading, setError, addGenerationThought, clearGenerationThoughts, clearUISpec, resetState]);
-};
 
+  return useMemo(
+    () => ({
+      addMessage,
+      appendToLastMessage,
+      addThought,
+      setUISpec,
+      setLoading,
+      setError,
+      addGenerationThought,
+      appendGenerationPreview,
+      clearGenerationPreview,
+      clearGenerationThoughts,
+      clearUISpec,
+      resetState,
+    }),
+    [
+      addMessage,
+      appendToLastMessage,
+      addThought,
+      setUISpec,
+      setLoading,
+      setError,
+      addGenerationThought,
+      appendGenerationPreview,
+      clearGenerationPreview,
+      clearGenerationThoughts,
+      clearUISpec,
+      resetState,
+    ]
+  );
+};

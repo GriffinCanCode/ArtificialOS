@@ -2,15 +2,15 @@
  * React hook for component-specific logging
  */
 
-import { useEffect, useMemo } from 'react';
-import { logger, LogContext } from './logger';
+import { useEffect, useMemo } from "react";
+import { logger, LogContext } from "./logger";
 
 /**
  * Hook to create a logger instance with component context
- * 
+ *
  * @param componentName - Name of the component using the logger
  * @param additionalContext - Additional context to include in all logs
- * 
+ *
  * @example
  * const log = useLogger('ChatInterface', { userId: user.id });
  * log.info('Chat message sent', { messageId: msg.id });
@@ -19,13 +19,13 @@ export function useLogger(componentName: string, additionalContext?: LogContext)
   const componentLogger = useMemo(() => {
     return logger.child({
       component: componentName,
-      ...additionalContext
+      ...additionalContext,
     });
   }, [componentName, additionalContext]);
 
   useEffect(() => {
     componentLogger.debug(`Component ${componentName} mounted`);
-    
+
     return () => {
       componentLogger.debug(`Component ${componentName} unmounted`);
     };
@@ -40,7 +40,7 @@ export function useLogger(componentName: string, additionalContext?: LogContext)
 export function usePerformanceLogger(componentName: string) {
   useEffect(() => {
     const startTime = performance.now();
-    
+
     return () => {
       const duration = performance.now() - startTime;
       logger.performance(`${componentName} lifecycle`, duration);
@@ -59,7 +59,7 @@ export function withLogging<T extends (...args: any[]) => Promise<any>>(
   return (async (...args: any[]) => {
     const startTime = performance.now();
     logger.debug(`Starting ${operationName}`, context);
-    
+
     try {
       const result = await fn(...args);
       const duration = performance.now() - startTime;
@@ -72,4 +72,3 @@ export function withLogging<T extends (...args: any[]) => Promise<any>>(
     }
   }) as T;
 }
-

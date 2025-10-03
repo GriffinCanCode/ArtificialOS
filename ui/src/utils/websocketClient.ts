@@ -9,8 +9,8 @@ import {
   parseServerMessage,
   createChatMessage,
   createGenerateUIMessage,
-  createPingMessage
-} from '../types/api';
+  createPingMessage,
+} from "../types/api";
 
 export type MessageHandler = (message: ServerMessage) => void;
 export type ConnectionHandler = (connected: boolean) => void;
@@ -29,11 +29,11 @@ export interface WebSocketClientOptions {
 }
 
 const DEFAULT_OPTIONS: Required<WebSocketClientOptions> = {
-  url: 'ws://localhost:8000/stream',
+  url: "ws://localhost:8000/stream",
   reconnectDelay: 1000,
   maxReconnectDelay: 10000,
   reconnectBackoff: 2,
-  autoReconnect: true
+  autoReconnect: true,
 };
 
 // ============================================================================
@@ -66,7 +66,7 @@ export class WebSocketClient {
    */
   connect(): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
-      console.warn('[WebSocketClient] Already connected');
+      console.warn("[WebSocketClient] Already connected");
       return;
     }
 
@@ -79,7 +79,7 @@ export class WebSocketClient {
       this.ws = new WebSocket(this.options.url);
       this.setupEventHandlers();
     } catch (error) {
-      console.error('[WebSocketClient] Failed to create WebSocket:', error);
+      console.error("[WebSocketClient] Failed to create WebSocket:", error);
       this.handleReconnect();
     }
   }
@@ -90,7 +90,7 @@ export class WebSocketClient {
   disconnect(): void {
     this.isManualClose = true;
     this.shouldReconnect = false;
-    
+
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = null;
@@ -101,7 +101,7 @@ export class WebSocketClient {
       this.ws = null;
     }
 
-    console.log('[WebSocketClient] Disconnected');
+    console.log("[WebSocketClient] Disconnected");
   }
 
   /**
@@ -126,7 +126,7 @@ export class WebSocketClient {
     if (!this.ws) return;
 
     this.ws.onopen = () => {
-      console.log('[WebSocketClient] ✅ Connected');
+      console.log("[WebSocketClient] ✅ Connected");
       this.reconnectAttempts = 0;
       this.isManualClose = false;
       this.notifyConnection(true);
@@ -140,23 +140,21 @@ export class WebSocketClient {
         if (message) {
           this.notifyMessage(message);
         } else {
-          console.warn('[WebSocketClient] Invalid message format:', data);
+          console.warn("[WebSocketClient] Invalid message format:", data);
         }
       } catch (error) {
-        console.error('[WebSocketClient] Failed to parse message:', error);
-        this.notifyError(
-          error instanceof Error ? error : new Error('Failed to parse message')
-        );
+        console.error("[WebSocketClient] Failed to parse message:", error);
+        this.notifyError(error instanceof Error ? error : new Error("Failed to parse message"));
       }
     };
 
     this.ws.onerror = (event: Event) => {
-      console.error('[WebSocketClient] ❌ WebSocket error:', event);
-      this.notifyError(new Error('WebSocket error'));
+      console.error("[WebSocketClient] ❌ WebSocket error:", event);
+      this.notifyError(new Error("WebSocket error"));
     };
 
     this.ws.onclose = (event: CloseEvent) => {
-      console.log('[WebSocketClient] 🔌 Connection closed:', event.code, event.reason);
+      console.log("[WebSocketClient] 🔌 Connection closed:", event.code, event.reason);
       this.notifyConnection(false);
       this.ws = null;
 
@@ -176,7 +174,8 @@ export class WebSocketClient {
     }
 
     const delay = Math.min(
-      this.options.reconnectDelay * Math.pow(this.options.reconnectBackoff, this.reconnectAttempts - 1),
+      this.options.reconnectDelay *
+        Math.pow(this.options.reconnectBackoff, this.reconnectAttempts - 1),
       this.options.maxReconnectDelay
     );
 
@@ -196,8 +195,8 @@ export class WebSocketClient {
    */
   send(message: ClientMessage): void {
     if (!this.isConnected()) {
-      console.error('[WebSocketClient] Cannot send message: not connected');
-      throw new Error('WebSocket not connected');
+      console.error("[WebSocketClient] Cannot send message: not connected");
+      throw new Error("WebSocket not connected");
     }
 
     this.ws!.send(JSON.stringify(message));
@@ -266,7 +265,7 @@ export class WebSocketClient {
       try {
         handler(message);
       } catch (error) {
-        console.error('[WebSocketClient] Error in message handler:', error);
+        console.error("[WebSocketClient] Error in message handler:", error);
       }
     });
   }
@@ -276,7 +275,7 @@ export class WebSocketClient {
       try {
         handler(connected);
       } catch (error) {
-        console.error('[WebSocketClient] Error in connection handler:', error);
+        console.error("[WebSocketClient] Error in connection handler:", error);
       }
     });
   }
@@ -286,7 +285,7 @@ export class WebSocketClient {
       try {
         handler(error);
       } catch (handlerError) {
-        console.error('[WebSocketClient] Error in error handler:', handlerError);
+        console.error("[WebSocketClient] Error in error handler:", handlerError);
       }
     });
   }
@@ -318,4 +317,3 @@ export function createWebSocketClient(options?: WebSocketClientOptions): WebSock
 }
 
 export default WebSocketClient;
-

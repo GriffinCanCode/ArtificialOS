@@ -3,32 +3,32 @@
  * Type-safe communication with backend using Zod for runtime validation
  */
 
-import { z } from 'zod';
+import { z } from "zod";
 
 // ============================================================================
 // WebSocket Message Schemas - Client to Server
 // ============================================================================
 
 export const ChatMessageSchema = z.object({
-  type: z.literal('chat'),
+  type: z.literal("chat"),
   message: z.string(),
-  context: z.record(z.string(), z.unknown()).optional()
+  context: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const GenerateUIMessageSchema = z.object({
-  type: z.literal('generate_ui'),
+  type: z.literal("generate_ui"),
   message: z.string(),
-  context: z.record(z.string(), z.unknown()).optional()
+  context: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const PingMessageSchema = z.object({
-  type: z.literal('ping')
+  type: z.literal("ping"),
 });
 
-export const ClientMessageSchema = z.discriminatedUnion('type', [
+export const ClientMessageSchema = z.discriminatedUnion("type", [
   ChatMessageSchema,
   GenerateUIMessageSchema,
-  PingMessageSchema
+  PingMessageSchema,
 ]);
 
 // ============================================================================
@@ -36,33 +36,51 @@ export const ClientMessageSchema = z.discriminatedUnion('type', [
 // ============================================================================
 
 export const SystemMessageSchema = z.object({
-  type: z.literal('system'),
+  type: z.literal("system"),
   message: z.string(),
   connection_id: z.union([z.string(), z.number()]).optional(),
   model: z.string().optional(),
-  timestamp: z.number().optional()
+  timestamp: z.number().optional(),
 });
 
 export const TokenMessageSchema = z.object({
-  type: z.literal('token'),
-  content: z.string()
+  type: z.literal("token"),
+  content: z.string(),
 });
 
 export const ThoughtMessageSchema = z.object({
-  type: z.literal('thought'),
+  type: z.literal("thought"),
   content: z.string(),
-  timestamp: z.number()
+  timestamp: z.number(),
+});
+
+export const ReasoningMessageSchema = z.object({
+  type: z.literal("reasoning"),
+  content: z.string(),
+  timestamp: z.number(),
+});
+
+export const GenerationTokenMessageSchema = z.object({
+  type: z.literal("generation_token"),
+  content: z.string(),
+  timestamp: z.number().optional(),
+});
+
+export const ChatResponseMessageSchema = z.object({
+  type: z.literal("chat_response"),
+  content: z.string(),
+  timestamp: z.number().optional(),
 });
 
 export const CompleteMessageSchema = z.object({
-  type: z.literal('complete'),
-  timestamp: z.number()
+  type: z.literal("complete"),
+  timestamp: z.number(),
 });
 
 export const GenerationStartMessageSchema = z.object({
-  type: z.literal('generation_start'),
+  type: z.literal("generation_start"),
   message: z.string(),
-  timestamp: z.number()
+  timestamp: z.number(),
 });
 
 export const UIComponentSchema: z.ZodType<any> = z.lazy(() =>
@@ -71,7 +89,7 @@ export const UIComponentSchema: z.ZodType<any> = z.lazy(() =>
     id: z.string(),
     props: z.record(z.string(), z.unknown()),
     children: z.array(UIComponentSchema).optional(),
-    on_event: z.record(z.string(), z.string()).nullish()
+    on_event: z.record(z.string(), z.string()).nullish(),
   })
 );
 
@@ -83,51 +101,56 @@ export const UISpecSchema = z.object({
   style: z.record(z.string(), z.unknown()).optional(),
   services: z.array(z.string()).optional(),
   service_bindings: z.record(z.string(), z.string()).optional(),
-  lifecycle_hooks: z.object({
-    on_mount: z.array(z.string()).optional(),
-    on_unmount: z.array(z.string()).optional()
-  }).optional()
+  lifecycle_hooks: z
+    .object({
+      on_mount: z.array(z.string()).optional(),
+      on_unmount: z.array(z.string()).optional(),
+    })
+    .optional(),
 });
 
 export const UIGeneratedMessageSchema = z.object({
-  type: z.literal('ui_generated'),
+  type: z.literal("ui_generated"),
   app_id: z.string(),
   ui_spec: UISpecSchema,
-  timestamp: z.number()
+  timestamp: z.number(),
 });
 
 export const ErrorMessageSchema = z.object({
-  type: z.literal('error'),
+  type: z.literal("error"),
   message: z.string(),
-  timestamp: z.number().optional()
+  timestamp: z.number().optional(),
 });
 
 export const ChatMessageItemSchema = z.object({
-  role: z.enum(['user', 'assistant', 'system']),
+  role: z.enum(["user", "assistant", "system"]),
   content: z.string(),
-  timestamp: z.number().optional()
+  timestamp: z.number().optional(),
 });
 
 export const HistoryUpdateMessageSchema = z.object({
-  type: z.literal('history_update'),
+  type: z.literal("history_update"),
   history: z.array(ChatMessageItemSchema),
-  timestamp: z.number()
+  timestamp: z.number(),
 });
 
 export const PongMessageSchema = z.object({
-  type: z.literal('pong')
+  type: z.literal("pong"),
 });
 
-export const ServerMessageSchema = z.discriminatedUnion('type', [
+export const ServerMessageSchema = z.discriminatedUnion("type", [
   SystemMessageSchema,
   TokenMessageSchema,
   ThoughtMessageSchema,
+  ReasoningMessageSchema,
+  GenerationTokenMessageSchema,
+  ChatResponseMessageSchema,
   CompleteMessageSchema,
   GenerationStartMessageSchema,
   UIGeneratedMessageSchema,
   ErrorMessageSchema,
   HistoryUpdateMessageSchema,
-  PongMessageSchema
+  PongMessageSchema,
 ]);
 
 // ============================================================================
@@ -145,20 +168,20 @@ export const HealthResponseSchema = z.object({
   kernel: z.object({
     connected: z.boolean(),
     default_pid: z.union([z.number(), z.null()]),
-    system_info: z.record(z.string(), z.unknown()).optional()
-  })
+    system_info: z.record(z.string(), z.unknown()).optional(),
+  }),
 });
 
 // Chat Request/Response
 export const ChatRequestSchema = z.object({
   message: z.string(),
-  context: z.record(z.string(), z.unknown()).optional()
+  context: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const ChatResponseSchema = z.object({
   response: z.string(),
   thoughts: z.array(z.string()).optional(),
-  ui_spec: z.record(z.string(), z.unknown()).nullable().optional()
+  ui_spec: z.record(z.string(), z.unknown()).nullable().optional(),
 });
 
 // Generate UI Response
@@ -166,7 +189,7 @@ export const GenerateUIResponseSchema = z.object({
   app_id: z.string().nullable(),
   ui_spec: UISpecSchema.nullable(),
   thoughts: z.array(z.string()).optional(),
-  error: z.string().optional()
+  error: z.string().optional(),
 });
 
 // App Management
@@ -174,17 +197,17 @@ export const AppInfoSchema = z.object({
   id: z.string(),
   title: z.string(),
   state: z.string(),
-  created_at: z.number()
+  created_at: z.number(),
 });
 
 export const ListAppsResponseSchema = z.object({
   apps: z.array(AppInfoSchema),
-  stats: z.record(z.string(), z.unknown())
+  stats: z.record(z.string(), z.unknown()),
 });
 
 export const AppActionResponseSchema = z.object({
   success: z.boolean(),
-  app_id: z.string()
+  app_id: z.string(),
 });
 
 // Service Management
@@ -192,7 +215,7 @@ export const ServiceToolSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string(),
-  params: z.record(z.string(), z.unknown())
+  params: z.record(z.string(), z.unknown()),
 });
 
 export const ServiceInfoSchema = z.object({
@@ -201,34 +224,34 @@ export const ServiceInfoSchema = z.object({
   description: z.string(),
   category: z.string(),
   version: z.string(),
-  tools: z.array(ServiceToolSchema)
+  tools: z.array(ServiceToolSchema),
 });
 
 export const ListServicesResponseSchema = z.object({
   services: z.array(ServiceInfoSchema),
-  stats: z.record(z.string(), z.unknown())
+  stats: z.record(z.string(), z.unknown()),
 });
 
 export const DiscoverServicesRequestSchema = z.object({
   message: z.string(),
-  context: z.record(z.string(), z.unknown()).optional()
+  context: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const DiscoverServicesResponseSchema = z.object({
   query: z.string(),
-  services: z.array(ServiceInfoSchema)
+  services: z.array(ServiceInfoSchema),
 });
 
 export const ServiceExecuteRequestSchema = z.object({
   tool_id: z.string(),
   params: z.record(z.string(), z.unknown()),
-  app_id: z.string().optional()
+  app_id: z.string().optional(),
 });
 
 export const ServiceExecuteResponseSchema = z.object({
   success: z.boolean(),
   result: z.any().optional(),
-  error: z.string().optional()
+  error: z.string().optional(),
 });
 
 // ============================================================================
@@ -283,8 +306,8 @@ export function parseServerMessage(data: unknown): ServerMessage | null {
   try {
     return ServerMessageSchema.parse(data);
   } catch (error) {
-    console.error('Failed to parse server message:', error);
-    console.error('Received data:', data);
+    console.error("Failed to parse server message:", error);
+    console.error("Received data:", data);
     return null;
   }
 }
@@ -296,7 +319,7 @@ export function parseClientMessage(data: unknown): ClientMessage | null {
   try {
     return ClientMessageSchema.parse(data);
   } catch (error) {
-    console.error('Failed to parse client message:', error);
+    console.error("Failed to parse client message:", error);
     return null;
   }
 }
@@ -305,13 +328,16 @@ export function parseClientMessage(data: unknown): ClientMessage | null {
  * Create a type-safe client message
  */
 export function createChatMessage(message: string, context?: Record<string, any>): ChatMessage {
-  return ChatMessageSchema.parse({ type: 'chat', message, context: context || {} });
+  return ChatMessageSchema.parse({ type: "chat", message, context: context || {} });
 }
 
-export function createGenerateUIMessage(message: string, context?: Record<string, any>): GenerateUIMessage {
-  return GenerateUIMessageSchema.parse({ type: 'generate_ui', message, context: context || {} });
+export function createGenerateUIMessage(
+  message: string,
+  context?: Record<string, any>
+): GenerateUIMessage {
+  return GenerateUIMessageSchema.parse({ type: "generate_ui", message, context: context || {} });
 }
 
 export function createPingMessage(): PingMessage {
-  return PingMessageSchema.parse({ type: 'ping' });
+  return PingMessageSchema.parse({ type: "ping" });
 }

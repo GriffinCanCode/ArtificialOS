@@ -3,18 +3,18 @@
  * User input and message history
  */
 
-import React, { useState, useRef, useEffect } from 'react';
-import { useMessages, useAppActions } from '../store/appStore';
-import { useWebSocket } from '../contexts/WebSocketContext';
-import { useLogger } from '../utils/useLogger';
-import './ChatInterface.css';
+import React, { useState, useRef, useEffect } from "react";
+import { useMessages, useAppActions } from "../store/appStore";
+import { useWebSocket } from "../contexts/WebSocketContext";
+import { useLogger } from "../utils/useLogger";
+import "./ChatInterface.css";
 
 const ChatInterface: React.FC = () => {
-  const log = useLogger('ChatInterface');
+  const log = useLogger("ChatInterface");
   const messages = useMessages();
-  const { addMessage } = useAppActions();
-  const { sendChat, isConnected } = useWebSocket();
-  const [input, setInput] = useState('');
+  const { addMessage, appendToLastMessage } = useAppActions();
+  const { client, sendChat, isConnected } = useWebSocket();
+  const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -22,48 +22,72 @@ const ChatInterface: React.FC = () => {
   }, [messages]);
 
   useEffect(() => {
-    log.info('Connection status changed', { isConnected });
+    log.info("Connection status changed", { isConnected });
   }, [isConnected, log]);
 
+  // Listen for streaming tokens from WebSocket
+  useEffect(() => {
+    if (!client) return;
+
+    const unsubscribe = client.onMessage((message) => {
+      // Handle streaming tokens for chat responses
+      if (message.type === "token") {
+        log.verboseThrottled("Received token", {
+          contentLength: message.content?.length || 0,
+        });
+        appendToLastMessage(message.content || "");
+      } else if (message.type === "chat_response") {
+        // Handle complete chat responses (non-streaming fallback)
+        addMessage({
+          type: "assistant",
+          content: message.content || "",
+          timestamp: Date.now(),
+        });
+      }
+    });
+
+    return () => unsubscribe();
+  }, [client, appendToLastMessage, addMessage, log]);
+
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim() && isConnected) {
       const message = input.trim();
-      
-      log.info('User sending message', { 
+
+      log.info("User sending message", {
         messageLength: message.length,
-        messagePreview: message.substring(0, 50) 
+        messagePreview: message.substring(0, 50),
       });
-      
+
       // Add user message to state immediately
       addMessage({
-        type: 'user',
+        type: "user",
         content: message,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
-      
+
       // Send via WebSocket
       try {
         sendChat(message, {});
-        log.debug('Message sent successfully');
+        log.debug("Message sent successfully");
       } catch (error) {
-        log.error('Failed to send message', error as Error);
+        log.error("Failed to send message", error as Error);
       }
-      
-      setInput('');
+
+      setInput("");
     } else if (!isConnected) {
-      log.warn('Attempted to send message while disconnected');
+      log.warn("Attempted to send message while disconnected");
     }
   };
 
   const formatTime = (timestamp: number) => {
-    return new Date(timestamp).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
+    return new Date(timestamp).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -71,8 +95,8 @@ const ChatInterface: React.FC = () => {
     <div className="chat-interface">
       <div className="chat-header">
         <h3>Chat</h3>
-        <div className={`connection-status ${isConnected ? 'connected' : 'disconnected'}`}>
-          {isConnected ? '● Connected' : '○ Disconnected'}
+        <div className={`connection-status ${isConnected ? "connected" : "disconnected"}`}>
+          {isConnected ? "● Connected" : "○ Disconnected"}
         </div>
       </div>
 
@@ -98,11 +122,7 @@ const ChatInterface: React.FC = () => {
           disabled={!isConnected}
           className="chat-input"
         />
-        <button
-          type="submit"
-          disabled={!isConnected || !input.trim()}
-          className="send-button"
-        >
+        <button type="submit" disabled={!isConnected || !input.trim()} className="send-button">
           Send
         </button>
       </form>
@@ -111,4 +131,3 @@ const ChatInterface: React.FC = () => {
 };
 
 export default ChatInterface;
-
