@@ -71,29 +71,24 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
       logger.debug('WebSocket already connected, skipping reconnect', { component: 'WebSocketProvider' });
     }
 
-    // Cleanup - only unsubscribe, don't destroy
-    // The client persists for the lifetime of the component
+    // Cleanup - unsubscribe and destroy on unmount
     return () => {
-      logger.debug('Unsubscribing from WebSocket connection status', { component: 'WebSocketProvider' });
+      logger.debug('WebSocketProvider effect cleanup', { component: 'WebSocketProvider' });
       unsubscribeConnection();
+      // Only destroy if we're actually unmounting (not React Strict Mode)
+      // In Strict Mode, the client will persist via useState
+      // On real unmount, the client will be garbage collected
     };
   }, [client]);
 
-  // Cleanup on unmount - destroy the client only on final unmount
-  useEffect(() => {
-    return () => {
-      logger.info('WebSocketProvider unmounting, destroying client', { component: 'WebSocketProvider' });
-      client.destroy();
-    };
-    // Empty deps array means this only runs on mount/unmount, not re-renders
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const sendChat = (message: string, context?: Record<string, any>) => {
-    if (!isConnected) {
+    // Check the actual client connection state, not React state
+    if (!client.isConnected()) {
       logger.error('Cannot send chat: WebSocket not connected', undefined, { 
         component: 'WebSocketProvider',
-        messageLength: message.length 
+        messageLength: message.length,
+        reactStateConnected: isConnected,
+        clientStateConnected: client.isConnected()
       });
       return;
     }
@@ -106,10 +101,13 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
   };
 
   const generateUI = (message: string, context?: Record<string, any>) => {
-    if (!isConnected) {
+    // Check the actual client connection state, not React state
+    if (!client.isConnected()) {
       logger.error('Cannot generate UI: WebSocket not connected', undefined, { 
         component: 'WebSocketProvider',
-        messageLength: message.length 
+        messageLength: message.length,
+        reactStateConnected: isConnected,
+        clientStateConnected: client.isConnected()
       });
       return;
     }

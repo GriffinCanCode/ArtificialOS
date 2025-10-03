@@ -624,10 +624,19 @@ const DynamicRenderer: React.FC = () => {
     if (isConnected && client && !uiSpec && !isLoading && !hasAutoLoadedRef.current) {
       // Add a longer delay to ensure connection is fully stable (especially in React Strict Mode)
       const timer = setTimeout(() => {
-        console.log('[DynamicRenderer] Auto-loading calculator...');
-        hasAutoLoadedRef.current = true;
-        loadUISpec('create a calculator');
-      }, 1000); // Increased from 500ms to 1000ms for React Strict Mode
+        // Double-check connection before loading
+        if (client.isConnected()) {
+          logger.info('Auto-loading calculator', { component: 'DynamicRenderer' });
+          hasAutoLoadedRef.current = true;
+          loadUISpec('create a calculator');
+        } else {
+          logger.warn('Skipping auto-load: WebSocket not ready', { 
+            component: 'DynamicRenderer',
+            isConnected,
+            clientConnected: client.isConnected()
+          });
+        }
+      }, 2000); // Increased to 2000ms for React Strict Mode stability
       return () => clearTimeout(timer);
     }
   }, [isConnected, client, uiSpec, isLoading, loadUISpec]);

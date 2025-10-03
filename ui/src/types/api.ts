@@ -71,7 +71,7 @@ export const UIComponentSchema: z.ZodType<any> = z.lazy(() =>
     id: z.string(),
     props: z.record(z.string(), z.unknown()),
     children: z.array(UIComponentSchema).optional(),
-    on_event: z.record(z.string(), z.string()).optional()
+    on_event: z.record(z.string(), z.string()).nullish()
   })
 );
 
