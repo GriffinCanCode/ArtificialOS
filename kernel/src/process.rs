@@ -24,22 +24,26 @@ pub enum ProcessState {
 }
 
 pub struct ProcessManager {
-    processes: HashMap<u32, Process>,
-    next_pid: u32,
+    processes: Arc<RwLock<HashMap<u32, Process>>>,
+    next_pid: Arc<RwLock<u32>>,
 }
+
+use std::sync::Arc;
+use parking_lot::RwLock;
 
 impl ProcessManager {
     pub fn new() -> Self {
         info!("Process manager initialized");
         Self {
-            processes: HashMap::new(),
-            next_pid: 1,
+            processes: Arc::new(RwLock::new(HashMap::new())),
+            next_pid: Arc::new(RwLock::new(1)),
         }
     }
 
-    pub fn create_process(&mut self, name: String, priority: u8) -> u32 {
-        let pid = self.next_pid;
-        self.next_pid += 1;
+    pub fn create_process(&self, name: String, priority: u8) -> u32 {
+        let mut next_pid = self.next_pid.write();
+        let pid = *next_pid;
+        *next_pid += 1;
 
         let process = Process {
             pid,
@@ -48,17 +52,18 @@ impl ProcessManager {
             priority,
         };
 
-        self.processes.insert(pid, process);
+        self.processes.write().insert(pid, process);
         info!("Created process: {} (PID: {})", name, pid);
         pid
     }
 
-    pub fn get_process(&self, pid: u32) -> Option<&Process> {
-        self.processes.get(&pid)
+    pub fn get_process(&self, pid: u32) -> Option<Process> {
+        self.processes.read().get(&pid).cloned()
     }
 
-    pub fn terminate_process(&mut self, pid: u32) -> bool {
-        if let Some(process) = self.processes.get_mut(&pid) {
+    pub fn terminate_process(&self, pid: u32) -> bool {
+        let mut processes = self.processes.write();
+        if let Some(process) = processes.get_mut(&pid) {
             process.state = ProcessState::Terminated;
             info!("Terminated process: PID {}", pid);
             true
@@ -67,8 +72,17 @@ impl ProcessManager {
         }
     }
 
-    pub fn list_processes(&self) -> Vec<&Process> {
-        self.processes.values().collect()
+    pub fn list_processes(&self) -> Vec<Process> {
+        self.processes.read().values().cloned().collect()
+    }
+}
+
+impl Clone for ProcessManager {
+    fn clone(&self) -> Self {
+        Self {
+            processes: Arc::clone(&self.processes),
+            next_pid: Arc::clone(&self.next_pid),
+        }
     }
 }
 

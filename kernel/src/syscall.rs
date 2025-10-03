@@ -63,6 +63,7 @@ pub enum Syscall {
 }
 
 /// System call executor
+#[derive(Clone)]
 pub struct SyscallExecutor {
     sandbox_manager: SandboxManager,
 }

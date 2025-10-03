@@ -24,6 +24,14 @@ crossbeam = "0.8"
 # Shared state management
 parking_lot = "0.12"
 
+# gRPC for kernel-service communication
+tonic = "0.12"
+prost = "0.13"
+tokio-stream = { version = "0.1", features = ["sync"] }
+
+[build-dependencies]
+tonic-build = "0.12"
+
 [lib]
 name = "ai_os_kernel"
 path = "src/lib.rs"
