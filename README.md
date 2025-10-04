@@ -2,7 +2,7 @@
 
 A microkernel-based operating system with AI-native application generation and execution.
 
-![AgentOS Interface](assets/Screenshot%202025-10-03%20at%205.35.35%20PM.png)
+![AgentOS Interface](assets/demo.png)
 
 ## Overview
 
