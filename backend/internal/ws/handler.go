@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -54,6 +55,9 @@ func (h *Handler) HandleConnection(c *gin.Context) {
 	}
 	defer conn.Close()
 
+	// Get request context for propagation
+	reqCtx := c.Request.Context()
+
 	// Send welcome message
 	h.send(conn, map[string]interface{}{
 		"type":    "system",
@@ -70,9 +74,9 @@ func (h *Handler) HandleConnection(c *gin.Context) {
 
 		switch msg.Type {
 		case "chat":
-			h.handleChat(conn, msg)
+			h.handleChat(conn, msg, reqCtx)
 		case "generate_ui":
-			h.handleGenerateUI(conn, msg)
+			h.handleGenerateUI(conn, msg, reqCtx)
 		case "ping":
 			h.send(conn, map[string]interface{}{"type": "pong"})
 		default:
@@ -81,7 +85,7 @@ func (h *Handler) HandleConnection(c *gin.Context) {
 	}
 }
 
-func (h *Handler) handleChat(conn *websocket.Conn, msg types.WSMessage) {
+func (h *Handler) handleChat(conn *websocket.Conn, msg types.WSMessage, reqCtx context.Context) {
 	// Convert context to string map
 	contextMap := make(map[string]string)
 	for k, v := range msg.Context {
@@ -90,8 +94,13 @@ func (h *Handler) handleChat(conn *websocket.Conn, msg types.WSMessage) {
 		}
 	}
 
-	// Start streaming
-	stream, err := h.aiClient.StreamChat(msg.Message, contextMap, nil)
+	// Add explicit timeout to prevent indefinite blocking on AI service
+	// Derive from parent context to respect cancellations
+	ctx, cancel := context.WithTimeout(reqCtx, 2*time.Minute)
+	defer cancel()
+
+	// Start streaming with timeout context
+	stream, err := h.aiClient.StreamChat(ctx, msg.Message, contextMap, nil)
 	if err != nil {
 		h.sendError(conn, err.Error())
 		return
@@ -117,7 +126,7 @@ func (h *Handler) handleChat(conn *websocket.Conn, msg types.WSMessage) {
 	})
 }
 
-func (h *Handler) handleGenerateUI(conn *websocket.Conn, msg types.WSMessage) {
+func (h *Handler) handleGenerateUI(conn *websocket.Conn, msg types.WSMessage, reqCtx context.Context) {
 	// Convert context to string map
 	contextMap := make(map[string]string)
 	for k, v := range msg.Context {
@@ -145,8 +154,13 @@ func (h *Handler) handleGenerateUI(conn *websocket.Conn, msg types.WSMessage) {
 		"timestamp": time.Now().Unix(),
 	})
 
-	// Start streaming UI generation
-	stream, err := h.aiClient.StreamUI(msg.Message, contextMap, parentID)
+	// Add explicit timeout for UI generation (longer than chat)
+	// Derive from parent context to respect cancellations
+	ctx, cancel := context.WithTimeout(reqCtx, 3*time.Minute)
+	defer cancel()
+
+	// Start streaming UI generation with timeout context
+	stream, err := h.aiClient.StreamUI(ctx, msg.Message, contextMap, parentID)
 	if err != nil {
 		h.sendError(conn, err.Error())
 		return
@@ -208,8 +222,12 @@ func (h *Handler) handleGenerateUI(conn *websocket.Conn, msg types.WSMessage) {
 		return
 	}
 
-	// Register app
-	app, err := h.appManager.Spawn(msg.Message, uiSpec, parentID)
+	// Create fresh context for app spawning (AI context may be near timeout)
+	spawnCtx, spawnCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer spawnCancel()
+
+	// Register app with dedicated spawn context
+	app, err := h.appManager.Spawn(spawnCtx, msg.Message, uiSpec, parentID)
 	if err != nil {
 		h.sendError(conn, err.Error())
 		return

@@ -345,6 +345,38 @@
   transform: translate3d(0, 0, 0);
 }
 
+/* App Header Actions Container */
+.app-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* App Action Button (Open in Window, etc.) */
+.app-action-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 8px;
+  background: rgba(139, 92, 246, 0.1);
+  color: rgba(139, 92, 246, 1);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.app-action-btn:hover {
+  background: rgba(139, 92, 246, 0.2);
+  border-color: rgba(139, 92, 246, 0.5);
+  transform: translateY(-1px);
+}
+
+.app-action-btn:active {
+  transform: translateY(0);
+}
+
 .app-content {
   display: flex;
   gap: 1rem;

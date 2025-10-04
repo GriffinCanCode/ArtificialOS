@@ -1,6 +1,7 @@
 package providers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -151,34 +152,34 @@ func (f *Filesystem) Definition() types.Service {
 }
 
 // Execute runs a filesystem operation
-func (f *Filesystem) Execute(toolID string, params map[string]interface{}, ctx *types.Context) (*types.Result, error) {
+func (f *Filesystem) Execute(ctx context.Context, toolID string, params map[string]interface{}, appCtx *types.Context) (*types.Result, error) {
 	switch toolID {
 	case "filesystem.list":
-		return f.list(params, ctx)
+		return f.list(ctx, params, appCtx)
 	case "filesystem.stat":
-		return f.stat(params, ctx)
+		return f.stat(ctx, params, appCtx)
 	case "filesystem.read":
-		return f.read(params, ctx)
+		return f.read(ctx, params, appCtx)
 	case "filesystem.write":
-		return f.write(params, ctx)
+		return f.write(ctx, params, appCtx)
 	case "filesystem.create":
-		return f.create(params, ctx)
+		return f.create(ctx, params, appCtx)
 	case "filesystem.mkdir":
-		return f.mkdir(params, ctx)
+		return f.mkdir(ctx, params, appCtx)
 	case "filesystem.delete":
-		return f.delete(params, ctx)
+		return f.delete(ctx, params, appCtx)
 	case "filesystem.move":
-		return f.move(params, ctx)
+		return f.move(ctx, params, appCtx)
 	case "filesystem.copy":
-		return f.copyFile(params, ctx)
+		return f.copyFile(ctx, params, appCtx)
 	case "filesystem.exists":
-		return f.exists(params, ctx)
+		return f.exists(ctx, params, appCtx)
 	default:
 		return failure(fmt.Sprintf("unknown tool: %s", toolID))
 	}
 }
 
-func (f *Filesystem) list(params map[string]interface{}, ctx *types.Context) (*types.Result, error) {
+func (f *Filesystem) list(ctx context.Context, params map[string]interface{}, appCtx *types.Context) (*types.Result, error) {
 	path, ok := params["path"].(string)
 	if !ok || path == "" {
 		return failure("path parameter required")
@@ -190,11 +191,11 @@ func (f *Filesystem) list(params map[string]interface{}, ctx *types.Context) (*t
 
 	// Use app's sandbox PID if available, otherwise use storage PID
 	pid := f.storagePID
-	if ctx != nil && ctx.SandboxPID != nil {
-		pid = *ctx.SandboxPID
+	if appCtx != nil && appCtx.SandboxPID != nil {
+		pid = *appCtx.SandboxPID
 	}
 
-	data, err := f.kernel.ExecuteSyscall(pid, "list_directory", map[string]interface{}{
+	data, err := f.kernel.ExecuteSyscall(ctx, pid, "list_directory", map[string]interface{}{
 		"path": path,
 	})
 	if err != nil {
@@ -214,7 +215,7 @@ func (f *Filesystem) list(params map[string]interface{}, ctx *types.Context) (*t
 	})
 }
 
-func (f *Filesystem) stat(params map[string]interface{}, ctx *types.Context) (*types.Result, error) {
+func (f *Filesystem) stat(ctx context.Context, params map[string]interface{}, appCtx *types.Context) (*types.Result, error) {
 	path, ok := params["path"].(string)
 	if !ok || path == "" {
 		return failure("path parameter required")
@@ -225,11 +226,11 @@ func (f *Filesystem) stat(params map[string]interface{}, ctx *types.Context) (*t
 	}
 
 	pid := f.storagePID
-	if ctx != nil && ctx.SandboxPID != nil {
-		pid = *ctx.SandboxPID
+	if appCtx != nil && appCtx.SandboxPID != nil {
+		pid = *appCtx.SandboxPID
 	}
 
-	data, err := f.kernel.ExecuteSyscall(pid, "file_stat", map[string]interface{}{
+	data, err := f.kernel.ExecuteSyscall(ctx, pid, "file_stat", map[string]interface{}{
 		"path": path,
 	})
 	if err != nil {
@@ -253,7 +254,7 @@ func (f *Filesystem) stat(params map[string]interface{}, ctx *types.Context) (*t
 	})
 }
 
-func (f *Filesystem) read(params map[string]interface{}, ctx *types.Context) (*types.Result, error) {
+func (f *Filesystem) read(ctx context.Context, params map[string]interface{}, appCtx *types.Context) (*types.Result, error) {
 	path, ok := params["path"].(string)
 	if !ok || path == "" {
 		return failure("path parameter required")
@@ -264,11 +265,11 @@ func (f *Filesystem) read(params map[string]interface{}, ctx *types.Context) (*t
 	}
 
 	pid := f.storagePID
-	if ctx != nil && ctx.SandboxPID != nil {
-		pid = *ctx.SandboxPID
+	if appCtx != nil && appCtx.SandboxPID != nil {
+		pid = *appCtx.SandboxPID
 	}
 
-	data, err := f.kernel.ExecuteSyscall(pid, "read_file", map[string]interface{}{
+	data, err := f.kernel.ExecuteSyscall(ctx, pid, "read_file", map[string]interface{}{
 		"path": path,
 	})
 	if err != nil {
@@ -282,7 +283,7 @@ func (f *Filesystem) read(params map[string]interface{}, ctx *types.Context) (*t
 	})
 }
 
-func (f *Filesystem) write(params map[string]interface{}, ctx *types.Context) (*types.Result, error) {
+func (f *Filesystem) write(ctx context.Context, params map[string]interface{}, appCtx *types.Context) (*types.Result, error) {
 	path, ok := params["path"].(string)
 	if !ok || path == "" {
 		return failure("path parameter required")
@@ -298,11 +299,11 @@ func (f *Filesystem) write(params map[string]interface{}, ctx *types.Context) (*
 	}
 
 	pid := f.storagePID
-	if ctx != nil && ctx.SandboxPID != nil {
-		pid = *ctx.SandboxPID
+	if appCtx != nil && appCtx.SandboxPID != nil {
+		pid = *appCtx.SandboxPID
 	}
 
-	_, err := f.kernel.ExecuteSyscall(pid, "write_file", map[string]interface{}{
+	_, err := f.kernel.ExecuteSyscall(ctx, pid, "write_file", map[string]interface{}{
 		"path": path,
 		"data": []byte(data),
 	})
@@ -317,7 +318,7 @@ func (f *Filesystem) write(params map[string]interface{}, ctx *types.Context) (*
 	})
 }
 
-func (f *Filesystem) create(params map[string]interface{}, ctx *types.Context) (*types.Result, error) {
+func (f *Filesystem) create(ctx context.Context, params map[string]interface{}, appCtx *types.Context) (*types.Result, error) {
 	path, ok := params["path"].(string)
 	if !ok || path == "" {
 		return failure("path parameter required")
@@ -328,11 +329,11 @@ func (f *Filesystem) create(params map[string]interface{}, ctx *types.Context) (
 	}
 
 	pid := f.storagePID
-	if ctx != nil && ctx.SandboxPID != nil {
-		pid = *ctx.SandboxPID
+	if appCtx != nil && appCtx.SandboxPID != nil {
+		pid = *appCtx.SandboxPID
 	}
 
-	_, err := f.kernel.ExecuteSyscall(pid, "create_file", map[string]interface{}{
+	_, err := f.kernel.ExecuteSyscall(ctx, pid, "create_file", map[string]interface{}{
 		"path": path,
 	})
 	if err != nil {
@@ -342,7 +343,7 @@ func (f *Filesystem) create(params map[string]interface{}, ctx *types.Context) (
 	return success(map[string]interface{}{"created": true, "path": path})
 }
 
-func (f *Filesystem) mkdir(params map[string]interface{}, ctx *types.Context) (*types.Result, error) {
+func (f *Filesystem) mkdir(ctx context.Context, params map[string]interface{}, appCtx *types.Context) (*types.Result, error) {
 	path, ok := params["path"].(string)
 	if !ok || path == "" {
 		return failure("path parameter required")
@@ -353,11 +354,11 @@ func (f *Filesystem) mkdir(params map[string]interface{}, ctx *types.Context) (*
 	}
 
 	pid := f.storagePID
-	if ctx != nil && ctx.SandboxPID != nil {
-		pid = *ctx.SandboxPID
+	if appCtx != nil && appCtx.SandboxPID != nil {
+		pid = *appCtx.SandboxPID
 	}
 
-	_, err := f.kernel.ExecuteSyscall(pid, "create_directory", map[string]interface{}{
+	_, err := f.kernel.ExecuteSyscall(ctx, pid, "create_directory", map[string]interface{}{
 		"path": path,
 	})
 	if err != nil {
@@ -367,7 +368,7 @@ func (f *Filesystem) mkdir(params map[string]interface{}, ctx *types.Context) (*
 	return success(map[string]interface{}{"created": true, "path": path})
 }
 
-func (f *Filesystem) delete(params map[string]interface{}, ctx *types.Context) (*types.Result, error) {
+func (f *Filesystem) delete(ctx context.Context, params map[string]interface{}, appCtx *types.Context) (*types.Result, error) {
 	path, ok := params["path"].(string)
 	if !ok || path == "" {
 		return failure("path parameter required")
@@ -378,11 +379,11 @@ func (f *Filesystem) delete(params map[string]interface{}, ctx *types.Context) (
 	}
 
 	pid := f.storagePID
-	if ctx != nil && ctx.SandboxPID != nil {
-		pid = *ctx.SandboxPID
+	if appCtx != nil && appCtx.SandboxPID != nil {
+		pid = *appCtx.SandboxPID
 	}
 
-	_, err := f.kernel.ExecuteSyscall(pid, "delete_file", map[string]interface{}{
+	_, err := f.kernel.ExecuteSyscall(ctx, pid, "delete_file", map[string]interface{}{
 		"path": path,
 	})
 	if err != nil {
@@ -392,7 +393,7 @@ func (f *Filesystem) delete(params map[string]interface{}, ctx *types.Context) (
 	return success(map[string]interface{}{"deleted": true, "path": path})
 }
 
-func (f *Filesystem) move(params map[string]interface{}, ctx *types.Context) (*types.Result, error) {
+func (f *Filesystem) move(ctx context.Context, params map[string]interface{}, appCtx *types.Context) (*types.Result, error) {
 	source, ok := params["source"].(string)
 	if !ok || source == "" {
 		return failure("source parameter required")
@@ -408,11 +409,11 @@ func (f *Filesystem) move(params map[string]interface{}, ctx *types.Context) (*t
 	}
 
 	pid := f.storagePID
-	if ctx != nil && ctx.SandboxPID != nil {
-		pid = *ctx.SandboxPID
+	if appCtx != nil && appCtx.SandboxPID != nil {
+		pid = *appCtx.SandboxPID
 	}
 
-	_, err := f.kernel.ExecuteSyscall(pid, "move_file", map[string]interface{}{
+	_, err := f.kernel.ExecuteSyscall(ctx, pid, "move_file", map[string]interface{}{
 		"source":      source,
 		"destination": destination,
 	})
@@ -427,7 +428,7 @@ func (f *Filesystem) move(params map[string]interface{}, ctx *types.Context) (*t
 	})
 }
 
-func (f *Filesystem) copyFile(params map[string]interface{}, ctx *types.Context) (*types.Result, error) {
+func (f *Filesystem) copyFile(ctx context.Context, params map[string]interface{}, appCtx *types.Context) (*types.Result, error) {
 	source, ok := params["source"].(string)
 	if !ok || source == "" {
 		return failure("source parameter required")
@@ -443,11 +444,11 @@ func (f *Filesystem) copyFile(params map[string]interface{}, ctx *types.Context)
 	}
 
 	pid := f.storagePID
-	if ctx != nil && ctx.SandboxPID != nil {
-		pid = *ctx.SandboxPID
+	if appCtx != nil && appCtx.SandboxPID != nil {
+		pid = *appCtx.SandboxPID
 	}
 
-	_, err := f.kernel.ExecuteSyscall(pid, "copy_file", map[string]interface{}{
+	_, err := f.kernel.ExecuteSyscall(ctx, pid, "copy_file", map[string]interface{}{
 		"source":      source,
 		"destination": destination,
 	})
@@ -462,7 +463,7 @@ func (f *Filesystem) copyFile(params map[string]interface{}, ctx *types.Context)
 	})
 }
 
-func (f *Filesystem) exists(params map[string]interface{}, ctx *types.Context) (*types.Result, error) {
+func (f *Filesystem) exists(ctx context.Context, params map[string]interface{}, appCtx *types.Context) (*types.Result, error) {
 	path, ok := params["path"].(string)
 	if !ok || path == "" {
 		return failure("path parameter required")
@@ -473,11 +474,11 @@ func (f *Filesystem) exists(params map[string]interface{}, ctx *types.Context) (
 	}
 
 	pid := f.storagePID
-	if ctx != nil && ctx.SandboxPID != nil {
-		pid = *ctx.SandboxPID
+	if appCtx != nil && appCtx.SandboxPID != nil {
+		pid = *appCtx.SandboxPID
 	}
 
-	data, err := f.kernel.ExecuteSyscall(pid, "file_exists", map[string]interface{}{
+	data, err := f.kernel.ExecuteSyscall(ctx, pid, "file_exists", map[string]interface{}{
 		"path": path,
 	})
 	if err != nil {

@@ -1,15 +1,17 @@
 package providers
 
 import (
+	"context"
 	"testing"
 )
 
 func TestAuthRegisterLogin(t *testing.T) {
 	kernel := newMockKernel()
 	auth := NewAuth(kernel, 1, "/tmp/test")
+	ctx := context.Background()
 
 	// Register user
-	result, err := auth.Execute("auth.register", map[string]interface{}{
+	result, err := auth.Execute(ctx, "auth.register", map[string]interface{}{
 		"username": "alice",
 		"password": "secret123",
 		"email":    "alice@example.com",
@@ -25,7 +27,7 @@ func TestAuthRegisterLogin(t *testing.T) {
 	}
 
 	// Login
-	result, err = auth.Execute("auth.login", map[string]interface{}{
+	result, err = auth.Execute(ctx, "auth.login", map[string]interface{}{
 		"username": "alice",
 		"password": "secret123",
 	}, nil)
@@ -40,7 +42,7 @@ func TestAuthRegisterLogin(t *testing.T) {
 	}
 
 	// Verify token
-	result, err = auth.Execute("auth.verify", map[string]interface{}{
+	result, err = auth.Execute(ctx, "auth.verify", map[string]interface{}{
 		"token": token,
 	}, nil)
 
@@ -56,15 +58,16 @@ func TestAuthRegisterLogin(t *testing.T) {
 func TestAuthInvalidCredentials(t *testing.T) {
 	kernel := newMockKernel()
 	auth := NewAuth(kernel, 1, "/tmp/test")
+	ctx := context.Background()
 
 	// Register user
-	auth.Execute("auth.register", map[string]interface{}{
+	auth.Execute(ctx, "auth.register", map[string]interface{}{
 		"username": "bob",
 		"password": "password",
 	}, nil)
 
 	// Try wrong password
-	result, _ := auth.Execute("auth.login", map[string]interface{}{
+	result, _ := auth.Execute(ctx, "auth.login", map[string]interface{}{
 		"username": "bob",
 		"password": "wrong",
 	}, nil)
@@ -74,7 +77,7 @@ func TestAuthInvalidCredentials(t *testing.T) {
 	}
 
 	// Try non-existent user
-	result, _ = auth.Execute("auth.login", map[string]interface{}{
+	result, _ = auth.Execute(ctx, "auth.login", map[string]interface{}{
 		"username": "nobody",
 		"password": "password",
 	}, nil)
@@ -87,15 +90,16 @@ func TestAuthInvalidCredentials(t *testing.T) {
 func TestAuthDuplicateUsername(t *testing.T) {
 	kernel := newMockKernel()
 	auth := NewAuth(kernel, 1, "/tmp/test")
+	ctx := context.Background()
 
 	// Register first user
-	auth.Execute("auth.register", map[string]interface{}{
+	auth.Execute(ctx, "auth.register", map[string]interface{}{
 		"username": "charlie",
 		"password": "pass1",
 	}, nil)
 
 	// Try to register with same username
-	result, _ := auth.Execute("auth.register", map[string]interface{}{
+	result, _ := auth.Execute(ctx, "auth.register", map[string]interface{}{
 		"username": "charlie",
 		"password": "pass2",
 	}, nil)
@@ -108,14 +112,15 @@ func TestAuthDuplicateUsername(t *testing.T) {
 func TestAuthLogout(t *testing.T) {
 	kernel := newMockKernel()
 	auth := NewAuth(kernel, 1, "/tmp/test")
+	ctx := context.Background()
 
 	// Register and login
-	auth.Execute("auth.register", map[string]interface{}{
+	auth.Execute(ctx, "auth.register", map[string]interface{}{
 		"username": "dave",
 		"password": "password",
 	}, nil)
 
-	loginResult, _ := auth.Execute("auth.login", map[string]interface{}{
+	loginResult, _ := auth.Execute(ctx, "auth.login", map[string]interface{}{
 		"username": "dave",
 		"password": "password",
 	}, nil)
@@ -123,7 +128,7 @@ func TestAuthLogout(t *testing.T) {
 	token := loginResult.Data["token"].(string)
 
 	// Logout
-	result, err := auth.Execute("auth.logout", map[string]interface{}{
+	result, err := auth.Execute(ctx, "auth.logout", map[string]interface{}{
 		"token": token,
 	}, nil)
 
@@ -132,7 +137,7 @@ func TestAuthLogout(t *testing.T) {
 	}
 
 	// Verify token is invalid after logout
-	verifyResult, _ := auth.Execute("auth.verify", map[string]interface{}{
+	verifyResult, _ := auth.Execute(ctx, "auth.verify", map[string]interface{}{
 		"token": token,
 	}, nil)
 
@@ -144,15 +149,16 @@ func TestAuthLogout(t *testing.T) {
 func TestAuthGetUser(t *testing.T) {
 	kernel := newMockKernel()
 	auth := NewAuth(kernel, 1, "/tmp/test")
+	ctx := context.Background()
 
 	// Register and login
-	auth.Execute("auth.register", map[string]interface{}{
+	auth.Execute(ctx, "auth.register", map[string]interface{}{
 		"username": "eve",
 		"password": "password",
 		"email":    "eve@example.com",
 	}, nil)
 
-	loginResult, _ := auth.Execute("auth.login", map[string]interface{}{
+	loginResult, _ := auth.Execute(ctx, "auth.login", map[string]interface{}{
 		"username": "eve",
 		"password": "password",
 	}, nil)
@@ -160,7 +166,7 @@ func TestAuthGetUser(t *testing.T) {
 	token := loginResult.Data["token"].(string)
 
 	// Get user
-	result, err := auth.Execute("auth.getUser", map[string]interface{}{
+	result, err := auth.Execute(ctx, "auth.getUser", map[string]interface{}{
 		"token": token,
 	}, nil)
 

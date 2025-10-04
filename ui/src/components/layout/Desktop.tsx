@@ -1,17 +1,10 @@
 /**
  * Desktop Component
- * Main OS desktop with app shortcuts and system tray
+ * Main OS desktop with menu bar and dock
  */
 
 import React, { useEffect, useState } from "react";
 import "./Desktop.css";
-
-interface DesktopApp {
-  id: string;
-  name: string;
-  icon: string;
-  category: string;
-}
 
 interface DesktopProps {
   onLaunchApp: (appId: string) => void;
@@ -24,29 +17,7 @@ export const Desktop: React.FC<DesktopProps> = ({
   onOpenHub,
   onOpenCreator,
 }) => {
-  const [apps, setApps] = useState<DesktopApp[]>([]);
   const [time, setTime] = useState(new Date());
-
-  // Load pinned apps
-  useEffect(() => {
-    const loadApps = async () => {
-      try {
-        const response = await fetch("http://localhost:8000/registry/apps");
-        const data = await response.json();
-        // Show first 6 apps on desktop
-        const pinnedApps = (data.apps || []).slice(0, 6).map((app: any) => ({
-          id: app.id,
-          name: app.name,
-          icon: app.icon,
-          category: app.category,
-        }));
-        setApps(pinnedApps);
-      } catch (error) {
-        console.error("Failed to load apps:", error);
-      }
-    };
-    loadApps();
-  }, []);
 
   // Update clock
   useEffect(() => {
@@ -112,20 +83,6 @@ export const Desktop: React.FC<DesktopProps> = ({
             <div className="clock-date">{formatDate()}</div>
           </div>
         </div>
-      </div>
-
-      {/* Desktop Icons */}
-      <div className="desktop-icons">
-        {apps.map((app) => (
-          <button
-            key={app.id}
-            className="desktop-icon"
-            onClick={() => onLaunchApp(app.id)}
-          >
-            <div className="desktop-icon-symbol">{app.icon}</div>
-            <div className="desktop-icon-name">{app.name}</div>
-          </button>
-        ))}
       </div>
 
       {/* Dock */}

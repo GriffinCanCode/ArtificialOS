@@ -35,17 +35,22 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
+	// Start server in goroutine
+	errChan := make(chan error, 1)
 	go func() {
-		<-sigChan
+		if err := srv.Run(*port); err != nil {
+			errChan <- err
+		}
+	}()
+
+	// Wait for shutdown signal or error
+	select {
+	case <-sigChan:
 		log.Println("\n🛑 Shutting down gracefully...")
 		if err := srv.Close(); err != nil {
 			log.Printf("Error during shutdown: %v", err)
 		}
-		os.Exit(0)
-	}()
-
-	// Start server
-	if err := srv.Run(*port); err != nil {
+	case err := <-errChan:
 		log.Fatalf("Server error: %v", err)
 	}
 }

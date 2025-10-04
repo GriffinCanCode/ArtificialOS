@@ -7,6 +7,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 
 	pb "github.com/GriffinCanCode/AgentOS/backend/proto/kernel"
 )
@@ -18,17 +19,28 @@ type KernelClient struct {
 	addr   string
 }
 
-// NewKernelClient creates a new kernel client
+// NewKernelClient creates a new kernel client with proper connection management
 func NewKernelClient(addr string) (*KernelClient, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	conn, err := grpc.DialContext(ctx, addr,
+	// Configure connection options for production use
+	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock(),
-	)
+		// Configure keepalive to detect broken connections
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{
+			Time:                10 * time.Second, // Send pings every 10 seconds
+			Timeout:             3 * time.Second,  // Wait 3 seconds for ping ack
+			PermitWithoutStream: true,             // Allow pings without active streams
+		}),
+		// Set reasonable message size limits
+		grpc.WithDefaultCallOptions(
+			grpc.MaxCallRecvMsgSize(10*1024*1024), // 10MB receive limit
+			grpc.MaxCallSendMsgSize(10*1024*1024), // 10MB send limit
+		),
+	}
+
+	// Dial without WithBlock() - it's deprecated and problematic
+	conn, err := grpc.Dial(addr, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to kernel: %w", err)
+		return nil, fmt.Errorf("failed to dial kernel: %w", err)
 	}
 
 	return &KernelClient{
@@ -47,7 +59,7 @@ func (k *KernelClient) Close() error {
 }
 
 // CreateProcess creates a new sandboxed process
-func (k *KernelClient) CreateProcess(name string, priority uint32, sandboxLevel string) (*uint32, error) {
+func (k *KernelClient) CreateProcess(ctx context.Context, name string, priority uint32, sandboxLevel string) (*uint32, error) {
 	levelMap := map[string]pb.SandboxLevel{
 		"MINIMAL":    pb.SandboxLevel_MINIMAL,
 		"STANDARD":   pb.SandboxLevel_STANDARD,
@@ -59,7 +71,8 @@ func (k *KernelClient) CreateProcess(name string, priority uint32, sandboxLevel 
 		level = pb.SandboxLevel_STANDARD
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	// Use provided context with timeout
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	resp, err := k.client.CreateProcess(ctx, &pb.CreateProcessRequest{
@@ -72,15 +85,20 @@ func (k *KernelClient) CreateProcess(name string, priority uint32, sandboxLevel 
 	}
 
 	if !resp.Success {
-		return nil, fmt.Errorf("create process failed: %s", resp.Error)
+		errMsg := "unknown error"
+		if resp.Error != "" {
+			errMsg = resp.Error
+		}
+		return nil, fmt.Errorf("create process failed: %s", errMsg)
 	}
 
 	return &resp.Pid, nil
 }
 
 // ExecuteSyscall executes a system call
-func (k *KernelClient) ExecuteSyscall(pid uint32, syscallType string, params map[string]interface{}) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+func (k *KernelClient) ExecuteSyscall(ctx context.Context, pid uint32, syscallType string, params map[string]interface{}) ([]byte, error) {
+	// Use provided context with timeout
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	req := &pb.SyscallRequest{Pid: pid}
@@ -144,11 +162,20 @@ func (k *KernelClient) ExecuteSyscall(pid uint32, syscallType string, params map
 
 	switch result := resp.Result.(type) {
 	case *pb.SyscallResponse_Success:
-		return result.Success.Data, nil
+		if result.Success != nil {
+			return result.Success.Data, nil
+		}
+		return nil, fmt.Errorf("syscall success response has nil data")
 	case *pb.SyscallResponse_Error:
-		return nil, fmt.Errorf("syscall error: %s", result.Error.Message)
+		if result.Error != nil {
+			return nil, fmt.Errorf("syscall error: %s", result.Error.Message)
+		}
+		return nil, fmt.Errorf("syscall error: unknown error")
 	case *pb.SyscallResponse_PermissionDenied:
-		return nil, fmt.Errorf("permission denied: %s", result.PermissionDenied.Reason)
+		if result.PermissionDenied != nil {
+			return nil, fmt.Errorf("permission denied: %s", result.PermissionDenied.Reason)
+		}
+		return nil, fmt.Errorf("permission denied")
 	default:
 		return nil, fmt.Errorf("unknown response type")
 	}

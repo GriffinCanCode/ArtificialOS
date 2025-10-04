@@ -92,91 +92,15 @@
   font-size: 12px;
 }
 
-/* Desktop Icons */
-.desktop-icons {
-  position: relative;
-  z-index: 10;
-  flex: 1;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, 100px);
-  grid-auto-rows: 100px;
-  gap: 20px;
-  padding: 40px;
-  align-content: start;
-  background: transparent;
-  border: none;
-  outline: none;
-}
-
-.desktop-icon {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-  outline: none;
-  cursor: pointer;
-  padding: 12px;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-  position: relative;
-}
-
-.desktop-icon:focus {
-  outline: none;
-}
-
-.desktop-icon:focus-visible::before {
-  opacity: 0;
-}
-
-.desktop-icon::before {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  background: transparent;
-  border-radius: 10px;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.desktop-icon:hover::before {
-  opacity: 0;
-}
-
-.desktop-icon:hover {
-  transform: translate3d(0, -2px, 0);
-}
-
-.desktop-icon-symbol {
-  font-size: 48px;
-  margin-bottom: 8px;
-  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
-  transition: transform 0.2s ease;
-}
-
-.desktop-icon:hover .desktop-icon-symbol {
-  transform: scale3d(1.1, 1.1, 1);
-}
-
-.desktop-icon-name {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.95);
-  text-align: center;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
-  font-weight: 500;
-  line-height: 1.2;
-  max-width: 100%;
-}
-
 /* Dock */
 .desktop-dock {
-  position: relative;
+  position: fixed;
+  bottom: 16px;
+  left: 0;
+  right: 0;
   z-index: 100;
   display: flex;
   justify-content: center;
-  padding: 16px;
   pointer-events: none;
 }
 
@@ -254,9 +178,9 @@
 /* Hint Overlay */
 .desktop-hint {
   position: absolute;
-  bottom: 100px;
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   z-index: 50;
   padding: 12px 20px;
   background: rgba(0, 0, 0, 0.85);
@@ -283,27 +207,16 @@
 @keyframes hintFadeIn {
   from {
     opacity: 0;
-    transform: translate3d(-50%, 10px, 0);
+    transform: translate(-50%, calc(-50% + 10px));
   }
   to {
     opacity: 1;
-    transform: translate3d(-50%, 0, 0);
+    transform: translate(-50%, -50%);
   }
 }
 
 /* Responsive */
 @media (max-width: 768px) {
-  .desktop-icons {
-    grid-template-columns: repeat(auto-fill, 80px);
-    grid-auto-rows: 80px;
-    gap: 16px;
-    padding: 20px;
-  }
-
-  .desktop-icon-symbol {
-    font-size: 40px;
-  }
-
   .dock-item {
     width: 48px;
     height: 48px;

@@ -1,6 +1,7 @@
 package providers
 
 import (
+	"context"
 	"fmt"
 	"runtime"
 	"sync"
@@ -12,9 +13,16 @@ import (
 // System provides system information and utilities
 type System struct {
 	startTime time.Time
-	logs      []LogEntry
-	logsMu    sync.RWMutex
-	maxLogs   int
+	logs      *CircularLogBuffer
+}
+
+// CircularLogBuffer is a thread-safe circular buffer for log entries
+type CircularLogBuffer struct {
+	entries []*LogEntry
+	head    int
+	size    int
+	maxSize int
+	mu      sync.RWMutex
 }
 
 // LogEntry represents a system log entry
@@ -30,9 +38,55 @@ type LogEntry struct {
 func NewSystem() *System {
 	return &System{
 		startTime: time.Now(),
-		logs:      make([]LogEntry, 0),
-		maxLogs:   1000,
+		logs:      NewCircularLogBuffer(1000),
 	}
+}
+
+// NewCircularLogBuffer creates a new circular buffer for logs
+func NewCircularLogBuffer(maxSize int) *CircularLogBuffer {
+	return &CircularLogBuffer{
+		entries: make([]*LogEntry, maxSize),
+		head:    0,
+		size:    0,
+		maxSize: maxSize,
+	}
+}
+
+// Add inserts a log entry into the circular buffer
+func (cb *CircularLogBuffer) Add(entry *LogEntry) {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+
+	cb.entries[cb.head] = entry
+	cb.head = (cb.head + 1) % cb.maxSize
+	if cb.size < cb.maxSize {
+		cb.size++
+	}
+}
+
+// GetRecent retrieves the most recent N entries, optionally filtered by level
+func (cb *CircularLogBuffer) GetRecent(limit int, levelFilter string) []LogEntry {
+	cb.mu.RLock()
+	defer cb.mu.RUnlock()
+
+	if limit > cb.size {
+		limit = cb.size
+	}
+
+	result := make([]LogEntry, 0, limit)
+
+	// Start from the most recent entry (head - 1) and go backwards
+	for i := 0; i < cb.size && len(result) < limit; i++ {
+		idx := (cb.head - 1 - i + cb.maxSize) % cb.maxSize
+		entry := cb.entries[idx]
+		if entry != nil {
+			if levelFilter == "" || entry.Level == levelFilter {
+				result = append(result, *entry)
+			}
+		}
+	}
+
+	return result
 }
 
 // Definition returns service metadata
@@ -94,14 +148,14 @@ func (s *System) Definition() types.Service {
 }
 
 // Execute runs a system operation
-func (s *System) Execute(toolID string, params map[string]interface{}, ctx *types.Context) (*types.Result, error) {
+func (s *System) Execute(ctx context.Context, toolID string, params map[string]interface{}, appCtx *types.Context) (*types.Result, error) {
 	switch toolID {
 	case "system.info":
 		return s.info()
 	case "system.time":
 		return s.currentTime()
 	case "system.log":
-		return s.log(params, ctx)
+		return s.log(params, appCtx)
 	case "system.getLogs":
 		return s.getLogs(params)
 	case "system.ping":
@@ -148,7 +202,7 @@ func (s *System) log(params map[string]interface{}, ctx *types.Context) (*types.
 		level = l
 	}
 
-	entry := LogEntry{
+	entry := &LogEntry{
 		Timestamp: time.Now(),
 		Level:     level,
 		Message:   message,
@@ -158,13 +212,8 @@ func (s *System) log(params map[string]interface{}, ctx *types.Context) (*types.
 		entry.AppID = *ctx.AppID
 	}
 
-	// Add to logs (with rotation)
-	s.logsMu.Lock()
-	s.logs = append(s.logs, entry)
-	if len(s.logs) > s.maxLogs {
-		s.logs = s.logs[len(s.logs)-s.maxLogs:]
-	}
-	s.logsMu.Unlock()
+	// Add to circular buffer (efficient, no reallocation)
+	s.logs.Add(entry)
 
 	return success(map[string]interface{}{"logged": true})
 }
@@ -180,21 +229,12 @@ func (s *System) getLogs(params map[string]interface{}) (*types.Result, error) {
 		levelFilter = l
 	}
 
-	s.logsMu.RLock()
-	defer s.logsMu.RUnlock()
-
-	// Filter and limit
-	var filtered []LogEntry
-	for i := len(s.logs) - 1; i >= 0 && len(filtered) < limit; i-- {
-		entry := s.logs[i]
-		if levelFilter == "" || entry.Level == levelFilter {
-			filtered = append(filtered, entry)
-		}
-	}
+	// Use circular buffer's efficient retrieval
+	logs := s.logs.GetRecent(limit, levelFilter)
 
 	return success(map[string]interface{}{
-		"logs":  filtered,
-		"count": len(filtered),
+		"logs":  logs,
+		"count": len(logs),
 	})
 }
 

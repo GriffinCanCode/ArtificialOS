@@ -1,6 +1,7 @@
 package providers
 
 import (
+	"context"
 	"testing"
 
 	"github.com/GriffinCanCode/AgentOS/backend/internal/types"
@@ -16,7 +17,7 @@ func newMockKernel() *mockKernel {
 	}
 }
 
-func (m *mockKernel) ExecuteSyscall(pid uint32, syscallType string, params map[string]interface{}) ([]byte, error) {
+func (m *mockKernel) ExecuteSyscall(ctx context.Context, pid uint32, syscallType string, params map[string]interface{}) ([]byte, error) {
 	path := params["path"].(string)
 
 	switch syscallType {
@@ -49,11 +50,12 @@ func TestStorageSetGet(t *testing.T) {
 	kernel := newMockKernel()
 	storage := NewStorage(kernel, 1, "/tmp/test")
 
+	bgCtx := context.Background()
 	appID := "test-app"
 	ctx := &types.Context{AppID: &appID}
 
 	// Set a value
-	result, err := storage.Execute("storage.set", map[string]interface{}{
+	result, err := storage.Execute(bgCtx, "storage.set", map[string]interface{}{
 		"key":   "username",
 		"value": "john_doe",
 	}, ctx)
@@ -67,7 +69,7 @@ func TestStorageSetGet(t *testing.T) {
 	}
 
 	// Get the value
-	result, err = storage.Execute("storage.get", map[string]interface{}{
+	result, err = storage.Execute(bgCtx, "storage.get", map[string]interface{}{
 		"key": "username",
 	}, ctx)
 
@@ -89,6 +91,7 @@ func TestStorageComplex(t *testing.T) {
 	kernel := newMockKernel()
 	storage := NewStorage(kernel, 1, "/tmp/test")
 
+	bgCtx := context.Background()
 	appID := "test-app"
 	ctx := &types.Context{AppID: &appID}
 
@@ -99,7 +102,7 @@ func TestStorageComplex(t *testing.T) {
 		"items": []string{"a", "b", "c"},
 	}
 
-	result, err := storage.Execute("storage.set", map[string]interface{}{
+	result, err := storage.Execute(bgCtx, "storage.set", map[string]interface{}{
 		"key":   "user_data",
 		"value": complexValue,
 	}, ctx)
@@ -109,7 +112,7 @@ func TestStorageComplex(t *testing.T) {
 	}
 
 	// Retrieve and verify
-	result, err = storage.Execute("storage.get", map[string]interface{}{
+	result, err = storage.Execute(bgCtx, "storage.get", map[string]interface{}{
 		"key": "user_data",
 	}, ctx)
 
@@ -127,16 +130,17 @@ func TestStorageRemove(t *testing.T) {
 	kernel := newMockKernel()
 	storage := NewStorage(kernel, 1, "/tmp/test")
 
+	bgCtx := context.Background()
 	appID := "test-app"
 	ctx := &types.Context{AppID: &appID}
 
 	// Set then remove
-	storage.Execute("storage.set", map[string]interface{}{
+	storage.Execute(bgCtx, "storage.set", map[string]interface{}{
 		"key":   "temp",
 		"value": "data",
 	}, ctx)
 
-	result, err := storage.Execute("storage.remove", map[string]interface{}{
+	result, err := storage.Execute(bgCtx, "storage.remove", map[string]interface{}{
 		"key": "temp",
 	}, ctx)
 
@@ -145,7 +149,7 @@ func TestStorageRemove(t *testing.T) {
 	}
 
 	// Verify removed
-	result, err = storage.Execute("storage.get", map[string]interface{}{
+	result, err = storage.Execute(bgCtx, "storage.get", map[string]interface{}{
 		"key": "temp",
 	}, ctx)
 
@@ -162,21 +166,22 @@ func TestStorageClear(t *testing.T) {
 	kernel := newMockKernel()
 	storage := NewStorage(kernel, 1, "/tmp/test")
 
+	bgCtx := context.Background()
 	appID := "test-app"
 	ctx := &types.Context{AppID: &appID}
 
 	// Set multiple values
-	storage.Execute("storage.set", map[string]interface{}{
+	storage.Execute(bgCtx, "storage.set", map[string]interface{}{
 		"key":   "key1",
 		"value": "val1",
 	}, ctx)
-	storage.Execute("storage.set", map[string]interface{}{
+	storage.Execute(bgCtx, "storage.set", map[string]interface{}{
 		"key":   "key2",
 		"value": "val2",
 	}, ctx)
 
 	// Clear all
-	result, err := storage.Execute("storage.clear", nil, ctx)
+	result, err := storage.Execute(bgCtx, "storage.clear", nil, ctx)
 
 	if err != nil {
 		t.Fatalf("Clear error: %v", err)
@@ -195,7 +200,8 @@ func TestStorageNoContext(t *testing.T) {
 	kernel := newMockKernel()
 	storage := NewStorage(kernel, 1, "/tmp/test")
 
-	result, _ := storage.Execute("storage.set", map[string]interface{}{
+	bgCtx := context.Background()
+	result, _ := storage.Execute(bgCtx, "storage.set", map[string]interface{}{
 		"key":   "test",
 		"value": "data",
 	}, nil)

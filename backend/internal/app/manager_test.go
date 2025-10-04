@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"testing"
 
 	"github.com/GriffinCanCode/AgentOS/backend/internal/types"
@@ -8,7 +9,7 @@ import (
 
 type mockKernel struct{}
 
-func (m *mockKernel) CreateProcess(name string, priority uint32, sandboxLevel string) (*uint32, error) {
+func (m *mockKernel) CreateProcess(ctx context.Context, name string, priority uint32, sandboxLevel string) (*uint32, error) {
 	pid := uint32(123)
 	return &pid, nil
 }
@@ -21,7 +22,8 @@ func TestSpawn(t *testing.T) {
 		"services": []string{"storage"},
 	}
 
-	app, err := m.Spawn("create test app", uiSpec, nil)
+	ctx := context.Background()
+	app, err := m.Spawn(ctx, "create test app", uiSpec, nil)
 	if err != nil {
 		t.Fatalf("Spawn failed: %v", err)
 	}
@@ -42,8 +44,9 @@ func TestSpawn(t *testing.T) {
 func TestFocus(t *testing.T) {
 	m := NewManager(&mockKernel{})
 
-	app1, _ := m.Spawn("app1", map[string]interface{}{"title": "App 1"}, nil)
-	app2, _ := m.Spawn("app2", map[string]interface{}{"title": "App 2"}, nil)
+	ctx := context.Background()
+	app1, _ := m.Spawn(ctx, "app1", map[string]interface{}{"title": "App 1"}, nil)
+	app2, _ := m.Spawn(ctx, "app2", map[string]interface{}{"title": "App 2"}, nil)
 
 	// Focus should move app1 to background
 	if !m.Focus(app2.ID) {
@@ -59,8 +62,9 @@ func TestFocus(t *testing.T) {
 func TestClose(t *testing.T) {
 	m := NewManager(&mockKernel{})
 
-	parent, _ := m.Spawn("parent", map[string]interface{}{"title": "Parent"}, nil)
-	child, _ := m.Spawn("child", map[string]interface{}{"title": "Child"}, &parent.ID)
+	ctx := context.Background()
+	parent, _ := m.Spawn(ctx, "parent", map[string]interface{}{"title": "Parent"}, nil)
+	child, _ := m.Spawn(ctx, "child", map[string]interface{}{"title": "Child"}, &parent.ID)
 
 	// Closing parent should close child
 	if !m.Close(parent.ID) {
@@ -79,8 +83,9 @@ func TestClose(t *testing.T) {
 func TestStats(t *testing.T) {
 	m := NewManager(&mockKernel{})
 
-	m.Spawn("app1", map[string]interface{}{"title": "App 1"}, nil)
-	m.Spawn("app2", map[string]interface{}{"title": "App 2"}, nil)
+	ctx := context.Background()
+	m.Spawn(ctx, "app1", map[string]interface{}{"title": "App 1"}, nil)
+	m.Spawn(ctx, "app2", map[string]interface{}{"title": "App 2"}, nil)
 
 	stats := m.Stats()
 	if stats.TotalApps != 2 {

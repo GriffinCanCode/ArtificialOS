@@ -95,6 +95,9 @@ impl MemoryManager {
 
     /// Allocate memory with graceful OOM handling
     pub fn allocate(&self, size: usize, pid: u32) -> Result<usize, MemoryError> {
+        // Single atomic transaction - acquire all locks at once to prevent races
+        let mut blocks = self.blocks.write();
+        let mut next_addr = self.next_address.write();
         let mut used = self.used_memory.write();
         
         // Check if allocation would exceed total memory
@@ -113,8 +116,7 @@ impl MemoryManager {
             });
         }
 
-        // Allocate memory
-        let mut next_addr = self.next_address.write();
+        // Allocate memory - all state updates are atomic
         let address = *next_addr;
         *next_addr += size;
         *used += size;
@@ -126,15 +128,20 @@ impl MemoryManager {
             owner_pid: Some(pid),
         };
 
-        self.blocks.write().insert(address, block);
+        blocks.insert(address, block);
         
         // Log allocation with memory pressure warnings
-        if let Some(level) = self.check_memory_pressure(*used) {
+        let used_val = *used;
+        drop(blocks);
+        drop(next_addr);
+        drop(used);
+        
+        if let Some(level) = self.check_memory_pressure(used_val) {
             warn!(
                 "Memory pressure {}: Allocated {} bytes at 0x{:x} for PID {} ({:.1}% used: {} / {})",
                 level, size, address, pid,
-                (*used as f64 / self.total_memory as f64) * 100.0,
-                *used, self.total_memory
+                (used_val as f64 / self.total_memory as f64) * 100.0,
+                used_val, self.total_memory
             );
         } else {
             info!("Allocated {} bytes at 0x{:x} for PID {}", size, address, pid);

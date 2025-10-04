@@ -1,6 +1,7 @@
 package session
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
@@ -14,7 +15,7 @@ import (
 type AppManager interface {
 	List(state *types.State) []*types.App
 	Get(id string) (*types.App, bool)
-	Spawn(request string, uiSpec map[string]interface{}, parentID *string) (*types.App, error)
+	Spawn(ctx context.Context, request string, uiSpec map[string]interface{}, parentID *string) (*types.App, error)
 	Close(id string) bool
 	Focus(id string) bool
 	Stats() types.Stats
@@ -22,7 +23,7 @@ type AppManager interface {
 
 // KernelClient interface for file operations
 type KernelClient interface {
-	ExecuteSyscall(pid uint32, syscallType string, params map[string]interface{}) ([]byte, error)
+	ExecuteSyscall(ctx context.Context, pid uint32, syscallType string, params map[string]interface{}) ([]byte, error)
 }
 
 // Manager handles session persistence
@@ -48,11 +49,8 @@ func NewManager(appManager AppManager, kernel KernelClient, storagePID uint32, s
 }
 
 // Save captures current workspace and saves to disk
-func (m *Manager) Save(name string, description string) (*types.Session, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	// Capture workspace state
+func (m *Manager) Save(ctx context.Context, name string, description string) (*types.Session, error) {
+	// Capture workspace state WITHOUT holding lock
 	workspace, err := m.captureWorkspace()
 	if err != nil {
 		return nil, fmt.Errorf("failed to capture workspace: %w", err)
@@ -76,7 +74,7 @@ func (m *Manager) Save(name string, description string) (*types.Session, error) 
 		return nil, fmt.Errorf("failed to marshal session: %w", err)
 	}
 
-	// Write to filesystem via kernel
+	// Write to filesystem via kernel (I/O without holding lock)
 	path := m.sessionPath(session.ID)
 	params := map[string]interface{}{
 		"path": path,
@@ -84,28 +82,30 @@ func (m *Manager) Save(name string, description string) (*types.Session, error) 
 	}
 
 	if m.kernel != nil {
-		_, err = m.kernel.ExecuteSyscall(m.storagePID, "write_file", params)
+		_, err = m.kernel.ExecuteSyscall(ctx, m.storagePID, "write_file", params)
 		if err != nil {
 			return nil, fmt.Errorf("failed to write session: %w", err)
 		}
 	}
 
-	// Cache in memory
+	// Cache in memory (sync.Map has its own synchronization)
 	m.sessions.Store(session.ID, session)
 
-	// Update last saved time
+	// Update last saved time - ONLY acquire lock for this
+	m.mu.Lock()
 	m.lastSaved = &now
+	m.mu.Unlock()
 
 	return session, nil
 }
 
 // SaveDefault saves session with default name
-func (m *Manager) SaveDefault() (*types.Session, error) {
-	return m.Save("default", "Auto-saved session")
+func (m *Manager) SaveDefault(ctx context.Context) (*types.Session, error) {
+	return m.Save(ctx, "default", "Auto-saved session")
 }
 
 // Load restores a session from disk
-func (m *Manager) Load(id string) (*types.Session, error) {
+func (m *Manager) Load(ctx context.Context, id string) (*types.Session, error) {
 	// Check cache first
 	if cached, ok := m.sessions.Load(id); ok {
 		return cached.(*types.Session), nil
@@ -117,15 +117,20 @@ func (m *Manager) Load(id string) (*types.Session, error) {
 		"path": path,
 	}
 
-	data, err := m.kernel.ExecuteSyscall(m.storagePID, "read_file", params)
+	data, err := m.kernel.ExecuteSyscall(ctx, m.storagePID, "read_file", params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read session: %w", err)
 	}
 
-	// Unmarshal
+	// Unmarshal and validate
 	var session types.Session
 	if err := json.Unmarshal(data, &session); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal session: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal session %s: %w", id, err)
+	}
+
+	// Basic validation
+	if session.ID == "" {
+		return nil, fmt.Errorf("session %s has empty ID field", id)
 	}
 
 	// Cache
@@ -135,12 +140,9 @@ func (m *Manager) Load(id string) (*types.Session, error) {
 }
 
 // Restore applies a saved session to the workspace
-func (m *Manager) Restore(id string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	// Load session
-	session, err := m.Load(id)
+func (m *Manager) Restore(ctx context.Context, id string) error {
+	// Load session WITHOUT holding lock (does I/O)
+	session, err := m.Load(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to load session: %w", err)
 	}
@@ -162,7 +164,7 @@ func (m *Manager) Restore(id string) error {
 	for i := range session.Workspace.Apps {
 		snapshot := &session.Workspace.Apps[i]
 		if snapshot.ParentID == nil {
-			newApp, err := m.restoreApp(snapshot, nil, appMap)
+			newApp, err := m.restoreApp(ctx, snapshot, nil, appMap)
 			if err != nil {
 				return fmt.Errorf("failed to restore app %s: %w", snapshot.ID, err)
 			}
@@ -178,7 +180,7 @@ func (m *Manager) Restore(id string) error {
 			if !ok {
 				continue // Parent wasn't restored, skip child
 			}
-			newApp, err := m.restoreApp(snapshot, &newParentID, appMap)
+			newApp, err := m.restoreApp(ctx, snapshot, &newParentID, appMap)
 			if err != nil {
 				return fmt.Errorf("failed to restore child app %s: %w", snapshot.ID, err)
 			}
@@ -204,9 +206,11 @@ func (m *Manager) Restore(id string) error {
 		}
 	}
 
-	// Update last restored time
+	// Update last restored time - ONLY acquire lock for this
 	now := time.Now()
+	m.mu.Lock()
 	m.lastRestored = &now
+	m.mu.Unlock()
 
 	return nil
 }
@@ -225,7 +229,7 @@ func (m *Manager) List() ([]types.SessionMetadata, error) {
 }
 
 // Delete removes a session
-func (m *Manager) Delete(id string) error {
+func (m *Manager) Delete(ctx context.Context, id string) error {
 	// Delete from filesystem
 	path := m.sessionPath(id)
 	params := map[string]interface{}{
@@ -233,7 +237,7 @@ func (m *Manager) Delete(id string) error {
 	}
 
 	if m.kernel != nil {
-		_, err := m.kernel.ExecuteSyscall(m.storagePID, "delete_file", params)
+		_, err := m.kernel.ExecuteSyscall(ctx, m.storagePID, "delete_file", params)
 		if err != nil {
 			return fmt.Errorf("failed to delete session: %w", err)
 		}
@@ -253,10 +257,16 @@ func (m *Manager) Stats() types.SessionStats {
 		return true
 	})
 
+	// Read timestamp pointers under lock to prevent data races
+	m.mu.RLock()
+	lastSaved := m.lastSaved
+	lastRestored := m.lastRestored
+	m.mu.RUnlock()
+
 	return types.SessionStats{
 		TotalSessions: total,
-		LastSaved:     m.lastSaved,
-		LastRestored:  m.lastRestored,
+		LastSaved:     lastSaved,
+		LastRestored:  lastRestored,
 	}
 }
 
@@ -297,7 +307,7 @@ func (m *Manager) captureWorkspace() (*types.Workspace, error) {
 }
 
 // restoreApp restores a single app from snapshot
-func (m *Manager) restoreApp(snapshot *types.AppSnapshot, parentID *string, appMap map[string]string) (*types.App, error) {
+func (m *Manager) restoreApp(ctx context.Context, snapshot *types.AppSnapshot, parentID *string, appMap map[string]string) (*types.App, error) {
 	// Get original request from metadata
 	request := "Restore app"
 	if req, ok := snapshot.Metadata["request"].(string); ok {
@@ -305,7 +315,7 @@ func (m *Manager) restoreApp(snapshot *types.AppSnapshot, parentID *string, appM
 	}
 
 	// Spawn app with saved UISpec
-	app, err := m.appManager.Spawn(request, snapshot.UISpec, parentID)
+	app, err := m.appManager.Spawn(ctx, request, snapshot.UISpec, parentID)
 	if err != nil {
 		return nil, err
 	}

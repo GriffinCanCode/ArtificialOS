@@ -10,8 +10,11 @@ import ThoughtStream from "../components/chat/ThoughtStream";
 import DynamicRenderer from "../components/dynamics/DynamicRenderer";
 import TitleBar from "../components/layout/TitleBar";
 import { Desktop } from "../components/layout/Desktop";
+import { WindowManager } from "../components/layout/WindowManager";
+import { Taskbar } from "../components/layout/Taskbar";
 import { WebSocketProvider, useWebSocket } from "../contexts/WebSocketContext";
 import { useAppActions } from "../store/appStore";
+import { useWindowActions } from "../store/windowStore";
 import { useSessionManager } from "../hooks/useSessionManager";
 import { ServerMessage } from "../types/api";
 import { useLogger } from "../utils/monitoring/useLogger";
@@ -36,7 +39,8 @@ function App() {
 function AppContent() {
   const log = useLogger("AppContent");
   const { client, generateUI } = useWebSocket();
-  const { addMessage, addThought, appendToLastMessage, setUISpec } = useAppActions();
+  const { addMessage, addThought, appendToLastMessage } = useAppActions();
+  const { openWindow } = useWindowActions();
 
   // Initialize session manager with auto-save every 30s
   // Memoize options to prevent hooks order issues during HMR
@@ -208,14 +212,20 @@ function AppContent() {
       if (data.error) {
         log.error("Failed to launch app", undefined, { appId, error: data.error });
       } else if (data.ui_spec) {
-        // Successfully launched - display the app
+        // Successfully launched - open in a window
         log.info("App launched successfully", { appId, appInstanceId: data.app_id });
-        setUISpec(data.ui_spec, data.app_id);
+        
+        // Get app metadata for icon
+        const metaResponse = await fetch(`http://localhost:8000/registry/apps/${appId}`);
+        const metaData = await metaResponse.json();
+        const icon = metaData.icon || "📦";
+        
+        openWindow(data.app_id, data.ui_spec.title, data.ui_spec, icon);
       }
     } catch (error) {
       log.error("Failed to launch app", error as Error, { appId });
     }
-  }, [log, setUISpec]);
+  }, [log, openWindow]);
 
   const formatTimeSinceMemo = useCallback((date: Date): string => {
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -251,10 +261,16 @@ function AppContent() {
         />
       </div>
 
-      {/* Full-screen App Canvas (for running apps) */}
+      {/* Full-screen App Canvas (for AI-generated apps) */}
       <div className="os-canvas">
         <DynamicRenderer />
       </div>
+
+      {/* Window Manager (for windowed apps) */}
+      <WindowManager />
+
+      {/* Taskbar (shows open windows) */}
+      <Taskbar />
 
       {/* Creator Overlay (⌘K) */}
       {showCreator && (

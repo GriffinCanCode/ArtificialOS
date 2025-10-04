@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -11,29 +12,30 @@ import (
 
 // Manager orchestrates app lifecycle
 type Manager struct {
-	apps          sync.Map
-	focusedID     *string
-	focusedHash   *string // Hash of focused app for restoration
 	mu            sync.RWMutex
+	apps          map[string]*types.App // Protected by mu
+	focusedID     *string               // Protected by mu
+	focusedHash   *string               // Protected by mu
 	kernelGRPC    KernelClient
 	appIdentifier *utils.AppIdentifier
 }
 
 // KernelClient interface for dependency injection
 type KernelClient interface {
-	CreateProcess(name string, priority uint32, sandboxLevel string) (*uint32, error)
+	CreateProcess(ctx context.Context, name string, priority uint32, sandboxLevel string) (*uint32, error)
 }
 
 // NewManager creates a new app manager
 func NewManager(kernelClient KernelClient) *Manager {
 	return &Manager{
+		apps:          make(map[string]*types.App),
 		kernelGRPC:    kernelClient,
 		appIdentifier: utils.NewAppIdentifier(utils.DefaultHasher()),
 	}
 }
 
 // Spawn creates a new app instance
-func (m *Manager) Spawn(request string, uiSpec map[string]interface{}, parentID *string) (*types.App, error) {
+func (m *Manager) Spawn(ctx context.Context, request string, uiSpec map[string]interface{}, parentID *string) (*types.App, error) {
 	title, _ := uiSpec["title"].(string)
 	if title == "" {
 		title = "Untitled App"
@@ -53,7 +55,7 @@ func (m *Manager) Spawn(request string, uiSpec map[string]interface{}, parentID 
 	// Create sandboxed process if kernel available
 	var sandboxPID *uint32
 	if m.kernelGRPC != nil && len(services) > 0 {
-		if pid, err := m.kernelGRPC.CreateProcess(title, 5, "STANDARD"); err == nil {
+		if pid, err := m.kernelGRPC.CreateProcess(ctx, title, 5, "STANDARD"); err == nil {
 			sandboxPID = pid
 		}
 	}
@@ -71,116 +73,148 @@ func (m *Manager) Spawn(request string, uiSpec map[string]interface{}, parentID 
 		SandboxPID: sandboxPID,
 	}
 
-	m.apps.Store(app.ID, app)
-	m.setFocused(app.ID, hash)
+	m.mu.Lock()
+	m.apps[app.ID] = app
+	m.focusedID = &app.ID
+	m.focusedHash = &hash
+	m.mu.Unlock()
 
 	return app, nil
 }
 
 // Get retrieves an app by ID
 func (m *Manager) Get(id string) (*types.App, bool) {
-	val, ok := m.apps.Load(id)
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	app, ok := m.apps[id]
 	if !ok {
 		return nil, false
 	}
-	return val.(*types.App), true
+
+	// Return a copy to prevent external modifications
+	appCopy := *app
+	return &appCopy, true
 }
 
 // List returns all apps, optionally filtered by state
 func (m *Manager) List(state *types.State) []*types.App {
-	var apps []*types.App
-	m.apps.Range(func(_, value interface{}) bool {
-		app := value.(*types.App)
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	apps := make([]*types.App, 0, len(m.apps))
+	for _, app := range m.apps {
 		if state == nil || app.State == *state {
-			apps = append(apps, app)
+			// Return copies to prevent external modifications
+			appCopy := *app
+			apps = append(apps, &appCopy)
 		}
-		return true
-	})
+	}
 	return apps
 }
 
 // Focus brings an app to foreground
 func (m *Manager) Focus(id string) bool {
-	app, ok := m.Get(id)
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	app, ok := m.apps[id]
 	if !ok {
 		return false
 	}
 
-	// Unfocus current
-	m.mu.RLock()
-	currentID := m.focusedID
-	m.mu.RUnlock()
-
-	if currentID != nil && *currentID != id {
-		if current, ok := m.Get(*currentID); ok && current.State == types.StateActive {
-			current.State = types.StateBackground
-			m.apps.Store(*currentID, current)
+	// Unfocus current app
+	if m.focusedID != nil && *m.focusedID != id {
+		if currentApp, exists := m.apps[*m.focusedID]; exists && currentApp.State == types.StateActive {
+			currentApp.State = types.StateBackground
 		}
 	}
 
-	// Focus new
+	// Focus new app
 	app.State = types.StateActive
-	m.apps.Store(id, app)
-	m.setFocused(id, app.Hash)
+	m.focusedID = &id
+	m.focusedHash = &app.Hash
 
 	return true
 }
 
 // Close destroys an app and its children
 func (m *Manager) Close(id string) bool {
-	app, ok := m.Get(id)
-	if !ok {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if _, ok := m.apps[id]; !ok {
 		return false
 	}
 
-	// Close children first
-	m.apps.Range(func(_, value interface{}) bool {
-		child := value.(*types.App)
+	// Collect children IDs first (to avoid recursive locking)
+	var childIDs []string
+	for _, child := range m.apps {
 		if child.ParentID != nil && *child.ParentID == id {
-			m.Close(child.ID)
-		}
-		return true
-	})
-
-	// Mark destroyed and remove
-	app.State = types.StateDestroyed
-	m.apps.Delete(id)
-
-	// Update focus
-	m.mu.Lock()
-	if m.focusedID != nil && *m.focusedID == id {
-		m.focusedID = nil
-		// Auto-focus another app
-		active := m.List(nil)
-		if len(active) > 0 {
-			m.mu.Unlock()
-			m.Focus(active[0].ID)
-			return true
+			childIDs = append(childIDs, child.ID)
 		}
 	}
-	m.mu.Unlock()
+
+	// Close children (within same lock)
+	for _, childID := range childIDs {
+		m.closeApp(childID)
+	}
+
+	// Close this app
+	m.closeApp(id)
+
+	// Update focus if this was the focused app
+	if m.focusedID != nil && *m.focusedID == id {
+		m.focusedID = nil
+		m.focusedHash = nil
+
+		// Auto-focus another active app
+		for _, app := range m.apps {
+			if app.State == types.StateActive || app.State == types.StateBackground {
+				m.focusedID = &app.ID
+				m.focusedHash = &app.Hash
+				app.State = types.StateActive
+				break
+			}
+		}
+	}
 
 	return true
 }
 
+// closeApp removes an app without handling focus (internal, must hold lock)
+func (m *Manager) closeApp(id string) {
+	if app, ok := m.apps[id]; ok {
+		app.State = types.StateDestroyed
+		delete(m.apps, id)
+	}
+}
+
 // Stats returns manager statistics
 func (m *Manager) Stats() types.Stats {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	var total, active, background int
-	m.apps.Range(func(_, value interface{}) bool {
-		app := value.(*types.App)
+	for _, app := range m.apps {
 		total++
 		if app.State == types.StateActive {
 			active++
 		} else if app.State == types.StateBackground {
 			background++
 		}
-		return true
-	})
+	}
 
-	m.mu.RLock()
-	focusedID := m.focusedID
-	focusedHash := m.focusedHash
-	m.mu.RUnlock()
+	// Copy pointers to avoid race
+	var focusedID, focusedHash *string
+	if m.focusedID != nil {
+		id := *m.focusedID
+		focusedID = &id
+	}
+	if m.focusedHash != nil {
+		hash := *m.focusedHash
+		focusedHash = &hash
+	}
 
 	return types.Stats{
 		TotalApps:      total,
@@ -191,26 +225,17 @@ func (m *Manager) Stats() types.Stats {
 	}
 }
 
-func (m *Manager) setFocused(id string, hash string) {
-	m.mu.Lock()
-	m.focusedID = &id
-	m.focusedHash = &hash
-	m.mu.Unlock()
-}
-
 // FindByHash finds an app by its hash (for restoration)
 func (m *Manager) FindByHash(hash string) (*types.App, bool) {
-	var found *types.App
-	m.apps.Range(func(_, value interface{}) bool {
-		app := value.(*types.App)
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	for _, app := range m.apps {
 		if app.Hash == hash {
-			found = app
-			return false // Stop iteration
+			// Return copy to prevent external modifications
+			appCopy := *app
+			return &appCopy, true
 		}
-		return true
-	})
-	if found != nil {
-		return found, true
 	}
 	return nil, false
 }

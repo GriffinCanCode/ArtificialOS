@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"os"
@@ -104,7 +105,8 @@ func (s *Seeder) loadApp(path string) error {
 	}
 
 	// Save to registry (this will update if already exists)
-	return s.manager.Save(&pkg)
+	ctx := context.Background()
+	return s.manager.Save(ctx, &pkg)
 }
 
 // SeedDefaultApps creates essential system apps if they don't exist
@@ -286,10 +288,11 @@ func (s *Seeder) SeedDefaultApps() error {
 	}
 
 	var seeded int
+	ctx := context.Background()
 	for _, pkg := range defaults {
 		// Only seed if doesn't exist
-		if !s.manager.Exists(pkg.ID) {
-			if err := s.manager.Save(&pkg); err != nil {
+		if !s.manager.Exists(ctx, pkg.ID) {
+			if err := s.manager.Save(ctx, &pkg); err != nil {
 				log.Printf("  ✗ Failed to seed %s: %v", pkg.Name, err)
 			} else {
 				log.Printf("  ✓ Seeded %s", pkg.Name)

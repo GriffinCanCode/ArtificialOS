@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"testing"
 
 	"github.com/GriffinCanCode/AgentOS/backend/internal/types"
@@ -28,7 +29,7 @@ func (m *mockProvider) Definition() types.Service {
 	}
 }
 
-func (m *mockProvider) Execute(toolID string, params map[string]interface{}, ctx *types.Context) (*types.Result, error) {
+func (m *mockProvider) Execute(ctx context.Context, toolID string, params map[string]interface{}, appCtx *types.Context) (*types.Result, error) {
 	return &types.Result{
 		Success: true,
 		Data:    map[string]interface{}{"result": "success"},
@@ -83,7 +84,8 @@ func TestExecute(t *testing.T) {
 	r := NewRegistry()
 	r.Register(&mockProvider{id: "test"})
 
-	result, err := r.Execute("test.test", map[string]interface{}{}, nil)
+	ctx := context.Background()
+	result, err := r.Execute(ctx, "test.test", map[string]interface{}{}, nil)
 	if err != nil {
 		t.Fatalf("Execute failed: %v", err)
 	}

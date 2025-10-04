@@ -8,6 +8,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 
 	pb "github.com/GriffinCanCode/AgentOS/backend/proto/ai"
 )
@@ -19,17 +20,28 @@ type AIClient struct {
 	addr   string
 }
 
-// NewAIClient creates a new AI client
+// NewAIClient creates a new AI client with proper connection management
 func NewAIClient(addr string) (*AIClient, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	conn, err := grpc.DialContext(ctx, addr,
+	// Configure connection options for production use
+	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock(),
-	)
+		// Configure keepalive to detect broken connections
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{
+			Time:                10 * time.Second, // Send pings every 10 seconds
+			Timeout:             3 * time.Second,  // Wait 3 seconds for ping ack
+			PermitWithoutStream: true,             // Allow pings without active streams
+		}),
+		// Set larger message size limits for AI responses (can be large)
+		grpc.WithDefaultCallOptions(
+			grpc.MaxCallRecvMsgSize(50*1024*1024), // 50MB receive limit for large AI responses
+			grpc.MaxCallSendMsgSize(10*1024*1024), // 10MB send limit
+		),
+	}
+
+	// Dial without WithBlock() - it's deprecated and problematic
+	conn, err := grpc.Dial(addr, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to AI service: %w", err)
+		return nil, fmt.Errorf("failed to dial AI service: %w", err)
 	}
 
 	return &AIClient{
@@ -48,8 +60,9 @@ func (a *AIClient) Close() error {
 }
 
 // GenerateUI generates a UI specification
-func (a *AIClient) GenerateUI(message string, contextMap map[string]string, parentID *string) (*pb.UIResponse, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+func (a *AIClient) GenerateUI(ctx context.Context, message string, contextMap map[string]string, parentID *string) (*pb.UIResponse, error) {
+	// Use provided context with timeout
+	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 
 	req := &pb.UIRequest{
@@ -64,7 +77,7 @@ func (a *AIClient) GenerateUI(message string, contextMap map[string]string, pare
 }
 
 // StreamUI streams UI generation with real-time updates
-func (a *AIClient) StreamUI(message string, contextMap map[string]string, parentID *string) (pb.AIService_StreamUIClient, error) {
+func (a *AIClient) StreamUI(ctx context.Context, message string, contextMap map[string]string, parentID *string) (pb.AIService_StreamUIClient, error) {
 	req := &pb.UIRequest{
 		Message: message,
 		Context: contextMap,
@@ -73,18 +86,18 @@ func (a *AIClient) StreamUI(message string, contextMap map[string]string, parent
 		req.ParentId = parentID
 	}
 
-	return a.client.StreamUI(context.Background(), req)
+	return a.client.StreamUI(ctx, req)
 }
 
 // StreamChat streams chat response
-func (a *AIClient) StreamChat(message string, contextMap map[string]string, history []*pb.ChatMessage) (pb.AIService_StreamChatClient, error) {
+func (a *AIClient) StreamChat(ctx context.Context, message string, contextMap map[string]string, history []*pb.ChatMessage) (pb.AIService_StreamChatClient, error) {
 	req := &pb.ChatRequest{
 		Message: message,
 		Context: contextMap,
 		History: history,
 	}
 
-	return a.client.StreamChat(context.Background(), req)
+	return a.client.StreamChat(ctx, req)
 }
 
 // TokenHandler handles streaming tokens

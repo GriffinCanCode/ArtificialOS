@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import { Construction, MessageCircle, Palette, Save, Sparkles, Zap } from "lucide-react";
+import { Construction, MessageCircle, Palette, Save, Sparkles, Zap, ExternalLink } from "lucide-react";
 import { useWebSocket } from "../../contexts/WebSocketContext";
 import { animated } from "@react-spring/web";
 import {
@@ -27,6 +27,7 @@ import {
   UIComponent,
   UISpec,
 } from "../../store/appStore";
+import { useWindowActions } from "../../store/windowStore";
 import { logger } from "../../utils/monitoring/logger";
 import { startPerf, endPerf } from "../../utils/monitoring/performanceMonitor";
 import { useSaveApp } from "../../hooks/useRegistryQueries";
@@ -83,6 +84,8 @@ const DynamicRenderer: React.FC = () => {
     addGenerationThought,
     appendGenerationPreview,
   } = useAppActions();
+
+  const { openWindow } = useWindowActions();
 
   const [showSaveAppDialog, setShowSaveAppDialog] = useState(false);
 
@@ -1058,6 +1061,15 @@ const DynamicRenderer: React.FC = () => {
     setShowSaveAppDialog(false);
   }, []);
 
+  const handleOpenInWindow = useCallback(() => {
+    if (uiSpec) {
+      const appId = useAppStore.getState().appId;
+      if (appId) {
+        openWindow(appId, uiSpec.title, uiSpec, "✨");
+      }
+    }
+  }, [uiSpec, openWindow]);
+
   // Memoize filtered components to prevent re-filtering on every render
   const validPartialComponents = React.useMemo(() => {
     return partialUISpec?.components?.filter((c) => c && c.type && c.type !== "undefined") || [];
@@ -1349,25 +1361,35 @@ const DynamicRenderer: React.FC = () => {
           <div ref={burstRef} className="rendered-app" style={uiSpec.style}>
             <div className="app-header">
               <h2>{uiSpec.title}</h2>
-              <animated.button
-                ref={(el: HTMLButtonElement) => {
-                  if (saveButtonRef.current !== el && el) {
-                    (saveButtonRef as React.MutableRefObject<HTMLButtonElement | null>).current =
-                      el;
-                  }
-                  (
-                    saveButtonMagnetic.ref as React.MutableRefObject<HTMLButtonElement | null>
-                  ).current = el;
-                }}
-                className="save-app-btn"
-                onClick={handleSaveDialogOpen}
-                {...saveButtonMagnetic.handlers}
-                style={saveButtonMagnetic.style}
-                title="Save this app to registry"
-              >
-                <Save size={16} style={{ marginRight: "6px", verticalAlign: "middle" }} />
-                Save
-              </animated.button>
+              <div className="app-header-actions">
+                <button
+                  className="app-action-btn"
+                  onClick={handleOpenInWindow}
+                  title="Open in window"
+                >
+                  <ExternalLink size={16} style={{ marginRight: "6px", verticalAlign: "middle" }} />
+                  Open in Window
+                </button>
+                <animated.button
+                  ref={(el: HTMLButtonElement) => {
+                    if (saveButtonRef.current !== el && el) {
+                      (saveButtonRef as React.MutableRefObject<HTMLButtonElement | null>).current =
+                        el;
+                    }
+                    (
+                      saveButtonMagnetic.ref as React.MutableRefObject<HTMLButtonElement | null>
+                    ).current = el;
+                  }}
+                  className="save-app-btn"
+                  onClick={handleSaveDialogOpen}
+                  {...saveButtonMagnetic.handlers}
+                  style={saveButtonMagnetic.style}
+                  title="Save this app to registry"
+                >
+                  <Save size={16} style={{ marginRight: "6px", verticalAlign: "middle" }} />
+                  Save
+                </animated.button>
+              </div>
             </div>
             <div className={`app-content app-layout-${uiSpec.layout}`}>
               {validUISpecComponents.length >= VIRTUAL_SCROLL_THRESHOLD ? (

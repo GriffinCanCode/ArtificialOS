@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -12,13 +13,13 @@ import (
 // Registry manages service discovery and execution
 type Registry struct {
 	services sync.Map
-	mu       sync.RWMutex
+	// Note: sync.Map provides its own internal synchronization
 }
 
 // Provider interface for service implementations
 type Provider interface {
 	Definition() types.Service
-	Execute(toolID string, params map[string]interface{}, ctx *types.Context) (*types.Result, error)
+	Execute(ctx context.Context, toolID string, params map[string]interface{}, appCtx *types.Context) (*types.Result, error)
 }
 
 // NewRegistry creates a new service registry
@@ -103,7 +104,7 @@ func (r *Registry) Discover(intent string, limit int) []types.Service {
 }
 
 // Execute runs a service tool
-func (r *Registry) Execute(toolID string, params map[string]interface{}, ctx *types.Context) (*types.Result, error) {
+func (r *Registry) Execute(ctx context.Context, toolID string, params map[string]interface{}, appCtx *types.Context) (*types.Result, error) {
 	parts := strings.SplitN(toolID, ".", 2)
 	if len(parts) < 2 {
 		return &types.Result{
@@ -121,7 +122,7 @@ func (r *Registry) Execute(toolID string, params map[string]interface{}, ctx *ty
 		}, fmt.Errorf("service not found: %s", serviceID)
 	}
 
-	return provider.Execute(toolID, params, ctx)
+	return provider.Execute(ctx, toolID, params, appCtx)
 }
 
 // Stats returns registry statistics

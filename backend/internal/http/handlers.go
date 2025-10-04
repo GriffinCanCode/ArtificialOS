@@ -10,6 +10,7 @@ import (
 	"github.com/GriffinCanCode/AgentOS/backend/internal/service"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/session"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/types"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -76,6 +77,13 @@ func (h *Handlers) ListApps(c *gin.Context) {
 // FocusApp brings an app to foreground
 func (h *Handlers) FocusApp(c *gin.Context) {
 	appID := c.Param("id")
+
+	// Validate app ID
+	if err := utils.ValidateID(appID, "app_id", true); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	success := h.appManager.Focus(appID)
 
 	c.JSON(http.StatusOK, gin.H{
@@ -87,6 +95,13 @@ func (h *Handlers) FocusApp(c *gin.Context) {
 // CloseApp closes and destroys an app
 func (h *Handlers) CloseApp(c *gin.Context) {
 	appID := c.Param("id")
+
+	// Validate app ID
+	if err := utils.ValidateID(appID, "app_id", true); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	success := h.appManager.Close(appID)
 
 	c.JSON(http.StatusOK, gin.H{
@@ -98,6 +113,15 @@ func (h *Handlers) CloseApp(c *gin.Context) {
 // ListServices lists all available services
 func (h *Handlers) ListServices(c *gin.Context) {
 	categoryStr := c.Query("category")
+
+	// Validate category if provided
+	if categoryStr != "" {
+		if err := utils.ValidateCategory(categoryStr, false); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
 	var category *types.Category
 	if categoryStr != "" {
 		cat := types.Category(categoryStr)
@@ -121,6 +145,12 @@ func (h *Handlers) DiscoverServices(c *gin.Context) {
 		return
 	}
 
+	// Validate message
+	if err := utils.ValidateMessage(req.Message); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	services := h.registry.Discover(req.Message, 5)
 
 	c.JSON(http.StatusOK, gin.H{
@@ -137,6 +167,20 @@ func (h *Handlers) ExecuteService(c *gin.Context) {
 		return
 	}
 
+	// Validate tool ID
+	if err := utils.ValidateID(req.ToolID, "tool_id", true); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate app ID if provided
+	if req.AppID != nil {
+		if err := utils.ValidateID(*req.AppID, "app_id", false); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
 	var ctx *types.Context
 	if req.AppID != nil {
 		if app, ok := h.appManager.Get(*req.AppID); ok {
@@ -147,7 +191,7 @@ func (h *Handlers) ExecuteService(c *gin.Context) {
 		}
 	}
 
-	result, err := h.registry.Execute(req.ToolID, req.Params, ctx)
+	result, err := h.registry.Execute(c.Request.Context(), req.ToolID, req.Params, ctx)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -164,6 +208,20 @@ func (h *Handlers) GenerateUI(c *gin.Context) {
 		return
 	}
 
+	// Validate message
+	if err := utils.ValidateMessage(req.Message); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate parent ID if provided
+	if req.ParentID != nil {
+		if err := utils.ValidateID(*req.ParentID, "parent_id", false); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
 	// Convert context to string map
 	contextMap := make(map[string]string)
 	for k, v := range req.Context {
@@ -172,8 +230,14 @@ func (h *Handlers) GenerateUI(c *gin.Context) {
 		}
 	}
 
+	// Validate context size
+	if err := utils.ValidateContext(contextMap); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	// Call AI service
-	resp, err := h.aiClient.GenerateUI(req.Message, contextMap, req.ParentID)
+	resp, err := h.aiClient.GenerateUI(c.Request.Context(), req.Message, contextMap, req.ParentID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
@@ -206,7 +270,7 @@ func (h *Handlers) GenerateUI(c *gin.Context) {
 	}
 
 	// Register with app manager
-	app, err := h.appManager.Spawn(req.Message, uiSpec, req.ParentID)
+	app, err := h.appManager.Spawn(c.Request.Context(), req.Message, uiSpec, req.ParentID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -232,6 +296,36 @@ func (h *Handlers) SaveAppToRegistry(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate app ID
+	if err := utils.ValidateID(req.AppID, "app_id", true); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate description
+	if err := utils.ValidateDescription(req.Description, "description", false); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate icon (just length check)
+	if err := utils.ValidateString(req.Icon, "icon", 0, 10, false); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate category
+	if err := utils.ValidateCategory(req.Category, false); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate tags
+	if err := utils.ValidateTags(req.Tags); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -268,7 +362,7 @@ func (h *Handlers) SaveAppToRegistry(c *gin.Context) {
 	}
 
 	// Save to registry
-	if err := h.appRegistry.Save(pkg); err != nil {
+	if err := h.appRegistry.Save(c.Request.Context(), pkg); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -282,6 +376,15 @@ func (h *Handlers) SaveAppToRegistry(c *gin.Context) {
 // ListRegistryApps lists all apps in the registry
 func (h *Handlers) ListRegistryApps(c *gin.Context) {
 	categoryParam := c.Query("category")
+
+	// Validate category if provided
+	if categoryParam != "" {
+		if err := utils.ValidateCategory(categoryParam, false); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
 	var category *string
 	if categoryParam != "" {
 		category = &categoryParam
@@ -306,8 +409,14 @@ func (h *Handlers) ListRegistryApps(c *gin.Context) {
 func (h *Handlers) LaunchRegistryApp(c *gin.Context) {
 	packageID := c.Param("id")
 
+	// Validate package ID
+	if err := utils.ValidateID(packageID, "package_id", true); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	// Load package
-	pkg, err := h.appRegistry.Load(packageID)
+	pkg, err := h.appRegistry.Load(c.Request.Context(), packageID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "package not found"})
 		return
@@ -315,6 +424,7 @@ func (h *Handlers) LaunchRegistryApp(c *gin.Context) {
 
 	// Spawn app directly from saved UISpec (no AI generation needed!)
 	app, err := h.appManager.Spawn(
+		c.Request.Context(),
 		"Launch "+pkg.Name,
 		pkg.UISpec,
 		nil,
@@ -339,7 +449,13 @@ func (h *Handlers) LaunchRegistryApp(c *gin.Context) {
 func (h *Handlers) DeleteRegistryApp(c *gin.Context) {
 	packageID := c.Param("id")
 
-	if err := h.appRegistry.Delete(packageID); err != nil {
+	// Validate package ID
+	if err := utils.ValidateID(packageID, "package_id", true); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.appRegistry.Delete(c.Request.Context(), packageID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -354,7 +470,13 @@ func (h *Handlers) DeleteRegistryApp(c *gin.Context) {
 func (h *Handlers) GetRegistryApp(c *gin.Context) {
 	packageID := c.Param("id")
 
-	pkg, err := h.appRegistry.Load(packageID)
+	// Validate package ID
+	if err := utils.ValidateID(packageID, "package_id", true); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	pkg, err := h.appRegistry.Load(c.Request.Context(), packageID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "package not found"})
 		return
@@ -401,8 +523,20 @@ func (h *Handlers) SaveSession(c *gin.Context) {
 		return
 	}
 
+	// Validate name
+	if err := utils.ValidateName(req.Name, "name"); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate description
+	if err := utils.ValidateDescription(req.Description, "description", false); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	// Save session
-	session, err := h.sessionManager.Save(req.Name, req.Description)
+	session, err := h.sessionManager.Save(c.Request.Context(), req.Name, req.Description)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -435,7 +569,7 @@ func (h *Handlers) SaveSession(c *gin.Context) {
 
 // SaveDefaultSession saves session with default name
 func (h *Handlers) SaveDefaultSession(c *gin.Context) {
-	session, err := h.sessionManager.SaveDefault()
+	session, err := h.sessionManager.SaveDefault(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -467,7 +601,13 @@ func (h *Handlers) ListSessions(c *gin.Context) {
 func (h *Handlers) GetSession(c *gin.Context) {
 	sessionID := c.Param("id")
 
-	session, err := h.sessionManager.Load(sessionID)
+	// Validate session ID
+	if err := utils.ValidateID(sessionID, "session_id", true); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	session, err := h.sessionManager.Load(c.Request.Context(), sessionID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "session not found"})
 		return
@@ -480,13 +620,19 @@ func (h *Handlers) GetSession(c *gin.Context) {
 func (h *Handlers) RestoreSession(c *gin.Context) {
 	sessionID := c.Param("id")
 
-	if err := h.sessionManager.Restore(sessionID); err != nil {
+	// Validate session ID
+	if err := utils.ValidateID(sessionID, "session_id", true); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.sessionManager.Restore(c.Request.Context(), sessionID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	// Load session to return workspace state to frontend
-	session, err := h.sessionManager.Load(sessionID)
+	session, err := h.sessionManager.Load(c.Request.Context(), sessionID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "session restored but failed to load details"})
 		return
@@ -502,7 +648,13 @@ func (h *Handlers) RestoreSession(c *gin.Context) {
 func (h *Handlers) DeleteSession(c *gin.Context) {
 	sessionID := c.Param("id")
 
-	if err := h.sessionManager.Delete(sessionID); err != nil {
+	// Validate session ID
+	if err := utils.ValidateID(sessionID, "session_id", true); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.sessionManager.Delete(c.Request.Context(), sessionID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

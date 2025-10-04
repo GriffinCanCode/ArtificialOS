@@ -1,6 +1,8 @@
 package server
 
 import (
+	"context"
+	"fmt"
 	"log"
 
 	"github.com/GriffinCanCode/AgentOS/backend/internal/app"
@@ -49,7 +51,11 @@ func NewServer(cfg Config) (*Server, error) {
 	// Initialize AI client (required)
 	aiClient, err := grpc.NewAIClient(cfg.AIServiceAddr)
 	if err != nil {
-		return nil, err
+		// Clean up kernel client if AI client fails
+		if kernelClient != nil {
+			kernelClient.Close()
+		}
+		return nil, fmt.Errorf("failed to connect to AI service: %w", err)
 	}
 	log.Println("✅ Connected to AI service")
 
@@ -66,7 +72,8 @@ func NewServer(cfg Config) (*Server, error) {
 	var storagePID uint32 = 1
 	if kernelClient != nil {
 		// In production, create a dedicated process for storage
-		pid, err := kernelClient.CreateProcess("storage-manager", 10, "PRIVILEGED")
+		ctx := context.Background()
+		pid, err := kernelClient.CreateProcess(ctx, "storage-manager", 10, "PRIVILEGED")
 		if err == nil && pid != nil {
 			storagePID = *pid
 		}

@@ -1,6 +1,7 @@
 package providers
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/GriffinCanCode/AgentOS/backend/internal/types"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/utils"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -19,7 +21,7 @@ type Auth struct {
 	storagePath string
 	sessions    sync.Map
 	users       sync.Map
-	mu          sync.RWMutex
+	// Note: sync.Map provides its own internal synchronization
 }
 
 // User represents an authenticated user
@@ -116,10 +118,10 @@ func (a *Auth) Definition() types.Service {
 }
 
 // Execute runs an auth operation
-func (a *Auth) Execute(toolID string, params map[string]interface{}, ctx *types.Context) (*types.Result, error) {
+func (a *Auth) Execute(ctx context.Context, toolID string, params map[string]interface{}, appCtx *types.Context) (*types.Result, error) {
 	switch toolID {
 	case "auth.register":
-		return a.register(params)
+		return a.register(ctx, params)
 	case "auth.login":
 		return a.login(params)
 	case "auth.logout":
@@ -133,7 +135,7 @@ func (a *Auth) Execute(toolID string, params map[string]interface{}, ctx *types.
 	}
 }
 
-func (a *Auth) register(params map[string]interface{}) (*types.Result, error) {
+func (a *Auth) register(ctx context.Context, params map[string]interface{}) (*types.Result, error) {
 	username, ok := params["username"].(string)
 	if !ok || username == "" {
 		return failure("username required")
@@ -142,6 +144,23 @@ func (a *Auth) register(params map[string]interface{}) (*types.Result, error) {
 	password, ok := params["password"].(string)
 	if !ok || password == "" {
 		return failure("password required")
+	}
+
+	// Validate username
+	if err := utils.ValidateUsername(username); err != nil {
+		return failure(err.Error())
+	}
+
+	// Validate password
+	if err := utils.ValidatePassword(password); err != nil {
+		return failure(err.Error())
+	}
+
+	// Validate email if provided
+	if email, ok := params["email"].(string); ok && email != "" {
+		if err := utils.ValidateEmail(email, false); err != nil {
+			return failure(err.Error())
+		}
 	}
 
 	// Check if user exists
@@ -169,7 +188,7 @@ func (a *Auth) register(params map[string]interface{}) (*types.Result, error) {
 	a.users.Store(user.ID, user) // Also store by ID for lookups
 
 	// Persist to disk
-	if err := a.saveUser(user); err != nil {
+	if err := a.saveUser(ctx, user); err != nil {
 		return failure(fmt.Sprintf("failed to persist user: %v", err))
 	}
 
@@ -189,6 +208,16 @@ func (a *Auth) login(params map[string]interface{}) (*types.Result, error) {
 	password, ok := params["password"].(string)
 	if !ok || password == "" {
 		return failure("password required")
+	}
+
+	// Validate username format (prevent injection attacks)
+	if err := utils.ValidateUsername(username); err != nil {
+		return failure("invalid credentials") // Don't reveal validation error
+	}
+
+	// Validate password length (prevent DoS with extremely long passwords)
+	if err := utils.ValidatePassword(password); err != nil {
+		return failure("invalid credentials") // Don't reveal validation error
 	}
 
 	// Get user
@@ -230,6 +259,11 @@ func (a *Auth) logout(params map[string]interface{}) (*types.Result, error) {
 		return failure("token required")
 	}
 
+	// Validate token format (prevent injection)
+	if err := utils.ValidateString(token, "token", 1, 128, true); err != nil {
+		return failure("invalid token")
+	}
+
 	a.sessions.Delete(token)
 
 	return success(map[string]interface{}{"logged_out": true})
@@ -239,6 +273,11 @@ func (a *Auth) verify(params map[string]interface{}) (*types.Result, error) {
 	token, ok := params["token"].(string)
 	if !ok || token == "" {
 		return failure("token required")
+	}
+
+	// Validate token format (prevent injection)
+	if err := utils.ValidateString(token, "token", 1, 128, true); err != nil {
+		return success(map[string]interface{}{"valid": false})
 	}
 
 	sessionVal, exists := a.sessions.Load(token)
@@ -267,6 +306,11 @@ func (a *Auth) getUser(params map[string]interface{}) (*types.Result, error) {
 		return failure("token required")
 	}
 
+	// Validate token format (prevent injection)
+	if err := utils.ValidateString(token, "token", 1, 128, true); err != nil {
+		return failure("invalid token")
+	}
+
 	// Verify session
 	sessionVal, exists := a.sessions.Load(token)
 	if !exists {
@@ -293,7 +337,7 @@ func (a *Auth) getUser(params map[string]interface{}) (*types.Result, error) {
 	})
 }
 
-func (a *Auth) saveUser(user *User) error {
+func (a *Auth) saveUser(ctx context.Context, user *User) error {
 	if a.kernel == nil {
 		return nil // Skip if no kernel
 	}
@@ -304,7 +348,7 @@ func (a *Auth) saveUser(user *User) error {
 	}
 
 	path := fmt.Sprintf("%s/users/%s.json", a.storagePath, user.ID)
-	_, err = a.kernel.ExecuteSyscall(a.storagePID, "write_file", map[string]interface{}{
+	_, err = a.kernel.ExecuteSyscall(ctx, a.storagePID, "write_file", map[string]interface{}{
 		"path": path,
 		"data": data,
 	})
@@ -314,13 +358,21 @@ func (a *Auth) saveUser(user *User) error {
 
 func generateID() string {
 	b := make([]byte, 16)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		// This is a critical security issue - if crypto/rand fails,
+		// we must not fall back to weak randomness
+		panic(fmt.Sprintf("crypto/rand failed: %v - cannot generate secure ID", err))
+	}
 	return base64.URLEncoding.EncodeToString(b)
 }
 
 func generateToken() string {
 	b := make([]byte, 32)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		// This is a critical security issue - if crypto/rand fails,
+		// we must not fall back to weak randomness
+		panic(fmt.Sprintf("crypto/rand failed: %v - cannot generate secure token", err))
+	}
 	return base64.URLEncoding.EncodeToString(b)
 }
 
