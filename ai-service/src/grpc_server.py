@@ -20,6 +20,7 @@ from agents.ui_generator import UIGeneratorAgent, ToolRegistry
 from agents.chat import ChatAgent, ChatHistory, ChatMessage
 from models.loader import ModelLoader, GeminiModel
 from models.config import GeminiConfig
+from clients.backend import BackendClient
 
 logger = logging.getLogger(__name__)
 
@@ -275,17 +276,33 @@ class AIServiceImpl(ai_pb2_grpc.AIServiceServicer):
             )
 
 
-def serve(port="50052"):
+def serve(port="50052", backend_url="http://localhost:8000"):
     """Start the gRPC server"""
     # Initialize components
     logger.info("Initializing AI service components...")
     
     model_loader = ModelLoader
     tool_registry = ToolRegistry()
+    
+    # Discover backend services
+    backend_services = []
+    try:
+        logger.info(f"Discovering backend services from {backend_url}...")
+        backend_client = BackendClient(backend_url)
+        if backend_client.health_check():
+            backend_services = backend_client.discover_services()
+            logger.info(f"✅ Discovered {len(backend_services)} backend services")
+        else:
+            logger.warning("Backend not reachable, proceeding without backend services")
+        backend_client.close()
+    except Exception as e:
+        logger.warning(f"Failed to discover backend services: {e}. Continuing without backend integration.")
+    
     ui_generator = UIGeneratorAgent(
         tool_registry=tool_registry,
         service_registry=None,  # Not needed for gRPC service
-        context_builder=None
+        context_builder=None,
+        backend_services=backend_services
     )
     
     # Load Gemini model for UI generation

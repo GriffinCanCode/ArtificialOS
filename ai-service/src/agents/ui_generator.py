@@ -179,7 +179,8 @@ class UIGeneratorAgent:
         llm: Optional[BaseLLM] = None,
         service_registry: Optional[Any] = None,
         context_builder: Optional[Any] = None,
-        enable_cache: bool = True
+        enable_cache: bool = True,
+        backend_services: Optional[List[Any]] = None
     ):
         """
         Initialize the UI generator agent.
@@ -190,6 +191,7 @@ class UIGeneratorAgent:
             service_registry: Service registry for BaaS
             context_builder: Context builder for intelligent prompts
             enable_cache: Enable UI spec caching for performance (default: True)
+            backend_services: List of backend service definitions from discovery
         """
         self.tool_registry = tool_registry or ToolRegistry()
         self.templates = ComponentTemplates()
@@ -197,6 +199,7 @@ class UIGeneratorAgent:
         self.use_llm = llm is not None
         self.service_registry = service_registry
         self.context_builder = context_builder
+        self.backend_services = backend_services or []
         
         # Initialize cache if available and enabled
         self.cache = None
@@ -208,11 +211,43 @@ class UIGeneratorAgent:
             logger.info("UIGeneratorAgent: LLM-based generation enabled")
         else:
             logger.info("UIGeneratorAgent: Using rule-based generation")
+        
+        if self.backend_services:
+            logger.info(f"UIGeneratorAgent: Loaded {len(self.backend_services)} backend services")
+    
+    def get_backend_tools_description(self) -> str:
+        """
+        Get description of backend services for AI context.
+        
+        Returns:
+            Formatted backend service tools
+        """
+        if not self.backend_services:
+            return ""
+        
+        lines = ["\nBACKEND SERVICES (call via frontend service tool executor):"]
+        
+        for service in self.backend_services:
+            lines.append(f"\n{service.category.upper()} - {service.name}:")
+            for tool in service.tools:
+                params_str = ", ".join(
+                    f"{p.name}: {p.type}" + (" (required)" if p.required else "")
+                    for p in tool.parameters
+                )
+                params_display = f"({params_str})" if params_str else "()"
+                lines.append(f"  - {tool.id}: {tool.description} {params_display}")
+        
+        return "\n".join(lines)
     
     def get_system_prompt(self, context_str: str = "") -> str:
         """Get comprehensive system prompt with current tool descriptions and service context."""
+        # Combine frontend tools and backend services
+        tools_desc = self.tool_registry.get_tools_description()
+        backend_desc = self.get_backend_tools_description()
+        combined_tools = tools_desc + backend_desc
+        
         return get_ui_generation_prompt(
-            tools_description=self.tool_registry.get_tools_description(),
+            tools_description=combined_tools,
             context=context_str
         )
     
@@ -322,6 +357,12 @@ class UIGeneratorAgent:
         
         # Create comprehensive prompt with tool descriptions and context
         tools_description = self.tool_registry.get_tools_description()
+        
+        # Add backend services to the tools description
+        if self.backend_services:
+            backend_desc = self._format_backend_services()
+            tools_description += "\n\n" + backend_desc
+            logger.info(f"Added {len(self.backend_services)} backend services to AI context")
         
         # Build the full prompt using our comprehensive prompt system
         full_prompt = get_ui_generation_prompt(
@@ -473,59 +514,37 @@ class UIGeneratorAgent:
             raise ValueError(f"Invalid JSON in response: {e.msg} at position {e.pos}")
     
     def _generate_calculator(self) -> UISpec:
-        """Generate a calculator UI."""
+        """Generate a calculator UI using generic ui.* tools."""
         # Display
         display = self.templates.input("display", value="0")
         display.props["readonly"] = True
         display.props["style"] = {"fontSize": "24px", "textAlign": "right"}
         
-        # Number buttons (0-9)
-        number_buttons = []
-        for num in ["7", "8", "9", "4", "5", "6", "1", "2", "3", "0"]:
-            number_buttons.append(
-                self.templates.button(f"btn-{num}", num, on_click="calc.append_digit")
-            )
-        
-        # Operation buttons
-        ops = [
-            ("÷", "divide"),
-            ("×", "multiply"),
-            ("−", "subtract"),
-            ("+", "add"),
-        ]
-        for symbol, op in ops:
-            number_buttons.insert(
-                number_buttons.index(
-                    self.templates.button(f"btn-{['9','6','3'][ops.index((symbol, op))]}", ['9','6','3'][ops.index((symbol, op))], on_click="calc.append_digit")
-                ) + 1 if ops.index((symbol, op)) < 3 else len(number_buttons),
-                self.templates.button(f"btn-{op}", symbol, on_click=f"calc.{op}")
-            )
-        
-        # Special buttons
-        clear = self.templates.button("btn-clear", "C", on_click="calc.clear")
-        equals = self.templates.button("btn-equals", "=", on_click="calc.evaluate")
-        
-        # Layout
+        # Layout - Using generic ui.append for ALL buttons (digits and operators)
         button_grid_children = [
-            self.templates.button("btn-7", "7", on_click="calc.append_digit"),
-            self.templates.button("btn-8", "8", on_click="calc.append_digit"),
-            self.templates.button("btn-9", "9", on_click="calc.append_digit"),
-            self.templates.button("btn-divide", "÷", on_click="calc.divide"),
+            # Row 1
+            self.templates.button("btn-7", "7", on_click="ui.append"),
+            self.templates.button("btn-8", "8", on_click="ui.append"),
+            self.templates.button("btn-9", "9", on_click="ui.append"),
+            self.templates.button("btn-divide", "÷", on_click="ui.append"),
             
-            self.templates.button("btn-4", "4", on_click="calc.append_digit"),
-            self.templates.button("btn-5", "5", on_click="calc.append_digit"),
-            self.templates.button("btn-6", "6", on_click="calc.append_digit"),
-            self.templates.button("btn-multiply", "×", on_click="calc.multiply"),
+            # Row 2
+            self.templates.button("btn-4", "4", on_click="ui.append"),
+            self.templates.button("btn-5", "5", on_click="ui.append"),
+            self.templates.button("btn-6", "6", on_click="ui.append"),
+            self.templates.button("btn-multiply", "×", on_click="ui.append"),
             
-            self.templates.button("btn-1", "1", on_click="calc.append_digit"),
-            self.templates.button("btn-2", "2", on_click="calc.append_digit"),
-            self.templates.button("btn-3", "3", on_click="calc.append_digit"),
-            self.templates.button("btn-subtract", "−", on_click="calc.subtract"),
+            # Row 3
+            self.templates.button("btn-1", "1", on_click="ui.append"),
+            self.templates.button("btn-2", "2", on_click="ui.append"),
+            self.templates.button("btn-3", "3", on_click="ui.append"),
+            self.templates.button("btn-subtract", "−", on_click="ui.append"),
             
-            self.templates.button("btn-0", "0", on_click="calc.append_digit"),
-            clear,
-            equals,
-            self.templates.button("btn-add", "+", on_click="calc.add"),
+            # Row 4
+            self.templates.button("btn-0", "0", on_click="ui.append"),
+            self.templates.button("btn-clear", "C", on_click="ui.clear"),
+            self.templates.button("btn-equals", "=", on_click="ui.compute"),
+            self.templates.button("btn-add", "+", on_click="ui.append"),
         ]
         
         button_grid = self.templates.grid("button-grid", button_grid_children, columns=4, gap=8)
@@ -538,15 +557,20 @@ class UIGeneratorAgent:
         )
     
     def _generate_counter(self) -> UISpec:
-        """Generate a simple counter UI."""
-        count_display = self.templates.text("count", "0", variant="h1")
-        count_display.props["style"] = {"fontSize": "48px", "fontWeight": "bold"}
+        """Generate a simple counter UI using generic ui.* tools."""
+        count_display = self.templates.input("count", value="0")
+        count_display.props["readonly"] = True
+        count_display.props["style"] = {"fontSize": "48px", "fontWeight": "bold", "textAlign": "center"}
         
-        increment = self.templates.button("btn-inc", "Increment", on_click="calc.add")
-        decrement = self.templates.button("btn-dec", "Decrement", on_click="calc.subtract")
-        reset = self.templates.button("btn-reset", "Reset", on_click="calc.clear")
+        # Use ui.append with +1 and -1 for increment/decrement
+        increment = self.templates.button("btn-inc", "+1", on_click="ui.append")
+        decrement = self.templates.button("btn-dec", "-1", on_click="ui.append")
         
-        buttons = self.templates.container("buttons", [increment, decrement, reset], layout="horizontal", gap=12)
+        # Compute button to evaluate the expression
+        compute = self.templates.button("btn-compute", "=", on_click="ui.compute")
+        reset = self.templates.button("btn-reset", "Clear", on_click="ui.clear")
+        
+        buttons = self.templates.container("buttons", [increment, decrement, compute, reset], layout="horizontal", gap=12)
         
         return UISpec(
             title="Counter",
@@ -603,6 +627,36 @@ class UIGeneratorAgent:
     def json_to_spec(self, json_str: str) -> UISpec:
         """Parse JSON string to UISpec."""
         return UISpec.model_validate_json(json_str)
+    
+    def _format_backend_services(self) -> str:
+        """
+        Format backend services for AI context.
+        
+        Returns:
+            Formatted string describing backend services and their tools
+        """
+        if not self.backend_services:
+            return ""
+        
+        lines = ["=== BACKEND SERVICES ==="]
+        lines.append("\nThese services run on the Go backend and require service calls:")
+        
+        for service in self.backend_services:
+            lines.append(f"\n{service.category.upper()} - {service.name}:")
+            lines.append(f"  Description: {service.description}")
+            lines.append(f"  Capabilities: {', '.join(service.capabilities)}")
+            lines.append(f"  Tools:")
+            
+            for tool in service.tools:
+                params_list = []
+                for param in tool.parameters:
+                    req_str = "(required)" if param.required else "(optional)"
+                    params_list.append(f"{param.name}: {param.type} {req_str}")
+                
+                params_str = f"({', '.join(params_list)})" if params_list else "(no params)"
+                lines.append(f"    - {tool.id}: {tool.description} {params_str}")
+        
+        return "\n".join(lines)
 
 
 # ============================================================================

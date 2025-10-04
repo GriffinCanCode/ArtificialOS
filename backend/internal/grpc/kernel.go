@@ -87,14 +87,51 @@ func (k *KernelClient) ExecuteSyscall(pid uint32, syscallType string, params map
 
 	// Build syscall based on type
 	switch syscallType {
+	// File system operations
 	case "read_file":
 		path, _ := params["path"].(string)
 		req.Syscall = &pb.SyscallRequest_ReadFile{
 			ReadFile: &pb.ReadFileCall{Path: path},
 		}
+	case "write_file":
+		path, _ := params["path"].(string)
+		data, _ := params["data"].([]byte)
+		req.Syscall = &pb.SyscallRequest_WriteFile{
+			WriteFile: &pb.WriteFileCall{Path: path, Data: data},
+		}
+	case "create_file":
+		path, _ := params["path"].(string)
+		req.Syscall = &pb.SyscallRequest_CreateFile{
+			CreateFile: &pb.CreateFileCall{Path: path},
+		}
+	case "delete_file":
+		path, _ := params["path"].(string)
+		req.Syscall = &pb.SyscallRequest_DeleteFile{
+			DeleteFile: &pb.DeleteFileCall{Path: path},
+		}
+	case "list_directory":
+		path, _ := params["path"].(string)
+		req.Syscall = &pb.SyscallRequest_ListDirectory{
+			ListDirectory: &pb.ListDirectoryCall{Path: path},
+		}
+	case "file_exists":
+		path, _ := params["path"].(string)
+		req.Syscall = &pb.SyscallRequest_FileExists{
+			FileExists: &pb.FileExistsCall{Path: path},
+		}
+	// System info operations
 	case "get_system_info":
 		req.Syscall = &pb.SyscallRequest_GetSystemInfo{
 			GetSystemInfo: &pb.GetSystemInfoCall{},
+		}
+	case "get_current_time":
+		req.Syscall = &pb.SyscallRequest_GetCurrentTime{
+			GetCurrentTime: &pb.GetCurrentTimeCall{},
+		}
+	case "get_env_var":
+		key, _ := params["key"].(string)
+		req.Syscall = &pb.SyscallRequest_GetEnvVar{
+			GetEnvVar: &pb.GetEnvVarCall{Key: key},
 		}
 	default:
 		return nil, fmt.Errorf("unsupported syscall type: %s", syscallType)

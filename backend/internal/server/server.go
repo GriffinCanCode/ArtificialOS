@@ -6,6 +6,7 @@ import (
 	"github.com/GriffinCanCode/AgentOS/backend/internal/app"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/grpc"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/http"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/providers"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/registry"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/service"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/session"
@@ -55,6 +56,10 @@ func NewServer(cfg Config) (*Server, error) {
 	// Initialize app manager and service registry
 	appManager := app.NewManager(kernelClient)
 	serviceRegistry := service.NewRegistry()
+
+	// Register service providers
+	log.Println("📦 Registering service providers...")
+	registerProviders(serviceRegistry, kernelClient)
 
 	// Initialize app registry with storage
 	// Create a dummy PID for system storage operations
@@ -146,6 +151,39 @@ func (s *Server) Close() error {
 		}
 	}
 	return nil
+}
+
+func registerProviders(registry *service.Registry, kernel *grpc.KernelClient) {
+	storagePath := "/tmp/ai-os-storage"
+	var storagePID uint32 = 1
+
+	// Storage provider
+	storageProvider := providers.NewStorage(kernel, storagePID, storagePath)
+	if err := registry.Register(storageProvider); err != nil {
+		log.Printf("Warning: Failed to register storage provider: %v", err)
+	} else {
+		log.Println("  ✓ Storage service")
+	}
+
+	// Auth provider
+	authProvider := providers.NewAuth(kernel, storagePID, storagePath)
+	if err := registry.Register(authProvider); err != nil {
+		log.Printf("Warning: Failed to register auth provider: %v", err)
+	} else {
+		log.Println("  ✓ Auth service")
+	}
+
+	// System provider
+	systemProvider := providers.NewSystem()
+	if err := registry.Register(systemProvider); err != nil {
+		log.Printf("Warning: Failed to register system provider: %v", err)
+	} else {
+		log.Println("  ✓ System service")
+	}
+
+	stats := registry.Stats()
+	log.Printf("📊 Registered %d services with %d total tools",
+		stats["total_services"], stats["total_tools"])
 }
 
 func corsMiddleware() gin.HandlerFunc {

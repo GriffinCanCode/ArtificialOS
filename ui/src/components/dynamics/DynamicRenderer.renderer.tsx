@@ -80,21 +80,32 @@ export const ComponentRenderer: React.FC<RendererProps> = React.memo(
       }
     }, [component.id, component.type, state]);
 
-    const handleEvent = useCallback(
-      (eventName: string, eventData?: any) => {
-        const toolId = component.on_event?.[eventName];
-        if (toolId) {
-          // Extract params from event or component
-          const params = {
-            ...eventData,
-            componentId: component.id,
-            digit: component.props?.text, // For calculator buttons
-          };
-          executor.execute(toolId, params);
+  const handleEvent = useCallback(
+    async (eventName: string, eventData?: any) => {
+      const toolId = component.on_event?.[eventName];
+      if (toolId) {
+        // Extract params from event or component
+        // Pass multiple parameter names for flexibility
+        const params = {
+          ...eventData,
+          componentId: component.id,
+          id: component.id,
+          key: component.id,
+          target: component.id,
+          // Pass button text as multiple param names for generic tools
+          value: component.props?.text || component.props?.value,
+          text: component.props?.text,
+          digit: component.props?.text,
+        };
+        try {
+          await executor.execute(toolId, params);
+        } catch (error) {
+          console.error("Tool execution failed:", error);
         }
-      },
-      [component, executor]
-    );
+      }
+    },
+    [component, executor]
+  );
 
     const handleInputChange = useCallback(
       (e: React.ChangeEvent<HTMLInputElement>) => {

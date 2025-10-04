@@ -105,7 +105,7 @@ export class ToolExecutor {
         paramsCount: Object.keys(params).length,
       });
 
-      // Check if this is a service tool (contains service prefix like storage.*, auth.*, ai.*)
+      // Check if this is a service tool (backend providers)
       const servicePrefixes = ["storage", "auth", "ai", "sync", "media"];
       const [category] = toolId.split(".");
 
@@ -113,11 +113,8 @@ export class ToolExecutor {
       if (servicePrefixes.includes(category)) {
         result = await this.executeServiceTool(toolId, params);
       } else {
-        // Handle built-in tools
+        // Handle built-in tools - prefer generic over specific
         switch (category) {
-          case "calc":
-            result = this.executeCalcTool(toolId.split(".")[1], params);
-            break;
           case "ui":
             result = this.executeUITool(toolId.split(".")[1], params);
             break;
@@ -133,6 +130,21 @@ export class ToolExecutor {
           case "timer":
             result = this.executeTimerTool(toolId.split(".")[1], params);
             break;
+          case "clipboard":
+            result = await this.executeClipboardTool(toolId.split(".")[1], params);
+            break;
+          case "notification":
+            result = this.executeNotificationTool(toolId.split(".")[1], params);
+            break;
+          
+          // Legacy specific tools - kept for backward compatibility but deprecated
+          case "calc":
+            logger.warn("calc.* tools are deprecated, use ui.* tools instead", {
+              component: "ToolExecutor",
+              toolId,
+            });
+            result = this.executeCalcTool(toolId.split(".")[1], params);
+            break;
           case "canvas":
             result = this.executeCanvasTool(toolId.split(".")[1], params);
             break;
@@ -144,12 +156,6 @@ export class ToolExecutor {
             break;
           case "game":
             result = this.executeGameTool(toolId.split(".")[1], params);
-            break;
-          case "clipboard":
-            result = await this.executeClipboardTool(toolId.split(".")[1], params);
-            break;
-          case "notification":
-            result = this.executeNotificationTool(toolId.split(".")[1], params);
             break;
           case "form":
             result = this.executeFormTool(toolId.split(".")[1], params);
@@ -251,23 +257,38 @@ export class ToolExecutor {
       case "divide":
         return b !== 0 ? a / b : "Error";
       case "append_digit":
+      case "append":
         const current = this.componentState.get("display", "0");
-        const digit = params.digit || "";
-        const newValue = current === "0" ? digit : current + digit;
+        const digit = params.digit || params.value || "";
+        
+        // If current display is "0" and we're appending a digit (not an operator), replace it
+        const isOperator = ["+", "-", "*", "/", "×", "÷", "−"].includes(digit);
+        const newValue = (current === "0" && !isOperator) ? digit : current + digit;
+        
         this.componentState.set("display", newValue);
+        logger.debug("Calculator append", { component: "CalcTool", current, digit, newValue });
         return newValue;
       case "clear":
         this.componentState.set("display", "0");
+        logger.debug("Calculator cleared", { component: "CalcTool" });
         return "0";
+      case "backspace":
+        const currentDisplay = this.componentState.get("display", "0");
+        const newDisplay = currentDisplay.length > 1 ? currentDisplay.slice(0, -1) : "0";
+        this.componentState.set("display", newDisplay);
+        return newDisplay;
       case "evaluate":
         try {
           const expression = this.componentState.get("display", "0");
           // Simple eval (in production, use a proper math parser!)
-          const result = eval(expression.replace("×", "*").replace("÷", "/").replace("−", "-"));
+          const sanitized = expression.replace(/×/g, "*").replace(/÷/g, "/").replace(/−/g, "-");
+          const result = eval(sanitized);
           this.componentState.set("display", String(result));
+          logger.debug("Calculator evaluated", { component: "CalcTool", expression, result });
           return result;
-        } catch {
+        } catch (error) {
           this.componentState.set("display", "Error");
+          logger.error("Calculator evaluation error", error as Error, { component: "CalcTool" });
           return "Error";
         }
       default:
@@ -278,14 +299,117 @@ export class ToolExecutor {
   private executeUITool(action: string, params: Record<string, any>): any {
     switch (action) {
       case "set_state":
-        this.componentState.set(params.key, params.value);
-        return params.value;
+      case "set":
+        const key = params.key || params.target || params.id;
+        const value = params.value ?? params.data;
+        if (!key) {
+          logger.warn("set_state requires key parameter", { component: "UITool", params });
+          return null;
+        }
+        this.componentState.set(key, value);
+        logger.debug("State set", { component: "UITool", key, value });
+        return value;
+        
       case "get_state":
-        return this.componentState.get(params.key);
+      case "get":
+        const getKey = params.key || params.target || params.id;
+        return this.componentState.get(getKey);
+        
       case "set_multiple":
         // Batch update for efficiency
         this.componentState.setMultiple(params.values || {});
         return params.values;
+        
+      case "append":
+        // Generic append - works for calculator, text fields, any string concatenation
+        const appendKey = params.key || params.target || "display";
+        const currentVal = String(this.componentState.get(appendKey, "0"));
+        const appendVal = String(params.value ?? params.text ?? params.digit ?? "");
+        
+        if (!appendVal) {
+          logger.warn("append called with empty value", { component: "UITool", params });
+          return currentVal;
+        }
+        
+        // Smart appending: if current is "0" and appending a digit, replace it
+        const isOperator = ["+", "-", "*", "/", "×", "÷", "−", "(", ")"].includes(appendVal);
+        const isNumeric = /^\d+$/.test(appendVal);
+        const newVal = (currentVal === "0" && !isOperator && isNumeric) 
+          ? appendVal 
+          : currentVal + appendVal;
+        
+        this.componentState.set(appendKey, newVal);
+        logger.debug("Value appended", { component: "UITool", key: appendKey, currentVal, appendVal, newVal });
+        return newVal;
+        
+      case "clear":
+        // Generic clear - works for any field
+        const clearKey = params.key || params.target || "display";
+        const defaultVal = params.default || "0";
+        this.componentState.set(clearKey, defaultVal);
+        logger.debug("Value cleared", { component: "UITool", key: clearKey, defaultVal });
+        return defaultVal;
+        
+      case "compute":
+      case "evaluate":
+        // Generic expression evaluation
+        const computeKey = params.key || params.target || "display";
+        const expression = params.expression || this.componentState.get(computeKey, "");
+        
+        try {
+          // Sanitize and evaluate
+          const sanitized = String(expression)
+            .replace(/×/g, "*")
+            .replace(/÷/g, "/")
+            .replace(/−/g, "-");
+          
+          // Basic security: only allow numbers, operators, parentheses, and whitespace
+          if (!/^[\d\s+\-*/.()]+$/.test(sanitized)) {
+            throw new Error("Invalid expression");
+          }
+          
+          const result = eval(sanitized);
+          const resultStr = String(result);
+          
+          this.componentState.set(computeKey, resultStr);
+          logger.debug("Expression evaluated", { 
+            component: "UITool", 
+            key: computeKey, 
+            expression, 
+            result: resultStr 
+          });
+          return resultStr;
+        } catch (error) {
+          const errorMsg = "Error";
+          this.componentState.set(computeKey, errorMsg);
+          logger.error("Expression evaluation failed", error as Error, {
+            component: "UITool",
+            expression,
+          });
+          return errorMsg;
+        }
+        
+      case "toggle":
+        // Generic boolean toggle
+        const toggleKey = params.key || params.target;
+        if (!toggleKey) {
+          logger.warn("toggle requires key parameter", { component: "UITool", params });
+          return null;
+        }
+        const currentToggle = this.componentState.get(toggleKey, false);
+        const newToggle = !currentToggle;
+        this.componentState.set(toggleKey, newToggle);
+        logger.debug("Value toggled", { component: "UITool", key: toggleKey, value: newToggle });
+        return newToggle;
+        
+      case "backspace":
+        // Generic backspace - remove last character
+        const backspaceKey = params.key || params.target || "display";
+        const currentBack = this.componentState.get(backspaceKey, "0");
+        const newBack = currentBack.length > 1 ? currentBack.slice(0, -1) : "0";
+        this.componentState.set(backspaceKey, newBack);
+        logger.debug("Backspace applied", { component: "UITool", key: backspaceKey, newValue: newBack });
+        return newBack;
       case "add_todo":
         // Use batch updates for multiple state changes
         this.componentState.batch(() => {
@@ -662,9 +786,34 @@ export class ToolExecutor {
 
     switch (action) {
       case "navigate":
-        this.componentState.set(`${iframeId}_url`, params.url);
-        logger.debug("Browser navigating", { component: "BrowserTool", url: params.url });
-        return params.url;
+        // Get URL from params or from a URL input field in state
+        let url = params.url;
+        if (!url) {
+          // Try common input field names
+          url = this.componentState.get("url-input") || 
+                this.componentState.get("search-input") ||
+                this.componentState.get("browser-url") ||
+                this.componentState.get("address-bar");
+        }
+        
+        if (!url) {
+          logger.warn("No URL provided for browser navigation", { component: "BrowserTool" });
+          return null;
+        }
+        
+        // Add https:// if no protocol specified and not a search query
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+          // If it looks like a search query (has spaces or no dots), use Google search
+          if (url.includes(" ") || !url.includes(".")) {
+            url = `https://www.google.com/search?q=${encodeURIComponent(url)}`;
+          } else {
+            url = `https://${url}`;
+          }
+        }
+        
+        this.componentState.set(`${iframeId}_url`, url);
+        logger.debug("Browser navigating", { component: "BrowserTool", url });
+        return url;
 
       case "back":
         // Browser back - would need iframe history API or parent navigation

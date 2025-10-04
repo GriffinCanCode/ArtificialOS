@@ -102,7 +102,7 @@ build-ui: ## Build UI for production
 
 ##@ Run & Start
 
-start: ## Start everything (backend + electron UI)
+start: init-storage ## Start everything (backend + electron UI)
 	@echo "$(RED)      Closing shit quickly... $(NC)"
 	@./scripts/stop.sh
 	@echo "$(YELLOW)🚀 Starting backend stack...$(NC)"
@@ -112,15 +112,18 @@ start: ## Start everything (backend + electron UI)
 	@echo "$(YELLOW)🚀 Starting Electron UI...$(NC)"
 	@./scripts/start-ui.sh
 
-start-backend: ## Start complete backend stack (kernel + ai-service + backend)
+start-backend: init-storage ## Start complete backend stack (kernel + ai-service + backend)
 	@./scripts/start-backend.sh
+
+init-storage: ## Initialize storage directories for persistence
+	@./scripts/init-storage.sh
 
 start-ui: ## Start UI development server
 	@./scripts/start-ui.sh
 
 start-electron: start-ui ## Start Electron app (alias for start-ui)
 
-dev: ## Start everything (backend + ui in development mode)
+dev: init-storage ## Start everything (backend + ui in development mode)
 	@echo "$(YELLOW)🚀 Starting full development environment...$(NC)"
 	@echo "$(YELLOW)Starting backend in background...$(NC)"
 	@./scripts/start-backend.sh &

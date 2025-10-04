@@ -123,39 +123,49 @@ APP_EXAMPLES = """
   ]
 }
 
-2. MEDIA PLAYER:
+2. CALCULATOR APP:
 {
   "type": "app",
-  "title": "Media Player",
+  "title": "Calculator",
   "layout": "vertical",
   "components": [
-    {"type": "video", "id": "player", "props": {"src": "", "controls": true, "width": "100%", "height": 400}},
-    {"type": "container", "id": "playlist", "props": {"layout": "vertical", "gap": 8, "padding": "medium"}, "children": [
-      {"type": "text", "id": "playlist-title", "props": {"content": "Playlist", "variant": "h3"}},
-      {"type": "list", "id": "videos", "props": {"variant": "bordered"}, "children": [
-        {"type": "container", "id": "video1", "props": {"layout": "horizontal", "gap": 12}, "children": [
-          {"type": "image", "id": "thumb1", "props": {"src": "thumb.jpg", "width": 100, "height": 60, "rounded": "small"}},
-          {"type": "text", "id": "title1", "props": {"content": "Video Title 1", "variant": "body"}}
-        ]},
-      ]}
+    {"type": "input", "id": "display", "props": {"value": "0", "readonly": true, "variant": "large"}},
+    {"type": "grid", "id": "buttons", "props": {"columns": 4, "gap": 8}, "children": [
+      {"type": "button", "id": "btn-7", "props": {"text": "7", "variant": "outline"}, "on_event": {"click": "ui.append"}},
+      {"type": "button", "id": "btn-8", "props": {"text": "8", "variant": "outline"}, "on_event": {"click": "ui.append"}},
+      {"type": "button", "id": "btn-9", "props": {"text": "9", "variant": "outline"}, "on_event": {"click": "ui.append"}},
+      {"type": "button", "id": "btn-div", "props": {"text": "/", "variant": "secondary"}, "on_event": {"click": "ui.append"}},
+      {"type": "button", "id": "btn-4", "props": {"text": "4", "variant": "outline"}, "on_event": {"click": "ui.append"}},
+      {"type": "button", "id": "btn-5", "props": {"text": "5", "variant": "outline"}, "on_event": {"click": "ui.append"}},
+      {"type": "button", "id": "btn-6", "props": {"text": "6", "variant": "outline"}, "on_event": {"click": "ui.append"}},
+      {"type": "button", "id": "btn-mul", "props": {"text": "*", "variant": "secondary"}, "on_event": {"click": "ui.append"}},
+      {"type": "button", "id": "btn-1", "props": {"text": "1", "variant": "outline"}, "on_event": {"click": "ui.append"}},
+      {"type": "button", "id": "btn-2", "props": {"text": "2", "variant": "outline"}, "on_event": {"click": "ui.append"}},
+      {"type": "button", "id": "btn-3", "props": {"text": "3", "variant": "outline"}, "on_event": {"click": "ui.append"}},
+      {"type": "button", "id": "btn-sub", "props": {"text": "-", "variant": "secondary"}, "on_event": {"click": "ui.append"}},
+      {"type": "button", "id": "btn-0", "props": {"text": "0", "variant": "outline"}, "on_event": {"click": "ui.append"}},
+      {"type": "button", "id": "btn-clear", "props": {"text": "C", "variant": "danger"}, "on_event": {"click": "ui.clear"}},
+      {"type": "button", "id": "btn-eq", "props": {"text": "=", "variant": "primary"}, "on_event": {"click": "ui.compute"}},
+      {"type": "button", "id": "btn-add", "props": {"text": "+", "variant": "secondary"}, "on_event": {"click": "ui.append"}}
     ]}
   ]
 }
 
-3. DRAWING APP (Canvas):
+3. BROWSER APP:
 {
   "type": "app",
-  "title": "Paint App",
+  "title": "Web Browser",
   "layout": "vertical",
   "components": [
     {"type": "container", "id": "toolbar", "props": {"layout": "horizontal", "gap": 8, "padding": "small"}, "children": [
-      {"type": "button", "id": "pen", "props": {"text": "🖊️ Pen", "variant": "primary"}, "on_event": {"click": "canvas.setTool"}},
-      {"type": "button", "id": "eraser", "props": {"text": "🗑️ Eraser", "variant": "default"}, "on_event": {"click": "canvas.setTool"}},
-      {"type": "select", "id": "color", "props": {"options": [{"value": "black", "label": "Black"}, {"value": "red", "label": "Red"}, {"value": "blue", "label": "Blue"}]}, "on_event": {"change": "canvas.setColor"}},
-      {"type": "slider", "id": "size", "props": {"min": 1, "max": 50, "value": 5}, "on_event": {"change": "canvas.setBrushSize"}},
-      {"type": "button", "id": "clear", "props": {"text": "Clear", "variant": "danger"}, "on_event": {"click": "canvas.clear"}}
+      {"type": "button", "id": "back", "props": {"text": "←", "variant": "ghost"}, "on_event": {"click": "browser.back"}},
+      {"type": "button", "id": "forward", "props": {"text": "→", "variant": "ghost"}, "on_event": {"click": "browser.forward"}},
+      {"type": "button", "id": "refresh", "props": {"text": "⟳", "variant": "ghost"}, "on_event": {"click": "browser.refresh"}},
+      {"type": "input", "id": "url-input", "props": {"placeholder": "Enter URL...", "value": "https://www.google.com"}, "on_event": {"change": "ui.set"}},
+      {"type": "button", "id": "go", "props": {"text": "Go", "variant": "primary"}, "on_event": {"click": "browser.navigate"}},
+      {"type": "button", "id": "bookmark", "props": {"text": "⭐", "variant": "ghost"}, "on_event": {"click": "browser.bookmark.add"}}
     ]},
-    {"type": "canvas", "id": "canvas", "props": {"width": 800, "height": 600, "bordered": true}, "on_event": {"mount": "canvas.init"}}
+    {"type": "iframe", "id": "webpage", "props": {"src": "https://www.google.com", "width": "100%", "height": 600, "sandbox": "allow-scripts allow-same-origin"}}
   ]
 }
 
@@ -208,54 +218,20 @@ APP_EXAMPLES = """
   ]
 }
 
-6. MUSIC PLAYER:
+6. TODO APP WITH BACKEND STORAGE:
 {
   "type": "app",
-  "title": "Music Player",
+  "title": "Todo List",
   "layout": "vertical",
+  "services": ["storage"],
+  "lifecycle_hooks": {"on_mount": ["storage.get"]},
   "components": [
-    {"type": "card", "id": "player-card", "props": {"style": {"padding": "24px"}}, "children": [
-      {"type": "image", "id": "album-art", "props": {"src": "album.jpg", "width": 300, "height": 300, "rounded": "large", "fit": "cover"}},
-      {"type": "text", "id": "song-title", "props": {"content": "Song Title", "variant": "h2", "align": "center"}},
-      {"type": "text", "id": "artist", "props": {"content": "Artist Name", "variant": "body", "color": "secondary", "align": "center"}},
-      {"type": "progress", "id": "progress", "props": {"value": 45, "max": 100, "variant": "primary"}},
-      {"type": "container", "id": "time", "props": {"layout": "horizontal", "justify": "between"}, "children": [
-        {"type": "text", "id": "current", "props": {"content": "1:23", "variant": "caption"}},
-        {"type": "text", "id": "duration", "props": {"content": "3:45", "variant": "caption"}}
-      ]},
-      {"type": "container", "id": "controls", "props": {"layout": "horizontal", "gap": 16, "justify": "center"}, "children": [
-        {"type": "button", "id": "prev", "props": {"text": "⏮️", "variant": "ghost", "size": "large"}, "on_event": {"click": "player.previous"}},
-        {"type": "button", "id": "play", "props": {"text": "▶️", "variant": "primary", "size": "large"}, "on_event": {"click": "player.play"}},
-        {"type": "button", "id": "next", "props": {"text": "⏭️", "variant": "ghost", "size": "large"}, "on_event": {"click": "player.next"}}
-      ]},
-      {"type": "container", "id": "volume", "props": {"layout": "horizontal", "gap": 8}, "children": [
-        {"type": "text", "id": "vol-icon", "props": {"content": "🔊", "variant": "body"}},
-        {"type": "slider", "id": "volume-slider", "props": {"min": 0, "max": 100, "value": 70}, "on_event": {"change": "player.setVolume"}}
-      ]},
-      {"type": "audio", "id": "audio-player", "props": {"src": "song.mp3", "controls": false}}
-    ]}
-  ]
-}
-
-7. GAME (Tic-Tac-Toe):
-{
-  "type": "app",
-  "title": "Tic-Tac-Toe",
-  "layout": "vertical",
-  "components": [
-    {"type": "text", "id": "status", "props": {"content": "Player X's turn", "variant": "h2", "align": "center"}},
-    {"type": "grid", "id": "board", "props": {"columns": 3, "gap": 8, "style": {"maxWidth": "300px", "margin": "0 auto"}}, "children": [
-      {"type": "button", "id": "cell-0", "props": {"text": "", "variant": "outline", "size": "large", "style": {"height": "80px", "fontSize": "32px"}}, "on_event": {"click": "game.move"}},
-      {"type": "button", "id": "cell-1", "props": {"text": "", "variant": "outline", "size": "large", "style": {"height": "80px", "fontSize": "32px"}}, "on_event": {"click": "game.move"}},
-      {"type": "button", "id": "cell-2", "props": {"text": "", "variant": "outline", "size": "large", "style": {"height": "80px", "fontSize": "32px"}}, "on_event": {"click": "game.move"}},
-      {"type": "button", "id": "cell-3", "props": {"text": "", "variant": "outline", "size": "large", "style": {"height": "80px", "fontSize": "32px"}}, "on_event": {"click": "game.move"}},
-      {"type": "button", "id": "cell-4", "props": {"text": "", "variant": "outline", "size": "large", "style": {"height": "80px", "fontSize": "32px"}}, "on_event": {"click": "game.move"}},
-      {"type": "button", "id": "cell-5", "props": {"text": "", "variant": "outline", "size": "large", "style": {"height": "80px", "fontSize": "32px"}}, "on_event": {"click": "game.move"}},
-      {"type": "button", "id": "cell-6", "props": {"text": "", "variant": "outline", "size": "large", "style": {"height": "80px", "fontSize": "32px"}}, "on_event": {"click": "game.move"}},
-      {"type": "button", "id": "cell-7", "props": {"text": "", "variant": "outline", "size": "large", "style": {"height": "80px", "fontSize": "32px"}}, "on_event": {"click": "game.move"}},
-      {"type": "button", "id": "cell-8", "props": {"text": "", "variant": "outline", "size": "large", "style": {"height": "80px", "fontSize": "32px"}}, "on_event": {"click": "game.move"}}
+    {"type": "text", "id": "header", "props": {"content": "My Todos", "variant": "h1"}},
+    {"type": "container", "id": "add-row", "props": {"layout": "horizontal", "gap": 8}, "children": [
+      {"type": "input", "id": "task-input", "props": {"placeholder": "What needs to be done?", "type": "text"}},
+      {"type": "button", "id": "add-btn", "props": {"text": "Add", "variant": "primary"}, "on_event": {"click": "ui.list.add"}}
     ]},
-    {"type": "button", "id": "reset", "props": {"text": "New Game", "variant": "primary"}, "on_event": {"click": "game.reset"}}
+    {"type": "list", "id": "todos", "props": {"variant": "striped"}, "children": []}
   ]
 }
 """
@@ -280,8 +256,8 @@ def get_ui_generation_prompt(tools_description: str, context: str = "") -> str:
 CRITICAL RULES:
 1. Output ONLY valid JSON - no markdown, no explanations, no extra text
 2. EVERY component MUST have: "id", "type", "props", "children", "on_event"
-3. Be CREATIVE - you can build browsers, games, media players, dashboards, drawing apps, etc.
-4. Use appropriate components for each use case (canvas for games/drawing, iframe for browsers, video/audio for media)
+3. Use generic UI tools (ui.*, browser.*) for most functionality
+4. Use appropriate components: iframe for browsers, grid for dashboards, container for forms
 5. Wire up events properly with on_event handlers
 6. Use proper layouts (grid for dashboards, container for forms, tabs for multi-section apps)
 
@@ -306,24 +282,72 @@ Available Tools:
   "lifecycle_hooks": {{}}
 }}
 
-=== COMPONENT WIRING EXAMPLES ===
+=== GENERIC UI TOOLS (Use These for ALL Apps) ===
 
-For interactive elements, use on_event to connect to tools:
-- Button clicks: {{"on_event": {{"click": "tool.name"}}}}
-- Input changes: {{"on_event": {{"change": "tool.name"}}}}
-- Canvas mount: {{"on_event": {{"mount": "canvas.init"}}}}
+Available tools work for ANY app type - no need for app-specific tools!
 
-=== TIPS FOR COMPLEX APPS ===
+**ui.append** - Append value to state (calculator digits, text input)
+  Button: {{"on_event": {{"click": "ui.append"}}, "props": {{"text": "7"}}}}
+  → Automatically appends button's text to "display" state
 
-1. Browser: Use iframe with toolbar (back/forward buttons + URL input)
-2. Media Player: Use video/audio components with playlist (list + images)
-3. Games: Use canvas for graphics OR grid + buttons for board games
-4. Drawing: Use canvas with toolbar (color picker, brush size, tools)
-5. Dashboard: Use grid layout with card components and metrics
-6. Forms: Use container with inputs, labels, validation
-7. Settings: Use tabs with different sections
+**ui.compute** - Evaluate expression (calculator =, formula fields)
+  Button: {{"on_event": {{"click": "ui.compute"}}}}
+  → Evaluates expression in "display" state
 
-Think BIG - you're not limited to calculators and todo lists!
+**ui.clear** - Clear value (calculator C, form reset)  
+  Button: {{"on_event": {{"click": "ui.clear"}}}}
+  → Resets "display" to "0"
+
+**ui.set** - Set any state (navigation, URL loading, toggles)
+  Button: {{"on_event": {{"click": "ui.set"}}}}
+  → Reads from input fields automatically or use params
+
+**ui.toggle** - Toggle boolean (checkboxes, switches)
+  Button: {{"on_event": {{"click": "ui.toggle"}}}}
+
+**ui.backspace** - Remove last char (backspace buttons)
+  Button: {{"on_event": {{"click": "ui.backspace"}}}}
+
+=== REAL EXAMPLES ===
+
+**Calculator:**
+{{
+  "components": [
+    {{"type": "input", "id": "display", "props": {{"readonly": true, "value": "0"}}}},
+    {{"type": "button", "id": "btn-7", "props": {{"text": "7"}}, "on_event": {{"click": "ui.append"}}}},
+    {{"type": "button", "id": "btn-plus", "props": {{"text": "+"}}, "on_event": {{"click": "ui.append"}}}},
+    {{"type": "button", "id": "btn-equals", "props": {{"text": "="}}, "on_event": {{"click": "ui.compute"}}}},
+    {{"type": "button", "id": "btn-clear", "props": {{"text": "C"}}, "on_event": {{"click": "ui.clear"}}}}
+  ]
+}}
+
+**Browser:**
+{{
+  "components": [
+    {{"type": "input", "id": "url-input", "props": {{"placeholder": "Enter URL"}}}},
+    {{"type": "button", "id": "go-btn", "props": {{"text": "Go"}}, "on_event": {{"click": "browser.navigate"}}}},
+    {{"type": "iframe", "id": "webpage", "props": {{"src": ""}}}}
+  ]
+}}
+
+**Todo List:**
+{{
+  "components": [
+    {{"type": "input", "id": "task-input"}},
+    {{"type": "button", "props": {{"text": "Add"}}, "on_event": {{"click": "ui.add_todo"}}}}
+  ]
+}}
+
+=== APP TYPE PATTERNS ===
+
+1. **Calculator/Keypad:** Use ui.append for all buttons, ui.compute for =
+2. **Browser:** Use input for URL + browser.navigate button  
+3. **Forms:** Use inputs with validation + ui.set for state management
+4. **Media Players:** Use player.* tools for playback controls
+5. **Canvas Apps:** Use canvas.* tools for drawing
+6. **Data Apps:** Use ui.set/get for state, data.* for filtering/sorting
+
+Think BIG - you can make ANY app! The tools are generic and composable.
 
 Now generate a complete, valid JSON UI specification for the user's request. Output ONLY the JSON."""
 
