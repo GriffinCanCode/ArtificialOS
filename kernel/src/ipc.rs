@@ -3,9 +3,10 @@
  * Handles communication between kernel and AI service
  */
 
-use log::info;
+use log::{info, warn};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Message {
@@ -18,16 +19,21 @@ pub struct Message {
 // Queue limits to prevent DoS
 const MAX_QUEUE_SIZE: usize = 1000;
 const MAX_MESSAGE_SIZE: usize = 1024 * 1024; // 1MB
+const GLOBAL_IPC_MEMORY_LIMIT: usize = 100 * 1024 * 1024; // 100MB total across all queues
+
+// Global IPC memory tracking to prevent system-wide DoS
+static GLOBAL_IPC_MEMORY: AtomicUsize = AtomicUsize::new(0);
 
 pub struct IPCManager {
-    message_queues: HashMap<u32, Vec<Message>>,
+    message_queues: HashMap<u32, VecDeque<Message>>,
 }
 
 impl IPCManager {
     pub fn new() -> Self {
         info!(
-            "IPC manager initialized with queue limit: {}",
-            MAX_QUEUE_SIZE
+            "IPC manager initialized with queue limit: {}, global memory limit: {} MB",
+            MAX_QUEUE_SIZE,
+            GLOBAL_IPC_MEMORY_LIMIT / (1024 * 1024)
         );
         Self {
             message_queues: HashMap::new(),
@@ -44,9 +50,24 @@ impl IPCManager {
             ));
         }
 
+        // Check global IPC memory budget (prevents system-wide DoS)
+        let current_global = GLOBAL_IPC_MEMORY.load(Ordering::Acquire);
+        let message_size = std::mem::size_of::<Message>() + data.len();
+        
+        if current_global + message_size > GLOBAL_IPC_MEMORY_LIMIT {
+            warn!(
+                "Global IPC memory limit reached: {} bytes used, {} bytes requested",
+                current_global, message_size
+            );
+            return Err(format!(
+                "Global IPC memory limit exceeded: {} / {} bytes used",
+                current_global, GLOBAL_IPC_MEMORY_LIMIT
+            ));
+        }
+
         let queue = self.message_queues.entry(to).or_default();
 
-        // Check queue bounds
+        // Check per-process queue bounds
         if queue.len() >= MAX_QUEUE_SIZE {
             return Err(format!(
                 "Queue for PID {} is full ({} messages)",
@@ -64,21 +85,32 @@ impl IPCManager {
                 .unwrap_or(0),
         };
 
-        queue.push(message);
+        // Atomically increment global memory counter
+        GLOBAL_IPC_MEMORY.fetch_add(message_size, Ordering::Release);
+
+        queue.push_back(message);
         info!(
-            "Message sent from PID {} to PID {} ({} in queue)",
+            "Message sent from PID {} to PID {} ({} in queue, {} bytes global IPC memory)",
             from,
             to,
-            queue.len()
+            queue.len(),
+            GLOBAL_IPC_MEMORY.load(Ordering::Relaxed)
         );
         Ok(())
     }
 
     pub fn receive_message(&mut self, pid: u32) -> Option<Message> {
         if let Some(queue) = self.message_queues.get_mut(&pid) {
-            if !queue.is_empty() {
-                let message = queue.remove(0);
-                info!("Message received by PID {}", pid);
+            if let Some(message) = queue.pop_front() {
+                // Atomically decrement global memory counter
+                let message_size = std::mem::size_of::<Message>() + message.data.len();
+                GLOBAL_IPC_MEMORY.fetch_sub(message_size, Ordering::Release);
+                
+                info!(
+                    "Message received by PID {} ({} bytes global IPC memory)",
+                    pid,
+                    GLOBAL_IPC_MEMORY.load(Ordering::Relaxed)
+                );
                 return Some(message);
             }
         }
@@ -90,6 +122,35 @@ impl IPCManager {
             .get(&pid)
             .map(|q| !q.is_empty())
             .unwrap_or(false)
+    }
+
+    /// Clear all messages for a process (called on process termination)
+    pub fn clear_process_queue(&mut self, pid: u32) -> usize {
+        if let Some(queue) = self.message_queues.remove(&pid) {
+            // Reclaim global memory for all messages in queue
+            let freed_bytes: usize = queue
+                .iter()
+                .map(|msg| std::mem::size_of::<Message>() + msg.data.len())
+                .sum();
+            
+            GLOBAL_IPC_MEMORY.fetch_sub(freed_bytes, Ordering::Release);
+            
+            info!(
+                "Cleared {} messages for PID {} (freed {} bytes, {} bytes global IPC memory)",
+                queue.len(),
+                pid,
+                freed_bytes,
+                GLOBAL_IPC_MEMORY.load(Ordering::Relaxed)
+            );
+            
+            return queue.len();
+        }
+        0
+    }
+
+    /// Get current global IPC memory usage
+    pub fn get_global_memory_usage(&self) -> usize {
+        GLOBAL_IPC_MEMORY.load(Ordering::Relaxed)
     }
 }
 

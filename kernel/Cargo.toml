@@ -2,35 +2,6 @@
 name = "ai-os-kernel"
 version = "0.1.0"
 edition = "2021"
-authors = ["AI-OS Team"]
-description = "Lightweight microkernel for AI-Powered OS"
-
-[dependencies]
-# Core async runtime
-tokio = { version = "1.35", features = ["full"] }
-
-# Serialization
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-
-# Logging
-log = "0.4"
-env_logger = "0.11"
-
-# IPC (Inter-Process Communication)
-# Will be used to communicate with Python AI service
-crossbeam = "0.8"
-
-# Shared state management
-parking_lot = "0.12"
-
-# gRPC for kernel-service communication
-tonic = "0.12"
-prost = "0.13"
-tokio-stream = { version = "0.1", features = ["sync"] }
-
-[build-dependencies]
-tonic-build = "0.12"
 
 [lib]
 name = "ai_os_kernel"
@@ -40,3 +11,41 @@ path = "src/lib.rs"
 name = "kernel"
 path = "src/main.rs"
 
+[dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+tokio-stream = "0.1"
+
+# gRPC
+tonic = "0.11"
+prost = "0.12"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Concurrency
+parking_lot = "0.12"
+
+# Structured logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Logging
+log = "0.4"
+env_logger = "0.11"
+
+[build-dependencies]
+tonic-build = "0.11"
+
+[dev-dependencies]
+tokio-test = "0.4"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1

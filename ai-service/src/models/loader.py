@@ -1,31 +1,27 @@
-"""
-Model loader - handles Gemini API initialization.
-Unified loader for all AI models (now using Gemini exclusively).
-"""
+"""Model Loader."""
 
-import logging
-from typing import Optional, AsyncGenerator, Generator, Dict, Any
+from typing import Optional, AsyncGenerator, Generator
 import google.generativeai as genai
 
+from core import get_logger
 from .config import GeminiConfig
 
-logger = logging.getLogger(__name__)
+
+logger = get_logger(__name__)
+
+
+class ModelLoadError(Exception):
+    """Model loading failed."""
+    pass
 
 
 class GeminiModel:
-    """
-    Wrapper for Gemini API that provides streaming and structured output.
-    Compatible with LangChain-style interface for easy integration.
-    """
+    """Gemini API wrapper with streaming support."""
     
     def __init__(self, config: GeminiConfig):
-        """Initialize Gemini model with configuration."""
         self.config = config
-        
-        # Configure the API
         genai.configure(api_key=config.api_key)
         
-        # Initialize the model with generation config
         generation_config = genai.GenerationConfig(
             temperature=config.temperature,
             max_output_tokens=config.max_tokens,
@@ -38,199 +34,86 @@ class GeminiModel:
             generation_config=generation_config,
         )
         
-        logger.info(f"✅ Gemini model initialized: {config.model_name}")
-        logger.info(f"Temperature: {config.temperature}, Max tokens: {config.max_tokens}")
+        logger.info("model_loaded", model=config.model_name)
     
     def stream(self, prompt: str) -> Generator[str, None, None]:
-        """
-        Stream tokens from Gemini in real-time.
-        
-        Args:
-            prompt: Input prompt text
-            
-        Yields:
-            Generated text tokens as they arrive
-        """
+        """Stream tokens."""
         try:
-            logger.debug(f"Streaming from Gemini: prompt length {len(prompt)}")
-            
-            response = self.model.generate_content(
-                prompt,
-                stream=True,
-            )
-            
+            response = self.model.generate_content(prompt, stream=True)
             for chunk in response:
                 if chunk.text:
                     yield chunk.text
-                    
         except Exception as e:
-            logger.error(f"Gemini streaming error: {e}")
+            logger.error("stream_error", error=str(e))
             raise
     
     async def astream(self, prompt: str) -> AsyncGenerator[str, None]:
-        """
-        Async stream tokens from Gemini.
-        
-        Args:
-            prompt: Input prompt text
-            
-        Yields:
-            Generated text tokens as they arrive
-        """
+        """Async stream tokens."""
         try:
-            logger.debug(f"Async streaming from Gemini: prompt length {len(prompt)}")
-            
-            # Note: google-generativeai doesn't have native async support yet
-            # We'll wrap the sync version for compatibility
-            response = self.model.generate_content(
-                prompt,
-                stream=True,
-            )
-            
+            response = self.model.generate_content(prompt, stream=True)
             for chunk in response:
                 if chunk.text:
                     yield chunk.text
-                    
         except Exception as e:
-            logger.error(f"Gemini async streaming error: {e}")
+            logger.error("astream_error", error=str(e))
             raise
     
-    def stream_json(
-        self,
-        prompt: str,
-        response_schema: Optional[Dict[str, Any]] = None
-    ) -> Generator[str, None, None]:
-        """
-        Stream JSON output from Gemini with structured schema.
-        
-        Args:
-            prompt: Input prompt text
-            response_schema: JSON schema for structured output
-            
-        Yields:
-            Generated JSON tokens as they arrive
-        """
+    def stream_json(self, prompt: str) -> Generator[str, None, None]:
+        """Stream JSON output."""
         try:
-            logger.debug(f"Streaming JSON from Gemini with schema: {bool(response_schema)}")
-            
-            # Configure for JSON output
             generation_config = genai.GenerationConfig(
                 temperature=self.config.temperature,
                 max_output_tokens=self.config.max_tokens,
-                top_p=self.config.top_p,
-                top_k=self.config.top_k,
                 response_mime_type="application/json",
             )
             
-            # Add schema if provided
-            if response_schema:
-                generation_config.response_schema = response_schema
-            
-            # Create temporary model with JSON config
             json_model = genai.GenerativeModel(
                 model_name=self.config.model_name,
                 generation_config=generation_config,
             )
             
-            response = json_model.generate_content(
-                prompt,
-                stream=True,
-            )
-            
+            response = json_model.generate_content(prompt, stream=True)
             for chunk in response:
                 if chunk.text:
                     yield chunk.text
-                    
         except Exception as e:
-            logger.error(f"Gemini JSON streaming error: {e}")
+            logger.error("json_stream_error", error=str(e))
             raise
     
     def invoke(self, prompt: str) -> str:
-        """
-        Non-streaming generation (for compatibility).
-        
-        Args:
-            prompt: Input prompt text
-            
-        Returns:
-            Complete generated text
-        """
+        """Non-streaming generation."""
         try:
-            logger.debug(f"Invoking Gemini: prompt length {len(prompt)}")
-            
             response = self.model.generate_content(prompt)
             return response.text
-            
         except Exception as e:
-            logger.error(f"Gemini invoke error: {e}")
+            logger.error("invoke_error", error=str(e))
             raise
     
     async def ainvoke(self, prompt: str) -> str:
-        """
-        Async non-streaming generation (for compatibility).
-        
-        Args:
-            prompt: Input prompt text
-            
-        Returns:
-            Complete generated text
-        """
-        # Wrap sync version for now (google-generativeai doesn't have native async)
+        """Async non-streaming generation."""
         return self.invoke(prompt)
 
 
 class ModelLoader:
-    """
-    Manages Gemini model loading and lifecycle.
-    Single source of truth for all model loading.
-    """
+    """Model lifecycle manager."""
     
     _instance: Optional[GeminiModel] = None
-    _config: Optional[GeminiConfig] = None
     
     @classmethod
-    def load(
-        cls,
-        config: GeminiConfig,
-        callbacks: Optional[list] = None
-    ) -> GeminiModel:
-        """
-        Load Gemini model with given configuration.
-        
-        Args:
-            config: Gemini configuration
-            callbacks: Optional callbacks (ignored, for compatibility)
-            
-        Returns:
-            Initialized Gemini model instance
-        """
-        # Always create fresh instance for Gemini (no local caching needed)
-        # API handles caching and optimization on their end
-        logger.info(f"Loading Gemini model: {config.model_name}")
-        
+    def load(cls, config: GeminiConfig) -> GeminiModel:
+        """Load model with config."""
+        logger.info("loading", model=config.model_name)
         try:
             model = GeminiModel(config)
-            
             cls._instance = model
-            cls._config = config
-            
-            logger.info(f"✅ Gemini model loaded successfully")
             return model
-            
         except Exception as e:
-            logger.error(f"Failed to load Gemini model: {e}")
-            raise ModelLoadError(f"Could not load {config.model_name}") from e
+            logger.error("load_failed", error=str(e))
+            raise ModelLoadError(f"Failed to load {config.model_name}") from e
     
     @classmethod
     def unload(cls) -> None:
-        """Unload model and free resources."""
-        if cls._instance is not None:
-            logger.info("Unloading Gemini model...")
+        """Unload model."""
+        if cls._instance:
+            logger.info("unloading")
             cls._instance = None
-            cls._config = None
-            logger.info("Gemini model unloaded")
-
-
-class ModelLoadError(Exception):
-    """Raised when model fails to load."""
-    pass

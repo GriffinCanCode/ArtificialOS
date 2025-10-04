@@ -73,6 +73,9 @@ pub struct MemoryManager {
     // Memory pressure thresholds (percentage)
     warning_threshold: f64,  // 80%
     critical_threshold: f64, // 95%
+    // Garbage collection threshold - run GC when this many deallocated blocks accumulate
+    gc_threshold: usize, // 1000 blocks
+    deallocated_count: Arc<RwLock<usize>>,
 }
 
 impl MemoryManager {
@@ -86,6 +89,8 @@ impl MemoryManager {
             used_memory: Arc::new(RwLock::new(0)),
             warning_threshold: 0.80,
             critical_threshold: 0.95,
+            gc_threshold: 1000,
+            deallocated_count: Arc::new(RwLock::new(0)),
         }
     }
 
@@ -174,12 +179,30 @@ impl MemoryManager {
                 let mut used = self.used_memory.write();
                 *used = used.saturating_sub(size);
 
+                // Track deallocated blocks for GC
+                let mut dealloc_count = self.deallocated_count.write();
+                *dealloc_count += 1;
+
                 info!(
-                    "Deallocated {} bytes at 0x{:x} ({} bytes now available)",
+                    "Deallocated {} bytes at 0x{:x} ({} bytes now available, {} deallocated blocks)",
                     size,
                     address,
-                    self.total_memory - *used
+                    self.total_memory - *used,
+                    *dealloc_count
                 );
+
+                // Trigger GC if threshold reached
+                let should_gc = *dealloc_count >= self.gc_threshold;
+                drop(dealloc_count);
+                drop(used);
+                drop(blocks);
+
+                if should_gc {
+                    info!(
+                        "GC threshold reached, running garbage collection..."
+                    );
+                    self.garbage_collect();
+                }
 
                 return Ok(());
             }
@@ -196,11 +219,13 @@ impl MemoryManager {
     pub fn free_process_memory(&self, pid: u32) -> usize {
         let mut blocks = self.blocks.write();
         let mut freed_bytes = 0;
+        let mut freed_count = 0;
 
         for (_, block) in blocks.iter_mut() {
             if block.allocated && block.owner_pid == Some(pid) {
                 block.allocated = false;
                 freed_bytes += block.size;
+                freed_count += 1;
             }
         }
 
@@ -208,12 +233,33 @@ impl MemoryManager {
             let mut used = self.used_memory.write();
             *used = used.saturating_sub(freed_bytes);
 
+            // Track deallocated blocks for GC
+            let mut dealloc_count = self.deallocated_count.write();
+            *dealloc_count += freed_count;
+
             info!(
-                "Cleaned up {} bytes from terminated PID {} ({} bytes now available)",
+                "Cleaned up {} bytes ({} blocks) from terminated PID {} ({} bytes now available, {} deallocated blocks)",
                 freed_bytes,
+                freed_count,
                 pid,
-                self.total_memory - *used
+                self.total_memory - *used,
+                *dealloc_count
             );
+
+            // Trigger GC if threshold reached
+            let should_gc = *dealloc_count >= self.gc_threshold;
+            drop(dealloc_count);
+            drop(used);
+            drop(blocks);
+
+            if should_gc {
+                info!(
+                    "GC threshold reached after process cleanup, running garbage collection..."
+                );
+                self.garbage_collect();
+            }
+        } else {
+            drop(blocks);
         }
 
         freed_bytes
@@ -252,6 +298,38 @@ impl MemoryManager {
             fragmented_blocks,
         }
     }
+
+    /// Garbage collect deallocated memory blocks
+    /// Removes deallocated blocks from the HashMap to prevent unbounded growth
+    pub fn garbage_collect(&self) -> usize {
+        let mut blocks = self.blocks.write();
+        let initial_count = blocks.len();
+
+        // Retain only allocated blocks
+        blocks.retain(|_, block| block.allocated);
+
+        let removed_count = initial_count - blocks.len();
+
+        // Reset deallocated counter
+        let mut dealloc_count = self.deallocated_count.write();
+        *dealloc_count = 0;
+
+        if removed_count > 0 {
+            info!(
+                "Garbage collection complete: removed {} deallocated blocks, {} blocks remain",
+                removed_count,
+                blocks.len()
+            );
+        }
+
+        removed_count
+    }
+
+    /// Force garbage collection (for testing or manual cleanup)
+    pub fn force_gc(&self) -> usize {
+        info!("Forcing garbage collection...");
+        self.garbage_collect()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -273,6 +351,8 @@ impl Clone for MemoryManager {
             used_memory: Arc::clone(&self.used_memory),
             warning_threshold: self.warning_threshold,
             critical_threshold: self.critical_threshold,
+            gc_threshold: self.gc_threshold,
+            deallocated_count: Arc::clone(&self.deallocated_count),
         }
     }
 }

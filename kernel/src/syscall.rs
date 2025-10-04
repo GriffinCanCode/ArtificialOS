@@ -600,8 +600,13 @@ impl SyscallExecutor {
         };
 
         info!("PID {} retrieved system info", pid);
-        let data = serde_json::to_vec(&info).unwrap();
-        SyscallResult::success_with_data(data)
+        match serde_json::to_vec(&info) {
+            Ok(data) => SyscallResult::success_with_data(data),
+            Err(e) => {
+                error!("Failed to serialize system info: {}", e);
+                SyscallResult::error(format!("Failed to serialize system info: {}", e))
+            }
+        }
     }
 
     fn get_current_time(&self, pid: u32) -> SyscallResult {
@@ -612,14 +617,18 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied("Missing TimeAccess capability");
         }
 
-        let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-
-        info!("PID {} retrieved current time: {}", pid, timestamp);
-        let data = timestamp.to_le_bytes().to_vec();
-        SyscallResult::success_with_data(data)
+        match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+            Ok(duration) => {
+                let timestamp = duration.as_secs();
+                info!("PID {} retrieved current time: {}", pid, timestamp);
+                let data = timestamp.to_le_bytes().to_vec();
+                SyscallResult::success_with_data(data)
+            }
+            Err(e) => {
+                error!("System time error: {}", e);
+                SyscallResult::error(format!("Failed to get system time: {}", e))
+            }
+        }
     }
 
     fn get_env_var(&self, pid: u32, key: &str) -> SyscallResult {

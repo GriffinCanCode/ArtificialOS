@@ -1,9 +1,4 @@
-# Rust Toolchain Configuration
-# https://rust-lang.github.io/rustup/overrides.html#the-toolchain-file
-
 [toolchain]
 channel = "stable"
-components = ["rustfmt", "clippy", "rust-src", "rust-analyzer"]
-targets = ["x86_64-unknown-linux-gnu", "x86_64-apple-darwin", "aarch64-apple-darwin"]
-profile = "default"
-
+components = ["rustfmt", "clippy"]
+profile = "minimal"
