@@ -1,14 +1,12 @@
-"""
-LLM Prompt Caching System
-Caches common prompt patterns to reduce redundant LLM context loading.
-"""
+"""Prompt Cache - Optimized caching with strong typing."""
 
 import hashlib
-import logging
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Any
 from functools import lru_cache
 
-logger = logging.getLogger(__name__)
+from core import get_logger
+
+logger = get_logger(__name__)
 
 
 class PromptCache:
@@ -28,7 +26,7 @@ class PromptCache:
         self._cache: Dict[str, str] = {}
         self._hits = 0
         self._misses = 0
-        logger.info(f"PromptCache initialized: max_size={max_size}")
+        logger.info("cache_init", max_size=max_size)
     
     def _compute_hash(self, prompt: str) -> str:
         """
@@ -56,10 +54,11 @@ class PromptCache:
         
         if cache_key in self._cache:
             self._hits += 1
-            logger.debug(f"Prompt cache hit (hit rate: {self.hit_rate:.1%})")
+            logger.debug("cache_hit", hit_rate=f"{self.hit_rate:.1%}")
             return self._cache[cache_key]
         
         self._misses += 1
+        logger.debug("cache_miss")
         return None
     
     def set(self, prompt: str) -> None:
@@ -78,7 +77,7 @@ class PromptCache:
             del self._cache[first_key]
         
         self._cache[cache_key] = prompt
-        logger.debug(f"Cached prompt (cache size: {len(self._cache)})")
+        logger.debug("cached", size=len(self._cache))
     
     @property
     def hit_rate(self) -> float:
@@ -87,7 +86,7 @@ class PromptCache:
         return self._hits / total if total > 0 else 0.0
     
     @property
-    def stats(self) -> Dict[str, any]:
+    def stats(self) -> Dict[str, Any]:
         """Get cache statistics."""
         return {
             'size': len(self._cache),
@@ -112,7 +111,7 @@ def get_system_prompt_template(prompt_type: str = "ui_generation") -> str:
     """
     # This would be populated with actual system prompts
     # The LRU cache ensures we only build these once
-    logger.debug(f"Building system prompt template: {prompt_type}")
+    logger.debug("build_template", type=prompt_type)
     return ""  # Placeholder
 
 

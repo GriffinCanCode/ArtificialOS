@@ -1,4 +1,4 @@
-"""UI Generation Handler."""
+"""UI Generation Handler - Optimized with fast JSON."""
 
 import time
 import ai_pb2
@@ -24,8 +24,11 @@ class UIHandler:
             
             ui_spec = self.ui_generator.generate_ui(validated.message)
             spec_dict = ui_spec.model_dump()
+            
+            # Use orjson for fast serialization (2-3x faster)
             ui_json = safe_json_dumps(spec_dict, indent=2)
             
+            # Validate before sending
             UISpecValidator.validate(spec_dict, ui_json)
             
             return ai_pb2.UIResponse(

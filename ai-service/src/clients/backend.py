@@ -1,14 +1,12 @@
-"""
-Backend Service Client
-Queries the Go backend for available service providers.
-"""
+"""Backend Service Client"""
 
-import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Optional
 from dataclasses import dataclass
 import httpx
 
-logger = logging.getLogger(__name__)
+from core import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -58,7 +56,7 @@ class BackendClient:
         self.backend_url = backend_url.rstrip("/")
         self.timeout = timeout
         self._client = httpx.Client(timeout=timeout)
-        logger.info(f"BackendClient initialized for {self.backend_url}")
+        logger.info("client_init", url=self.backend_url)
     
     def discover_services(self, category: Optional[str] = None) -> List[ServiceDefinition]:
         """
@@ -77,7 +75,14 @@ class BackendClient:
             response = self._client.get(url, params=params)
             response.raise_for_status()
             
+            # Parse JSON response (httpx uses orjson if available, otherwise stdlib)
             data = response.json()
+            
+            # Validate response structure
+            if not isinstance(data, dict):
+                logger.error("invalid_response", type=type(data).__name__)
+                return []
+            
             services = data.get("services", [])
             
             # Convert to ServiceDefinition objects
@@ -111,14 +116,15 @@ class BackendClient:
                     tools=tools
                 ))
             
-            logger.info(f"Discovered {len(result)} services with {sum(len(s.tools) for s in result)} total tools")
+            total_tools = sum(len(s.tools) for s in result)
+            logger.info("discovered", services=len(result), tools=total_tools)
             return result
             
         except httpx.HTTPError as e:
-            logger.warning(f"Failed to discover services: {e}")
+            logger.warning("http_error", error=str(e))
             return []
         except Exception as e:
-            logger.error(f"Unexpected error discovering services: {e}", exc_info=True)
+            logger.error("discover_failed", error=str(e), exc_info=True)
             return []
     
     def get_tools_description(self, services: List[ServiceDefinition]) -> str:

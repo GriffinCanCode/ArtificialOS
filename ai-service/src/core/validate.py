@@ -1,18 +1,17 @@
-"""
-Input Validation
-Centralized validation logic with strong typing.
-"""
+"""Input validation with strong typing and multiple backends."""
 
-from typing import Any, Dict
+from dataclasses import dataclass
+from typing import Any
+from returns.result import Result, Success, Failure
+
 from pydantic import BaseModel, Field, field_validator, ConfigDict
-import sys
 
 
-# Validation constants
+# Validation limits
 MAX_UI_SPEC_SIZE = 512 * 1024  # 512KB
 MAX_CONTEXT_SIZE = 64 * 1024   # 64KB
 MAX_JSON_DEPTH = 20
-MAX_MESSAGE_LENGTH = 10_000  # 10K characters
+MAX_MESSAGE_LENGTH = 10_000
 MAX_HISTORY_LENGTH = 50
 
 
@@ -21,43 +20,55 @@ class ValidationError(Exception):
     pass
 
 
+@dataclass(frozen=True)
+class ValidationResult:
+    """Validation error with details (for Result pattern)."""
+    
+    message: str
+    field: str | None = None
+    value: Any | None = None
+
+
 class RequestValidator(BaseModel):
-    """Base validator with strict mode."""
+    """Base validator with strict configuration."""
     
     model_config = ConfigDict(
         strict=True,
         validate_assignment=True,
-        extra='forbid'
+        extra='forbid',
+        frozen=True  # Immutable by default
     )
 
 
 class UIGenerationRequest(RequestValidator):
     """Validated UI generation request."""
     
-    message: str = Field(..., min_length=1, max_length=MAX_MESSAGE_LENGTH)
+    message: str = Field(min_length=1, max_length=MAX_MESSAGE_LENGTH)
     
     @field_validator('message')
     @classmethod
     def validate_message(cls, v: str) -> str:
-        """Validate message content."""
-        if not v.strip():
+        """Ensure message is non-empty after stripping."""
+        stripped = v.strip()
+        if not stripped:
             raise ValueError("Message cannot be empty")
-        return v.strip()
+        return stripped
 
 
 class ChatRequest(RequestValidator):
     """Validated chat request."""
     
-    message: str = Field(..., min_length=1, max_length=MAX_MESSAGE_LENGTH)
+    message: str = Field(min_length=1, max_length=MAX_MESSAGE_LENGTH)
     history_count: int = Field(default=0, ge=0, le=MAX_HISTORY_LENGTH)
     
     @field_validator('message')
     @classmethod
     def validate_message(cls, v: str) -> str:
-        """Validate message content."""
-        if not v.strip():
+        """Ensure message is non-empty after stripping."""
+        stripped = v.strip()
+        if not stripped:
             raise ValueError("Message cannot be empty")
-        return v.strip()
+        return stripped
 
 
 def validate_json_size(data: str, max_size: int, name: str = "JSON") -> None:
@@ -72,6 +83,7 @@ def validate_json_size(data: str, max_size: int, name: str = "JSON") -> None:
     Raises:
         ValidationError: If size exceeds limit
     """
+    import sys
     size = sys.getsizeof(data)
     if size > max_size:
         raise ValidationError(
@@ -112,7 +124,7 @@ class UISpecValidator:
     """Validates generated UI specifications."""
     
     @staticmethod
-    def validate(spec_dict: Dict[str, Any], spec_json: str) -> None:
+    def validate(spec_dict: dict[str, Any], spec_json: str) -> None:
         """
         Validate UI spec comprehensively.
         
@@ -138,4 +150,22 @@ class UISpecValidator:
         
         if not isinstance(spec_dict['components'], list):
             raise ValidationError("UI spec 'components' must be a list")
+
+
+def validate_ui_spec(spec: dict[str, Any], json_str: str) -> Result[None, ValidationResult]:
+    """
+    Validate UI specification (Result pattern version).
+    
+    Args:
+        spec: Parsed UI spec dictionary
+        json_str: JSON string representation
+        
+    Returns:
+        Result indicating success or validation error
+    """
+    try:
+        UISpecValidator.validate(spec, json_str)
+        return Success(None)
+    except ValidationError as e:
+        return Failure(ValidationResult(str(e)))
 

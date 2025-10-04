@@ -16,10 +16,14 @@ grpcio>=1.60.0
 grpcio-tools>=1.60.0
 
 # ============================================================================
-# Data & Validation - Pydantic V2 Strict Mode
+# Data & Validation - Hybrid Stack (Best of Both Worlds)
 # ============================================================================
-pydantic>=2.6.0
+msgspec>=0.19.0  # Ultra-fast JSON parsing (10x faster than stdlib)
+orjson>=3.9.0  # Fast JSON serialization for compact output
+json-repair>=0.25.0  # Robust JSON repair as fallback
+pydantic>=2.6.0  # Validation & settings with excellent DX
 pydantic-settings>=2.1.0
+returns>=0.22.0  # Result types for Railway-oriented programming
 
 # ============================================================================
 # Dependency Injection for Testability
@@ -33,15 +37,14 @@ structlog>=24.1.0
 python-json-logger>=2.0.7
 
 # ============================================================================
-# JSON Processing
-# ============================================================================
-json-repair>=0.25.0  # Robust JSON parsing
-orjson>=3.9.0  # Fast JSON serialization
-
-# ============================================================================
 # HTTP Client for Backend Discovery
 # ============================================================================
 httpx>=0.27.0
+
+# ============================================================================
+# Async Utilities
+# ============================================================================
+aiostream>=0.5.2  # Composable async stream utilities
 
 # ============================================================================
 # Configuration Management
@@ -59,8 +62,9 @@ pytest-mock>=3.12.0
 hypothesis>=6.96.0  # Property-based testing
 
 # ============================================================================
-# Code Quality
+# Code Quality & Type Checking
 # ============================================================================
 black>=23.12.0
 mypy>=1.8.0
 ruff>=0.1.0  # Fast linter (replaces flake8, isort)
+pyright>=1.1.350  # Additional type checker

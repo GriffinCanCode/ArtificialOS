@@ -1,4 +1,4 @@
-"""Model Loader."""
+"""Model Loader - Gemini API with streaming."""
 
 from typing import Optional, AsyncGenerator, Generator
 import google.generativeai as genai

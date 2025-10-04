@@ -1,9 +1,9 @@
-"""UI Generator Agent."""
+"""UI Generator Agent - Fast JSON with error handling."""
 
 from typing import Any, List, Optional, Iterator
 from langchain_core.language_models import BaseLLM
 
-from core import get_logger, extract_json, safe_json_dumps
+from core import get_logger, extract_json, safe_json_dumps, JSONParseError
 from .prompt import get_ui_generation_prompt
 from .tools import ToolRegistry
 from .ui_cache import UICache
@@ -126,9 +126,16 @@ class UIGenerator:
             if token_str:
                 yield token_str
         
-        # Parse response
-        spec_dict = extract_json(content, repair=True)
-        ui_spec = UISpec.model_validate(spec_dict)
+        # Parse response with msgspec cascade (fast)
+        try:
+            spec_dict = extract_json(content, repair=True)
+            ui_spec = UISpec.model_validate(spec_dict)
+        except JSONParseError as e:
+            logger.error("json_parse_failed", error=str(e))
+            raise
+        except Exception as e:
+            logger.error("validation_failed", error=str(e))
+            raise
         
         if self.cache:
             self.cache.set(request, ui_spec)
@@ -148,7 +155,7 @@ class UIGenerator:
         else:
             ui_spec = self._build_placeholder(request)
         
-        # Stream JSON
+        # Stream JSON (uses orjson for speed)
         json_str = safe_json_dumps(ui_spec.model_dump(), indent=2)
         for i in range(0, len(json_str), 50):
             yield json_str[i:i+50]

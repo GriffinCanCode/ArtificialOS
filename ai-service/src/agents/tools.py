@@ -1,11 +1,9 @@
-"""
-Tool Registry and Definitions
-Modular tool system with category-based organization.
-"""
+"""Tool Registry - Modular system with strong typing."""
 
-import logging
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
+
+from core import get_logger
 from .tool_categories import (
     register_ui_tools,
     register_browser_tools,
@@ -13,7 +11,7 @@ from .tool_categories import (
     register_system_tools,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 # ============================================================================

@@ -1,11 +1,12 @@
-"""
-Blueprint DSL Parser
-Converts YAML-based Blueprint files to JSON UISpec format
-"""
+"""Blueprint Parser - YAML to JSON UISpec with validation."""
 
 import yaml
 from typing import Dict, Any, List, Union
 from datetime import datetime
+
+from core import get_logger, ValidationError
+
+logger = get_logger(__name__)
 
 
 class BlueprintParser:
@@ -24,21 +25,29 @@ class BlueprintParser:
         Returns:
             Package dictionary compatible with types.Package
         """
-        bp = yaml.safe_load(bp_content)
+        try:
+            bp = yaml.safe_load(bp_content)
+        except yaml.YAMLError as e:
+            logger.error("yaml_parse_failed", error=str(e))
+            raise ValidationError(f"Invalid YAML: {e}") from e
         
         if not bp or not isinstance(bp, dict):
-            raise ValueError("Invalid Blueprint format: expected YAML object")
+            logger.error("invalid_format", type=type(bp).__name__)
+            raise ValidationError("Invalid Blueprint format: expected YAML object")
         
         if "app" not in bp:
-            raise ValueError("Invalid Blueprint: missing 'app' section")
+            logger.error("missing_app_section")
+            raise ValidationError("Invalid Blueprint: missing 'app' section")
         
         app = bp["app"]
         
         # Validate required fields
         if not app.get("id"):
-            raise ValueError("app.id is required")
+            logger.error("missing_field", field="app.id")
+            raise ValidationError("app.id is required")
         if not app.get("name"):
-            raise ValueError("app.name is required")
+            logger.error("missing_field", field="app.name")
+            raise ValidationError("app.name is required")
         
         # Default timestamp
         now = datetime.utcnow().isoformat() + "Z"
