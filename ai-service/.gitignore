@@ -1,0 +1,12 @@
+.coverage
+.hypothesis
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage.xml
+.coverage.json
+.coverage.html
+.coverage.xml
+.coverage.json
+.coverage.html
+htmlcov

@@ -139,6 +139,10 @@ run-backend: ## Run backend directly (must be built first)
 	@echo "$(YELLOW)🚀 Starting backend...$(NC)"
 	@cd backend && ./bin/server -port 8000 -kernel localhost:50051 -ai localhost:50052
 
+run-backend-dev: ## Run backend in development mode
+	@echo "$(YELLOW)🚀 Starting backend (development mode)...$(NC)"
+	@cd backend && ./bin/server -dev -port 8000 -kernel localhost:50051 -ai localhost:50052
+
 run-ai: ## Run AI gRPC service directly
 	@echo "$(YELLOW)🚀 Starting AI service...$(NC)"
 	@cd ai-service && . venv/bin/activate && PYTHONPATH=src python3 -m grpc_server

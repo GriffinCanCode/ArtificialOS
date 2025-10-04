@@ -22,7 +22,7 @@ dev:
 	pip install -e .
 
 test:
-	pytest tests/ -v --cov=src --cov-report=html --cov-report=term
+	PYTHONPATH=src pytest tests/ -v --cov=src --cov-report=html --cov-report=term
 
 lint:
 	ruff check src/ tests/
@@ -32,7 +32,7 @@ format:
 	ruff check --fix src/ tests/
 
 type-check:
-	mypy src/
+	PYTHONPATH=src mypy src/
 
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
@@ -44,7 +44,7 @@ clean:
 	rm -f .coverage
 
 run:
-	cd src && python3 -m server
+	PYTHONPATH=src python3 -m server
 
 check: lint type-check test
 	@echo "✅ All checks passed!"

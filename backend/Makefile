@@ -24,8 +24,12 @@ coverage: ## Run tests with coverage report
 	@echo "Coverage report generated: coverage.html"
 
 # Run the server
-run: ## Run the server locally
+run: ## Run the server locally (production mode)
 	go run ./cmd/server -port 8000 -kernel localhost:50051 -ai localhost:50052
+
+# Run the server in development mode
+run-dev: ## Run the server in development mode (colored logs, debug level)
+	go run ./cmd/server -dev -port 8000 -kernel localhost:50051 -ai localhost:50052
 
 # Generate protobuf code
 proto: ## Generate protobuf code from .proto files

@@ -40,35 +40,37 @@ class ParseError(JSONParseError):
     pass
 
 
-def extract_json_boundaries(text: str) -> tuple[int, int] | None:
+def extract_json_boundaries(text: str) -> tuple[str, int, int] | None:
     """
-    Extract start and end positions of JSON object in text.
+    Extract JSON string and boundaries from text.
     
     Args:
         text: Text potentially containing JSON
         
     Returns:
-        (start, end) indices or None if not found
+        (extracted_text, start, end) or None if not found
     """
+    working_text = text
+    
     # Remove markdown code blocks
-    if "```" in text:
-        if "```json" in text:
-            start_marker = text.find("```json") + 7
+    if "```" in working_text:
+        if "```json" in working_text:
+            start_marker = working_text.find("```json") + 7
         else:
-            start_marker = text.find("```") + 3
+            start_marker = working_text.find("```") + 3
         
-        end_marker = text.find("```", start_marker)
+        end_marker = working_text.find("```", start_marker)
         if end_marker != -1:
-            text = text[start_marker:end_marker].strip()
+            working_text = working_text[start_marker:end_marker].strip()
     
     # Find JSON object boundaries
-    start = text.find("{")
-    end = text.rfind("}")
+    start = working_text.find("{")
+    end = working_text.rfind("}")
     
     if start == -1 or end == -1:
         return None
     
-    return (start, end + 1)
+    return (working_text, start, end + 1)
 
 
 def extract_json(text: str, repair: bool = True) -> dict[str, Any]:
@@ -111,8 +113,8 @@ def parse(text: str, *, strict: bool = True, repair: bool = False) -> Result[dic
     if boundaries is None:
         return Failure(ParseError("No JSON object found in text"))
     
-    start, end = boundaries
-    json_str = text[start:end]
+    extracted_text, start, end = boundaries
+    json_str = extracted_text[start:end]
     
     # Try msgspec first (fastest)
     if HAS_MSGSPEC and strict:
@@ -175,14 +177,22 @@ def encode(obj: Any, *, indent: int = 0) -> str:
     """
     # Use orjson for compact output (fastest)
     if HAS_ORJSON and indent == 0:
-        return orjson.dumps(obj).decode('utf-8')
+        try:
+            return orjson.dumps(obj).decode('utf-8')
+        except (TypeError, ValueError):
+            # Fallback for edge cases (e.g., integers outside 64-bit range)
+            pass
     
     # Use msgspec for compact output (very fast)
     if HAS_MSGSPEC and indent == 0:
-        encoder = msgspec.json.Encoder()
-        return encoder.encode(obj).decode('utf-8')
+        try:
+            encoder = msgspec.json.Encoder()
+            return encoder.encode(obj).decode('utf-8')
+        except (TypeError, ValueError):
+            # Fallback for edge cases
+            pass
     
-    # Use stdlib for pretty-printed output (readable)
+    # Use stdlib for pretty-printed output or as fallback (most compatible)
     return json.dumps(obj, indent=indent if indent > 0 else None)
 
 

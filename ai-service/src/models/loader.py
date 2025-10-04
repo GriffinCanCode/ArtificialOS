@@ -1,5 +1,6 @@
 """Model Loader - Gemini API with streaming."""
 
+import asyncio
 from typing import Optional, AsyncGenerator, Generator
 import google.generativeai as genai
 
@@ -48,12 +49,28 @@ class GeminiModel:
             raise
     
     async def astream(self, prompt: str) -> AsyncGenerator[str, None]:
-        """Async stream tokens."""
+        """Async stream tokens (runs sync API in thread pool)."""
         try:
-            response = self.model.generate_content(prompt, stream=True)
-            for chunk in response:
-                if chunk.text:
-                    yield chunk.text
+            # Run blocking sync API in thread to avoid blocking event loop
+            loop = asyncio.get_event_loop()
+            
+            def _sync_generator():
+                """Wrapper to collect sync generator results."""
+                response = self.model.generate_content(prompt, stream=True)
+                for chunk in response:
+                    if chunk.text:
+                        yield chunk.text
+            
+            # Convert sync generator to async by running in executor
+            gen = _sync_generator()
+            while True:
+                try:
+                    chunk = await loop.run_in_executor(None, next, gen, StopIteration)
+                    if chunk is StopIteration:
+                        break
+                    yield chunk
+                except StopIteration:
+                    break
         except Exception as e:
             logger.error("astream_error", error=str(e))
             raise
@@ -90,8 +107,9 @@ class GeminiModel:
             raise
     
     async def ainvoke(self, prompt: str) -> str:
-        """Async non-streaming generation."""
-        return self.invoke(prompt)
+        """Async non-streaming generation (runs sync API in thread pool)."""
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, self.invoke, prompt)
 
 
 class ModelLoader:

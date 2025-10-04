@@ -1,12 +1,16 @@
 """Blueprint Parser - YAML to JSON UISpec with validation."""
 
-import yaml
+from ruamel.yaml import YAML
 from typing import Dict, Any, List, Union
 from datetime import datetime
 
 from core import get_logger, ValidationError
 
 logger = get_logger(__name__)
+
+# Initialize YAML parser with safe loading
+yaml = YAML(typ='safe', pure=True)
+yaml.default_flow_style = False
 
 
 class BlueprintParser:
@@ -26,8 +30,8 @@ class BlueprintParser:
             Package dictionary compatible with types.Package
         """
         try:
-            bp = yaml.safe_load(bp_content)
-        except yaml.YAMLError as e:
+            bp = yaml.load(bp_content)
+        except Exception as e:
             logger.error("yaml_parse_failed", error=str(e))
             raise ValidationError(f"Invalid YAML: {e}") from e
         

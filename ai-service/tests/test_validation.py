@@ -8,7 +8,8 @@ from src.core import (
     ChatRequest,
     ValidationError,
     validate_json_size,
-    validate_json_depth
+    validate_json_depth,
+    JSONParseError
 )
 
 
@@ -49,7 +50,7 @@ def test_validate_json_size():
     validate_json_size(small_data, 1000)  # Should pass
     
     large_data = "x" * 1_000_000
-    with pytest.raises(ValidationError):
+    with pytest.raises(JSONParseError):
         validate_json_size(large_data, 1000)
 
 
@@ -65,7 +66,7 @@ def test_validate_json_depth():
         current["nested"] = {"level": i + 2}
         current = current["nested"]
     
-    with pytest.raises(ValidationError):
+    with pytest.raises(JSONParseError):
         validate_json_depth(deep, max_depth=20)
 
 

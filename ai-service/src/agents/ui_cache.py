@@ -1,43 +1,47 @@
-"""UI Specification Cache."""
+"""UI Specification Cache - lightweight wrapper around generic LRU cache."""
 
-import time
-from typing import Optional, Dict
-from collections import OrderedDict
+from typing import Optional
 
+from core import LRUCache
 from .models import UISpec
 
 
 class UICache:
-    """LRU cache for UI specifications."""
+    """
+    Type-safe LRU cache for UI specifications.
+    
+    Wrapper around core.LRUCache with UISpec type enforcement.
+    """
     
     def __init__(self, max_size: int = 100, ttl_seconds: int = 3600):
-        self.max_size = max_size
-        self.ttl_seconds = ttl_seconds
-        self.cache: OrderedDict[str, tuple[UISpec, float]] = OrderedDict()
+        """
+        Initialize UI cache.
+        
+        Args:
+            max_size: Maximum cached specs
+            ttl_seconds: Time-to-live in seconds
+        """
+        self._cache: LRUCache[UISpec] = LRUCache(
+            max_size=max_size,
+            ttl_seconds=ttl_seconds
+        )
     
     def get(self, key: str) -> Optional[UISpec]:
         """Get cached UI spec if valid."""
-        if key in self.cache:
-            spec, timestamp = self.cache[key]
-            if time.time() - timestamp < self.ttl_seconds:
-                # Move to end (LRU)
-                self.cache.move_to_end(key)
-                return spec
-            else:
-                # Expired
-                del self.cache[key]
-        return None
+        return self._cache.get(key)
     
     def set(self, key: str, spec: UISpec) -> None:
         """Cache UI spec."""
-        if key in self.cache:
-            del self.cache[key]
-        self.cache[key] = (spec, time.time())
-        
-        # Enforce size limit
-        if len(self.cache) > self.max_size:
-            self.cache.popitem(last=False)
+        self._cache.set(key, spec)
     
     def clear(self) -> None:
         """Clear cache."""
-        self.cache.clear()
+        self._cache.clear()
+    
+    @property
+    def stats(self):
+        """Get cache statistics."""
+        return self._cache.stats
+
+
+__all__ = ["UICache"]

@@ -49,8 +49,13 @@ aiostream>=0.5.2  # Composable async stream utilities
 # ============================================================================
 # Configuration Management
 # ============================================================================
-pyyaml>=6.0
+ruamel.yaml>=0.18.0  # Fast YAML parser with better error messages
 python-dotenv>=1.0.0
+
+# ============================================================================
+# Performance - Hashing
+# ============================================================================
+xxhash>=3.4.0  # Ultra-fast non-cryptographic hashing (3-5x faster than sha256)
 
 # ============================================================================
 # Testing Infrastructure
