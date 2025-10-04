@@ -106,7 +106,7 @@ export class ToolExecutor {
       });
 
       // Check if this is a service tool (backend providers)
-      const servicePrefixes = ["storage", "filesystem", "auth", "ai", "sync", "media", "system"];
+      const servicePrefixes = ["storage", "filesystem", "auth", "ai", "sync", "media", "system", "http", "scraper", "math"];
       const [category] = toolId.split(".");
 
       let result;

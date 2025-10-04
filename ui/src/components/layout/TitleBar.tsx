@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useCallback } from "react";
-import { Save, FolderOpen, X, Trash2 } from "lucide-react";
+import { X, Trash2 } from "lucide-react";
 import { useSessions, useDeleteSession } from "../../hooks/useSessionQueries";
 import { useLogger } from "../../utils/monitoring/useLogger";
 import { SaveSessionDialog } from "../dialogs/SaveSessionDialog";
@@ -31,7 +31,6 @@ const TitleBar: React.FC<TitleBarProps> = React.memo(({ sessionManager }) => {
   // Use TanStack Query for sessions
   const {
     data: sessionsData,
-    refetch: refetchSessions,
     isLoading: isLoadingSessions,
   } = useSessions();
   const deleteSessionMutation = useDeleteSession();
@@ -39,27 +38,34 @@ const TitleBar: React.FC<TitleBarProps> = React.memo(({ sessionManager }) => {
   const sessions = sessionsData?.sessions ?? [];
 
   const handleMinimize = useCallback(() => {
+    log.debug('Minimize button clicked');
     if (window.electron) {
+      log.debug('Calling electron.minimize()');
       window.electron.minimize();
+    } else {
+      log.warn('window.electron not available');
     }
-  }, []);
+  }, [log]);
 
   const handleMaximize = useCallback(() => {
+    log.debug('Maximize button clicked');
     if (window.electron) {
+      log.debug('Calling electron.maximize()');
       window.electron.maximize();
+    } else {
+      log.warn('window.electron not available');
     }
-  }, []);
+  }, [log]);
 
   const handleClose = useCallback(() => {
+    log.debug('Close button clicked');
     if (window.electron) {
+      log.debug('Calling electron.close()');
       window.electron.close();
+    } else {
+      log.warn('window.electron not available');
     }
-  }, []);
-
-  const handleSave = useCallback(() => {
-    if (!sessionManager) return;
-    setShowSaveDialog(true);
-  }, [sessionManager]);
+  }, [log]);
 
   const handleSaveSubmit = useCallback(
     async (data: { name: string; description?: string }) => {
@@ -75,14 +81,6 @@ const TitleBar: React.FC<TitleBarProps> = React.memo(({ sessionManager }) => {
     },
     [sessionManager, log]
   );
-
-  const handleShowSessions = useCallback(() => {
-    setShowSessionMenu(!showSessionMenu);
-    if (!showSessionMenu) {
-      // Refetch to ensure fresh data when opening menu
-      refetchSessions();
-    }
-  }, [showSessionMenu, refetchSessions]);
 
   const handleDeleteSession = useCallback(
     async (sessionId: string, event: React.MouseEvent) => {
@@ -117,19 +115,16 @@ const TitleBar: React.FC<TitleBarProps> = React.memo(({ sessionManager }) => {
     [sessionManager, log]
   );
 
-  const closeSaveDialog = useCallback(() => {
-    setShowSaveDialog(false);
-  }, []);
-
   const closeSessionMenu = useCallback(() => {
     setShowSessionMenu(false);
+    setShowSaveDialog(false);
   }, []);
 
   return (
     <>
       <SaveSessionDialog
         isOpen={showSaveDialog}
-        onClose={closeSaveDialog}
+        onClose={closeSessionMenu}
         onSave={handleSaveSubmit}
         isLoading={sessionManager?.isSaving}
       />
@@ -204,28 +199,6 @@ const TitleBar: React.FC<TitleBarProps> = React.memo(({ sessionManager }) => {
               )}
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Floating session controls - top-left corner */}
-      {sessionManager && (
-        <div className="session-controls floating">
-          <button
-            className="session-btn"
-            onClick={handleSave}
-            disabled={sessionManager.isSaving}
-            title="Save current session (⌘S)"
-          >
-            <Save size={18} />
-          </button>
-          <button
-            className="session-btn"
-            onClick={handleShowSessions}
-            disabled={sessionManager.isRestoring}
-            title="Load saved session (⌘O)"
-          >
-            <FolderOpen size={18} />
-          </button>
         </div>
       )}
     </>

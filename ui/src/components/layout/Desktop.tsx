@@ -80,6 +80,7 @@ export const Desktop: React.FC<DesktopProps> = ({
         <div className="menubar-right">
           <div className="menubar-clock">
             <div className="clock-time">{formatTime()}</div>
+            <div className="clock-separator">•</div>
             <div className="clock-date">{formatDate()}</div>
           </div>
         </div>

@@ -2,490 +2,214 @@ package providers
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"time"
 
+	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/filesystem"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/types"
 )
 
-// Filesystem provides file system operations
+// Filesystem provides comprehensive file system operations
 type Filesystem struct {
 	kernel      KernelClient
 	storagePID  uint32
 	storagePath string
+
+	// Module instances
+	basic      *filesystem.BasicOps
+	directory  *filesystem.DirectoryOps
+	operations *filesystem.OperationsOps
+	metadata   *filesystem.MetadataOps
+	search     *filesystem.SearchOps
+	formats    *filesystem.FormatsOps
+	archives   *filesystem.ArchivesOps
 }
 
-// FileInfo represents file metadata
-type FileInfo struct {
-	Name      string    `json:"name"`
-	Path      string    `json:"path"`
-	Size      int64     `json:"size"`
-	IsDir     bool      `json:"is_dir"`
-	Mode      string    `json:"mode"`
-	Modified  time.Time `json:"modified"`
-	Extension string    `json:"extension,omitempty"`
-}
-
-// NewFilesystem creates a filesystem provider
+// NewFilesystem creates a modular filesystem provider
 func NewFilesystem(kernel KernelClient, storagePID uint32, storagePath string) *Filesystem {
+	ops := &filesystem.FilesystemOps{
+		Kernel:      kernel,
+		StoragePID:  storagePID,
+		StoragePath: storagePath,
+	}
+
 	return &Filesystem{
 		kernel:      kernel,
 		storagePID:  storagePID,
 		storagePath: storagePath,
+		basic:       &filesystem.BasicOps{FilesystemOps: ops},
+		directory:   &filesystem.DirectoryOps{FilesystemOps: ops},
+		operations:  &filesystem.OperationsOps{FilesystemOps: ops},
+		metadata:    &filesystem.MetadataOps{FilesystemOps: ops},
+		search:      &filesystem.SearchOps{FilesystemOps: ops},
+		formats:     &filesystem.FormatsOps{FilesystemOps: ops},
+		archives:    &filesystem.ArchivesOps{FilesystemOps: ops},
 	}
 }
 
-// Definition returns service metadata
+// Definition returns service metadata with all module tools
 func (f *Filesystem) Definition() types.Service {
+	// Collect tools from all modules
+	tools := []types.Tool{}
+	tools = append(tools, f.basic.GetTools()...)
+	tools = append(tools, f.directory.GetTools()...)
+	tools = append(tools, f.operations.GetTools()...)
+	tools = append(tools, f.metadata.GetTools()...)
+	tools = append(tools, f.search.GetTools()...)
+	tools = append(tools, f.formats.GetTools()...)
+	tools = append(tools, f.archives.GetTools()...)
+
 	return types.Service{
 		ID:          "filesystem",
 		Name:        "Filesystem Service",
-		Description: "File and directory operations with sandboxed access",
+		Description: "Comprehensive file and directory operations with high-performance libraries",
 		Category:    types.CategoryFilesystem,
 		Capabilities: []string{
-			"read",
-			"write",
-			"create",
-			"delete",
-			"list",
-			"stat",
-			"move",
-			"copy",
+			"read", "write", "create", "delete",
+			"directories", "search", "glob",
+			"formats", "yaml", "json", "csv", "toml",
+			"archives", "zip", "tar", "compression",
+			"metadata", "mime", "timestamps",
 		},
-		Tools: []types.Tool{
-			{
-				ID:          "filesystem.list",
-				Name:        "List Directory",
-				Description: "List contents of a directory",
-				Parameters: []types.Parameter{
-					{Name: "path", Type: "string", Description: "Directory path", Required: true},
-				},
-				Returns: "array",
-			},
-			{
-				ID:          "filesystem.stat",
-				Name:        "File Info",
-				Description: "Get file or directory metadata",
-				Parameters: []types.Parameter{
-					{Name: "path", Type: "string", Description: "File or directory path", Required: true},
-				},
-				Returns: "object",
-			},
-			{
-				ID:          "filesystem.read",
-				Name:        "Read File",
-				Description: "Read file contents",
-				Parameters: []types.Parameter{
-					{Name: "path", Type: "string", Description: "File path", Required: true},
-				},
-				Returns: "string",
-			},
-			{
-				ID:          "filesystem.write",
-				Name:        "Write File",
-				Description: "Write data to file",
-				Parameters: []types.Parameter{
-					{Name: "path", Type: "string", Description: "File path", Required: true},
-					{Name: "data", Type: "string", Description: "Data to write", Required: true},
-				},
-				Returns: "boolean",
-			},
-			{
-				ID:          "filesystem.create",
-				Name:        "Create File",
-				Description: "Create a new file",
-				Parameters: []types.Parameter{
-					{Name: "path", Type: "string", Description: "File path", Required: true},
-				},
-				Returns: "boolean",
-			},
-			{
-				ID:          "filesystem.mkdir",
-				Name:        "Create Directory",
-				Description: "Create a new directory",
-				Parameters: []types.Parameter{
-					{Name: "path", Type: "string", Description: "Directory path", Required: true},
-				},
-				Returns: "boolean",
-			},
-			{
-				ID:          "filesystem.delete",
-				Name:        "Delete File",
-				Description: "Delete a file or empty directory",
-				Parameters: []types.Parameter{
-					{Name: "path", Type: "string", Description: "File or directory path", Required: true},
-				},
-				Returns: "boolean",
-			},
-			{
-				ID:          "filesystem.move",
-				Name:        "Move/Rename",
-				Description: "Move or rename a file or directory",
-				Parameters: []types.Parameter{
-					{Name: "source", Type: "string", Description: "Source path", Required: true},
-					{Name: "destination", Type: "string", Description: "Destination path", Required: true},
-				},
-				Returns: "boolean",
-			},
-			{
-				ID:          "filesystem.copy",
-				Name:        "Copy",
-				Description: "Copy a file or directory",
-				Parameters: []types.Parameter{
-					{Name: "source", Type: "string", Description: "Source path", Required: true},
-					{Name: "destination", Type: "string", Description: "Destination path", Required: true},
-				},
-				Returns: "boolean",
-			},
-			{
-				ID:          "filesystem.exists",
-				Name:        "Check Existence",
-				Description: "Check if a file or directory exists",
-				Parameters: []types.Parameter{
-					{Name: "path", Type: "string", Description: "File or directory path", Required: true},
-				},
-				Returns: "boolean",
-			},
-		},
+		Tools: tools,
 	}
 }
 
-// Execute runs a filesystem operation
+// Execute routes to appropriate module
 func (f *Filesystem) Execute(ctx context.Context, toolID string, params map[string]interface{}, appCtx *types.Context) (*types.Result, error) {
 	switch toolID {
-	case "filesystem.list":
-		return f.list(ctx, params, appCtx)
-	case "filesystem.stat":
-		return f.stat(ctx, params, appCtx)
+	// Basic operations
 	case "filesystem.read":
-		return f.read(ctx, params, appCtx)
+		return f.basic.Read(ctx, params, appCtx)
 	case "filesystem.write":
-		return f.write(ctx, params, appCtx)
+		return f.basic.Write(ctx, params, appCtx)
+	case "filesystem.append":
+		return f.basic.Append(ctx, params, appCtx)
 	case "filesystem.create":
-		return f.create(ctx, params, appCtx)
-	case "filesystem.mkdir":
-		return f.mkdir(ctx, params, appCtx)
+		return f.basic.Create(ctx, params, appCtx)
 	case "filesystem.delete":
-		return f.delete(ctx, params, appCtx)
-	case "filesystem.move":
-		return f.move(ctx, params, appCtx)
-	case "filesystem.copy":
-		return f.copyFile(ctx, params, appCtx)
+		return f.basic.Delete(ctx, params, appCtx)
 	case "filesystem.exists":
-		return f.exists(ctx, params, appCtx)
+		return f.basic.Exists(ctx, params, appCtx)
+	case "filesystem.read_lines":
+		return f.basic.ReadLines(ctx, params, appCtx)
+	case "filesystem.read_json":
+		return f.basic.ReadJSON(ctx, params, appCtx)
+	case "filesystem.write_json":
+		return f.basic.WriteJSON(ctx, params, appCtx)
+	case "filesystem.read_binary":
+		return f.basic.ReadBinary(ctx, params, appCtx)
+	case "filesystem.write_binary":
+		return f.basic.WriteBinary(ctx, params, appCtx)
+	case "filesystem.write_lines":
+		return f.basic.WriteLines(ctx, params, appCtx)
+
+	// Directory operations
+	case "filesystem.dir.list", "filesystem.list":
+		return f.directory.List(ctx, params, appCtx)
+	case "filesystem.dir.create", "filesystem.mkdir":
+		return f.directory.Create(ctx, params, appCtx)
+	case "filesystem.dir.delete":
+		return f.directory.Delete(ctx, params, appCtx)
+	case "filesystem.dir.exists":
+		return f.directory.Exists(ctx, params, appCtx)
+	case "filesystem.dir.walk":
+		return f.directory.Walk(ctx, params, appCtx)
+	case "filesystem.dir.tree":
+		return f.directory.Tree(ctx, params, appCtx)
+	case "filesystem.dir.flatten":
+		return f.directory.Flatten(ctx, params, appCtx)
+
+	// File operations
+	case "filesystem.copy":
+		return f.operations.Copy(ctx, params, appCtx)
+	case "filesystem.move":
+		return f.operations.Move(ctx, params, appCtx)
+	case "filesystem.rename":
+		return f.operations.Rename(ctx, params, appCtx)
+	case "filesystem.symlink":
+		return f.operations.Symlink(ctx, params, appCtx)
+	case "filesystem.readlink":
+		return f.operations.Readlink(ctx, params, appCtx)
+	case "filesystem.hardlink":
+		return f.operations.Hardlink(ctx, params, appCtx)
+
+	// Metadata operations
+	case "filesystem.stat":
+		return f.metadata.Stat(ctx, params, appCtx)
+	case "filesystem.size":
+		return f.metadata.Size(ctx, params, appCtx)
+	case "filesystem.size_human":
+		return f.metadata.SizeHuman(ctx, params, appCtx)
+	case "filesystem.total_size":
+		return f.metadata.TotalSize(ctx, params, appCtx)
+	case "filesystem.modified_time":
+		return f.metadata.ModifiedTime(ctx, params, appCtx)
+	case "filesystem.created_time":
+		return f.metadata.CreatedTime(ctx, params, appCtx)
+	case "filesystem.accessed_time":
+		return f.metadata.AccessedTime(ctx, params, appCtx)
+	case "filesystem.mime_type":
+		return f.metadata.MIMEType(ctx, params, appCtx)
+	case "filesystem.is_text":
+		return f.metadata.IsText(ctx, params, appCtx)
+	case "filesystem.is_binary":
+		return f.metadata.IsBinary(ctx, params, appCtx)
+
+	// Search operations
+	case "filesystem.find":
+		return f.search.Find(ctx, params, appCtx)
+	case "filesystem.glob":
+		return f.search.Glob(ctx, params, appCtx)
+	case "filesystem.filter_by_extension":
+		return f.search.FilterByExtension(ctx, params, appCtx)
+	case "filesystem.filter_by_size":
+		return f.search.FilterBySize(ctx, params, appCtx)
+	case "filesystem.search_content":
+		return f.search.SearchContent(ctx, params, appCtx)
+	case "filesystem.regex_search":
+		return f.search.RegexSearch(ctx, params, appCtx)
+	case "filesystem.filter_by_date":
+		return f.search.FilterByDate(ctx, params, appCtx)
+	case "filesystem.recent_files":
+		return f.search.RecentFiles(ctx, params, appCtx)
+
+	// Format operations
+	case "filesystem.yaml.read":
+		return f.formats.YAMLRead(ctx, params, appCtx)
+	case "filesystem.yaml.write":
+		return f.formats.YAMLWrite(ctx, params, appCtx)
+	case "filesystem.csv.read":
+		return f.formats.CSVRead(ctx, params, appCtx)
+	case "filesystem.csv.write":
+		return f.formats.CSVWrite(ctx, params, appCtx)
+	case "filesystem.json.merge":
+		return f.formats.JSONMerge(ctx, params, appCtx)
+	case "filesystem.toml.read":
+		return f.formats.TOMLRead(ctx, params, appCtx)
+	case "filesystem.toml.write":
+		return f.formats.TOMLWrite(ctx, params, appCtx)
+	case "filesystem.csv.to_json":
+		return f.formats.CSVToJSON(ctx, params, appCtx)
+
+	// Archive operations
+	case "filesystem.zip.create":
+		return f.archives.ZIPCreate(ctx, params, appCtx)
+	case "filesystem.zip.extract":
+		return f.archives.ZIPExtract(ctx, params, appCtx)
+	case "filesystem.zip.list":
+		return f.archives.ZIPList(ctx, params, appCtx)
+	case "filesystem.zip.add":
+		return f.archives.ZIPAdd(ctx, params, appCtx)
+	case "filesystem.tar.create":
+		return f.archives.TARCreate(ctx, params, appCtx)
+	case "filesystem.tar.extract":
+		return f.archives.TARExtract(ctx, params, appCtx)
+	case "filesystem.tar.list":
+		return f.archives.TARList(ctx, params, appCtx)
+	case "filesystem.extract_auto":
+		return f.archives.ExtractAuto(ctx, params, appCtx)
+
 	default:
 		return failure(fmt.Sprintf("unknown tool: %s", toolID))
 	}
-}
-
-func (f *Filesystem) list(ctx context.Context, params map[string]interface{}, appCtx *types.Context) (*types.Result, error) {
-	path, ok := params["path"].(string)
-	if !ok || path == "" {
-		return failure("path parameter required")
-	}
-
-	if f.kernel == nil {
-		return failure("kernel not available")
-	}
-
-	// Use app's sandbox PID if available, otherwise use storage PID
-	pid := f.storagePID
-	if appCtx != nil && appCtx.SandboxPID != nil {
-		pid = *appCtx.SandboxPID
-	}
-
-	data, err := f.kernel.ExecuteSyscall(ctx, pid, "list_directory", map[string]interface{}{
-		"path": path,
-	})
-	if err != nil {
-		return failure(fmt.Sprintf("list failed: %v", err))
-	}
-
-	// Parse file list
-	var files []string
-	if err := json.Unmarshal(data, &files); err != nil {
-		return failure(fmt.Sprintf("failed to parse result: %v", err))
-	}
-
-	return success(map[string]interface{}{
-		"path":  path,
-		"files": files,
-		"count": len(files),
-	})
-}
-
-func (f *Filesystem) stat(ctx context.Context, params map[string]interface{}, appCtx *types.Context) (*types.Result, error) {
-	path, ok := params["path"].(string)
-	if !ok || path == "" {
-		return failure("path parameter required")
-	}
-
-	if f.kernel == nil {
-		return failure("kernel not available")
-	}
-
-	pid := f.storagePID
-	if appCtx != nil && appCtx.SandboxPID != nil {
-		pid = *appCtx.SandboxPID
-	}
-
-	data, err := f.kernel.ExecuteSyscall(ctx, pid, "file_stat", map[string]interface{}{
-		"path": path,
-	})
-	if err != nil {
-		return failure(fmt.Sprintf("stat failed: %v", err))
-	}
-
-	// Parse file info
-	var info FileInfo
-	if err := json.Unmarshal(data, &info); err != nil {
-		return failure(fmt.Sprintf("failed to parse result: %v", err))
-	}
-
-	return success(map[string]interface{}{
-		"name":      info.Name,
-		"path":      info.Path,
-		"size":      info.Size,
-		"is_dir":    info.IsDir,
-		"mode":      info.Mode,
-		"modified":  info.Modified.Unix(),
-		"extension": info.Extension,
-	})
-}
-
-func (f *Filesystem) read(ctx context.Context, params map[string]interface{}, appCtx *types.Context) (*types.Result, error) {
-	path, ok := params["path"].(string)
-	if !ok || path == "" {
-		return failure("path parameter required")
-	}
-
-	if f.kernel == nil {
-		return failure("kernel not available")
-	}
-
-	pid := f.storagePID
-	if appCtx != nil && appCtx.SandboxPID != nil {
-		pid = *appCtx.SandboxPID
-	}
-
-	data, err := f.kernel.ExecuteSyscall(ctx, pid, "read_file", map[string]interface{}{
-		"path": path,
-	})
-	if err != nil {
-		return failure(fmt.Sprintf("read failed: %v", err))
-	}
-
-	return success(map[string]interface{}{
-		"path":    path,
-		"content": string(data),
-		"size":    len(data),
-	})
-}
-
-func (f *Filesystem) write(ctx context.Context, params map[string]interface{}, appCtx *types.Context) (*types.Result, error) {
-	path, ok := params["path"].(string)
-	if !ok || path == "" {
-		return failure("path parameter required")
-	}
-
-	data, ok := params["data"].(string)
-	if !ok {
-		return failure("data parameter required")
-	}
-
-	if f.kernel == nil {
-		return failure("kernel not available")
-	}
-
-	pid := f.storagePID
-	if appCtx != nil && appCtx.SandboxPID != nil {
-		pid = *appCtx.SandboxPID
-	}
-
-	_, err := f.kernel.ExecuteSyscall(ctx, pid, "write_file", map[string]interface{}{
-		"path": path,
-		"data": []byte(data),
-	})
-	if err != nil {
-		return failure(fmt.Sprintf("write failed: %v", err))
-	}
-
-	return success(map[string]interface{}{
-		"written": true,
-		"path":    path,
-		"size":    len(data),
-	})
-}
-
-func (f *Filesystem) create(ctx context.Context, params map[string]interface{}, appCtx *types.Context) (*types.Result, error) {
-	path, ok := params["path"].(string)
-	if !ok || path == "" {
-		return failure("path parameter required")
-	}
-
-	if f.kernel == nil {
-		return failure("kernel not available")
-	}
-
-	pid := f.storagePID
-	if appCtx != nil && appCtx.SandboxPID != nil {
-		pid = *appCtx.SandboxPID
-	}
-
-	_, err := f.kernel.ExecuteSyscall(ctx, pid, "create_file", map[string]interface{}{
-		"path": path,
-	})
-	if err != nil {
-		return failure(fmt.Sprintf("create failed: %v", err))
-	}
-
-	return success(map[string]interface{}{"created": true, "path": path})
-}
-
-func (f *Filesystem) mkdir(ctx context.Context, params map[string]interface{}, appCtx *types.Context) (*types.Result, error) {
-	path, ok := params["path"].(string)
-	if !ok || path == "" {
-		return failure("path parameter required")
-	}
-
-	if f.kernel == nil {
-		return failure("kernel not available")
-	}
-
-	pid := f.storagePID
-	if appCtx != nil && appCtx.SandboxPID != nil {
-		pid = *appCtx.SandboxPID
-	}
-
-	_, err := f.kernel.ExecuteSyscall(ctx, pid, "create_directory", map[string]interface{}{
-		"path": path,
-	})
-	if err != nil {
-		return failure(fmt.Sprintf("mkdir failed: %v", err))
-	}
-
-	return success(map[string]interface{}{"created": true, "path": path})
-}
-
-func (f *Filesystem) delete(ctx context.Context, params map[string]interface{}, appCtx *types.Context) (*types.Result, error) {
-	path, ok := params["path"].(string)
-	if !ok || path == "" {
-		return failure("path parameter required")
-	}
-
-	if f.kernel == nil {
-		return failure("kernel not available")
-	}
-
-	pid := f.storagePID
-	if appCtx != nil && appCtx.SandboxPID != nil {
-		pid = *appCtx.SandboxPID
-	}
-
-	_, err := f.kernel.ExecuteSyscall(ctx, pid, "delete_file", map[string]interface{}{
-		"path": path,
-	})
-	if err != nil {
-		return failure(fmt.Sprintf("delete failed: %v", err))
-	}
-
-	return success(map[string]interface{}{"deleted": true, "path": path})
-}
-
-func (f *Filesystem) move(ctx context.Context, params map[string]interface{}, appCtx *types.Context) (*types.Result, error) {
-	source, ok := params["source"].(string)
-	if !ok || source == "" {
-		return failure("source parameter required")
-	}
-
-	destination, ok := params["destination"].(string)
-	if !ok || destination == "" {
-		return failure("destination parameter required")
-	}
-
-	if f.kernel == nil {
-		return failure("kernel not available")
-	}
-
-	pid := f.storagePID
-	if appCtx != nil && appCtx.SandboxPID != nil {
-		pid = *appCtx.SandboxPID
-	}
-
-	_, err := f.kernel.ExecuteSyscall(ctx, pid, "move_file", map[string]interface{}{
-		"source":      source,
-		"destination": destination,
-	})
-	if err != nil {
-		return failure(fmt.Sprintf("move failed: %v", err))
-	}
-
-	return success(map[string]interface{}{
-		"moved":       true,
-		"source":      source,
-		"destination": destination,
-	})
-}
-
-func (f *Filesystem) copyFile(ctx context.Context, params map[string]interface{}, appCtx *types.Context) (*types.Result, error) {
-	source, ok := params["source"].(string)
-	if !ok || source == "" {
-		return failure("source parameter required")
-	}
-
-	destination, ok := params["destination"].(string)
-	if !ok || destination == "" {
-		return failure("destination parameter required")
-	}
-
-	if f.kernel == nil {
-		return failure("kernel not available")
-	}
-
-	pid := f.storagePID
-	if appCtx != nil && appCtx.SandboxPID != nil {
-		pid = *appCtx.SandboxPID
-	}
-
-	_, err := f.kernel.ExecuteSyscall(ctx, pid, "copy_file", map[string]interface{}{
-		"source":      source,
-		"destination": destination,
-	})
-	if err != nil {
-		return failure(fmt.Sprintf("copy failed: %v", err))
-	}
-
-	return success(map[string]interface{}{
-		"copied":      true,
-		"source":      source,
-		"destination": destination,
-	})
-}
-
-func (f *Filesystem) exists(ctx context.Context, params map[string]interface{}, appCtx *types.Context) (*types.Result, error) {
-	path, ok := params["path"].(string)
-	if !ok || path == "" {
-		return failure("path parameter required")
-	}
-
-	if f.kernel == nil {
-		return failure("kernel not available")
-	}
-
-	pid := f.storagePID
-	if appCtx != nil && appCtx.SandboxPID != nil {
-		pid = *appCtx.SandboxPID
-	}
-
-	data, err := f.kernel.ExecuteSyscall(ctx, pid, "file_exists", map[string]interface{}{
-		"path": path,
-	})
-	if err != nil {
-		return success(map[string]interface{}{"exists": false, "path": path})
-	}
-
-	exists := len(data) > 0 && data[0] == 1
-
-	return success(map[string]interface{}{"exists": exists, "path": path})
 }

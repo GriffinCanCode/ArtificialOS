@@ -7,20 +7,21 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 40px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   background: transparent;
-  z-index: 900;
+  z-index: 1000;
   -webkit-app-region: drag;
-  transition: background 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
 }
 
 .title-bar.minimal:hover {
-  background: rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(10, 10, 15, 0.15);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 .title-bar-drag {
@@ -35,8 +36,11 @@
   gap: 8px;
   padding: 0 12px;
   -webkit-app-region: no-drag;
-  opacity: 0;
-  transition: opacity 0.2s ease;
+  opacity: 0.6;
+  transition: opacity 0.25s ease;
+  pointer-events: auto;
+  z-index: 1001;
+  position: relative;
 }
 
 .title-bar.minimal:hover .window-controls {
@@ -50,10 +54,12 @@
   border: none;
   cursor: pointer;
   position: relative;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  pointer-events: auto;
 }
 
 .control-btn span {
@@ -80,12 +86,14 @@
 }
 
 .control-btn:hover {
-  filter: brightness(1.1);
-  transform: scale(1.1);
+  filter: brightness(1.15);
+  transform: scale(1.15);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
 .control-btn:active {
-  transform: scale(0.95);
+  transform: scale(0.98);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 /* Floating Session Controls */

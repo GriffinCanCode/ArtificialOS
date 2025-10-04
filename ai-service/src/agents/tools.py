@@ -9,6 +9,7 @@ from .tool_categories import (
     register_browser_tools,
     register_app_tools,
     register_system_tools,
+    register_math_tools,
 )
 
 logger = get_logger(__name__)
@@ -46,6 +47,7 @@ class ToolRegistry:
         register_browser_tools(self, ToolDefinition)
         register_app_tools(self, ToolDefinition)
         register_system_tools(self, ToolDefinition)
+        register_math_tools(self, ToolDefinition)
         
         logger.info(f"Registered {len(self.tools)} tools across {len(self.get_categories())} categories")
         
@@ -78,7 +80,7 @@ class ToolRegistry:
         
         # Define category order (generic first, specialized later)
         categories = [
-            "ui", "app", "browser", "system", "storage", 
+            "ui", "app", "browser", "system", "math", "storage", 
             "network", "timer", "clipboard", "notification"
         ]
         

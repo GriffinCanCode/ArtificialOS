@@ -279,6 +279,16 @@
   color: rgba(255, 255, 255, 0.7);
 }
 
+.welcome-subtitle kbd {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
 @keyframes welcomeFadeOut {
   to {
     opacity: 0;

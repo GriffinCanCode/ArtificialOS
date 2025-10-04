@@ -9,6 +9,9 @@ const (
 	CategoryAI         Category = "ai"
 	CategoryAuth       Category = "auth"
 	CategorySystem     Category = "system"
+	CategoryHTTP       Category = "http"
+	CategoryScraper    Category = "scraper"
+	CategoryMath       Category = "math"
 )
 
 // Service represents a service definition

@@ -220,7 +220,6 @@ func registerProviders(registry *service.Registry, kernel *grpc.KernelClient) {
 	// Storage provider
 	storageProvider := providers.NewStorage(kernel, storagePID, storagePath)
 	if err := registry.Register(storageProvider); err != nil {
-		// Using fmt package for now; logger not available in this context
 		fmt.Printf("Warning: Failed to register storage provider: %v\n", err)
 	}
 
@@ -240,5 +239,23 @@ func registerProviders(registry *service.Registry, kernel *grpc.KernelClient) {
 	filesystemProvider := providers.NewFilesystem(kernel, storagePID, storagePath)
 	if err := registry.Register(filesystemProvider); err != nil {
 		fmt.Printf("Warning: Failed to register filesystem provider: %v\n", err)
+	}
+
+	// HTTP provider
+	httpProvider := providers.NewHTTP()
+	if err := registry.Register(httpProvider); err != nil {
+		fmt.Printf("Warning: Failed to register http provider: %v\n", err)
+	}
+
+	// Scraper provider
+	scraperProvider := providers.NewScraper()
+	if err := registry.Register(scraperProvider); err != nil {
+		fmt.Printf("Warning: Failed to register scraper provider: %v\n", err)
+	}
+
+	// Math provider
+	mathProvider := providers.NewMath()
+	if err := registry.Register(mathProvider); err != nil {
+		fmt.Printf("Warning: Failed to register math provider: %v\n", err)
 	}
 }

@@ -51,11 +51,26 @@ aiostream>=0.5.2  # Composable async stream utilities
 # ============================================================================
 ruamel.yaml>=0.18.0  # Fast YAML parser with better error messages
 python-dotenv>=1.0.0
+tomli>=2.0.0; python_version < '3.11'  # TOML parsing (built-in tomllib for 3.11+)
+tomli-w>=1.0.0  # TOML writing (no stdlib equivalent)
 
 # ============================================================================
 # Performance - Hashing
 # ============================================================================
 xxhash>=3.4.0  # Ultra-fast non-cryptographic hashing (3-5x faster than sha256)
+
+# ============================================================================
+# Mathematical Computation
+# ============================================================================
+mpmath>=1.3.0  # Arbitrary-precision floating-point arithmetic
+sympy>=1.12  # Symbolic mathematics (algebra, calculus)
+
+# ============================================================================
+# Browser & Web Tools
+# ============================================================================
+requests>=2.31.0  # HTTP requests with sessions, cookies, auth
+beautifulsoup4>=4.12.0  # HTML/XML parsing
+lxml>=5.1.0  # Fast XML/HTML parser
 
 # ============================================================================
 # Testing Infrastructure

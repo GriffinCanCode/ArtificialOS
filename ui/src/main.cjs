@@ -20,6 +20,10 @@ let mainWindow;
 
 function createWindow() {
   log.info('Creating main window');
+  const preloadPath = path.join(__dirname, 'preload.cjs');
+  log.info('Preload script path:', preloadPath);
+  log.info('Preload script exists:', require('fs').existsSync(preloadPath));
+  
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -29,9 +33,8 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.cjs')
+      preload: preloadPath
     },
-    titleBarStyle: 'hiddenInset',
     frame: false,
   });
 

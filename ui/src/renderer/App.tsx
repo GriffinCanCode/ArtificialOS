@@ -247,7 +247,7 @@ function AppContent() {
           <div className="welcome-content">
             <div className="welcome-icon">✨</div>
             <h1 className="welcome-title">Welcome to Griffin's AgentOS</h1>
-            <p className="welcome-subtitle">Press ⌘K or click below to create something</p>
+            <p className="welcome-subtitle">Press <kbd>⌘K</kbd> or click below to create something</p>
           </div>
         </div>
       )}
