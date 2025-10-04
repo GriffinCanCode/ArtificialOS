@@ -1,7 +1,13 @@
-.PHONY: build test run proto clean deps fmt lint lint-fix check coverage help
+.PHONY: build test test-unit test-integration test-race test-coverage test-watch run proto clean deps fmt lint lint-fix check coverage help
 
 # Default target
 .DEFAULT_GOAL := help
+
+# Testing Guide:
+# - Unit tests live with code: internal/<package>/<file>_test.go
+# - Integration tests in: tests/integration/
+# - Test helpers in: tests/helpers/testutil/
+# - See TESTING.md for comprehensive guide
 
 # Build the server
 build: ## Build the server binary
@@ -10,10 +16,30 @@ build: ## Build the server binary
 	go build -o bin/server ./cmd/server
 	@echo "Build complete: bin/server"
 
-# Run tests
-test: ## Run all tests
+# Run all tests
+test: ## Run all tests with race detection
 	@echo "Running tests..."
-	go test -v -race ./...
+	go test -v -race -timeout 30s ./...
+
+# Run unit tests only (fast)
+test-unit: ## Run unit tests (exclude integration tests)
+	@echo "Running unit tests..."
+	go test -v -short -race -timeout 10s ./internal/... ./cmd/...
+
+# Run integration tests
+test-integration: ## Run integration tests only
+	@echo "Running integration tests..."
+	go test -v -race -timeout 60s -tags=integration ./tests/integration/...
+
+# Run tests with race detector
+test-race: ## Run tests with race detector
+	@echo "Running tests with race detector..."
+	go test -race -timeout 30s ./...
+
+# Run tests in watch mode (requires entr)
+test-watch: ## Run tests in watch mode
+	@echo "Watching for changes..."
+	find . -name "*.go" | entr -c go test -v ./...
 
 # Run tests with coverage
 coverage: ## Run tests with coverage report
@@ -22,6 +48,10 @@ coverage: ## Run tests with coverage report
 	go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
 	go tool cover -html=coverage.txt -o coverage.html
 	@echo "Coverage report generated: coverage.html"
+	@go tool cover -func=coverage.txt | grep total | awk '{print "Total coverage: " $$3}'
+
+# Run tests with coverage (short)
+test-coverage: coverage ## Alias for coverage
 
 # Run the server
 run: ## Run the server locally (production mode)

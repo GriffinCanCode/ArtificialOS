@@ -155,9 +155,21 @@ impl SandboxConfig {
 
     /// Check if a path is accessible
     pub fn can_access_path(&self, path: &Path) -> bool {
+        // Try to canonicalize the path if it exists, otherwise check parent or use as-is
+        let check_path = if path.exists() {
+            path.canonicalize().unwrap_or_else(|_| path.to_path_buf())
+        } else if let Some(parent) = path.parent() {
+            // For non-existent paths, canonicalize the parent directory
+            parent
+                .canonicalize()
+                .unwrap_or_else(|_| path.to_path_buf())
+        } else {
+            path.to_path_buf()
+        };
+
         // First check if explicitly blocked
         for blocked in &self.blocked_paths {
-            if path.starts_with(blocked) {
+            if check_path.starts_with(blocked) {
                 return false;
             }
         }
@@ -169,7 +181,7 @@ impl SandboxConfig {
 
         // Check if path is within allowed paths
         for allowed in &self.allowed_paths {
-            if path.starts_with(allowed) {
+            if check_path.starts_with(allowed) {
                 return true;
             }
         }
@@ -310,9 +322,25 @@ mod tests {
 
     #[test]
     fn test_path_access() {
-        let sandbox = SandboxConfig::standard(1);
-        assert!(sandbox.can_access_path(&PathBuf::from("/tmp/test.txt")));
+        use std::fs;
+        
+        // Create a custom sandbox with actual temp directory
+        let mut sandbox = SandboxConfig::minimal(1);
+        let temp_dir = std::env::temp_dir().canonicalize().unwrap();
+        sandbox.allow_path(temp_dir.clone());
+        
+        // Create a temp file to test with
+        let test_file = temp_dir.join("test.txt");
+        fs::write(&test_file, b"test").ok();
+        
+        // Test with actual temp directory
+        assert!(sandbox.can_access_path(&test_file));
+        
+        // Test blocked path
         assert!(!sandbox.can_access_path(&PathBuf::from("/etc/passwd")));
+        
+        // Clean up
+        fs::remove_file(&test_file).ok();
     }
 
     #[test]

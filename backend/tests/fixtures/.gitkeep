@@ -1,0 +1,21 @@
+# Test Fixtures
+
+Place test data files here:
+- JSON fixtures for UI specs
+- YAML config files
+- Blueprint examples
+- Sample data files
+
+Example structure:
+```
+fixtures/
+├── apps/
+│   ├── sample-app.json
+│   └── complex-app.json
+├── configs/
+│   ├── dev.yaml
+│   └── prod.yaml
+└── blueprints/
+    └── example.bp
+```
+

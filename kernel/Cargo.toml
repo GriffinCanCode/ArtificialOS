@@ -44,6 +44,18 @@ tonic-build = "0.11"
 
 [dev-dependencies]
 tokio-test = "0.4"
+# Better assertions with colored diffs
+pretty_assertions = "1.4"
+# Property-based testing
+proptest = "1.4"
+# Mocking framework
+mockall = "0.12"
+# Temporary file/directory creation for tests
+tempfile = "3.8"
+# Serial test execution for tests that can't run in parallel
+serial_test = "3.0"
+# Async test utilities
+futures = "0.3"
 
 [profile.release]
 opt-level = 3

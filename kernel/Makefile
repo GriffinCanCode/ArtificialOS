@@ -43,6 +43,41 @@ test-verbose:
 	@echo "$(BLUE)Running tests (verbose)...$(NC)"
 	cargo test --all-features -- --nocapture --test-threads=1
 
+## test-unit: Run only unit tests
+test-unit:
+	@echo "$(BLUE)Running unit tests...$(NC)"
+	cargo test --test memory_test --test process_test --test syscall_test --test ipc_test --all-features
+
+## test-integration: Run only integration tests
+test-integration:
+	@echo "$(BLUE)Running integration tests...$(NC)"
+	cargo test --test integration_tests --all-features
+
+## test-memory: Run memory tests
+test-memory:
+	@echo "$(BLUE)Running memory tests...$(NC)"
+	cargo test --test memory_test --all-features -- --nocapture
+
+## test-process: Run process tests
+test-process:
+	@echo "$(BLUE)Running process tests...$(NC)"
+	cargo test --test process_test --all-features -- --nocapture
+
+## test-syscall: Run syscall tests
+test-syscall:
+	@echo "$(BLUE)Running syscall tests...$(NC)"
+	cargo test --test syscall_test --all-features -- --nocapture
+
+## test-ipc: Run IPC tests
+test-ipc:
+	@echo "$(BLUE)Running IPC tests...$(NC)"
+	cargo test --test ipc_test --all-features -- --nocapture
+
+## test-quick: Run tests with minimal output
+test-quick:
+	@echo "$(BLUE)Running quick tests...$(NC)"
+	cargo test --all-features --quiet
+
 ## check: Quick compile check without producing binaries
 check:
 	@echo "$(BLUE)Checking code...$(NC)"

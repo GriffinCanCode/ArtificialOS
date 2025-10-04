@@ -6,6 +6,8 @@
 # Cargo.lock (uncomment if building a library)
 # Cargo.lock
 
+.cargo/
+
 # Generated files
 *.o
 *.so

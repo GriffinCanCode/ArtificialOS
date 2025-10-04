@@ -13,6 +13,11 @@ bin/
 *.out
 coverage.txt
 coverage.html
+coverage/
+
+# Test artifacts
+*_test.coverprofile
+.testCoverage.txt
 
 # Dependency directories
 vendor/
