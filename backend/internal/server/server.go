@@ -73,6 +73,16 @@ func NewServer(cfg Config) (*Server, error) {
 	}
 	appRegistry := registry.NewManager(kernelClient, storagePID, "/tmp/ai-os-storage/system")
 
+	// Seed prebuilt apps
+	log.Println("🌱 Loading prebuilt apps...")
+	seeder := registry.NewSeeder(appRegistry, "../apps")
+	if err := seeder.SeedApps(); err != nil {
+		log.Printf("Warning: Failed to seed prebuilt apps: %v", err)
+	}
+	if err := seeder.SeedDefaultApps(); err != nil {
+		log.Printf("Warning: Failed to seed default apps: %v", err)
+	}
+
 	// Initialize session manager
 	sessionManager := session.NewManager(appManager, kernelClient, storagePID, "/tmp/ai-os-storage/system")
 
@@ -179,6 +189,14 @@ func registerProviders(registry *service.Registry, kernel *grpc.KernelClient) {
 		log.Printf("Warning: Failed to register system provider: %v", err)
 	} else {
 		log.Println("  ✓ System service")
+	}
+
+	// Filesystem provider
+	filesystemProvider := providers.NewFilesystem(kernel, storagePID, storagePath)
+	if err := registry.Register(filesystemProvider); err != nil {
+		log.Printf("Warning: Failed to register filesystem provider: %v", err)
+	} else {
+		log.Println("  ✓ Filesystem service")
 	}
 
 	stats := registry.Stats()

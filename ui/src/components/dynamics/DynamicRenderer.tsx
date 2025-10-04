@@ -826,11 +826,109 @@ const DynamicRenderer: React.FC = () => {
     // Removed lastComponentCount - it's only used inside the effect, doesn't need to be a dependency
   ]);
 
-  // Cleanup: Execute on_unmount hooks when component unmounts or UI changes
+  // Track which app has had on_mount executed to prevent re-execution
+  const mountedAppIdRef = React.useRef<string | null>(null);
+  const appId = useAppStore((state) => state.appId);
+
+  // Execute on_mount hooks when app changes - but only once per app
+  useEffect(() => {
+    if (uiSpec?.lifecycle_hooks?.on_mount && appId && appId !== mountedAppIdRef.current) {
+      logger.info("Executing on_mount lifecycle hooks", {
+        component: "DynamicRenderer",
+        hookCount: uiSpec.lifecycle_hooks.on_mount.length,
+        appId: appId,
+      });
+      
+      mountedAppIdRef.current = appId;
+      
+      uiSpec.lifecycle_hooks.on_mount.forEach(async (toolId: string) => {
+        try {
+          await toolExecutor.execute(toolId, {});
+        } catch (error) {
+          logger.error(`Failed to execute on_mount hook: ${toolId}`, error as Error, {
+            component: "DynamicRenderer",
+            toolId,
+          });
+        }
+      });
+    }
+  }, [appId, uiSpec?.lifecycle_hooks, toolExecutor]); // Only depend on appId, not full uiSpec
+
+  // Listen for UI spec updates from tools (e.g., hub grid population)
+  const gridUpdateProcessedRef = React.useRef<string | null>(null);
+  
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      const currentAppId = useAppStore.getState().appId;
+      
+      if (event.data.type === "update_hub_grids" && uiSpec && gridUpdateProcessedRef.current !== currentAppId) {
+        gridUpdateProcessedRef.current = currentAppId;
+        
+        logger.info("Updating hub grids with app data", {
+          component: "DynamicRenderer",
+          gridCount: Object.keys(event.data.grids).length,
+          appId: currentAppId,
+        });
+
+        // Shallow clone for better performance
+        const updatedSpec = {
+          ...uiSpec,
+          components: uiSpec.components.slice(),
+        };
+
+        // Find and update each grid component recursively
+        const updateComponentChildren = (components: any[], depth = 0): any[] => {
+          if (depth > 5) return components; // Prevent deep recursion
+          
+          return components.map((component) => {
+            if (event.data.grids[component.id]) {
+              // Update this grid's children
+              logger.debug("Updating grid", {
+                component: "DynamicRenderer",
+                gridId: component.id,
+                childCount: event.data.grids[component.id].length,
+              });
+              return {
+                ...component,
+                children: event.data.grids[component.id],
+              };
+            }
+            // Check children recursively
+            if (component.children && depth < 3) {
+              return {
+                ...component,
+                children: updateComponentChildren(component.children, depth + 1),
+              };
+            }
+            return component;
+          });
+        };
+
+        updatedSpec.components = updateComponentChildren(updatedSpec.components);
+        
+        // Use requestAnimationFrame to batch the update
+        requestAnimationFrame(() => {
+          setUISpec(updatedSpec, currentAppId || "");
+        });
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => {
+      window.removeEventListener("message", handleMessage);
+    };
+  }, [uiSpec, setUISpec]);
+
+  // Cleanup: Execute on_unmount hooks when app changes or component unmounts
   useEffect(() => {
     return () => {
       // Clean up timers first
       toolExecutor.cleanup();
+
+      // Reset mounted app ID when this app unmounts
+      if (mountedAppIdRef.current === appId) {
+        mountedAppIdRef.current = null;
+      }
 
       // Then execute lifecycle hooks
       if (uiSpec?.lifecycle_hooks?.on_unmount) {
@@ -850,7 +948,7 @@ const DynamicRenderer: React.FC = () => {
         });
       }
     };
-  }, [uiSpec, toolExecutor]);
+  }, [appId, toolExecutor]); // Only depend on appId, not uiSpec
 
   // GSAP Animation refs and hooks
   const desktopIconRef = useFloat<HTMLDivElement>(true, { distance: 15, duration: 4.5 });

@@ -32,6 +32,10 @@ message SyscallRequest {
     DeleteFileCall delete_file = 13;
     ListDirectoryCall list_directory = 14;
     FileExistsCall file_exists = 15;
+    FileStatCall file_stat = 16;
+    MoveFileCall move_file = 17;
+    CopyFileCall copy_file = 18;
+    CreateDirectoryCall create_directory = 19;
     SpawnProcessCall spawn_process = 20;
     KillProcessCall kill_process = 21;
     GetSystemInfoCall get_system_info = 30;
@@ -87,6 +91,24 @@ message ListDirectoryCall {
 }
 
 message FileExistsCall {
+  string path = 1;
+}
+
+message FileStatCall {
+  string path = 1;
+}
+
+message MoveFileCall {
+  string source = 1;
+  string destination = 2;
+}
+
+message CopyFileCall {
+  string source = 1;
+  string destination = 2;
+}
+
+message CreateDirectoryCall {
   string path = 1;
 }
 

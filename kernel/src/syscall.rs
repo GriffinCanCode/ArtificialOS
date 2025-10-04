@@ -9,6 +9,9 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::fs;
 
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
+
 use crate::sandbox::{Capability, SandboxManager};
 
 /// System call result
@@ -47,6 +50,10 @@ pub enum Syscall {
     DeleteFile { path: PathBuf },
     ListDirectory { path: PathBuf },
     FileExists { path: PathBuf },
+    FileStat { path: PathBuf },
+    MoveFile { source: PathBuf, destination: PathBuf },
+    CopyFile { source: PathBuf, destination: PathBuf },
+    CreateDirectory { path: PathBuf },
     
     // Process operations
     SpawnProcess { command: String, args: Vec<String> },
@@ -85,6 +92,10 @@ impl SyscallExecutor {
             Syscall::DeleteFile { ref path } => self.delete_file(pid, path),
             Syscall::ListDirectory { ref path } => self.list_directory(pid, path),
             Syscall::FileExists { ref path } => self.file_exists(pid, path),
+            Syscall::FileStat { ref path } => self.file_stat(pid, path),
+            Syscall::MoveFile { ref source, ref destination } => self.move_file(pid, source, destination),
+            Syscall::CopyFile { ref source, ref destination } => self.copy_file(pid, source, destination),
+            Syscall::CreateDirectory { ref path } => self.create_directory(pid, path),
             
             // Process operations
             Syscall::SpawnProcess { ref command, ref args } => {
@@ -234,6 +245,122 @@ impl SyscallExecutor {
         info!("PID {} checked file exists: {:?} = {}", pid, path, exists);
         let data = vec![if exists { 1 } else { 0 }];
         SyscallResult::success_with_data(data)
+    }
+
+    fn file_stat(&self, pid: u32, path: &PathBuf) -> SyscallResult {
+        if !self.sandbox_manager.check_permission(pid, &Capability::ReadFile) {
+            return SyscallResult::permission_denied("Missing ReadFile capability");
+        }
+
+        if !self.sandbox_manager.check_path_access(pid, path) {
+            return SyscallResult::permission_denied(format!("Path not accessible: {:?}", path));
+        }
+
+        match fs::metadata(path) {
+            Ok(metadata) => {
+                #[cfg(unix)]
+                let mode = format!("{:o}", metadata.permissions().mode());
+                #[cfg(not(unix))]
+                let mode = String::from("0644");
+
+                let file_info = serde_json::json!({
+                    "name": path.file_name().and_then(|n| n.to_str()).unwrap_or(""),
+                    "path": path.to_str().unwrap_or(""),
+                    "size": metadata.len(),
+                    "is_dir": metadata.is_dir(),
+                    "mode": mode,
+                    "modified": metadata.modified()
+                        .ok()
+                        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                        .map(|d| d.as_secs())
+                        .unwrap_or(0),
+                    "extension": path.extension().and_then(|e| e.to_str()).unwrap_or(""),
+                });
+                
+                info!("PID {} stat file: {:?}", pid, path);
+                let json = serde_json::to_vec(&file_info).unwrap();
+                SyscallResult::success_with_data(json)
+            }
+            Err(e) => {
+                error!("Failed to stat file {:?}: {}", path, e);
+                SyscallResult::error(format!("Stat failed: {}", e))
+            }
+        }
+    }
+
+    fn move_file(&self, pid: u32, source: &PathBuf, destination: &PathBuf) -> SyscallResult {
+        if !self.sandbox_manager.check_permission(pid, &Capability::WriteFile) {
+            return SyscallResult::permission_denied("Missing WriteFile capability");
+        }
+
+        if !self.sandbox_manager.check_path_access(pid, source) {
+            return SyscallResult::permission_denied(format!("Source path not accessible: {:?}", source));
+        }
+
+        if !self.sandbox_manager.check_path_access(pid, destination) {
+            return SyscallResult::permission_denied(format!("Destination path not accessible: {:?}", destination));
+        }
+
+        match fs::rename(source, destination) {
+            Ok(_) => {
+                info!("PID {} moved file: {:?} -> {:?}", pid, source, destination);
+                SyscallResult::success()
+            }
+            Err(e) => {
+                error!("Failed to move file {:?} -> {:?}: {}", source, destination, e);
+                SyscallResult::error(format!("Move failed: {}", e))
+            }
+        }
+    }
+
+    fn copy_file(&self, pid: u32, source: &PathBuf, destination: &PathBuf) -> SyscallResult {
+        if !self.sandbox_manager.check_permission(pid, &Capability::ReadFile) {
+            return SyscallResult::permission_denied("Missing ReadFile capability");
+        }
+        
+        if !self.sandbox_manager.check_permission(pid, &Capability::WriteFile) {
+            return SyscallResult::permission_denied("Missing WriteFile capability");
+        }
+
+        if !self.sandbox_manager.check_path_access(pid, source) {
+            return SyscallResult::permission_denied(format!("Source path not accessible: {:?}", source));
+        }
+
+        if !self.sandbox_manager.check_path_access(pid, destination) {
+            return SyscallResult::permission_denied(format!("Destination path not accessible: {:?}", destination));
+        }
+
+        match fs::copy(source, destination) {
+            Ok(bytes) => {
+                info!("PID {} copied file: {:?} -> {:?} ({} bytes)", pid, source, destination, bytes);
+                SyscallResult::success()
+            }
+            Err(e) => {
+                error!("Failed to copy file {:?} -> {:?}: {}", source, destination, e);
+                SyscallResult::error(format!("Copy failed: {}", e))
+            }
+        }
+    }
+
+    fn create_directory(&self, pid: u32, path: &PathBuf) -> SyscallResult {
+        if !self.sandbox_manager.check_permission(pid, &Capability::CreateFile) {
+            return SyscallResult::permission_denied("Missing CreateFile capability");
+        }
+
+        if !self.sandbox_manager.check_path_access(pid, path) {
+            return SyscallResult::permission_denied(format!("Path not accessible: {:?}", path));
+        }
+
+        match fs::create_dir_all(path) {
+            Ok(_) => {
+                info!("PID {} created directory: {:?}", pid, path);
+                SyscallResult::success()
+            }
+            Err(e) => {
+                error!("Failed to create directory {:?}: {}", path, e);
+                SyscallResult::error(format!("Mkdir failed: {}", e))
+            }
+        }
     }
 
     // ========================================================================

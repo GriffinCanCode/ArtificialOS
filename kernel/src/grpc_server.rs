@@ -87,6 +87,28 @@ impl KernelService for KernelServiceImpl {
                     path: PathBuf::from(call.path),
                 }
             }
+            Some(syscall_request::Syscall::FileStat(call)) => {
+                Syscall::FileStat {
+                    path: PathBuf::from(call.path),
+                }
+            }
+            Some(syscall_request::Syscall::MoveFile(call)) => {
+                Syscall::MoveFile {
+                    source: PathBuf::from(call.source),
+                    destination: PathBuf::from(call.destination),
+                }
+            }
+            Some(syscall_request::Syscall::CopyFile(call)) => {
+                Syscall::CopyFile {
+                    source: PathBuf::from(call.source),
+                    destination: PathBuf::from(call.destination),
+                }
+            }
+            Some(syscall_request::Syscall::CreateDirectory(call)) => {
+                Syscall::CreateDirectory {
+                    path: PathBuf::from(call.path),
+                }
+            }
             Some(syscall_request::Syscall::SpawnProcess(call)) => {
                 Syscall::SpawnProcess {
                     command: call.command,

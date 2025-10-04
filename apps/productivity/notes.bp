@@ -1,0 +1,60 @@
+---
+# Notes - Quick note-taking with markdown support
+app:
+  id: notes
+  name: Notes
+  icon: 📝
+  category: productivity
+  version: 1.0.0
+  author: system
+  tags: [notes, markdown, productivity]
+  permissions: [STANDARD]
+
+services:
+  - storage: [get, set, list]  # Only need basic storage operations
+
+ui:
+  title: Notes
+  layout: horizontal
+  
+  lifecycle:
+    on_mount: storage.get
+  
+  components:
+    # Sidebar with notes list
+    - sidebar:
+        layout: vertical
+        gap: 8
+        padding: medium
+        style: { width: 200px, borderRight: 1px solid rgba(255,255,255,0.1) }
+        
+        children:
+          - button#new-note:
+              text: "+ New Note"
+              variant: primary
+              fullWidth: true
+              "@click": ui.set
+          
+          - list#notes-list:
+              variant: default
+    
+    # Editor panel
+    - editor:
+        layout: vertical
+        gap: 12
+        padding: large
+        style: { flex: 1 }
+        
+        children:
+          - input#note-title:
+              placeholder: "Note title..."
+              type: text
+              style: { fontSize: 24px, fontWeight: bold }
+              "@change": storage.set
+          
+          - textarea#note-content:
+              placeholder: "Start typing..."
+              rows: 20
+              resize: vertical
+              "@change": storage.set
+

@@ -1,0 +1,77 @@
+# Clippy Configuration
+# https://doc.rust-lang.org/clippy/configuration.html
+
+# Cognitive complexity threshold
+cognitive-complexity-threshold = 30
+
+# Type complexity threshold
+type-complexity-threshold = 250
+
+# Maximum line length for single-line items
+single-char-binding-names-threshold = 4
+
+# Maximum number of lines for a function
+too-many-lines-threshold = 100
+
+# Maximum number of arguments for a function
+too-many-arguments-threshold = 7
+
+# Avoid linting in generated code
+avoid-breaking-exported-api = true
+
+# Disallowed methods (add methods you want to disallow)
+disallowed-methods = []
+
+# Disallowed types (add types you want to disallow)
+disallowed-types = []
+
+# Standard crate documentation URL
+doc-valid-idents = [
+    "gRPC",
+    "IPC",
+    "AI",
+    "OS",
+    "Tokio",
+    "JSON",
+]
+
+# Maximum cyclomatic complexity
+cyclomatic-complexity-threshold = 25
+
+# Allow unnecessary wraps for exported functions
+allow-unwrap-in-tests = true
+
+# Maximum size of enums before triggering large_enum_variant
+enum-variant-size-threshold = 200
+
+# Maximum size difference between variants before triggering large_enum_variant
+enum-variant-name-threshold = 3
+
+# Enforce documentation
+missing-docs-in-crate-items = false
+
+# Allow dbg! in tests
+allow-dbg-in-tests = true
+
+# Allow print macros in tests
+allow-print-in-tests = true
+
+# Allow expect/unwrap in tests
+allow-expect-in-tests = true
+allow-unwrap-in-tests = true
+
+# Suppress certain pedantic warnings
+suppress-restriction-lint-in-const = true
+
+# Array size threshold
+array-size-threshold = 512000
+
+# Trivially copy pass by value size limit
+trivial-copy-size-limit = 128
+
+# Maximum struct field count before being considered too large
+struct-field-names-threshold = 10
+
+# Minimum word length for doc text
+min-ident-chars-threshold = 1
+

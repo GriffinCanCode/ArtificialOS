@@ -9,6 +9,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import ThoughtStream from "../components/chat/ThoughtStream";
 import DynamicRenderer from "../components/dynamics/DynamicRenderer";
 import TitleBar from "../components/layout/TitleBar";
+import { Desktop } from "../components/layout/Desktop";
 import { WebSocketProvider, useWebSocket } from "../contexts/WebSocketContext";
 import { useAppActions } from "../store/appStore";
 import { useSessionManager } from "../hooks/useSessionManager";
@@ -35,7 +36,7 @@ function App() {
 function AppContent() {
   const log = useLogger("AppContent");
   const { client, generateUI } = useWebSocket();
-  const { addMessage, addThought, appendToLastMessage } = useAppActions();
+  const { addMessage, addThought, appendToLastMessage, setUISpec } = useAppActions();
 
   // Initialize session manager with auto-save every 30s
   // Memoize options to prevent hooks order issues during HMR
@@ -108,6 +109,8 @@ function AppContent() {
 
   const [showThoughts, setShowThoughts] = React.useState(false);
   const [inputFocused, setInputFocused] = React.useState(false);
+  const [showWelcome, setShowWelcome] = React.useState(true);
+  const [showCreator, setShowCreator] = React.useState(false);
 
   // React Hook Form for spotlight input
   const {
@@ -152,17 +155,28 @@ function AppContent() {
   const hintRef = useFadeIn<HTMLDivElement>({ duration: 0.3 });
   const sessionStatusRef = useSlideInUp<HTMLDivElement>({ duration: 0.3 });
 
-  // Global keyboard shortcut: Cmd/Ctrl + K to focus input
+  // Welcome screen animation - hide after 2 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowWelcome(false);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Global keyboard shortcut: Cmd/Ctrl + K to toggle creator
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
-        setInputFocused(true);
-        // Focus the input field
-        setTimeout(() => inputRef.current?.focus(), 50);
+        setShowCreator(!showCreator);
+        if (!showCreator) {
+          setInputFocused(true);
+          setTimeout(() => inputRef.current?.focus(), 50);
+        }
       }
-      // Escape to blur input
-      if (e.key === "Escape" && inputFocused) {
+      // Escape to close creator
+      if (e.key === "Escape" && showCreator) {
+        setShowCreator(false);
         setInputFocused(false);
         inputRef.current?.blur();
       }
@@ -170,7 +184,7 @@ function AppContent() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [inputFocused]);
+  }, [showCreator, inputFocused]);
 
   const onSubmitSpotlight = useCallback(
     (data: SpotlightFormData) => {
@@ -179,10 +193,29 @@ function AppContent() {
         // Send to AI for UI generation using the context method
         generateUI(message, {});
         reset(); // Clear form after submission
+        setShowCreator(false); // Hide creator after submission
       }
     },
     [generateUI, reset]
   );
+
+  const handleLaunchApp = useCallback(async (appId: string) => {
+    try {
+      const response = await fetch(`http://localhost:8000/registry/apps/${appId}/launch`, {
+        method: "POST",
+      });
+      const data = await response.json();
+      if (data.error) {
+        log.error("Failed to launch app", undefined, { appId, error: data.error });
+      } else if (data.ui_spec) {
+        // Successfully launched - display the app
+        log.info("App launched successfully", { appId, appInstanceId: data.app_id });
+        setUISpec(data.ui_spec, data.app_id);
+      }
+    } catch (error) {
+      log.error("Failed to launch app", error as Error, { appId });
+    }
+  }, [log, setUISpec]);
 
   const formatTimeSinceMemo = useCallback((date: Date): string => {
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -198,40 +231,70 @@ function AppContent() {
       {/* Minimal Title Bar - just window controls */}
       <TitleBar sessionManager={sessionManager} />
 
-      {/* Full-screen App Canvas */}
+      {/* Welcome Screen with Animation */}
+      {showWelcome && (
+        <div className={`welcome-screen ${!showWelcome ? "exiting" : ""}`}>
+          <div className="welcome-content">
+            <div className="welcome-icon">✨</div>
+            <h1 className="welcome-title">Welcome to Griffin's AgentOS</h1>
+            <p className="welcome-subtitle">Press ⌘K or click below to create something</p>
+          </div>
+        </div>
+      )}
+
+      {/* Desktop (always rendered, revealed when welcome fades) */}
+      <div className={`desktop-container ${showWelcome ? "hidden" : "visible"}`}>
+        <Desktop
+          onLaunchApp={handleLaunchApp}
+          onOpenHub={() => handleLaunchApp("hub")}
+          onOpenCreator={() => setShowCreator(true)}
+        />
+      </div>
+
+      {/* Full-screen App Canvas (for running apps) */}
       <div className="os-canvas">
         <DynamicRenderer />
       </div>
 
-      {/* Floating Spotlight-style Input Bar */}
-      <div
-        ref={spotlightContainerRef}
-        className={`spotlight-input-container ${inputFocused ? "focused" : ""}`}
-      >
-        <form className="spotlight-input-wrapper" onSubmit={handleFormSubmit(onSubmitSpotlight)}>
-          <div className="spotlight-icon">
-            <Sparkles size={20} />
+      {/* Creator Overlay (⌘K) */}
+      {showCreator && (
+        <div className="creator-overlay">
+          <div className="creator-backdrop" onClick={() => setShowCreator(false)} />
+          <div className="creator-content">
+            <div className="welcome-icon">✨</div>
+            <h1 className="welcome-title">What would you like to create?</h1>
+            <div
+              ref={spotlightContainerRef}
+              className={`spotlight-input-container creator ${inputFocused ? "focused" : ""}`}
+            >
+              <form className="spotlight-input-wrapper" onSubmit={handleFormSubmit(onSubmitSpotlight)}>
+                <div className="spotlight-icon">
+                  <Sparkles size={20} />
+                </div>
+                <input
+                  type="text"
+                  className="spotlight-input"
+                  placeholder="Ask AI to create something..."
+                  onFocus={() => setInputFocused(true)}
+                  ref={setInputRef}
+                  {...inputRegisterProps}
+                  autoFocus
+                />
+                {inputValue && (
+                  <button type="submit" className="spotlight-send" aria-label="Send message">
+                    →
+                  </button>
+                )}
+              </form>
+              {inputFocused && (
+                <div ref={hintRef} className="spotlight-hint">
+                  Press Enter to generate • Esc to close
+                </div>
+              )}
+            </div>
           </div>
-          <input
-            type="text"
-            className="spotlight-input"
-            placeholder="Ask AI to create something... (⌘K)"
-            onFocus={() => setInputFocused(true)}
-            ref={setInputRef}
-            {...inputRegisterProps}
-          />
-          {inputValue && (
-            <button type="submit" className="spotlight-send" aria-label="Send message">
-              →
-            </button>
-          )}
-        </form>
-        {inputFocused && (
-          <div ref={hintRef} className="spotlight-hint">
-            Press Enter to generate • Esc to close
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Thought Stream - Slide-out Notification Panel */}
       <ThoughtStream isVisible={showThoughts} onToggle={() => setShowThoughts(!showThoughts)} />

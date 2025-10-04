@@ -1,0 +1,73 @@
+# Git attributes for Rust Kernel
+# https://git-scm.com/docs/gitattributes
+
+# Auto detect text files and normalize line endings to LF
+* text=auto eol=lf
+
+# Rust source files
+*.rs text diff=rust
+
+# Cargo files
+Cargo.toml text diff=toml
+Cargo.lock text diff=toml
+
+# TOML files
+*.toml text diff=toml
+
+# Protocol Buffers
+*.proto text
+
+# Generated Rust files (mark as generated for GitHub linguist)
+*.pb.rs linguist-generated=true
+
+# Scripts
+*.sh text eol=lf
+
+# Config files
+*.yml text
+*.yaml text
+*.json text
+.editorconfig text
+.gitignore text
+.gitattributes text
+rustfmt.toml text
+clippy.toml text
+
+# Documentation
+*.md text diff=markdown
+LICENSE text
+README text
+
+# Build scripts
+build.rs text diff=rust
+
+# Binary files
+*.exe binary
+*.so binary
+*.dylib binary
+*.dll binary
+*.a binary
+*.lib binary
+*.pdb binary
+
+# Archives
+*.tar binary
+*.gz binary
+*.zip binary
+*.tgz binary
+
+# Images
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg text
+
+# Lock files
+*.lock binary -diff
+
+# Test fixtures (if any)
+testdata/** -text -diff
+fixtures/** -text -diff
+

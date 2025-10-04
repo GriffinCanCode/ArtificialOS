@@ -1,25 +1,41 @@
 #!/bin/bash
-# Initialize storage directories for AI-OS
-# Required for kernel syscalls to persist data
+
+# Initialize AI-OS storage structure
+# Run from project root
 
 STORAGE_ROOT="/tmp/ai-os-storage"
 
-echo "🗄️  Initializing AI-OS storage directories..."
+echo "🗂️  Initializing AI-OS storage structure..."
 
-# Create directory structure
-mkdir -p "${STORAGE_ROOT}/system/storage"
-mkdir -p "${STORAGE_ROOT}/system/apps"
-mkdir -p "${STORAGE_ROOT}/system/users"
-mkdir -p "${STORAGE_ROOT}/system/sessions"
+# Create system directories
+mkdir -p "$STORAGE_ROOT/system/apps"
+mkdir -p "$STORAGE_ROOT/system/sessions"
+mkdir -p "$STORAGE_ROOT/system/users"
+mkdir -p "$STORAGE_ROOT/system/config"
+mkdir -p "$STORAGE_ROOT/system/logs"
 
-# Set permissions (writable by all for development)
-chmod -R 755 "${STORAGE_ROOT}"
+# Create OS-specific user directories
+mkdir -p "$STORAGE_ROOT/Home"
+mkdir -p "$STORAGE_ROOT/Applications"
+mkdir -p "$STORAGE_ROOT/Documents"
+mkdir -p "$STORAGE_ROOT/Data"
+mkdir -p "$STORAGE_ROOT/System"
 
-echo "✅ Storage directories created at ${STORAGE_ROOT}"
+# Create app-specific storage
+mkdir -p "$STORAGE_ROOT/Data/storage"
+
+echo "✅ Storage structure created at $STORAGE_ROOT"
 echo ""
-echo "Structure:"
-tree -L 3 "${STORAGE_ROOT}" 2>/dev/null || find "${STORAGE_ROOT}" -type d | sed 's|[^/]*/| |g'
-
+echo "📁 Directory structure:"
+echo "  $STORAGE_ROOT/"
+echo "    ├── Home/              # User home directory"
+echo "    ├── Applications/      # Installed applications"
+echo "    ├── Documents/         # User documents"
+echo "    ├── Data/              # App data storage"
+echo "    ├── System/            # System configuration"
+echo "    └── system/            # Backend system files"
+echo "        ├── apps/          # App registry (.aiapp files)"
+echo "        ├── sessions/      # Saved sessions"
+echo "        └── users/         # User data"
 echo ""
 echo "Ready for backend services to persist data via kernel!"
-

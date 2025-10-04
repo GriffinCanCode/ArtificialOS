@@ -1,0 +1,64 @@
+# Git attributes for OS Backend
+# https://git-scm.com/docs/gitattributes
+
+# Auto detect text files and normalize line endings to LF
+* text=auto eol=lf
+
+# Go source files
+*.go text diff=go
+
+# Go module files
+go.mod text diff=go
+go.sum text diff=go
+
+# Protocol Buffers
+*.proto text
+
+# Generated files (mark as generated for GitHub linguist)
+*.pb.go linguist-generated=true
+*_grpc.pb.go linguist-generated=true
+
+# Scripts
+*.sh text eol=lf
+
+# Config files
+*.yml text
+*.yaml text
+*.json text
+*.toml text
+.editorconfig text
+.gitignore text
+.gitattributes text
+
+# Documentation
+*.md text diff=markdown
+LICENSE text
+README text
+
+# Makefile
+Makefile text
+*.mk text
+
+# Binary files
+*.exe binary
+*.so binary
+*.dylib binary
+*.dll binary
+*.a binary
+
+# Archives
+*.tar binary
+*.gz binary
+*.zip binary
+
+# Images
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg text
+
+# Test fixtures (if any)
+testdata/** -text -diff
+

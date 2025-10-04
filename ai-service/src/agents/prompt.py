@@ -1,239 +1,486 @@
 """
-Comprehensive UI Generation Prompts
+Comprehensive UI Generation Prompts using Blueprint DSL
 System prompts and component documentation for AI-powered UI generation.
 """
 
 # ============================================================================
-# Component Documentation
+# Blueprint DSL Documentation
 # ============================================================================
 
-COMPONENT_DOCUMENTATION = """
+BLUEPRINT_DOCUMENTATION = """
+=== BLUEPRINT DSL (.bp) - CONCISE YAML FORMAT ===
+
+You are generating Blueprint files - a YAML-based DSL that's 80% more concise than JSON.
+Output ONLY valid YAML in Blueprint format. NO markdown, NO explanations.
+
+=== BASIC SYNTAX ===
+
+1. Component with ID: type#id
+   button#save:  → <button id="save">
+   
+2. Events: "@eventName" (must be quoted)
+   "@click": tool.name  → on_event: { click: tool.name }
+   
+3. Layouts: row (horizontal), col (vertical), grid
+   row:  → container with layout: horizontal
+   col:  → container with layout: vertical
+   
+4. Services with Tools:
+   services:
+     - storage: [get, set, list]  → Only these 3 tools
+     - filesystem: *              → All filesystem tools
+
 === AVAILABLE COMPONENTS ===
 
-You can build ANY type of application using these components. Be creative and think beyond simple apps.
-
-1. LAYOUT COMPONENTS:
-   - container: Flexbox layout (vertical/horizontal)
-     {"type": "container", "id": "main", "props": {"layout": "vertical", "gap": 12, "padding": "large", "align": "center", "justify": "start"}, "children": [...]}
-   
-   - grid: Grid layout with responsive columns
-     {"type": "grid", "id": "grid1", "props": {"columns": 3, "gap": 16, "responsive": true}, "children": [...]}
-   
-   - card: Card container with header/body/footer
-     {"type": "card", "id": "card1", "props": {"title": "Card Title", "footer": "Footer text", "style": {...}}, "children": [...]}
-   
-   - list: Styled list with variants (default, bordered, striped)
-     {"type": "list", "id": "list1", "props": {"variant": "bordered", "spacing": "medium"}, "children": [...]}
-   
+LAYOUT:
+- container: Flexbox layout
+- row: Horizontal container (shortcut)
+- col: Vertical container (shortcut)
+- grid: Grid layout with responsive columns  
+- card: Card container with header/body
+- list: Styled list (default, bordered, striped)
    - tabs: Tabbed interface
-     {"type": "tabs", "id": "tabs1", "props": {"variant": "default", "defaultTab": "tab1"}, "children": [
-       {"type": "container", "id": "tab1", "props": {"label": "Tab 1"}, "children": [...]},
-       {"type": "container", "id": "tab2", "props": {"label": "Tab 2"}, "children": [...]}
-     ]}
-   
    - modal: Popup dialog
-     {"type": "modal", "id": "modal1", "props": {"open": false, "title": "Modal Title", "size": "medium"}, "children": [...]}
 
-2. INPUT COMPONENTS:
-   - button: Clickable button with variants
-     {"type": "button", "id": "btn1", "props": {"text": "Click Me", "variant": "primary", "size": "medium"}, "on_event": {"click": "tool.name"}}
-   
-   - input: Text input field
-     {"type": "input", "id": "input1", "props": {"placeholder": "Enter text...", "value": "", "type": "text", "variant": "default"}, "on_event": {"change": "tool.name"}}
-   
+INPUT:
+- button: Clickable button (primary, outline, ghost, danger)
+- input: Text input (text, email, password, number)
    - textarea: Multi-line text input
-     {"type": "textarea", "id": "textarea1", "props": {"placeholder": "Enter text...", "rows": 5, "resize": "vertical"}, "on_event": {"change": "tool.name"}}
-   
    - select: Dropdown selection
-     {"type": "select", "id": "select1", "props": {"value": "option1", "options": [{"value": "option1", "label": "Option 1"}, {"value": "option2", "label": "Option 2"}]}, "on_event": {"change": "tool.name"}}
-   
    - checkbox: Checkbox with label
-     {"type": "checkbox", "id": "check1", "props": {"label": "Enable feature", "checked": false, "variant": "primary"}, "on_event": {"change": "tool.name"}}
-   
    - radio: Radio button
-     {"type": "radio", "id": "radio1", "props": {"name": "group1", "value": "option1", "label": "Option 1"}, "on_event": {"change": "tool.name"}}
-   
    - slider: Range slider
-     {"type": "slider", "id": "slider1", "props": {"min": 0, "max": 100, "step": 1, "value": 50}, "on_event": {"change": "tool.name"}}
 
-3. DISPLAY COMPONENTS:
-   - text: Text/heading with typography variants
-     {"type": "text", "id": "text1", "props": {"content": "Hello World", "variant": "h1", "weight": "bold", "color": "primary", "align": "center"}}
-     Variants: h1, h2, h3, body, caption, label
-   
+DISPLAY:
+- text: Text/headings (h1, h2, h3, body, caption, label)
    - image: Display images
-     {"type": "image", "id": "img1", "props": {"src": "https://example.com/image.jpg", "alt": "Description", "fit": "cover", "rounded": "medium", "width": 300, "height": 200}, "on_event": {"click": "tool.name"}}
-   
-   - video: Video player
-     {"type": "video", "id": "video1", "props": {"src": "https://example.com/video.mp4", "controls": true, "autoPlay": false, "loop": false, "width": 640, "height": 360}}
-   
-   - audio: Audio player
-     {"type": "audio", "id": "audio1", "props": {"src": "https://example.com/audio.mp3", "controls": true, "variant": "default"}}
-   
-   - progress: Progress bar
-     {"type": "progress", "id": "progress1", "props": {"value": 50, "max": 100, "variant": "primary", "size": "medium"}}
-   
-   - badge: Small status badge
-     {"type": "badge", "id": "badge1", "props": {"text": "New", "variant": "success", "size": "small"}}
-   
-   - divider: Visual separator
-     {"type": "divider", "id": "div1", "props": {"orientation": "horizontal", "variant": "solid"}}
+- video: Video player
+- audio: Audio player
+- progress: Progress bar
+- badge: Status badge (success, warning, error, info)
+- divider: Visual separator
 
-4. ADVANCED COMPONENTS:
-   - canvas: HTML5 canvas for drawing/games
-     {"type": "canvas", "id": "canvas1", "props": {"width": 800, "height": 600, "bordered": true}, "on_event": {"mount": "canvas.init"}}
-   
-   - iframe: Embed external content (websites, videos)
-     {"type": "iframe", "id": "iframe1", "props": {"src": "https://example.com", "title": "External Content", "width": "100%", "height": 600, "sandbox": "allow-scripts allow-same-origin"}}
+ADVANCED:
+- canvas: HTML5 canvas for drawing/games
+- iframe: Embed websites/external content
 
-=== STYLE PROPERTIES ===
+=== AVAILABLE SERVICES ===
 
-All components support a "style" prop for custom CSS:
-{"style": {"backgroundColor": "#fff", "padding": "20px", "borderRadius": "8px", "boxShadow": "0 2px 8px rgba(0,0,0,0.1)"}}
+**storage**: Persistent key-value data
+Tools: set, get, remove, list, clear
+Use for: App settings, user preferences, saved data
 
-Common style properties:
-- Layout: width, height, margin, padding, display, position, top, left, right, bottom
-- Colors: backgroundColor, color, borderColor, opacity
-- Typography: fontSize, fontWeight, textAlign, lineHeight
-- Borders: border, borderRadius, borderWidth, borderStyle
-- Effects: boxShadow, transform, transition, animation
+**filesystem**: File operations  
+Tools: list, stat, read, write, create, mkdir, delete, move, copy, exists
+Use for: File managers, text editors, data import/export
+
+**system**: System info and logging
+Tools: info, time, log, getLogs, ping
+Use for: Monitoring, debugging, system utilities
+
+**auth**: User authentication
+Tools: register, login, logout, verify, getUser
+Use for: User accounts, permissions
+
+=== AVAILABLE TOOLS ===
+
+UI State Management (works for ALL apps):
+- ui.set: Set any state value
+- ui.get: Get state value
+- ui.append: Append to string (calculator digits, text)
+- ui.compute: Evaluate math expression
+- ui.clear: Reset value to default
+- ui.toggle: Toggle boolean
+- ui.backspace: Remove last character
+
+App Management:
+- app.spawn: Launch new app
+- app.close: Close current app
+- app.list: List running apps
+
+HTTP/Network (for web browser, API apps):
+- http.get: Fetch data from URL
+- http.post: Send POST request
+- http.request: Generic HTTP request
+Use for: Web browsers, API clients, data fetching
+
+Canvas (for drawing/game apps):
+- canvas.draw: Draw on canvas
+- canvas.clear: Clear canvas
+- canvas.setColor: Set draw color
+Use for: Drawing apps, games, diagrams
+
+Media Player (for audio/video apps):
+- player.play: Play media
+- player.pause: Pause playback
+- player.stop: Stop playback
+- player.seek: Seek to position
+Use for: Music players, video players
+
+Timer:
+- timer.start: Start timer
+- timer.stop: Stop timer
+- timer.reset: Reset timer
+
+Clipboard:
+- clipboard.copy: Copy to clipboard
+- clipboard.paste: Paste from clipboard
+
+Notifications:
+- notification.show: Show notification
+
+Note: Most UI interactions use ui.* tools. Backend services (storage, filesystem, system, auth) are called directly as service.tool (e.g., storage.get, filesystem.read)
 """
 
 # ============================================================================
-# App Examples
+# Blueprint Examples
 # ============================================================================
 
-APP_EXAMPLES = """
-=== EXAMPLE APPLICATIONS ===
+BLUEPRINT_EXAMPLES = """
+=== BLUEPRINT EXAMPLES ===
 
-1. BROWSER APP:
-{
-  "type": "app",
-  "title": "Web Browser",
-  "layout": "vertical",
-  "components": [
-    {"type": "container", "id": "toolbar", "props": {"layout": "horizontal", "gap": 8, "padding": "small"}, "children": [
-      {"type": "button", "id": "back", "props": {"text": "←", "variant": "ghost"}, "on_event": {"click": "browser.back"}},
-      {"type": "button", "id": "forward", "props": {"text": "→", "variant": "ghost"}, "on_event": {"click": "browser.forward"}},
-      {"type": "button", "id": "refresh", "props": {"text": "⟳", "variant": "ghost"}, "on_event": {"click": "browser.refresh"}},
-      {"type": "input", "id": "url", "props": {"placeholder": "Enter URL...", "value": "https://example.com", "style": {"flex": "1"}}, "on_event": {"change": "browser.navigate"}},
-      {"type": "button", "id": "go", "props": {"text": "Go", "variant": "primary"}, "on_event": {"click": "browser.navigate"}}
-    ]},
-    {"type": "iframe", "id": "webpage", "props": {"src": "https://example.com", "width": "100%", "height": 600, "sandbox": "allow-scripts allow-same-origin"}}
-  ]
-}
+1. TASK MANAGER (Productivity App)
+---
+app:
+  id: task-manager
+  name: Task Manager
+  icon: ✅
+  category: productivity
+  tags: [tasks, todo, productivity]
+  permissions: [STANDARD]
 
-2. CALCULATOR APP:
-{
-  "type": "app",
-  "title": "Calculator",
-  "layout": "vertical",
-  "components": [
-    {"type": "input", "id": "display", "props": {"value": "0", "readonly": true, "variant": "large"}},
-    {"type": "grid", "id": "buttons", "props": {"columns": 4, "gap": 8}, "children": [
-      {"type": "button", "id": "btn-7", "props": {"text": "7", "variant": "outline"}, "on_event": {"click": "ui.append"}},
-      {"type": "button", "id": "btn-8", "props": {"text": "8", "variant": "outline"}, "on_event": {"click": "ui.append"}},
-      {"type": "button", "id": "btn-9", "props": {"text": "9", "variant": "outline"}, "on_event": {"click": "ui.append"}},
-      {"type": "button", "id": "btn-div", "props": {"text": "/", "variant": "secondary"}, "on_event": {"click": "ui.append"}},
-      {"type": "button", "id": "btn-4", "props": {"text": "4", "variant": "outline"}, "on_event": {"click": "ui.append"}},
-      {"type": "button", "id": "btn-5", "props": {"text": "5", "variant": "outline"}, "on_event": {"click": "ui.append"}},
-      {"type": "button", "id": "btn-6", "props": {"text": "6", "variant": "outline"}, "on_event": {"click": "ui.append"}},
-      {"type": "button", "id": "btn-mul", "props": {"text": "*", "variant": "secondary"}, "on_event": {"click": "ui.append"}},
-      {"type": "button", "id": "btn-1", "props": {"text": "1", "variant": "outline"}, "on_event": {"click": "ui.append"}},
-      {"type": "button", "id": "btn-2", "props": {"text": "2", "variant": "outline"}, "on_event": {"click": "ui.append"}},
-      {"type": "button", "id": "btn-3", "props": {"text": "3", "variant": "outline"}, "on_event": {"click": "ui.append"}},
-      {"type": "button", "id": "btn-sub", "props": {"text": "-", "variant": "secondary"}, "on_event": {"click": "ui.append"}},
-      {"type": "button", "id": "btn-0", "props": {"text": "0", "variant": "outline"}, "on_event": {"click": "ui.append"}},
-      {"type": "button", "id": "btn-clear", "props": {"text": "C", "variant": "danger"}, "on_event": {"click": "ui.clear"}},
-      {"type": "button", "id": "btn-eq", "props": {"text": "=", "variant": "primary"}, "on_event": {"click": "ui.compute"}},
-      {"type": "button", "id": "btn-add", "props": {"text": "+", "variant": "secondary"}, "on_event": {"click": "ui.append"}}
-    ]}
-  ]
-}
+services:
+  - storage: [get, set, list]
 
-3. BROWSER APP:
-{
-  "type": "app",
-  "title": "Web Browser",
-  "layout": "vertical",
-  "components": [
-    {"type": "container", "id": "toolbar", "props": {"layout": "horizontal", "gap": 8, "padding": "small"}, "children": [
-      {"type": "button", "id": "back", "props": {"text": "←", "variant": "ghost"}, "on_event": {"click": "browser.back"}},
-      {"type": "button", "id": "forward", "props": {"text": "→", "variant": "ghost"}, "on_event": {"click": "browser.forward"}},
-      {"type": "button", "id": "refresh", "props": {"text": "⟳", "variant": "ghost"}, "on_event": {"click": "browser.refresh"}},
-      {"type": "input", "id": "url-input", "props": {"placeholder": "Enter URL...", "value": "https://www.google.com"}, "on_event": {"change": "ui.set"}},
-      {"type": "button", "id": "go", "props": {"text": "Go", "variant": "primary"}, "on_event": {"click": "browser.navigate"}},
-      {"type": "button", "id": "bookmark", "props": {"text": "⭐", "variant": "ghost"}, "on_event": {"click": "browser.bookmark.add"}}
-    ]},
-    {"type": "iframe", "id": "webpage", "props": {"src": "https://www.google.com", "width": "100%", "height": 600, "sandbox": "allow-scripts allow-same-origin"}}
-  ]
-}
+ui:
+  title: Task Manager
+  layout: vertical
+  
+  lifecycle:
+    on_mount: storage.get
+  
+  components:
+    - text#header:
+        content: "My Tasks"
+        variant: h1
+    
+    - row:
+        gap: 12
+        children:
+          - input#task-input:
+              placeholder: "What needs to be done?"
+              type: text
+              style: { flex: 1 }
+          
+          - button#add-task:
+              text: "Add Task"
+              variant: primary
+              "@click": ui.add_todo
+    
+    - col:
+        gap: 8
+        children:
+          - list#task-list:
+              variant: bordered
+---
 
-4. DASHBOARD:
-{
-  "type": "app",
-  "title": "Analytics Dashboard",
-  "layout": "vertical",
-  "components": [
-    {"type": "text", "id": "header", "props": {"content": "Analytics Dashboard", "variant": "h1"}},
-    {"type": "grid", "id": "metrics", "props": {"columns": 3, "gap": 16}, "children": [
-      {"type": "card", "id": "card1", "props": {"title": "Users"}, "children": [
-        {"type": "text", "id": "users", "props": {"content": "10,234", "variant": "h2", "color": "primary"}},
-        {"type": "text", "id": "users-change", "props": {"content": "+12% this month", "variant": "caption", "color": "success"}}
-      ]},
-      {"type": "card", "id": "card2", "props": {"title": "Revenue"}, "children": [
-        {"type": "text", "id": "revenue", "props": {"content": "$45,231", "variant": "h2", "color": "primary"}},
-        {"type": "text", "id": "revenue-change", "props": {"content": "+8% this month", "variant": "caption", "color": "success"}}
-      ]},
-      {"type": "card", "id": "card3", "props": {"title": "Orders"}, "children": [
-        {"type": "text", "id": "orders", "props": {"content": "1,284", "variant": "h2", "color": "primary"}},
-        {"type": "text", "id": "orders-change", "props": {"content": "-3% this month", "variant": "caption", "color": "error"}}
-      ]}
-    ]},
-    {"type": "card", "id": "activity", "props": {"title": "Recent Activity"}, "children": [
-      {"type": "list", "id": "activity-list", "props": {"variant": "striped"}, "children": [
-        {"type": "text", "id": "act1", "props": {"content": "New user registered", "variant": "body"}},
-        {"type": "text", "id": "act2", "props": {"content": "Order #1234 completed", "variant": "body"}},
-        {"type": "text", "id": "act3", "props": {"content": "Payment received", "variant": "body"}}
-      ]}
-    ]}
-  ]
-}
+2. NOTE EDITOR (Productivity App)
+---
+app:
+  id: note-editor  
+  name: Note Editor
+  icon: 📝
+  category: productivity
+  tags: [notes, writing, markdown]
+  permissions: [STANDARD]
 
-5. FORM BUILDER:
-{
-  "type": "app",
-  "title": "User Registration",
-  "layout": "vertical",
-  "components": [
-    {"type": "text", "id": "title", "props": {"content": "Create Account", "variant": "h1"}},
-    {"type": "container", "id": "form", "props": {"layout": "vertical", "gap": 16, "padding": "large", "style": {"maxWidth": "500px"}}, "children": [
-      {"type": "input", "id": "name", "props": {"placeholder": "Full Name", "type": "text"}, "on_event": {"change": "form.validate"}},
-      {"type": "input", "id": "email", "props": {"placeholder": "Email", "type": "email"}, "on_event": {"change": "form.validate"}},
-      {"type": "input", "id": "password", "props": {"placeholder": "Password", "type": "password"}, "on_event": {"change": "form.validate"}},
-      {"type": "textarea", "id": "bio", "props": {"placeholder": "Tell us about yourself...", "rows": 4}, "on_event": {"change": "form.validate"}},
-      {"type": "checkbox", "id": "terms", "props": {"label": "I agree to the terms and conditions", "checked": false}, "on_event": {"change": "form.validate"}},
-      {"type": "button", "id": "submit", "props": {"text": "Create Account", "variant": "primary", "fullWidth": true}, "on_event": {"click": "form.submit"}}
-    ]}
-  ]
-}
+services:
+  - storage: [get, set, list]
+  - filesystem: [read, write]
 
-6. TODO APP WITH BACKEND STORAGE:
-{
-  "type": "app",
-  "title": "Todo List",
-  "layout": "vertical",
-  "services": ["storage"],
-  "lifecycle_hooks": {"on_mount": ["storage.get"]},
-  "components": [
-    {"type": "text", "id": "header", "props": {"content": "My Todos", "variant": "h1"}},
-    {"type": "container", "id": "add-row", "props": {"layout": "horizontal", "gap": 8}, "children": [
-      {"type": "input", "id": "task-input", "props": {"placeholder": "What needs to be done?", "type": "text"}},
-      {"type": "button", "id": "add-btn", "props": {"text": "Add", "variant": "primary"}, "on_event": {"click": "ui.list.add"}}
-    ]},
-    {"type": "list", "id": "todos", "props": {"variant": "striped"}, "children": []}
-  ]
-}
+templates:
+  toolbar-btn:
+    variant: ghost
+    size: small
+
+ui:
+  title: Note Editor
+  layout: horizontal
+  
+  components:
+    - sidebar:
+        layout: vertical
+        gap: 8
+        padding: medium
+        style: { width: 200px, borderRight: 1px solid rgba(255,255,255,0.1) }
+        children:
+          - button#new-note:
+              $template: toolbar-btn
+              text: "+ New"
+              variant: primary
+              fullWidth: true
+              "@click": storage.set
+          
+          - list#notes:
+              variant: default
+    
+    - editor:
+        layout: vertical
+        gap: 12
+        padding: large
+        style: { flex: 1 }
+        children:
+          - input#title:
+              placeholder: "Title..."
+              type: text
+              style: { fontSize: 24px, fontWeight: bold }
+              "@change": storage.set
+          
+          - textarea#content:
+              placeholder: "Start typing..."
+              rows: 20
+              resize: vertical
+              "@change": storage.set
+---
+
+3. DATA DASHBOARD (Business App)
+---
+app:
+  id: analytics-dashboard
+  name: Analytics Dashboard
+  icon: 📊
+  category: business
+  tags: [analytics, metrics, data]
+  permissions: [STANDARD]
+
+services:
+  - storage: [get, list]
+  - system: [time, log]
+
+ui:
+  title: Analytics Dashboard
+  layout: vertical
+  
+  lifecycle:
+    on_mount:
+      - storage.get
+      - system.time
+  
+  components:
+    - text#header:
+        content: "Analytics Dashboard"
+        variant: h1
+    
+    - grid:
+        columns: 3
+        gap: 16
+        responsive: true
+        children:
+          - card#users:
+              title: "Active Users"
+              children:
+                - text: { content: "10,234", variant: h2, color: primary }
+                - text: { content: "+12% this month", variant: caption, color: success }
+          
+          - card#revenue:
+              title: "Revenue"
+              children:
+                - text: { content: "$45,231", variant: h2, color: primary }
+                - text: { content: "+8% this month", variant: caption, color: success }
+          
+          - card#orders:
+              title: "Orders"
+              children:
+                - text: { content: "1,284", variant: h2, color: primary }
+                - text: { content: "-3% this month", variant: caption, color: error }
+    
+    - card#activity:
+        title: "Recent Activity"
+        children:
+          - list#activity-log:
+              variant: striped
+---
+
+4. PROJECT TRACKER (Productivity App)
+---
+app:
+  id: project-tracker
+  name: Project Tracker
+  icon: 🎯
+  category: productivity
+  tags: [projects, planning, tracking]
+  permissions: [STANDARD]
+
+services:
+  - storage: *
+
+ui:
+  title: Project Tracker
+  layout: vertical
+  
+  components:
+    - row:
+        gap: 16
+        align: center
+        padding: medium
+        style: { borderBottom: 2px solid rgba(255,255,255,0.1) }
+        children:
+          - text#title: { content: "Projects", variant: h1, style: { flex: 1 } }
+          - button#new-project: { text: "+ New Project", variant: primary, "@click": ui.set }
+    
+    - tabs#project-tabs:
+        variant: default
+        defaultTab: active
+        children:
+          - col#active:
+              label: "Active"
+              gap: 12
+              padding: large
+              children:
+                - grid: { columns: 2, gap: 16 }
+          
+          - col#completed:
+              label: "Completed"
+              gap: 12
+              padding: large
+              children:
+                - list: { variant: default }
+---
+
+5. CALCULATOR (Utility App)
+---
+app:
+  id: calculator
+  name: Calculator
+  icon: 🧮
+  category: utilities
+  tags: [math, calculator, tools]
+  permissions: [STANDARD]
+
+ui:
+  title: Calculator
+  layout: vertical
+  
+  components:
+    - input#display:
+        value: "0"
+        readonly: true
+        type: text
+        style: { fontSize: 32px, textAlign: right, padding: 16px }
+    
+    - grid:
+        columns: 4
+        gap: 8
+        children:
+          - button#7: { text: "7", variant: outline, "@click": ui.append }
+          - button#8: { text: "8", variant: outline, "@click": ui.append }
+          - button#9: { text: "9", variant: outline, "@click": ui.append }
+          - button#div: { text: "÷", variant: secondary, "@click": ui.append }
+          - button#4: { text: "4", variant: outline, "@click": ui.append }
+          - button#5: { text: "5", variant: outline, "@click": ui.append }
+          - button#6: { text: "6", variant: outline, "@click": ui.append }
+          - button#mul: { text: "×", variant: secondary, "@click": ui.append }
+          - button#1: { text: "1", variant: outline, "@click": ui.append }
+          - button#2: { text: "2", variant: outline, "@click": ui.append }
+          - button#3: { text: "3", variant: outline, "@click": ui.append }
+          - button#sub: { text: "−", variant: secondary, "@click": ui.append }
+          - button#0: { text: "0", variant: outline, "@click": ui.append }
+          - button#clear: { text: "C", variant: danger, "@click": ui.clear }
+          - button#equals: { text: "=", variant: primary, "@click": ui.compute }
+          - button#add: { text: "+", variant: secondary, "@click": ui.append }
+---
+
+6. WEB BROWSER (Utility App)
+---
+app:
+  id: web-browser
+  name: Web Browser
+  icon: 🌐
+  category: utilities
+  tags: [browser, web, internet]
+  permissions: [STANDARD]
+
+services:
+  - storage: [get, set]  # For bookmarks/history
+
+ui:
+  title: Web Browser
+  layout: vertical
+  
+  components:
+    - row:
+        gap: 8
+        padding: small
+        children:
+          - button#back: { text: "←", variant: ghost, "@click": ui.set }
+          - button#forward: { text: "→", variant: ghost, "@click": ui.set }
+          - button#refresh: { text: "⟳", variant: ghost, "@click": ui.set }
+          - input#url:
+              placeholder: "Enter URL..."
+              value: "https://google.com"
+              type: text
+              style: { flex: 1 }
+          - button#go: { text: "Go", variant: primary, "@click": ui.set }
+          - button#bookmark: { text: "⭐", variant: ghost, "@click": storage.set }
+    
+    - iframe#webpage:
+        src: "https://google.com"
+        width: 100%
+        height: 600
+        sandbox: "allow-scripts allow-same-origin"
+---
+
+=== PATTERNS TO FOLLOW ===
+
+1. **Productivity Apps** (Task Manager, Notes, Calendar):
+   - Services: storage: [get, set, list]
+   - Layout: Sidebar + main content (horizontal)
+   - Tools: ui.set for interactions, storage.* for persistence
+   - Pattern: List views with add/edit/delete actions
+
+2. **Data/Analytics Apps** (Dashboard, Reports):
+   - Services: storage: [get, list], system: [time, log]
+   - Layout: Grid for cards/metrics
+   - Tools: system.time for timestamps, storage.get for data
+   - Pattern: Cards with metrics, visual hierarchy
+
+3. **Utility Apps** (Calculator, Timer, Converter):
+   - Services: None (or storage: [get, set] for preferences)
+   - Layout: Compact, focused interface
+   - Tools: ui.append, ui.compute, ui.clear
+   - Pattern: Input display + action buttons
+
+4. **File Management Apps** (File Explorer, Text Editor):
+   - Services: filesystem: [list, read, write, create, delete], storage: [get, set]
+   - Layout: Sidebar + main panel
+   - Tools: filesystem.* for file ops, ui.set for navigation
+   - Pattern: Tree/list views, breadcrumbs, CRUD operations
+
+5. **Form-Heavy Apps** (Settings, Registration, Surveys):
+   - Services: storage: [set, get], auth: [register, login]
+   - Layout: Vertical with sections
+   - Tools: ui.set for validation, storage.set to save, auth.* for accounts
+   - Pattern: Input fields + validation + submit button
+
+6. **Web/HTTP Apps** (API Client, Web Browser, RSS Reader):
+   - Services: storage: [get, set] for history/bookmarks
+   - Layout: Toolbar + content area
+   - Tools: ui.set for URL input, iframe component for display
+   - Pattern: URL bar + navigation + content iframe
+
+7. **Media Apps** (Music Player, Video Player, Gallery):
+   - Services: filesystem: [list, read], storage: [get, set]
+   - Layout: Controls + display area
+   - Tools: player.* for playback, filesystem.list for library
+   - Pattern: Media controls + playlist/library + display
+
+IMPORTANT SERVICE USAGE:
+- storage.get/set/list: For app data (tasks, notes, settings)
+- filesystem.read/write/list: For file operations (editors, file managers)
+- system.log/time: For debugging and timestamps
+- auth.login/register: For user accounts
+- Use ui.* tools for ALL UI state management (no custom tools needed)
+- iframe component for web content (not http service)
 """
 
 # ============================================================================
@@ -242,117 +489,75 @@ APP_EXAMPLES = """
 
 def get_ui_generation_prompt(tools_description: str, context: str = "") -> str:
     """
-    Generate comprehensive UI generation prompt for Gemini.
+    Generate comprehensive UI generation prompt for Blueprint DSL.
     
     Args:
         tools_description: Description of available tools
         context: Additional context (optional)
     
     Returns:
-        Complete system prompt for UI generation
+        Complete system prompt for Blueprint generation
     """
-    return f"""You are an expert UI generation AI. Your task is to generate complete, valid JSON specifications for ANY type of application.
+    return f"""You are an expert AI that generates Blueprint (.bp) files - a concise YAML-based DSL for building applications.
 
 CRITICAL RULES:
-1. Output ONLY valid JSON - no markdown, no explanations, no extra text
-2. EVERY component MUST have: "id", "type", "props", "children", "on_event"
-3. Use generic UI tools (ui.*, browser.*) for most functionality
-4. Use appropriate components: iframe for browsers, grid for dashboards, container for forms
-5. Wire up events properly with on_event handlers
-6. Use proper layouts (grid for dashboards, container for forms, tabs for multi-section apps)
+1. Output ONLY valid YAML in Blueprint format
+2. NO markdown code blocks, NO explanations, NO extra text
+3. Start with ---
+4. Use "@eventName" (quoted) for event handlers
+5. Specify exact service tools: storage: [get, set] not storage: *
+6. Use row/col shortcuts for layouts
+7. Every component needs an ID: button#save
 
-{COMPONENT_DOCUMENTATION}
+{BLUEPRINT_DOCUMENTATION}
 
-Available Tools:
+Available Backend Services and Tools:
 {tools_description}
 
-{APP_EXAMPLES}
+{BLUEPRINT_EXAMPLES}
 
 {context}
 
-=== REQUIRED ROOT STRUCTURE ===
-{{
-  "type": "app",
-  "title": "App Name",
-  "layout": "vertical",
-  "components": [/* array of components */],
-  "style": {{}},
-  "services": [],
-  "service_bindings": {{}},
-  "lifecycle_hooks": {{}}
-}}
+=== YOUR TASK ===
 
-=== GENERIC UI TOOLS (Use These for ALL Apps) ===
+Generate a complete Blueprint (.bp) file for the user's request.
 
-Available tools work for ANY app type - no need for app-specific tools!
+Think about:
+1. What TYPE of app? (productivity, utility, business, creative)
+2. What SERVICES needed? (storage for data, filesystem for files, system for logging)
+3. What LAYOUT works best? (row/col for simple, grid for dashboards, tabs for complex)
+4. What TOOLS to wire up? (ui.* for generic, specific services for backend)
 
-**ui.append** - Append value to state (calculator digits, text input)
-  Button: {{"on_event": {{"click": "ui.append"}}, "props": {{"text": "7"}}}}
-  → Automatically appends button's text to "display" state
+Output format:
+---
+app:
+  id: app-name
+  name: App Name
+  icon: 🎯
+  category: productivity
+  tags: [tag1, tag2]
+  permissions: [STANDARD]
 
-**ui.compute** - Evaluate expression (calculator =, formula fields)
-  Button: {{"on_event": {{"click": "ui.compute"}}}}
-  → Evaluates expression in "display" state
+services:
+  - service: [tool1, tool2]
 
-**ui.clear** - Clear value (calculator C, form reset)  
-  Button: {{"on_event": {{"click": "ui.clear"}}}}
-  → Resets "display" to "0"
+ui:
+  title: App Name
+  layout: vertical
+  components:
+    - component#id:
+        prop: value
+        "@event": tool.name
+---
 
-**ui.set** - Set any state (navigation, URL loading, toggles)
-  Button: {{"on_event": {{"click": "ui.set"}}}}
-  → Reads from input fields automatically or use params
-
-**ui.toggle** - Toggle boolean (checkboxes, switches)
-  Button: {{"on_event": {{"click": "ui.toggle"}}}}
-
-**ui.backspace** - Remove last char (backspace buttons)
-  Button: {{"on_event": {{"click": "ui.backspace"}}}}
-
-=== REAL EXAMPLES ===
-
-**Calculator:**
-{{
-  "components": [
-    {{"type": "input", "id": "display", "props": {{"readonly": true, "value": "0"}}}},
-    {{"type": "button", "id": "btn-7", "props": {{"text": "7"}}, "on_event": {{"click": "ui.append"}}}},
-    {{"type": "button", "id": "btn-plus", "props": {{"text": "+"}}, "on_event": {{"click": "ui.append"}}}},
-    {{"type": "button", "id": "btn-equals", "props": {{"text": "="}}, "on_event": {{"click": "ui.compute"}}}},
-    {{"type": "button", "id": "btn-clear", "props": {{"text": "C"}}, "on_event": {{"click": "ui.clear"}}}}
-  ]
-}}
-
-**Browser:**
-{{
-  "components": [
-    {{"type": "input", "id": "url-input", "props": {{"placeholder": "Enter URL"}}}},
-    {{"type": "button", "id": "go-btn", "props": {{"text": "Go"}}, "on_event": {{"click": "browser.navigate"}}}},
-    {{"type": "iframe", "id": "webpage", "props": {{"src": ""}}}}
-  ]
-}}
-
-**Todo List:**
-{{
-  "components": [
-    {{"type": "input", "id": "task-input"}},
-    {{"type": "button", "props": {{"text": "Add"}}, "on_event": {{"click": "ui.add_todo"}}}}
-  ]
-}}
-
-=== APP TYPE PATTERNS ===
-
-1. **Calculator/Keypad:** Use ui.append for all buttons, ui.compute for =
-2. **Browser:** Use input for URL + browser.navigate button  
-3. **Forms:** Use inputs with validation + ui.set for state management
-4. **Media Players:** Use player.* tools for playback controls
-5. **Canvas Apps:** Use canvas.* tools for drawing
-6. **Data Apps:** Use ui.set/get for state, data.* for filtering/sorting
-
-Think BIG - you can make ANY app! The tools are generic and composable.
-
-Now generate a complete, valid JSON UI specification for the user's request. Output ONLY the JSON."""
+NOW GENERATE THE BLUEPRINT:"""
 
 
 def get_simple_system_prompt() -> str:
     """Get a simpler system prompt for rule-based generation fallback."""
-    return """You are a UI generator. Output valid JSON only."""
+    return """You are a Blueprint generator. Output valid YAML Blueprint files only."""
 
+
+# Backwards compatibility - export old constant names
+COMPONENT_DOCUMENTATION = BLUEPRINT_DOCUMENTATION
+APP_EXAMPLES = BLUEPRINT_EXAMPLES

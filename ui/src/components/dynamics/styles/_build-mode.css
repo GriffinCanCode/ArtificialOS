@@ -52,9 +52,12 @@
   border-left-color: rgba(192, 132, 252, 0.4);
   border-radius: 50%;
   animation: spin 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
-  box-shadow: 
-    0 0 20px rgba(139, 92, 246, 0.4),
-    inset 0 0 20px rgba(139, 92, 246, 0.2);
+  /* Optimized box-shadow - reduced from 2 to 1 layer */
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+  /* will-change auto-managed by animation */
+  backface-visibility: hidden;
+  transform: translate3d(0, 0, 0);
+  contain: layout style paint;
 }
 
 .thoughts-list {
@@ -68,7 +71,7 @@
 .thought-item {
   display: flex;
   align-items: flex-start;
-  gap: 1rem;
+  gap: var(--space-md, 1rem);
   padding: 1.25rem;
   background: linear-gradient(
     135deg,
@@ -77,13 +80,17 @@
   );
   border-radius: 14px;
   animation: fade-in 0.4s ease-out, thought-emerge 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-  backdrop-filter: blur(20px) saturate(120%);
-  -webkit-backdrop-filter: blur(20px) saturate(120%);
+  backdrop-filter: var(--backdrop-blur-light);
+  -webkit-backdrop-filter: var(--backdrop-blur-light);
+  /* Optimized box-shadow - kept minimal for performance */
   box-shadow: 
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    var(--shadow-inset-light),
     0 2px 8px rgba(0, 0, 0, 0.1);
   position: relative;
   overflow: hidden;
+  contain: layout style paint;
+  /* will-change auto-managed by animations */
+  backface-visibility: hidden;
 }
 
 /* Subtle gradient border for thought items */
@@ -205,27 +212,36 @@
    VISUAL BUILD MODE - Watch the app get constructed in real-time
    ============================================================================ */
 
-/* Container for the building app preview - Ultra Refined */
+/* Container for the building app preview - Ultra Refined - optimized */
 .building-app-preview {
   position: relative;
   width: 100%;
   max-width: 900px;
-  padding: 2.5rem;
+  padding: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  box-shadow: none;
+  animation: buildContainer 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  isolation: isolate;
+  contain: layout style paint;
+}
+
+/* Only show visible background when actively building with content */
+.building-app-preview:has(.building-app-container) {
+  padding: var(--space-2xl, 2.5rem);
   background: linear-gradient(
     145deg,
     rgba(24, 24, 38, 0.75) 0%,
     rgba(18, 18, 30, 0.85) 100%
   );
-  backdrop-filter: blur(60px) saturate(180%);
-  -webkit-backdrop-filter: blur(60px) saturate(180%);
-  border-radius: 24px;
-  overflow: hidden;
+  backdrop-filter: var(--backdrop-blur-medium);
+  -webkit-backdrop-filter: var(--backdrop-blur-medium);
   box-shadow: 
     0 24px 70px rgba(0, 0, 0, 0.4),
-    0 8px 24px rgba(139, 92, 246, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  animation: buildContainer 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-  isolation: isolate;
+    var(--shadow-inset-light);
 }
 
 /* Sophisticated multi-color gradient border for build preview */
@@ -235,6 +251,16 @@
   inset: 0;
   border-radius: 24px;
   padding: 1.5px;
+  background: transparent;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 3;
+  mix-blend-mode: screen;
+}
+
+/* Only show border when actively building with content */
+.building-app-preview:has(.building-app-container)::before {
+  opacity: 1;
   background: linear-gradient(
     135deg,
     rgba(99, 102, 241, 0.4) 0%,
@@ -251,10 +277,7 @@
     linear-gradient(#fff 0 0) content-box, 
     linear-gradient(#fff 0 0);
   mask-composite: exclude;
-  pointer-events: none;
   animation: border-pulse 3s ease-in-out infinite;
-  z-index: 3;
-  mix-blend-mode: screen;
 }
 
 /* Animated construction grid background */
@@ -266,6 +289,17 @@
   right: 0;
   bottom: 0;
   border-radius: 24px;
+  background-image: none;
+  background-size: 20px 20px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
+  mix-blend-mode: overlay;
+}
+
+/* Only show grid background when actively building with content */
+.building-app-preview:has(.building-app-container)::after {
+  opacity: 0.3;
   background-image:
     linear-gradient(
       color-mix(in srgb, var(--color-electric-blue) 10%, transparent) 1px,
@@ -276,12 +310,7 @@
       color-mix(in srgb, var(--color-electric-blue) 10%, transparent) 1px,
       transparent 1px
     );
-  background-size: 20px 20px;
-  opacity: 0.3;
   animation: grid-scan 3s linear infinite;
-  pointer-events: none;
-  z-index: 0;
-  mix-blend-mode: overlay;
 }
 
 /* Build progress header - Enhanced */
@@ -405,20 +434,29 @@
 .building-app-container {
   position: relative;
   z-index: 1;
+  background: transparent;
+  border-radius: 18px;
+  padding: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  will-change: contents;
+  transform: translateZ(0);
+}
+
+/* Only show visible background when container has actual content */
+.building-app-container:not(:empty) {
   background: linear-gradient(
     145deg,
     rgba(30, 30, 45, 0.7) 0%,
     rgba(20, 20, 35, 0.8) 100%
   );
-  border-radius: 18px;
   padding: 2.25rem;
   box-shadow: 
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     0 4px 16px rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  will-change: contents;
-  transform: translateZ(0);
 }
 
 /* Gradient border for build container */
@@ -428,6 +466,15 @@
   inset: 0;
   border-radius: 18px;
   padding: 1px;
+  background: transparent;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  opacity: 0;
+}
+
+/* Only show border when container has content */
+.building-app-container:not(:empty)::before {
+  opacity: 1;
   background: linear-gradient(
     135deg,
     rgba(99, 102, 241, 0.2) 0%,
@@ -442,8 +489,6 @@
     linear-gradient(#fff 0 0) content-box, 
     linear-gradient(#fff 0 0);
   mask-composite: exclude;
-  pointer-events: none;
-  mix-blend-mode: screen;
 }
 
 .building-app-title {
@@ -464,15 +509,16 @@
   filter: drop-shadow(0 2px 8px rgba(139, 92, 246, 0.3));
 }
 
-/* Component animations - each component slides in and fades in - optimized for smooth performance */
+/* Component animations - optimized for smooth performance with GSAP */
 .component-building {
   /* Removed CSS animation to avoid conflict with GSAP animations during streaming */
   /* animation: component-appear 0.5s ease-out forwards; */
   opacity: 1; /* Ensure components are visible immediately */
   transform-origin: top center;
-  will-change: transform, opacity;
+  /* will-change removed - managed by GSAP during animation */
   backface-visibility: hidden;
   -webkit-font-smoothing: antialiased;
+  contain: layout style paint;
 }
 
 /* Skeleton/wireframe effect for components being built */

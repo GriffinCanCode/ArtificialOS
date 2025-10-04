@@ -51,12 +51,11 @@
 
 /* Full-screen canvas for apps */
 .os-canvas {
-  flex: 1;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  position: relative;
+  position: fixed;
+  inset: 0;
+  z-index: 10; /* Above desktop (z-index: 1) but below overlays */
   padding-top: 40px; /* Account for minimal title bar */
+  pointer-events: none; /* Allow clicks to pass through to desktop when no app */
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE/Edge */
 }
@@ -72,16 +71,20 @@
   position: fixed;
   bottom: 2rem;
   left: 50%;
-  transform: translateX(-50%) scale(0.98);
-  z-index: 1000;
+  transform: translate3d(-50%, 0, 0) scale3d(0.98, 0.98, 1);
+  z-index: var(--z-modal, 1000);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   opacity: 0.8;
+  backface-visibility: hidden;
+  contain: layout style paint;
+  /* will-change removed - only added on hover/focus */
 }
 
 .spotlight-input-container:hover,
 .spotlight-input-container.focused {
-  transform: translateX(-50%) scale(1);
+  transform: translate3d(-50%, 0, 0) scale3d(1, 1, 1);
   opacity: 1;
+  will-change: transform, opacity; /* Only activate will-change when needed */
 }
 
 .spotlight-input-wrapper {
@@ -89,20 +92,15 @@
   max-width: 700px;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 1rem 1.5rem;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(139, 92, 246, 0.04) 100%);
-  backdrop-filter: blur(60px) saturate(200%);
-  -webkit-backdrop-filter: blur(60px) saturate(200%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  gap: var(--space-sm, 0.75rem);
+  padding: var(--space-md, 1rem) var(--space-lg, 1.5rem);
+  background: rgba(20, 20, 30, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 18px;
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.4),
-    0 2px 12px rgba(139, 92, 246, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+  contain: layout style paint;
 }
 
 /* Subtle gradient border */
@@ -132,14 +130,9 @@
 }
 
 .spotlight-input-container.focused .spotlight-input-wrapper {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(139, 92, 246, 0.08) 100%);
-  border-color: rgba(139, 92, 246, 0.5);
-  box-shadow:
-    0 16px 60px rgba(139, 92, 246, 0.25),
-    0 8px 24px rgba(99, 102, 241, 0.15),
-    0 4px 12px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+  background: rgba(30, 25, 50, 0.95);
+  border-color: rgba(139, 92, 246, 0.6);
+  box-shadow: 0 8px 32px rgba(139, 92, 246, 0.3);
 }
 
 .spotlight-input-container.focused .spotlight-input-wrapper::before {
@@ -183,41 +176,29 @@
   justify-content: center;
   cursor: pointer;
   font-size: 1.25rem;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: var(--transition-smooth);
   flex-shrink: 0;
-  box-shadow:
-    0 4px 12px rgba(139, 92, 246, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  /* Optimized box-shadow - single layer with combined effect */
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+  contain: layout style paint;
 }
 
 .spotlight-send:hover {
   background: linear-gradient(135deg, rgba(99, 102, 241, 1) 0%, rgba(139, 92, 246, 0.95) 100%);
-  transform: scale(1.08) rotate(5deg);
-  box-shadow:
-    0 6px 20px rgba(139, 92, 246, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transform: scale3d(1.08, 1.08, 1) rotate3d(0, 0, 1, 5deg);
+  /* Optimized box-shadow - single layer */
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+  will-change: transform; /* Only on hover */
 }
 
 .spotlight-send:active {
-  transform: scale(0.96) rotate(0deg);
-  box-shadow:
-    0 2px 8px rgba(139, 92, 246, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transform: scale3d(0.96, 0.96, 1);
+  /* Optimized box-shadow - single layer */
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
 }
 
 .spotlight-hint {
   display: none; /* Hidden to keep UI clean */
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 /* Session Status Indicator */
@@ -231,12 +212,10 @@
   border-radius: 12px;
   font-size: 0.875rem;
   font-weight: 500;
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid;
   animation: slideInUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 999;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .session-status.saving {
@@ -253,12 +232,163 @@
 
 @keyframes slideInUp {
   from {
-    transform: translateY(1rem);
+    transform: translate3d(0, 1rem, 0);
     opacity: 0;
   }
   to {
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
     opacity: 1;
+  }
+}
+
+/* Welcome Screen */
+.welcome-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  animation: welcomeFadeOut 0.5s ease 2s forwards, welcomeSlideUp 0.5s ease 2s forwards;
+}
+
+.welcome-content {
+  text-align: center;
+  animation: welcomeContentIn 0.8s ease;
+}
+
+.welcome-icon {
+  font-size: 80px;
+  margin-bottom: 24px;
+  animation: welcomeIconFloat 2s ease infinite;
+}
+
+.welcome-title {
+  font-size: 48px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.welcome-subtitle {
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+@keyframes welcomeFadeOut {
+  to {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+@keyframes welcomeSlideUp {
+  to {
+    transform: translate3d(0, -100vh, 0);
+  }
+}
+
+@keyframes welcomeContentIn {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 20px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes welcomeIconFloat {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -10px, 0);
+  }
+}
+
+/* Desktop Container */
+.desktop-container {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  transition: opacity 0.5s ease;
+}
+
+.desktop-container.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.desktop-container.visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* Creator Overlay (⌘K) */
+.creator-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: creatorFadeIn 0.3s ease;
+}
+
+.creator-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+}
+
+.creator-content {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  animation: creatorContentIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.creator-content .welcome-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.creator-content .welcome-title {
+  font-size: 36px;
+  margin-bottom: 32px;
+}
+
+.spotlight-input-container.creator {
+  position: relative;
+  bottom: auto;
+  left: auto;
+  transform: none;
+  opacity: 1;
+}
+
+@keyframes creatorFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes creatorContentIn {
+  from {
+    opacity: 0;
+    transform: scale3d(0.9, 0.9, 1) translate3d(0, 20px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: scale3d(1, 1, 1) translate3d(0, 0, 0);
   }
 }
 
@@ -278,5 +408,21 @@
     right: 1rem;
     left: 1rem;
     text-align: center;
+  }
+
+  .welcome-title {
+    font-size: 32px;
+  }
+
+  .welcome-icon {
+    font-size: 60px;
+  }
+
+  .creator-content .welcome-title {
+    font-size: 28px;
+  }
+
+  .creator-content .welcome-icon {
+    font-size: 48px;
   }
 }

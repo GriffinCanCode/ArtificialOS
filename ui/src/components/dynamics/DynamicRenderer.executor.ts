@@ -26,11 +26,11 @@ export class ToolExecutor {
   private setupStateManagement(): void {
     // Add validation middleware
     this.componentState.use((event) => {
-      // Validate numeric inputs
+      // Validate numeric inputs - but only for specific numeric fields, not display text
       if (
-        event.key.includes("age") ||
-        event.key.includes("count") ||
-        event.key.includes("quantity")
+        (event.key.includes("age") ||
+        event.key.includes("quantity")) &&
+        typeof event.newValue !== "string"
       ) {
         const num = Number(event.newValue);
         if (isNaN(num) || num < 0) {
@@ -106,7 +106,7 @@ export class ToolExecutor {
       });
 
       // Check if this is a service tool (backend providers)
-      const servicePrefixes = ["storage", "auth", "ai", "sync", "media"];
+      const servicePrefixes = ["storage", "filesystem", "auth", "ai", "sync", "media", "system"];
       const [category] = toolId.split(".");
 
       let result;
@@ -123,6 +123,9 @@ export class ToolExecutor {
             break;
           case "app":
             result = await this.executeAppTool(toolId.split(".")[1], params);
+            break;
+          case "hub":
+            result = await this.executeHubTool(toolId.split(".")[1], params);
             break;
           case "http":
             result = await this.executeNetworkTool(toolId.split(".")[1], params);
@@ -1173,5 +1176,128 @@ export class ToolExecutor {
     }
 
     return null;
+  }
+
+  private async executeHubTool(action: string, params: Record<string, any>): Promise<any> {
+    switch (action) {
+      case "load_apps":
+        logger.info("Loading apps from registry", { component: "HubTool" });
+        try {
+          const response = await fetch("http://localhost:8000/registry/apps");
+          const data = await response.json();
+          
+          // Store apps in state
+          this.componentState.set("hub_apps", data.apps || []);
+          this.componentState.set("hub_stats", data.stats || {});
+          
+          // Update count displays
+          const allCount = data.apps?.length || 0;
+          this.componentState.set("all-count", `${allCount} apps available`);
+          
+          // Filter by category
+          const systemApps = (data.apps || []).filter((app: any) => app.category === "system");
+          const productivityApps = (data.apps || []).filter((app: any) => app.category === "productivity");
+          const utilitiesApps = (data.apps || []).filter((app: any) => app.category === "utilities");
+          
+          this.componentState.set("system-count", `${systemApps.length} apps`);
+          this.componentState.set("productivity-count", `${productivityApps.length} apps`);
+          
+          logger.info("Apps loaded successfully", {
+            component: "HubTool",
+            count: allCount,
+          });
+          
+          // Generate app-shortcut components dynamically
+          const createAppShortcut = (app: any) => ({
+            type: "app-shortcut",
+            id: `app-${app.id}`,
+            props: {
+              app_id: app.id,
+              name: app.name,
+              icon: app.icon,
+              description: app.description,
+              category: app.category,
+              variant: "card",
+            },
+            on_event: {
+              click: "hub.launch_app",
+            },
+          });
+          
+          // Notify parent to update UI spec with populated grids (batched with requestAnimationFrame)
+          requestAnimationFrame(() => {
+            window.postMessage(
+              {
+                type: "update_hub_grids",
+                grids: {
+                  "all-apps-grid": (data.apps || []).map(createAppShortcut),
+                  "system-apps-grid": systemApps.map(createAppShortcut),
+                  "productivity-apps-grid": productivityApps.map(createAppShortcut),
+                  "utilities-apps-grid": utilitiesApps.map(createAppShortcut),
+                },
+              },
+              "*"
+            );
+          });
+          
+          return data.apps;
+        } catch (error) {
+          logger.error("Failed to load apps", error as Error, {
+            component: "HubTool",
+          });
+          return [];
+        }
+
+      case "launch_app":
+        const appId = params.app_id || params.id;
+        if (!appId) {
+          logger.warn("No app_id provided for launch", { component: "HubTool" });
+          return null;
+        }
+
+        logger.info("Launching app from registry", {
+          component: "HubTool",
+          appId,
+        });
+
+        try {
+          const response = await fetch(
+            `http://localhost:8000/registry/apps/${appId}/launch`,
+            { method: "POST" }
+          );
+          const data = await response.json();
+
+          if (data.error) {
+            throw new Error(data.error);
+          }
+
+          // Notify parent component to render new app
+          window.postMessage(
+            {
+              type: "spawn_app",
+              app_id: data.app_id,
+              ui_spec: data.ui_spec,
+            },
+            "*"
+          );
+
+          logger.info("App launched successfully", {
+            component: "HubTool",
+            appId,
+            launchedAppId: data.app_id,
+          });
+
+          return data;
+        } catch (error) {
+          logger.error("Failed to launch app", error as Error, {
+            component: "HubTool",
+            appId,
+          });
+          return null;
+        }
+
+      default:
+        return null;
+    }
   }
 }

@@ -1,0 +1,83 @@
+# Rustfmt Configuration
+# https://rust-lang.github.io/rustfmt/
+
+# Edition
+edition = "2021"
+
+# Line width
+max_width = 100
+comment_width = 80
+wrap_comments = true
+
+# Indentation
+tab_spaces = 4
+hard_tabs = false
+
+# Imports
+imports_granularity = "Crate"
+group_imports = "StdExternalCrate"
+reorder_imports = true
+reorder_modules = true
+
+# Use field init shorthand if possible
+use_field_init_shorthand = true
+
+# Use try shorthand
+use_try_shorthand = true
+
+# Format strings
+format_strings = true
+
+# Format code in doc comments
+format_code_in_doc_comments = true
+
+# Normalize comments and put a space after the opening symbols
+normalize_comments = true
+
+# Convert `/* */` comments to `//` comments where possible
+normalize_doc_attributes = true
+
+# Breaking changes
+# Use small heuristics to determine if an expression can fit on a single line
+use_small_heuristics = "Default"
+
+# Control flow
+control_brace_style = "AlwaysSameLine"
+brace_style = "SameLineWhere"
+empty_item_single_line = true
+fn_single_line = false
+where_single_line = false
+
+# Struct formatting
+struct_lit_single_line = true
+fn_call_width = 60
+struct_lit_width = 18
+struct_variant_width = 35
+array_width = 60
+chain_width = 60
+
+# Trailing comma
+trailing_comma = "Vertical"
+trailing_semicolon = true
+match_block_trailing_comma = false
+
+# Spaces
+space_after_colon = true
+space_before_colon = false
+spaces_around_ranges = false
+
+# Misc
+remove_nested_parens = true
+reorder_impl_items = true
+report_todo = "Unnumbered"
+report_fixme = "Unnumbered"
+match_arm_blocks = true
+match_arm_leading_pipes = "Never"
+force_multiline_blocks = false
+overflow_delimited_expr = false
+blank_lines_upper_bound = 1
+blank_lines_lower_bound = 0
+
+# Stability
+unstable_features = false
+

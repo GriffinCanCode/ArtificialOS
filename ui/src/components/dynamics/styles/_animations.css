@@ -1,55 +1,61 @@
 /**
- * Animation Keyframes
+ * Animation Keyframes - GPU-Optimized
  * All @keyframes definitions for DynamicRenderer
+ * Optimized for maximum performance using transform3d and GPU acceleration
+ * Note: All animations use hardware-accelerated properties (transform, opacity, filter)
  */
 
 /* ============================================================================
    BASE ANIMATIONS
    ============================================================================ */
 
+/* Single fadeIn animation - replaces duplicate definitions */
 @keyframes fadeIn {
   from {
     opacity: 0;
+    transform: translate3d(0, -4px, 0);
   }
   to {
     opacity: 1;
+    transform: translate3d(0, 0, 0);
   }
 }
 
+/* Kept for backward compatibility with different timing */
 @keyframes fade-in {
   from {
     opacity: 0;
-    transform: translateY(-10px);
+    transform: translate3d(0, -10px, 0);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
 @keyframes shake {
   0%,
   100% {
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
   10%,
   30%,
   50%,
   70%,
   90% {
-    transform: translateX(-5px);
+    transform: translate3d(-5px, 0, 0);
   }
   20%,
   40%,
   60%,
   80% {
-    transform: translateX(5px);
+    transform: translate3d(5px, 0, 0);
   }
 }
 
 @keyframes spin {
   to {
-    transform: rotate(360deg);
+    transform: rotate3d(0, 0, 1, 360deg);
   }
 }
 
@@ -66,82 +72,74 @@
 @keyframes slideInUp {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translate3d(0, 20px, 0);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
 @keyframes slide-in-fade-in {
   0% {
     opacity: 0;
-    transform: translateY(-10px);
+    transform: translate3d(0, -10px, 0);
   }
   100% {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
 /* ============================================================================
-   DESKTOP EMPTY STATE ANIMATIONS
+   DESKTOP EMPTY STATE ANIMATIONS - GPU-Optimized
    ============================================================================ */
 
 @keyframes mesh-float {
   0%, 100% { 
-    transform: translate(0%, 0%) rotate(0deg); 
+    transform: translate3d(0%, 0%, 0) rotate3d(0, 0, 1, 0deg); 
   }
   33% { 
-    transform: translate(5%, -5%) rotate(120deg); 
+    transform: translate3d(5%, -5%, 0) rotate3d(0, 0, 1, 120deg); 
   }
   66% { 
-    transform: translate(-3%, 3%) rotate(240deg); 
+    transform: translate3d(-3%, 3%, 0) rotate3d(0, 0, 1, 240deg); 
   }
 }
 
 @keyframes float {
   0%,
   100% {
-    transform: translateY(0) scale(1);
+    transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
   }
   50% {
-    transform: translateY(-12px) scale(1.05);
+    transform: translate3d(0, -12px, 0) scale3d(1.05, 1.05, 1);
   }
 }
 
 @keyframes holographic-glow {
   0%, 100% { 
     opacity: 0.5;
-    transform: scale(1);
+    transform: scale3d(1, 1, 1);
   }
   25% { 
     opacity: 0.7;
-    transform: scale(1.15);
+    transform: scale3d(1.15, 1.15, 1);
   }
   50% { 
     opacity: 0.9;
-    transform: scale(1.3);
+    transform: scale3d(1.3, 1.3, 1);
   }
   75% { 
     opacity: 0.7;
-    transform: scale(1.15);
+    transform: scale3d(1.15, 1.15, 1);
   }
 }
 
+/* Holographic hue disabled for performance */
 @keyframes holographic-hue {
   0%, 100% { 
-    filter: hue-rotate(0deg) saturate(1); 
-  }
-  25% { 
-    filter: hue-rotate(15deg) saturate(1.1); 
-  }
-  50% { 
-    filter: hue-rotate(30deg) saturate(1.2); 
-  }
-  75% { 
-    filter: hue-rotate(15deg) saturate(1.1); 
+    opacity: 1; 
   }
 }
 
@@ -155,22 +153,17 @@
 }
 
 /* ============================================================================
-   RENDERED APP ANIMATIONS
+   RENDERED APP ANIMATIONS - GPU-Optimized
    ============================================================================ */
 
 @keyframes app-appear {
   0% {
     opacity: 0;
-    transform: scale(0.92) translateY(30px);
-    filter: blur(10px);
-  }
-  60% {
-    transform: scale(1.02) translateY(-5px);
+    transform: scale3d(0.95, 0.95, 1) translate3d(0, 20px, 0);
   }
   100% {
     opacity: 1;
-    transform: scale(1) translateY(0);
-    filter: blur(0);
+    transform: scale3d(1, 1, 1) translate3d(0, 0, 0);
   }
 }
 
@@ -232,33 +225,28 @@
 }
 
 /* ============================================================================
-   BUILD MODE ANIMATIONS
+   BUILD MODE ANIMATIONS - GPU-Optimized
    ============================================================================ */
 
 @keyframes thought-emerge {
   0% {
     opacity: 0;
-    transform: translateX(-30px) scale(0.95);
-    filter: blur(10px);
-  }
-  60% {
-    transform: translateX(5px) scale(1.02);
+    transform: translate3d(-20px, 0, 0) scale3d(0.95, 0.95, 1);
   }
   100% {
     opacity: 1;
-    transform: translateX(0) scale(1);
-    filter: blur(0);
+    transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
   }
 }
 
 @keyframes buildContainer {
   from {
     opacity: 0;
-    transform: scale(0.95) translateY(20px);
+    transform: scale3d(0.95, 0.95, 1) translate3d(0, 20px, 0);
   }
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: scale3d(1, 1, 1) translate3d(0, 0, 0);
   }
 }
 
@@ -283,18 +271,18 @@
 @keyframes build-pulse {
   0%,
   100% {
-    transform: scale(1) rotate(0deg);
+    transform: scale3d(1, 1, 1) rotate3d(0, 0, 1, 0deg);
     opacity: 1;
   }
   25% {
-    transform: scale(1.08) rotate(-3deg);
+    transform: scale3d(1.08, 1.08, 1) rotate3d(0, 0, 1, -3deg);
   }
   50% {
-    transform: scale(1.12) rotate(0deg);
+    transform: scale3d(1.12, 1.12, 1) rotate3d(0, 0, 1, 0deg);
     opacity: 0.9;
   }
   75% {
-    transform: scale(1.08) rotate(3deg);
+    transform: scale3d(1.08, 1.08, 1) rotate3d(0, 0, 1, 3deg);
   }
 }
 
@@ -329,11 +317,11 @@
 @keyframes component-appear {
   0% {
     opacity: 0;
-    transform: translateY(20px) scale(0.95);
+    transform: translate3d(0, 20px, 0) scale3d(0.95, 0.95, 1);
   }
   100% {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
   }
 }
 
@@ -348,21 +336,19 @@
 
 @keyframes skeleton-wave {
   0% {
-    transform: translateX(-100%);
+    transform: translate3d(-100%, 0, 0);
   }
   100% {
-    transform: translateX(100%);
+    transform: translate3d(100%, 0, 0);
   }
 }
 
 @keyframes component-materialize {
   0% {
     opacity: 0.6;
-    filter: blur(4px) brightness(1.2);
   }
   100% {
     opacity: 1;
-    filter: blur(0) brightness(1);
   }
 }
 

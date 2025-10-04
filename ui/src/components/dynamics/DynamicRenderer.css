@@ -3,7 +3,8 @@
  * Imports all modular stylesheets
  */
 
-/* Import modular stylesheets */
+/* Import CSS variables first for use in all other stylesheets */
+@import './styles/_variables.css';
 @import './styles/_base.css';
 @import './styles/_components.css';
 @import './styles/_build-mode.css';

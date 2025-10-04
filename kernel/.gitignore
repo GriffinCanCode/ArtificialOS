@@ -1,0 +1,90 @@
+# Rust build artifacts
+/target/
+**/*.rs.bk
+*.pdb
+
+# Cargo.lock (uncomment if building a library)
+# Cargo.lock
+
+# Generated files
+*.o
+*.so
+*.dylib
+*.dll
+*.a
+
+# Debug info
+*.dSYM/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+*.iml
+
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# IntelliJ IDEA / CLion / RustRover
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Vim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-v][a-z]
+[._]sw[a-p]
+Session.vim
+.netrwhist
+
+# OS
+.DS_Store
+Thumbs.db
+*.bak
+*.tmp
+
+# Logs
+*.log
+logs/
+
+# Profiling
+perf.data
+perf.data.old
+flamegraph.svg
+*.profraw
+*.profdata
+
+# Coverage
+*.gcda
+*.gcno
+*.gcov
+tarpaulin-report.html
+cobertura.xml
+lcov.info
+
+# Benchmarks
+criterion/
+
+# Temporary files
+tmp/
+temp/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Backup files
+*~
+\#*\#
+.\#*
+

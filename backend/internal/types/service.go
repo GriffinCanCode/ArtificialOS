@@ -4,10 +4,11 @@ package types
 type Category string
 
 const (
-	CategoryStorage Category = "storage"
-	CategoryAI      Category = "ai"
-	CategoryAuth    Category = "auth"
-	CategorySystem  Category = "system"
+	CategoryStorage    Category = "storage"
+	CategoryFilesystem Category = "filesystem"
+	CategoryAI         Category = "ai"
+	CategoryAuth       Category = "auth"
+	CategorySystem     Category = "system"
 )
 
 // Service represents a service definition

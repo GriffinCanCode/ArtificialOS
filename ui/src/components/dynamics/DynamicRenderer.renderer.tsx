@@ -48,6 +48,9 @@ export const ComponentRenderer: React.FC<RendererProps> = React.memo(
     const [, forceUpdate] = useState({});
     const [localState, setLocalState] = useState<any>(null);
 
+    // Debounce timers for change events (e.g., text input, textarea)
+    const changeDebounceTimerRef = React.useRef<number | null>(null);
+
     // Subscribe to state changes for this component with advanced options
     React.useEffect(() => {
       if (component.id) {
@@ -80,6 +83,15 @@ export const ComponentRenderer: React.FC<RendererProps> = React.memo(
       }
     }, [component.id, component.type, state]);
 
+    // Cleanup debounce timers on unmount
+    React.useEffect(() => {
+      return () => {
+        if (changeDebounceTimerRef.current !== null) {
+          window.clearTimeout(changeDebounceTimerRef.current);
+        }
+      };
+    }, []);
+
   const handleEvent = useCallback(
     async (eventName: string, eventData?: any) => {
       const toolId = component.on_event?.[eventName];
@@ -107,11 +119,21 @@ export const ComponentRenderer: React.FC<RendererProps> = React.memo(
     [component, executor]
   );
 
-    const handleInputChange = useCallback(
-      (e: React.ChangeEvent<HTMLInputElement>) => {
-        state.set(component.id, e.target.value);
+    // Debounced event handler for change events (prevents firing on every keystroke)
+    const handleDebouncedEvent = useCallback(
+      (eventName: string, eventData?: any, debounceMs: number = 500) => {
+        // Clear any existing timer
+        if (changeDebounceTimerRef.current !== null) {
+          window.clearTimeout(changeDebounceTimerRef.current);
+        }
+
+        // Set new timer
+        changeDebounceTimerRef.current = window.setTimeout(() => {
+          handleEvent(eventName, eventData);
+          changeDebounceTimerRef.current = null;
+        }, debounceMs);
       },
-      [component.id, state]
+      [handleEvent]
     );
 
     // Render based on component type
@@ -150,7 +172,15 @@ export const ComponentRenderer: React.FC<RendererProps> = React.memo(
             value={value}
             readOnly={component.props?.readonly}
             disabled={component.props?.disabled}
-            onChange={handleInputChange}
+            onChange={(e) => {
+              const newValue = e.target.value;
+              // Update local state immediately for responsive typing
+              state.set(component.id, newValue);
+              // If there's a change event handler, debounce it
+              if (component.on_event?.change) {
+                handleDebouncedEvent("change", { value: newValue }, 500);
+              }
+            }}
             style={component.props?.style}
           />
         );
@@ -383,8 +413,12 @@ export const ComponentRenderer: React.FC<RendererProps> = React.memo(
             rows={component.props?.rows}
             onChange={(e) => {
               const newValue = e.target.value;
+              // Update local state immediately for responsive typing
               state.set(component.id, newValue);
-              handleEvent("change", { value: newValue });
+              // If there's a change event handler, debounce it to prevent lag
+              if (component.on_event?.change) {
+                handleDebouncedEvent("change", { value: newValue }, 500);
+              }
             }}
             style={component.props?.style}
           />
@@ -686,6 +720,20 @@ export const ComponentRenderer: React.FC<RendererProps> = React.memo(
             </div>
             {component.props?.footer && <div className="card-footer">{component.props.footer}</div>}
           </div>
+        );
+
+      case "app-shortcut":
+        const { AppShortcut } = require("./AppShortcut");
+        return (
+          <AppShortcut
+            id={component.props?.app_id || component.id}
+            name={component.props?.name || "App"}
+            icon={component.props?.icon || "📦"}
+            description={component.props?.description}
+            category={component.props?.category}
+            variant={component.props?.variant as "icon" | "card" | "list"}
+            onClick={(appId: string) => handleEvent("click", { app_id: appId })}
+          />
         );
 
       default:

@@ -1,0 +1,78 @@
+---
+# Task Manager - Monitor and manage running applications
+app:
+  id: task-manager
+  name: Task Manager
+  description: Monitor and manage running applications and system resources
+  icon: ⚙️
+  category: system
+  version: 1.0.0
+  author: system
+  tags: [system, monitor, tasks, apps]
+  permissions: [STANDARD]
+
+services:
+  - system: [info, time]
+
+ui:
+  title: Task Manager
+  layout: vertical
+  
+  components:
+    # Header with refresh button
+    - row:
+        gap: 16
+        padding: medium
+        align: center
+        style: { borderBottom: 1px solid rgba(255,255,255,0.1) }
+        children:
+          - text#title:
+              content: "Task Manager"
+              variant: h1
+              style: { flex: 1 }
+          
+          - button#refresh:
+              text: "⟳ Refresh"
+              variant: outline
+              "@click": system.info
+    
+    # Tabbed interface for apps and performance
+    - tabs#tabs:
+        variant: default
+        defaultTab: apps
+        children:
+          - col#apps:
+              label: "Applications"
+              gap: 8
+              padding: large
+              children:
+                - text#apps-count:
+                    content: "Loading..."
+                    variant: caption
+                
+                - list#apps-list:
+                    variant: bordered
+          
+          - col#performance:
+              label: "Performance"
+              gap: 16
+              padding: large
+              children:
+                - grid#metrics:
+                    columns: 2
+                    gap: 16
+                    children:
+                      - card#cpu-card:
+                          title: "CPU"
+                          children:
+                            - text#cpu-value:
+                                content: "0%"
+                                variant: h2
+                      
+                      - card#memory-card:
+                          title: "Memory"
+                          children:
+                            - text#memory-value:
+                                content: "0 MB"
+                                variant: h2
+

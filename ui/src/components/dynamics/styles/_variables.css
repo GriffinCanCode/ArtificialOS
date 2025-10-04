@@ -1,0 +1,110 @@
+/**
+ * CSS Custom Properties (Variables)
+ * Consolidates repeated values for better performance and maintainability
+ */
+
+:root {
+  /* Primary Gradient Variables - Reused across components */
+  --gradient-primary: linear-gradient(
+    140deg,
+    rgba(99, 102, 241, 0.12) 0%,
+    rgba(139, 92, 246, 0.15) 50%,
+    rgba(168, 85, 247, 0.1) 100%
+  );
+  
+  --gradient-primary-hover: linear-gradient(
+    140deg,
+    rgba(99, 102, 241, 0.22) 0%,
+    rgba(139, 92, 246, 0.25) 50%,
+    rgba(168, 85, 247, 0.18) 100%
+  );
+  
+  --gradient-text-primary: linear-gradient(
+    120deg,
+    rgba(255, 255, 255, 1) 0%,
+    rgba(192, 132, 252, 1) 50%,
+    rgba(168, 85, 247, 0.95) 100%
+  );
+  
+  --gradient-border: linear-gradient(
+    135deg,
+    rgba(99, 102, 241, 0.4) 0%,
+    rgba(139, 92, 246, 0.35) 25%,
+    rgba(168, 85, 247, 0.3) 50%,
+    rgba(192, 132, 252, 0.25) 75%,
+    rgba(96, 165, 250, 0.3) 100%
+  );
+  
+  --gradient-progress: linear-gradient(
+    90deg,
+    rgba(99, 102, 241, 1) 0%,
+    rgba(139, 92, 246, 1) 25%,
+    rgba(168, 85, 247, 1) 50%,
+    rgba(192, 132, 252, 1) 75%,
+    rgba(96, 165, 250, 1) 100%
+  );
+  
+  /* Background Variables */
+  --bg-glass: linear-gradient(
+    145deg,
+    rgba(24, 24, 38, 0.85) 0%,
+    rgba(18, 18, 30, 0.9) 100%
+  );
+  
+  --bg-glass-light: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(139, 92, 246, 0.04) 100%
+  );
+  
+  /* Shadow Variables - Optimized for performance */
+  --shadow-elevated: 0 30px 90px rgba(0, 0, 0, 0.5);
+  --shadow-medium: 0 8px 24px rgba(0, 0, 0, 0.3);
+  --shadow-small: 0 4px 12px rgba(0, 0, 0, 0.2);
+  --shadow-glow-primary: 0 0 20px rgba(139, 92, 246, 0.4);
+  --shadow-glow-secondary: 0 0 40px rgba(168, 85, 247, 0.3);
+  
+  /* Inset Shadows */
+  --shadow-inset-light: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  --shadow-inset-dark: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+  
+  /* Backdrop Filter Variables */
+  --backdrop-blur-strong: blur(80px) saturate(200%);
+  --backdrop-blur-medium: blur(60px) saturate(180%);
+  --backdrop-blur-light: blur(20px) saturate(150%);
+  
+  /* Border Variables */
+  --border-glass: 1px solid rgba(255, 255, 255, 0.12);
+  --border-subtle: 1px solid rgba(255, 255, 255, 0.1);
+  --border-focus: 1px solid rgba(139, 92, 246, 0.6);
+  
+  /* Transition Variables */
+  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition-fast: all 0.2s ease;
+  
+  /* Z-index Scale */
+  --z-desktop: 1;
+  --z-canvas: 10;
+  --z-dock: 100;
+  --z-modal: 1000;
+  --z-tooltip: 2000;
+  --z-overlay: 3000;
+  
+  /* Spacing Scale */
+  --space-xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 2.5rem;
+  
+  /* Border Radius Scale */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-3xl: 28px;
+}
+

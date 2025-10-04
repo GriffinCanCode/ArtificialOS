@@ -11,12 +11,15 @@ bin/
 
 # Output of the go coverage tool
 *.out
+coverage.txt
+coverage.html
 
 # Dependency directories
 vendor/
 
 # Go workspace file
 go.work
+go.work.sum
 
 # IDE
 .idea/
@@ -24,11 +27,34 @@ go.work
 *.swp
 *.swo
 *~
+.DS_Store
 
 # OS
 .DS_Store
 Thumbs.db
+*.bak
+*.tmp
 
 # Logs
 *.log
+logs/
 
+# Build artifacts
+dist/
+build/
+
+# Temporary files
+tmp/
+temp/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Debug files
+debug
+__debug_bin
+
+# Air live reload
+tmp/

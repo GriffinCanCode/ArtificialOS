@@ -31,6 +31,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  pointer-events: none; /* Pass through to desktop when no app - apps re-enable via .rendered-app */
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE/Edge */
 }
@@ -57,7 +58,7 @@
   overflow: visible;
 }
 
-/* Animated mesh gradient background */
+/* Animated mesh gradient background - optimized for performance */
 .desktop-empty-state::before {
   content: '';
   position: absolute;
@@ -75,7 +76,10 @@
   filter: blur(80px);
   z-index: 0;
   mix-blend-mode: lighten;
-  will-change: transform;
+  /* will-change applied via animation - auto-managed by browser */
+  backface-visibility: hidden;
+  transform: translate3d(0, 0, 0);
+  contain: layout style paint;
 }
 
 .desktop-message {
@@ -97,15 +101,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--space-lg, 1.5rem);
   animation: float 4s ease-in-out infinite, holographic-hue 8s linear infinite;
   color: var(--primary-color, #8b5cf6);
   position: relative;
   isolation: isolate;
-  will-change: transform, filter;
+  /* will-change auto-managed by animations */
+  backface-visibility: hidden;
+  transform: translate3d(0, 0, 0);
+  contain: layout style paint;
 }
 
-/* Holographic effect - separate glow layer to prevent blend issues */
+/* Holographic effect - separate glow layer to prevent blend issues - optimized */
 .desktop-icon::before {
   content: '';
   position: absolute;
@@ -124,6 +131,10 @@
   z-index: -1;
   mix-blend-mode: screen;
   pointer-events: none;
+  /* will-change auto-managed by animation */
+  backface-visibility: hidden;
+  transform: translate3d(0, 0, 0);
+  contain: layout style paint;
 }
 
 .desktop-message h2 {
@@ -206,25 +217,26 @@
    RENDERED APP CONTAINER
    ============================================================================ */
 
-/* Rendered App Container - Ultra Refined Premium Design */
+/* Rendered App Container - Ultra Refined Premium Design - optimized */
 .rendered-app {
   position: relative;
   width: 100%;
   max-width: 900px;
-  background: linear-gradient(
-    145deg,
-    rgba(24, 24, 38, 0.85) 0%,
-    rgba(18, 18, 30, 0.9) 100%
-  );
-  backdrop-filter: blur(80px) saturate(200%);
-  -webkit-backdrop-filter: blur(80px) saturate(200%);
-  border-radius: 28px;
-  padding: 2.5rem;
-  margin: 2rem;
+  background: var(--bg-glass);
+  backdrop-filter: var(--backdrop-blur-strong);
+  -webkit-backdrop-filter: var(--backdrop-blur-strong);
+  border-radius: var(--radius-3xl);
+  padding: var(--space-2xl, 2.5rem);
+  margin: var(--space-xl, 2rem);
   animation: app-appear 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
   isolation: isolate;
-  box-shadow: 
-    0 30px 90px rgba(0, 0, 0, 0.5);
+  /* Optimized box-shadow - single layer */
+  box-shadow: var(--shadow-elevated);
+  pointer-events: auto; /* Re-enable clicks on app even though parent canvas has pointer-events: none */
+  contain: layout style paint;
+  /* will-change auto-managed by animation */
+  backface-visibility: hidden;
+  transform: translate3d(0, 0, 0);
 }
 
 /* Sophisticated multi-color gradient border */
@@ -319,18 +331,18 @@
   gap: 0.5rem;
   backface-visibility: hidden;
   -webkit-font-smoothing: antialiased;
+  transform: translate3d(0, 0, 0);
 }
 
 .save-app-btn:hover {
   background: rgba(99, 102, 241, 0.25);
   border-color: rgba(99, 102, 241, 0.5);
-  transform: translateY(-2px);
+  transform: translate3d(0, -2px, 0);
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
-  will-change: transform;
 }
 
 .save-app-btn:active {
-  transform: translateY(0);
+  transform: translate3d(0, 0, 0);
 }
 
 .app-content {
