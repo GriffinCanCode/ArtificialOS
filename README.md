@@ -69,7 +69,7 @@ The Go backend serves as the central orchestration hub, managing application lif
 Isolated Python service focused exclusively on LLM operations via gRPC.
 
 **Key Responsibilities:**
-- LLM inference using llama.cpp with Metal GPU acceleration
+- LLM inference using Google Gemini API (gemini-2.0-flash-exp)
 - UI specification generation from natural language
 - Token-level streaming for real-time updates
 - Chat response generation with thought streaming
@@ -129,8 +129,18 @@ Dynamic rendering engine that executes AI-generated applications.
 * Rust 1.70+
 * Python 3.11+
 * Node.js 18+
+* Google API Key (for Gemini API) - Set as `GOOGLE_API_KEY` environment variable
 
 ### Setup & Running
+
+**Configure API Key:**
+
+Create a `.env` file in the `ai-service/` directory:
+```bash
+GOOGLE_API_KEY=your_api_key_here
+```
+
+The `start-backend.sh` script will automatically load this environment variable.
 
 **Option 1: Using Makefile (Recommended)**
 
@@ -375,10 +385,10 @@ The frontend implements a comprehensive tool execution engine with multiple cate
 
 **AI Service:**
 - Python 3.11+ with async/await
-- llama.cpp for LLM inference
-- Metal GPU acceleration (macOS)
+- Google Gemini API for LLM inference
 - LangChain for prompt management
 - Pydantic for structured outputs
+- gRPC for service communication
 
 **Kernel:**
 - Rust 1.70+ with Tokio async runtime
@@ -492,10 +502,10 @@ wscat -c ws://localhost:8000/stream
 - **Type Safety**: Compile-time type checking prevents entire classes of runtime errors
 
 ### AI Service Performance
-- **Inference**: Metal GPU acceleration on macOS (3-5x faster than CPU)
+- **Inference**: Google Gemini API with cloud-based optimization
 - **Streaming**: Token-level streaming for real-time user feedback
 - **Caching**: LRU cache for frequently requested UI specifications
-- **Batching**: Efficient prompt processing with minimal overhead
+- **Model**: gemini-2.0-flash-exp for fast, high-quality responses
 
 ### Kernel Performance
 - **Syscall Latency**: Sub-millisecond syscall execution through gRPC
@@ -543,7 +553,7 @@ MIT License - see LICENSE file for details
 ## Acknowledgments
 
 This project builds upon established technologies:
-- llama.cpp for efficient LLM inference
+- Google Gemini API for efficient LLM inference
 - gRPC for high-performance RPC
 - Tokio for async Rust runtime
 - React ecosystem for dynamic UIs

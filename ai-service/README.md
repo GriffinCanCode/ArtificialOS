@@ -10,7 +10,7 @@ This service is now **AI-only**. All HTTP, WebSocket, app management, and orches
 
 ```
 Go Service → [gRPC] → Python AI Service
-                       ├─ LLM Loading
+                       ├─ Gemini API Client
                        ├─ Chat Agent
                        ├─ UI Generator
                        └─ Streaming
@@ -19,7 +19,7 @@ Go Service → [gRPC] → Python AI Service
 ## What This Service Does
 
 ✅ **LLM Operations**
-- Load and manage language models (llama.cpp)
+- LLM inference via Google Gemini API (gemini-2.0-flash-exp)
 - Generate UI specifications from natural language
 - Stream chat responses
 - Token-level streaming for real-time updates
@@ -34,6 +34,20 @@ Go Service → [gRPC] → Python AI Service
 
 ## Running
 
+### Setup
+
+1. Create a `.env` file in the `ai-service/` directory:
+```bash
+GOOGLE_API_KEY=your_gemini_api_key_here
+```
+
+2. Install dependencies:
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
 ### Start gRPC Server
 
 ```bash
@@ -46,10 +60,10 @@ Server runs on port **50052**
 
 ### Configuration
 
-- Model: GPT-OSS-20B via llama.cpp
-- Backend: llama.cpp (direct GGUF loading)
+- Model: Gemini 2.0 Flash (Experimental) via Google API
 - Streaming: Enabled
 - Port: 50052 (gRPC)
+- Temperature: 0.1 (UI generation), 0.7 (chat)
 
 ## gRPC API
 
@@ -101,16 +115,11 @@ ai-service/
 
 ## Dependencies
 
-**Kept:**
-- langchain, llama-cpp-python
-- grpcio, grpcio-tools
-- pydantic
-
-**Removed:**
-- ❌ fastapi - No longer needed
-- ❌ uvicorn - No longer needed
-- ❌ websockets - No longer needed
-- ❌ langchain-ollama - Replaced with direct llama.cpp
+**Core:**
+- google-generativeai - Gemini API client
+- langchain - LLM framework
+- grpcio, grpcio-tools - gRPC communication
+- pydantic - Data validation
 
 ## Development
 
@@ -124,11 +133,14 @@ cd ../
 ### Test LLM Loading
 
 ```python
-from models import ModelLoader, ModelConfig
-from models.config import ModelBackend, ModelSize
+from models import ModelLoader, GeminiConfig
 
 loader = ModelLoader()
-config = ModelConfig(backend=ModelBackend.LLAMA_CPP, size=ModelSize.SMALL)
+config = GeminiConfig(
+    model_name="gemini-2.0-flash-exp",
+    temperature=0.1,
+    max_tokens=4096
+)
 llm = loader.load(config)
 ```
 
@@ -148,10 +160,10 @@ grpcurl -plaintext -d '{"message": "create a calculator"}' \
 
 ## Performance
 
-- Model loading: ~2-5 seconds (first request)
-- UI generation: ~500ms-2s (with LLM)
+- API initialization: <100ms (first request)
+- UI generation: ~1-3s (with Gemini API)
 - Chat streaming: Real-time token delivery
-- Memory: ~4GB (with 20B model)
+- Memory: ~200MB (Python service only, no model weights)
 
 ## Migration Notes
 
