@@ -2,33 +2,58 @@ package main
 
 import (
 	"flag"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/GriffinCanCode/AgentOS/backend/internal/config"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/logging"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/server"
+	"go.uber.org/zap"
 )
 
 func main() {
-	// Parse flags
-	port := flag.String("port", "8000", "Server port")
-	kernelAddr := flag.String("kernel", "localhost:50051", "Kernel gRPC address")
-	aiAddr := flag.String("ai", "localhost:50052", "AI service gRPC address")
+	// Parse flags (override environment variables)
+	port := flag.String("port", "", "Server port")
+	kernelAddr := flag.String("kernel", "", "Kernel gRPC address")
+	aiAddr := flag.String("ai", "", "AI service gRPC address")
+	dev := flag.Bool("dev", false, "Development mode")
 	flag.Parse()
 
-	log.Println("=" + string(make([]byte, 60)) + "=")
-	log.Println("🤖 AI-Powered OS - Go Service")
-	log.Println("=" + string(make([]byte, 60)) + "=")
+	// Load configuration
+	cfg := config.LoadOrDefault()
+
+	// Override with flags if provided
+	if *port != "" {
+		cfg.Server.Port = *port
+	}
+	if *kernelAddr != "" {
+		cfg.Kernel.Address = *kernelAddr
+	}
+	if *aiAddr != "" {
+		cfg.AI.Address = *aiAddr
+	}
+	if *dev {
+		cfg.Logging.Development = true
+	}
+
+	// Create logger for main
+	var logger *logging.Logger
+	if cfg.Logging.Development {
+		logger = logging.NewDevelopment()
+	} else {
+		logger = logging.NewDefault()
+	}
+	defer logger.Sync()
+
+	logger.Info("=" + string(make([]byte, 60)) + "=")
+	logger.Info("🤖 AI-Powered OS - Go Service")
+	logger.Info("=" + string(make([]byte, 60)) + "=")
 
 	// Create server
-	srv, err := server.NewServer(server.Config{
-		Port:          *port,
-		KernelAddr:    *kernelAddr,
-		AIServiceAddr: *aiAddr,
-	})
+	srv, err := server.NewServer(cfg)
 	if err != nil {
-		log.Fatalf("Failed to create server: %v", err)
+		logger.Fatal("Failed to create server", zap.Error(err))
 	}
 
 	// Handle graceful shutdown
@@ -38,7 +63,7 @@ func main() {
 	// Start server in goroutine
 	errChan := make(chan error, 1)
 	go func() {
-		if err := srv.Run(*port); err != nil {
+		if err := srv.Run(); err != nil {
 			errChan <- err
 		}
 	}()
@@ -46,11 +71,13 @@ func main() {
 	// Wait for shutdown signal or error
 	select {
 	case <-sigChan:
-		log.Println("\n🛑 Shutting down gracefully...")
+		logger.Info("Received shutdown signal")
 		if err := srv.Close(); err != nil {
-			log.Printf("Error during shutdown: %v", err)
+			logger.Error("Error during shutdown", zap.Error(err))
+			os.Exit(1)
 		}
+		logger.Info("✅ Shutdown complete")
 	case err := <-errChan:
-		log.Fatalf("Server error: %v", err)
+		logger.Fatal("Server error", zap.Error(err))
 	}
 }

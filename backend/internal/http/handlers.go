@@ -2,6 +2,7 @@ package http
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/GriffinCanCode/AgentOS/backend/internal/app"
@@ -495,17 +496,19 @@ func generatePackageID(title string) string {
 
 func sanitizeID(s string) string {
 	// Convert to lowercase and replace spaces/special chars
-	result := ""
+	var result strings.Builder
+	result.Grow(len(s)) // Pre-allocate capacity
+
 	for _, r := range s {
 		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
-			result += string(r)
+			result.WriteRune(r)
 		} else if r >= 'A' && r <= 'Z' {
-			result += string(r + 32) // to lowercase
+			result.WriteRune(r + 32) // to lowercase
 		} else if r == ' ' || r == '_' {
-			result += "-"
+			result.WriteRune('-')
 		}
 	}
-	return result
+	return result.String()
 }
 
 // SaveSession saves current workspace state

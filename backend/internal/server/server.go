@@ -3,17 +3,20 @@ package server
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/GriffinCanCode/AgentOS/backend/internal/app"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/config"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/grpc"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/http"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/logging"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/middleware"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/providers"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/registry"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/service"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/session"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/ws"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 // Server wraps the HTTP server and dependencies
@@ -25,31 +28,41 @@ type Server struct {
 	sessionManager *session.Manager
 	aiClient       *grpc.AIClient
 	kernel         *grpc.KernelClient
-}
-
-// Config contains server configuration
-type Config struct {
-	Port          string
-	KernelAddr    string
-	AIServiceAddr string
+	logger         *logging.Logger
+	config         *config.Config
 }
 
 // NewServer creates a new server instance
-func NewServer(cfg Config) (*Server, error) {
+func NewServer(cfg *config.Config) (*Server, error) {
+	// Initialize logger
+	var logger *logging.Logger
+	if cfg.Logging.Development {
+		logger = logging.NewDevelopment()
+	} else {
+		logger = logging.NewDefault()
+	}
+	defer logger.Sync()
+
+	logger.Info("🤖 Initializing AI-OS Server",
+		zap.String("port", cfg.Server.Port),
+		zap.String("kernel_addr", cfg.Kernel.Address),
+		zap.String("ai_addr", cfg.AI.Address),
+	)
+
 	// Initialize kernel client (optional)
 	var kernelClient *grpc.KernelClient
-	if cfg.KernelAddr != "" {
-		client, err := grpc.NewKernelClient(cfg.KernelAddr)
+	if cfg.Kernel.Enabled && cfg.Kernel.Address != "" {
+		client, err := grpc.NewKernelClient(cfg.Kernel.Address)
 		if err != nil {
-			log.Printf("Warning: Failed to connect to kernel: %v", err)
+			logger.Warn("Failed to connect to kernel", zap.Error(err))
 		} else {
 			kernelClient = client
-			log.Println("✅ Connected to kernel")
+			logger.Info("✅ Connected to kernel", zap.String("addr", cfg.Kernel.Address))
 		}
 	}
 
 	// Initialize AI client (required)
-	aiClient, err := grpc.NewAIClient(cfg.AIServiceAddr)
+	aiClient, err := grpc.NewAIClient(cfg.AI.Address)
 	if err != nil {
 		// Clean up kernel client if AI client fails
 		if kernelClient != nil {
@@ -57,14 +70,14 @@ func NewServer(cfg Config) (*Server, error) {
 		}
 		return nil, fmt.Errorf("failed to connect to AI service: %w", err)
 	}
-	log.Println("✅ Connected to AI service")
+	logger.Info("✅ Connected to AI service", zap.String("addr", cfg.AI.Address))
 
 	// Initialize app manager and service registry
 	appManager := app.NewManager(kernelClient)
 	serviceRegistry := service.NewRegistry()
 
 	// Register service providers
-	log.Println("📦 Registering service providers...")
+	logger.Info("📦 Registering service providers...")
 	registerProviders(serviceRegistry, kernelClient)
 
 	// Initialize app registry with storage
@@ -81,23 +94,37 @@ func NewServer(cfg Config) (*Server, error) {
 	appRegistry := registry.NewManager(kernelClient, storagePID, "/tmp/ai-os-storage/system")
 
 	// Seed prebuilt apps
-	log.Println("🌱 Loading prebuilt apps...")
+	logger.Info("🌱 Loading prebuilt apps...")
 	seeder := registry.NewSeeder(appRegistry, "../apps")
 	if err := seeder.SeedApps(); err != nil {
-		log.Printf("Warning: Failed to seed prebuilt apps: %v", err)
+		logger.Warn("Failed to seed prebuilt apps", zap.Error(err))
 	}
 	if err := seeder.SeedDefaultApps(); err != nil {
-		log.Printf("Warning: Failed to seed default apps: %v", err)
+		logger.Warn("Failed to seed default apps", zap.Error(err))
 	}
 
 	// Initialize session manager
 	sessionManager := session.NewManager(appManager, kernelClient, storagePID, "/tmp/ai-os-storage/system")
 
 	// Create router
-	router := gin.Default()
+	if !cfg.Logging.Development {
+		gin.SetMode(gin.ReleaseMode)
+	}
+	router := gin.New()
 
-	// Enable CORS
-	router.Use(corsMiddleware())
+	// Add middleware
+	router.Use(gin.Recovery())
+	router.Use(middleware.CORS(middleware.DefaultCORSConfig()))
+	if cfg.RateLimit.Enabled {
+		logger.Info("⚡ Rate limiting enabled",
+			zap.Int("rps", cfg.RateLimit.RequestsPerSecond),
+			zap.Int("burst", cfg.RateLimit.Burst),
+		)
+		router.Use(middleware.RateLimit(middleware.RateLimitConfig{
+			RequestsPerSecond: cfg.RateLimit.RequestsPerSecond,
+			Burst:             cfg.RateLimit.Burst,
+		}))
+	}
 
 	// Create handlers
 	handlers := http.NewHandlers(appManager, serviceRegistry, appRegistry, sessionManager, aiClient, kernelClient)
@@ -138,6 +165,8 @@ func NewServer(cfg Config) (*Server, error) {
 	// WebSocket
 	router.GET("/stream", wsHandler.HandleConnection)
 
+	logger.Info("🚀 Server initialized successfully")
+
 	return &Server{
 		router:         router,
 		appManager:     appManager,
@@ -146,27 +175,41 @@ func NewServer(cfg Config) (*Server, error) {
 		sessionManager: sessionManager,
 		aiClient:       aiClient,
 		kernel:         kernelClient,
+		logger:         logger,
+		config:         cfg,
 	}, nil
 }
 
-// Run starts the server
-func (s *Server) Run(port string) error {
-	log.Printf("🚀 Starting Go service on :%s", port)
-	return s.router.Run(":" + port)
+// Run starts the HTTP server
+func (s *Server) Run() error {
+	addr := s.config.Server.Host + ":" + s.config.Server.Port
+	s.logger.Info("🎧 Starting HTTP server", zap.String("addr", addr))
+	return s.router.Run(addr)
 }
 
-// Close cleans up resources
+// Close gracefully shuts down the server
 func (s *Server) Close() error {
-	if s.aiClient != nil {
-		if err := s.aiClient.Close(); err != nil {
-			log.Printf("Error closing AI client: %v", err)
-		}
-	}
+	s.logger.Info("🛑 Shutting down server...")
+
+	// Close gRPC connections
 	if s.kernel != nil {
 		if err := s.kernel.Close(); err != nil {
-			log.Printf("Error closing kernel client: %v", err)
+			s.logger.Error("Failed to close kernel client", zap.Error(err))
+			return fmt.Errorf("failed to close kernel client: %w", err)
 		}
+		s.logger.Info("Closed kernel connection")
 	}
+	if s.aiClient != nil {
+		if err := s.aiClient.Close(); err != nil {
+			s.logger.Error("Failed to close AI client", zap.Error(err))
+			return fmt.Errorf("failed to close AI client: %w", err)
+		}
+		s.logger.Info("Closed AI connection")
+	}
+
+	// Sync logger before exit
+	s.logger.Sync()
+
 	return nil
 }
 
@@ -177,52 +220,25 @@ func registerProviders(registry *service.Registry, kernel *grpc.KernelClient) {
 	// Storage provider
 	storageProvider := providers.NewStorage(kernel, storagePID, storagePath)
 	if err := registry.Register(storageProvider); err != nil {
-		log.Printf("Warning: Failed to register storage provider: %v", err)
-	} else {
-		log.Println("  ✓ Storage service")
+		// Using fmt package for now; logger not available in this context
+		fmt.Printf("Warning: Failed to register storage provider: %v\n", err)
 	}
 
 	// Auth provider
 	authProvider := providers.NewAuth(kernel, storagePID, storagePath)
 	if err := registry.Register(authProvider); err != nil {
-		log.Printf("Warning: Failed to register auth provider: %v", err)
-	} else {
-		log.Println("  ✓ Auth service")
+		fmt.Printf("Warning: Failed to register auth provider: %v\n", err)
 	}
 
 	// System provider
 	systemProvider := providers.NewSystem()
 	if err := registry.Register(systemProvider); err != nil {
-		log.Printf("Warning: Failed to register system provider: %v", err)
-	} else {
-		log.Println("  ✓ System service")
+		fmt.Printf("Warning: Failed to register system provider: %v\n", err)
 	}
 
 	// Filesystem provider
 	filesystemProvider := providers.NewFilesystem(kernel, storagePID, storagePath)
 	if err := registry.Register(filesystemProvider); err != nil {
-		log.Printf("Warning: Failed to register filesystem provider: %v", err)
-	} else {
-		log.Println("  ✓ Filesystem service")
-	}
-
-	stats := registry.Stats()
-	log.Printf("📊 Registered %d services with %d total tools",
-		stats["total_services"], stats["total_tools"])
-}
-
-func corsMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
-
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-
-		c.Next()
+		fmt.Printf("Warning: Failed to register filesystem provider: %v\n", err)
 	}
 }
