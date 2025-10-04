@@ -1,4 +1,4 @@
-/**
+/*!
  * gRPC Server
  * Exposes kernel syscalls to AI service via gRPC
  */
@@ -8,8 +8,8 @@ use std::path::PathBuf;
 use tonic::{transport::Server, Request, Response, Status};
 
 use crate::process::ProcessManager;
-use crate::sandbox::{SandboxManager, SandboxConfig, Capability as SandboxCapability};
-use crate::syscall::{SyscallExecutor, Syscall, SyscallResult};
+use crate::sandbox::{Capability as SandboxCapability, SandboxConfig, SandboxManager};
+use crate::syscall::{Syscall, SyscallExecutor, SyscallResult};
 
 // Include generated protobuf code
 pub mod kernel_proto {
@@ -56,85 +56,53 @@ impl KernelService for KernelServiceImpl {
 
         // Convert proto syscall to internal syscall
         let syscall = match req.syscall {
-            Some(syscall_request::Syscall::ReadFile(call)) => {
-                Syscall::ReadFile {
-                    path: PathBuf::from(call.path),
-                }
-            }
-            Some(syscall_request::Syscall::WriteFile(call)) => {
-                Syscall::WriteFile {
-                    path: PathBuf::from(call.path),
-                    data: call.data,
-                }
-            }
-            Some(syscall_request::Syscall::CreateFile(call)) => {
-                Syscall::CreateFile {
-                    path: PathBuf::from(call.path),
-                }
-            }
-            Some(syscall_request::Syscall::DeleteFile(call)) => {
-                Syscall::DeleteFile {
-                    path: PathBuf::from(call.path),
-                }
-            }
-            Some(syscall_request::Syscall::ListDirectory(call)) => {
-                Syscall::ListDirectory {
-                    path: PathBuf::from(call.path),
-                }
-            }
-            Some(syscall_request::Syscall::FileExists(call)) => {
-                Syscall::FileExists {
-                    path: PathBuf::from(call.path),
-                }
-            }
-            Some(syscall_request::Syscall::FileStat(call)) => {
-                Syscall::FileStat {
-                    path: PathBuf::from(call.path),
-                }
-            }
-            Some(syscall_request::Syscall::MoveFile(call)) => {
-                Syscall::MoveFile {
-                    source: PathBuf::from(call.source),
-                    destination: PathBuf::from(call.destination),
-                }
-            }
-            Some(syscall_request::Syscall::CopyFile(call)) => {
-                Syscall::CopyFile {
-                    source: PathBuf::from(call.source),
-                    destination: PathBuf::from(call.destination),
-                }
-            }
-            Some(syscall_request::Syscall::CreateDirectory(call)) => {
-                Syscall::CreateDirectory {
-                    path: PathBuf::from(call.path),
-                }
-            }
-            Some(syscall_request::Syscall::SpawnProcess(call)) => {
-                Syscall::SpawnProcess {
-                    command: call.command,
-                    args: call.args,
-                }
-            }
-            Some(syscall_request::Syscall::KillProcess(call)) => {
-                Syscall::KillProcess {
-                    target_pid: call.target_pid,
-                }
-            }
-            Some(syscall_request::Syscall::GetSystemInfo(_)) => {
-                Syscall::GetSystemInfo
-            }
-            Some(syscall_request::Syscall::GetCurrentTime(_)) => {
-                Syscall::GetCurrentTime
-            }
+            Some(syscall_request::Syscall::ReadFile(call)) => Syscall::ReadFile {
+                path: PathBuf::from(call.path),
+            },
+            Some(syscall_request::Syscall::WriteFile(call)) => Syscall::WriteFile {
+                path: PathBuf::from(call.path),
+                data: call.data,
+            },
+            Some(syscall_request::Syscall::CreateFile(call)) => Syscall::CreateFile {
+                path: PathBuf::from(call.path),
+            },
+            Some(syscall_request::Syscall::DeleteFile(call)) => Syscall::DeleteFile {
+                path: PathBuf::from(call.path),
+            },
+            Some(syscall_request::Syscall::ListDirectory(call)) => Syscall::ListDirectory {
+                path: PathBuf::from(call.path),
+            },
+            Some(syscall_request::Syscall::FileExists(call)) => Syscall::FileExists {
+                path: PathBuf::from(call.path),
+            },
+            Some(syscall_request::Syscall::FileStat(call)) => Syscall::FileStat {
+                path: PathBuf::from(call.path),
+            },
+            Some(syscall_request::Syscall::MoveFile(call)) => Syscall::MoveFile {
+                source: PathBuf::from(call.source),
+                destination: PathBuf::from(call.destination),
+            },
+            Some(syscall_request::Syscall::CopyFile(call)) => Syscall::CopyFile {
+                source: PathBuf::from(call.source),
+                destination: PathBuf::from(call.destination),
+            },
+            Some(syscall_request::Syscall::CreateDirectory(call)) => Syscall::CreateDirectory {
+                path: PathBuf::from(call.path),
+            },
+            Some(syscall_request::Syscall::SpawnProcess(call)) => Syscall::SpawnProcess {
+                command: call.command,
+                args: call.args,
+            },
+            Some(syscall_request::Syscall::KillProcess(call)) => Syscall::KillProcess {
+                target_pid: call.target_pid,
+            },
+            Some(syscall_request::Syscall::GetSystemInfo(_)) => Syscall::GetSystemInfo,
+            Some(syscall_request::Syscall::GetCurrentTime(_)) => Syscall::GetCurrentTime,
             Some(syscall_request::Syscall::GetEnvVar(call)) => {
-                Syscall::GetEnvironmentVar {
-                    key: call.key,
-                }
+                Syscall::GetEnvironmentVar { key: call.key }
             }
             Some(syscall_request::Syscall::NetworkRequest(call)) => {
-                Syscall::NetworkRequest {
-                    url: call.url,
-                }
+                Syscall::NetworkRequest { url: call.url }
             }
             None => {
                 return Err(Status::invalid_argument("No syscall provided"));
@@ -218,16 +186,8 @@ impl KernelService for KernelServiceImpl {
         }
 
         // Update paths
-        config.allowed_paths = req
-            .allowed_paths
-            .into_iter()
-            .map(PathBuf::from)
-            .collect();
-        config.blocked_paths = req
-            .blocked_paths
-            .into_iter()
-            .map(PathBuf::from)
-            .collect();
+        config.allowed_paths = req.allowed_paths.into_iter().map(PathBuf::from).collect();
+        config.blocked_paths = req.blocked_paths.into_iter().map(PathBuf::from).collect();
 
         // Update limits
         if let Some(limits) = req.limits {
@@ -260,7 +220,9 @@ impl KernelService for KernelServiceImpl {
         // TODO: Implement event streaming
         // For now, return an empty stream
         let (_tx, rx) = tokio::sync::mpsc::channel(1);
-        Ok(Response::new(tokio_stream::wrappers::ReceiverStream::new(rx)))
+        Ok(Response::new(tokio_stream::wrappers::ReceiverStream::new(
+            rx,
+        )))
     }
 }
 
@@ -301,4 +263,3 @@ pub async fn start_grpc_server(
 
     Ok(())
 }
-

@@ -35,12 +35,6 @@ doc-valid-idents = [
     "JSON",
 ]
 
-# Maximum cyclomatic complexity
-cyclomatic-complexity-threshold = 25
-
-# Allow unnecessary wraps for exported functions
-allow-unwrap-in-tests = true
-
 # Maximum size of enums before triggering large_enum_variant
 enum-variant-size-threshold = 200
 
@@ -58,7 +52,6 @@ allow-print-in-tests = true
 
 # Allow expect/unwrap in tests
 allow-expect-in-tests = true
-allow-unwrap-in-tests = true
 
 # Suppress certain pedantic warnings
 suppress-restriction-lint-in-const = true
@@ -70,7 +63,7 @@ array-size-threshold = 512000
 trivial-copy-size-limit = 128
 
 # Maximum struct field count before being considered too large
-struct-field-names-threshold = 10
+struct-field-name-threshold = 10
 
 # Minimum word length for doc text
 min-ident-chars-threshold = 1

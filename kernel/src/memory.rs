@@ -1,12 +1,12 @@
-/**
+/*!
  * Memory Management
  * Handles memory allocation and deallocation with graceful OOM handling
  */
 
-use log::{info, warn, error};
+use log::{error, info, warn};
+use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
-use parking_lot::RwLock;
 
 pub struct MemoryBlock {
     pub address: usize,
@@ -35,14 +35,23 @@ pub enum MemoryError {
 impl std::fmt::Display for MemoryError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            MemoryError::OutOfMemory { requested, available, used, total } => {
+            MemoryError::OutOfMemory {
+                requested,
+                available,
+                used,
+                total,
+            } => {
                 write!(
                     f,
                     "Out of memory: requested {} bytes, available {} bytes ({} used / {} total)",
                     requested, available, used, total
                 )
             }
-            MemoryError::ExceedsProcessLimit { requested, process_limit, process_current } => {
+            MemoryError::ExceedsProcessLimit {
+                requested,
+                process_limit,
+                process_current,
+            } => {
                 write!(
                     f,
                     "Process memory limit exceeded: requested {} bytes, limit {} bytes, current {} bytes",
@@ -83,7 +92,7 @@ impl MemoryManager {
     /// Check memory pressure level
     fn check_memory_pressure(&self, used: usize) -> Option<&str> {
         let usage_ratio = used as f64 / self.total_memory as f64;
-        
+
         if usage_ratio >= self.critical_threshold {
             Some("CRITICAL")
         } else if usage_ratio >= self.warning_threshold {
@@ -99,7 +108,7 @@ impl MemoryManager {
         let mut blocks = self.blocks.write();
         let mut next_addr = self.next_address.write();
         let mut used = self.used_memory.write();
-        
+
         // Check if allocation would exceed total memory
         if *used + size > self.total_memory {
             let available = self.total_memory - *used;
@@ -107,7 +116,7 @@ impl MemoryManager {
                 "OOM: PID {} requested {} bytes, only {} bytes available ({} used / {} total)",
                 pid, size, available, *used, self.total_memory
             );
-            
+
             return Err(MemoryError::OutOfMemory {
                 requested: size,
                 available,
@@ -129,13 +138,13 @@ impl MemoryManager {
         };
 
         blocks.insert(address, block);
-        
+
         // Log allocation with memory pressure warnings
         let used_val = *used;
         drop(blocks);
         drop(next_addr);
         drop(used);
-        
+
         if let Some(level) = self.check_memory_pressure(used_val) {
             warn!(
                 "Memory pressure {}: Allocated {} bytes at 0x{:x} for PID {} ({:.1}% used: {} / {})",
@@ -144,7 +153,10 @@ impl MemoryManager {
                 used_val, self.total_memory
             );
         } else {
-            info!("Allocated {} bytes at 0x{:x} for PID {}", size, address, pid);
+            info!(
+                "Allocated {} bytes at 0x{:x} for PID {}",
+                size, address, pid
+            );
         }
 
         Ok(address)
@@ -153,23 +165,30 @@ impl MemoryManager {
     /// Deallocate memory
     pub fn deallocate(&self, address: usize) -> Result<(), MemoryError> {
         let mut blocks = self.blocks.write();
-        
+
         if let Some(block) = blocks.get_mut(&address) {
             if block.allocated {
                 let size = block.size;
                 block.allocated = false;
-                
+
                 let mut used = self.used_memory.write();
                 *used = used.saturating_sub(size);
-                
-                info!("Deallocated {} bytes at 0x{:x} ({} bytes now available)", 
-                      size, address, self.total_memory - *used);
-                
+
+                info!(
+                    "Deallocated {} bytes at 0x{:x} ({} bytes now available)",
+                    size,
+                    address,
+                    self.total_memory - *used
+                );
+
                 return Ok(());
             }
         }
-        
-        warn!("Attempted to deallocate invalid or already freed address: 0x{:x}", address);
+
+        warn!(
+            "Attempted to deallocate invalid or already freed address: 0x{:x}",
+            address
+        );
         Err(MemoryError::InvalidAddress)
     }
 
@@ -177,31 +196,34 @@ impl MemoryManager {
     pub fn free_process_memory(&self, pid: u32) -> usize {
         let mut blocks = self.blocks.write();
         let mut freed_bytes = 0;
-        
+
         for (_, block) in blocks.iter_mut() {
             if block.allocated && block.owner_pid == Some(pid) {
                 block.allocated = false;
                 freed_bytes += block.size;
             }
         }
-        
+
         if freed_bytes > 0 {
             let mut used = self.used_memory.write();
             *used = used.saturating_sub(freed_bytes);
-            
+
             info!(
                 "Cleaned up {} bytes from terminated PID {} ({} bytes now available)",
-                freed_bytes, pid, self.total_memory - *used
+                freed_bytes,
+                pid,
+                self.total_memory - *used
             );
         }
-        
+
         freed_bytes
     }
 
     /// Get memory statistics for a specific process
     pub fn get_process_memory(&self, pid: u32) -> usize {
         let blocks = self.blocks.read();
-        blocks.values()
+        blocks
+            .values()
             .filter(|b| b.allocated && b.owner_pid == Some(pid))
             .map(|b| b.size)
             .sum()
@@ -217,10 +239,10 @@ impl MemoryManager {
     pub fn get_detailed_stats(&self) -> MemoryStats {
         let blocks = self.blocks.read();
         let used = *self.used_memory.read();
-        
+
         let allocated_blocks = blocks.values().filter(|b| b.allocated).count();
         let fragmented_blocks = blocks.values().filter(|b| !b.allocated).count();
-        
+
         MemoryStats {
             total_memory: self.total_memory,
             used_memory: used,
@@ -260,4 +282,3 @@ impl Default for MemoryManager {
         Self::new()
     }
 }
-

@@ -1,14 +1,14 @@
-/**
+/*!
  * Sandbox Module
  * Provides secure, isolated execution environment for processes
  */
 
 use log::{info, warn};
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use parking_lot::RwLock;
 
 /// Capabilities that can be granted to sandboxed processes
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -19,19 +19,19 @@ pub enum Capability {
     CreateFile,
     DeleteFile,
     ListDirectory,
-    
+
     // Process
     SpawnProcess,
     KillProcess,
-    
+
     // Network
     NetworkAccess,
     BindPort,
-    
+
     // System
     SystemInfo,
     TimeAccess,
-    
+
     // IPC
     SendMessage,
     ReceiveMessage,
@@ -51,7 +51,7 @@ impl Default for ResourceLimits {
     fn default() -> Self {
         Self {
             max_memory_bytes: 512 * 1024 * 1024, // 512MB
-            max_cpu_time_ms: 60_000, // 60 seconds
+            max_cpu_time_ms: 60_000,             // 60 seconds
             max_file_descriptors: 100,
             max_processes: 10,
             max_network_connections: 20,
@@ -79,7 +79,7 @@ impl SandboxConfig {
             capabilities: HashSet::new(),
             resource_limits: ResourceLimits {
                 max_memory_bytes: 128 * 1024 * 1024, // 128MB
-                max_cpu_time_ms: 30_000, // 30 seconds
+                max_cpu_time_ms: 30_000,             // 30 seconds
                 max_file_descriptors: 20,
                 max_processes: 1,
                 max_network_connections: 0,
@@ -109,14 +109,8 @@ impl SandboxConfig {
             pid,
             capabilities,
             resource_limits: ResourceLimits::default(),
-            allowed_paths: vec![
-                PathBuf::from("/tmp"),
-                PathBuf::from("/var/tmp"),
-            ],
-            blocked_paths: vec![
-                PathBuf::from("/etc/passwd"),
-                PathBuf::from("/etc/shadow"),
-            ],
+            allowed_paths: vec![PathBuf::from("/tmp"), PathBuf::from("/var/tmp")],
+            blocked_paths: vec![PathBuf::from("/etc/passwd"), PathBuf::from("/etc/shadow")],
             allow_network: false,
             environment_vars: vec![],
         }
@@ -142,7 +136,7 @@ impl SandboxConfig {
             capabilities,
             resource_limits: ResourceLimits {
                 max_memory_bytes: 2 * 1024 * 1024 * 1024, // 2GB
-                max_cpu_time_ms: 300_000, // 5 minutes
+                max_cpu_time_ms: 300_000,                 // 5 minutes
                 max_file_descriptors: 500,
                 max_processes: 50,
                 max_network_connections: 100,
@@ -160,7 +154,7 @@ impl SandboxConfig {
     }
 
     /// Check if a path is accessible
-    pub fn can_access_path(&self, path: &PathBuf) -> bool {
+    pub fn can_access_path(&self, path: &Path) -> bool {
         // First check if explicitly blocked
         for blocked in &self.blocked_paths {
             if path.starts_with(blocked) {
@@ -267,19 +261,28 @@ impl SandboxManager {
 
     /// Get resource limits for a process
     pub fn get_limits(&self, pid: u32) -> Option<ResourceLimits> {
-        self.sandboxes.read().get(&pid).map(|s| s.resource_limits.clone())
+        self.sandboxes
+            .read()
+            .get(&pid)
+            .map(|s| s.resource_limits.clone())
     }
 
-    /// Get sandbox config for a process
+    /// Get sandbox config for a process (clones entire config - use sparingly)
     pub fn get_sandbox(&self, pid: u32) -> Option<SandboxConfig> {
         self.sandboxes.read().get(&pid).cloned()
     }
 
+    /// Check if sandbox exists without cloning
+    pub fn has_sandbox(&self, pid: u32) -> bool {
+        self.sandboxes.read().contains_key(&pid)
+    }
+
     /// Update sandbox config
     pub fn update_sandbox(&self, pid: u32, config: SandboxConfig) -> bool {
+        use std::collections::hash_map::Entry;
         let mut sandboxes = self.sandboxes.write();
-        if sandboxes.contains_key(&pid) {
-            sandboxes.insert(pid, config);
+        if let Entry::Occupied(mut e) = sandboxes.entry(pid) {
+            e.insert(config);
             info!("Updated sandbox for PID {}", pid);
             true
         } else {
@@ -316,12 +319,11 @@ mod tests {
     fn test_capability_grant_revoke() {
         let mut sandbox = SandboxConfig::minimal(1);
         assert!(!sandbox.has_capability(&Capability::ReadFile));
-        
+
         sandbox.grant_capability(Capability::ReadFile);
         assert!(sandbox.has_capability(&Capability::ReadFile));
-        
+
         sandbox.revoke_capability(&Capability::ReadFile);
         assert!(!sandbox.has_capability(&Capability::ReadFile));
     }
 }
-

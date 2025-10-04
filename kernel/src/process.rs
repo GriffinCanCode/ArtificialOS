@@ -1,13 +1,13 @@
-/**
+/*!
  * Process Management
  * Handles process creation, scheduling, and lifecycle
  */
 
 use log::info;
-use std::collections::HashMap;
-use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use parking_lot::RwLock;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::Arc;
 
 use crate::memory::MemoryManager;
 
@@ -54,7 +54,10 @@ impl ProcessManager {
     }
 
     pub fn create_process(&self, name: String, priority: u8) -> u32 {
+        // Atomic transaction: allocate PID and insert process together
+        let mut processes = self.processes.write();
         let mut next_pid = self.next_pid.write();
+
         let pid = *next_pid;
         *next_pid += 1;
 
@@ -65,7 +68,7 @@ impl ProcessManager {
             priority,
         };
 
-        self.processes.write().insert(pid, process);
+        processes.insert(pid, process);
         info!("Created process: {} (PID: {})", name, pid);
         pid
     }
@@ -76,10 +79,10 @@ impl ProcessManager {
 
     pub fn terminate_process(&self, pid: u32) -> bool {
         let mut processes = self.processes.write();
-        if let Some(process) = processes.get_mut(&pid) {
+        if let Some(mut process) = processes.remove(&pid) {
             process.state = ProcessState::Terminated;
-            info!("Terminated process: PID {}", pid);
-            
+            info!("Terminated and removed process: PID {}", pid);
+
             // Clean up memory if memory manager is available
             if let Some(ref mem_mgr) = self.memory_manager {
                 let freed = mem_mgr.free_process_memory(pid);
@@ -87,7 +90,7 @@ impl ProcessManager {
                     info!("Freed {} bytes from terminated process PID {}", freed, pid);
                 }
             }
-            
+
             true
         } else {
             false
@@ -119,4 +122,3 @@ impl Default for ProcessManager {
         Self::new()
     }
 }
-

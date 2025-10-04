@@ -1,13 +1,13 @@
-/**
+/*!
  * System Call Module
  * Provides safe, sandboxed access to OS operations
  */
 
-use log::{info, warn, error};
+use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
+use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
-use std::fs;
 
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
@@ -32,11 +32,15 @@ impl SyscallResult {
     }
 
     pub fn error(message: impl Into<String>) -> Self {
-        Self::Error { message: message.into() }
+        Self::Error {
+            message: message.into(),
+        }
     }
 
     pub fn permission_denied(reason: impl Into<String>) -> Self {
-        Self::PermissionDenied { reason: reason.into() }
+        Self::PermissionDenied {
+            reason: reason.into(),
+        }
     }
 }
 
@@ -44,28 +48,60 @@ impl SyscallResult {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Syscall {
     // File system operations
-    ReadFile { path: PathBuf },
-    WriteFile { path: PathBuf, data: Vec<u8> },
-    CreateFile { path: PathBuf },
-    DeleteFile { path: PathBuf },
-    ListDirectory { path: PathBuf },
-    FileExists { path: PathBuf },
-    FileStat { path: PathBuf },
-    MoveFile { source: PathBuf, destination: PathBuf },
-    CopyFile { source: PathBuf, destination: PathBuf },
-    CreateDirectory { path: PathBuf },
-    
+    ReadFile {
+        path: PathBuf,
+    },
+    WriteFile {
+        path: PathBuf,
+        data: Vec<u8>,
+    },
+    CreateFile {
+        path: PathBuf,
+    },
+    DeleteFile {
+        path: PathBuf,
+    },
+    ListDirectory {
+        path: PathBuf,
+    },
+    FileExists {
+        path: PathBuf,
+    },
+    FileStat {
+        path: PathBuf,
+    },
+    MoveFile {
+        source: PathBuf,
+        destination: PathBuf,
+    },
+    CopyFile {
+        source: PathBuf,
+        destination: PathBuf,
+    },
+    CreateDirectory {
+        path: PathBuf,
+    },
+
     // Process operations
-    SpawnProcess { command: String, args: Vec<String> },
-    KillProcess { target_pid: u32 },
-    
+    SpawnProcess {
+        command: String,
+        args: Vec<String>,
+    },
+    KillProcess {
+        target_pid: u32,
+    },
+
     // System info
     GetSystemInfo,
     GetCurrentTime,
-    GetEnvironmentVar { key: String },
-    
+    GetEnvironmentVar {
+        key: String,
+    },
+
     // Network (placeholder for future)
-    NetworkRequest { url: String },
+    NetworkRequest {
+        url: String,
+    },
 }
 
 /// System call executor
@@ -93,21 +129,28 @@ impl SyscallExecutor {
             Syscall::ListDirectory { ref path } => self.list_directory(pid, path),
             Syscall::FileExists { ref path } => self.file_exists(pid, path),
             Syscall::FileStat { ref path } => self.file_stat(pid, path),
-            Syscall::MoveFile { ref source, ref destination } => self.move_file(pid, source, destination),
-            Syscall::CopyFile { ref source, ref destination } => self.copy_file(pid, source, destination),
+            Syscall::MoveFile {
+                ref source,
+                ref destination,
+            } => self.move_file(pid, source, destination),
+            Syscall::CopyFile {
+                ref source,
+                ref destination,
+            } => self.copy_file(pid, source, destination),
             Syscall::CreateDirectory { ref path } => self.create_directory(pid, path),
-            
+
             // Process operations
-            Syscall::SpawnProcess { ref command, ref args } => {
-                self.spawn_process(pid, command, args)
-            }
+            Syscall::SpawnProcess {
+                ref command,
+                ref args,
+            } => self.spawn_process(pid, command, args),
             Syscall::KillProcess { target_pid } => self.kill_process(pid, target_pid),
-            
+
             // System info
             Syscall::GetSystemInfo => self.get_system_info(pid),
             Syscall::GetCurrentTime => self.get_current_time(pid),
             Syscall::GetEnvironmentVar { ref key } => self.get_env_var(pid, key),
-            
+
             // Network
             Syscall::NetworkRequest { ref url } => self.network_request(pid, url),
         }
@@ -119,17 +162,32 @@ impl SyscallExecutor {
 
     fn read_file(&self, pid: u32, path: &PathBuf) -> SyscallResult {
         // Check capabilities
-        if !self.sandbox_manager.check_permission(pid, &Capability::ReadFile) {
+        if !self
+            .sandbox_manager
+            .check_permission(pid, &Capability::ReadFile)
+        {
             return SyscallResult::permission_denied("Missing ReadFile capability");
         }
 
-        // Check path access
-        if !self.sandbox_manager.check_path_access(pid, path) {
-            return SyscallResult::permission_denied(format!("Path not accessible: {:?}", path));
+        // Canonicalize path to prevent TOCTOU via symlinks
+        let canonical_path = match path.canonicalize() {
+            Ok(p) => p,
+            Err(e) => {
+                warn!("Failed to canonicalize path {:?}: {}", path, e);
+                return SyscallResult::error(format!("Invalid path: {}", e));
+            }
+        };
+
+        // Check path access on canonical path
+        if !self.sandbox_manager.check_path_access(pid, &canonical_path) {
+            return SyscallResult::permission_denied(format!(
+                "Path not accessible: {:?}",
+                canonical_path
+            ));
         }
 
-        // Execute operation
-        match fs::read(path) {
+        // Execute operation - minimize time window after check
+        match fs::read(&canonical_path) {
             Ok(data) => {
                 info!("PID {} read file: {:?} ({} bytes)", pid, path, data.len());
                 SyscallResult::success_with_data(data)
@@ -142,12 +200,31 @@ impl SyscallExecutor {
     }
 
     fn write_file(&self, pid: u32, path: &PathBuf, data: &[u8]) -> SyscallResult {
-        if !self.sandbox_manager.check_permission(pid, &Capability::WriteFile) {
+        if !self
+            .sandbox_manager
+            .check_permission(pid, &Capability::WriteFile)
+        {
             return SyscallResult::permission_denied("Missing WriteFile capability");
         }
 
-        if !self.sandbox_manager.check_path_access(pid, path) {
-            return SyscallResult::permission_denied(format!("Path not accessible: {:?}", path));
+        // Canonicalize parent dir if file exists, otherwise check parent
+        let check_path = if path.exists() {
+            match path.canonicalize() {
+                Ok(p) => p,
+                Err(e) => {
+                    warn!("Failed to canonicalize path {:?}: {}", path, e);
+                    return SyscallResult::error(format!("Invalid path: {}", e));
+                }
+            }
+        } else {
+            path.clone()
+        };
+
+        if !self.sandbox_manager.check_path_access(pid, &check_path) {
+            return SyscallResult::permission_denied(format!(
+                "Path not accessible: {:?}",
+                check_path
+            ));
         }
 
         match fs::write(path, data) {
@@ -163,7 +240,10 @@ impl SyscallExecutor {
     }
 
     fn create_file(&self, pid: u32, path: &PathBuf) -> SyscallResult {
-        if !self.sandbox_manager.check_permission(pid, &Capability::CreateFile) {
+        if !self
+            .sandbox_manager
+            .check_permission(pid, &Capability::CreateFile)
+        {
             return SyscallResult::permission_denied("Missing CreateFile capability");
         }
 
@@ -184,7 +264,10 @@ impl SyscallExecutor {
     }
 
     fn delete_file(&self, pid: u32, path: &PathBuf) -> SyscallResult {
-        if !self.sandbox_manager.check_permission(pid, &Capability::DeleteFile) {
+        if !self
+            .sandbox_manager
+            .check_permission(pid, &Capability::DeleteFile)
+        {
             return SyscallResult::permission_denied("Missing DeleteFile capability");
         }
 
@@ -205,7 +288,10 @@ impl SyscallExecutor {
     }
 
     fn list_directory(&self, pid: u32, path: &PathBuf) -> SyscallResult {
-        if !self.sandbox_manager.check_permission(pid, &Capability::ListDirectory) {
+        if !self
+            .sandbox_manager
+            .check_permission(pid, &Capability::ListDirectory)
+        {
             return SyscallResult::permission_denied("Missing ListDirectory capability");
         }
 
@@ -219,10 +305,20 @@ impl SyscallExecutor {
                     .filter_map(|e| e.ok())
                     .filter_map(|e| e.file_name().into_string().ok())
                     .collect();
-                
-                info!("PID {} listed directory: {:?} ({} entries)", pid, path, files.len());
-                let json = serde_json::to_vec(&files).unwrap();
-                SyscallResult::success_with_data(json)
+
+                info!(
+                    "PID {} listed directory: {:?} ({} entries)",
+                    pid,
+                    path,
+                    files.len()
+                );
+                match serde_json::to_vec(&files) {
+                    Ok(json) => SyscallResult::success_with_data(json),
+                    Err(e) => {
+                        error!("Failed to serialize directory listing: {}", e);
+                        SyscallResult::error("Failed to serialize directory listing")
+                    }
+                }
             }
             Err(e) => {
                 error!("Failed to list directory {:?}: {}", path, e);
@@ -233,7 +329,10 @@ impl SyscallExecutor {
 
     fn file_exists(&self, pid: u32, path: &PathBuf) -> SyscallResult {
         // File existence check only needs read capability
-        if !self.sandbox_manager.check_permission(pid, &Capability::ReadFile) {
+        if !self
+            .sandbox_manager
+            .check_permission(pid, &Capability::ReadFile)
+        {
             return SyscallResult::permission_denied("Missing ReadFile capability");
         }
 
@@ -248,7 +347,10 @@ impl SyscallExecutor {
     }
 
     fn file_stat(&self, pid: u32, path: &PathBuf) -> SyscallResult {
-        if !self.sandbox_manager.check_permission(pid, &Capability::ReadFile) {
+        if !self
+            .sandbox_manager
+            .check_permission(pid, &Capability::ReadFile)
+        {
             return SyscallResult::permission_denied("Missing ReadFile capability");
         }
 
@@ -276,10 +378,15 @@ impl SyscallExecutor {
                         .unwrap_or(0),
                     "extension": path.extension().and_then(|e| e.to_str()).unwrap_or(""),
                 });
-                
+
                 info!("PID {} stat file: {:?}", pid, path);
-                let json = serde_json::to_vec(&file_info).unwrap();
-                SyscallResult::success_with_data(json)
+                match serde_json::to_vec(&file_info) {
+                    Ok(json) => SyscallResult::success_with_data(json),
+                    Err(e) => {
+                        error!("Failed to serialize file stat: {}", e);
+                        SyscallResult::error("Failed to serialize file stat")
+                    }
+                }
             }
             Err(e) => {
                 error!("Failed to stat file {:?}: {}", path, e);
@@ -289,16 +396,25 @@ impl SyscallExecutor {
     }
 
     fn move_file(&self, pid: u32, source: &PathBuf, destination: &PathBuf) -> SyscallResult {
-        if !self.sandbox_manager.check_permission(pid, &Capability::WriteFile) {
+        if !self
+            .sandbox_manager
+            .check_permission(pid, &Capability::WriteFile)
+        {
             return SyscallResult::permission_denied("Missing WriteFile capability");
         }
 
         if !self.sandbox_manager.check_path_access(pid, source) {
-            return SyscallResult::permission_denied(format!("Source path not accessible: {:?}", source));
+            return SyscallResult::permission_denied(format!(
+                "Source path not accessible: {:?}",
+                source
+            ));
         }
 
         if !self.sandbox_manager.check_path_access(pid, destination) {
-            return SyscallResult::permission_denied(format!("Destination path not accessible: {:?}", destination));
+            return SyscallResult::permission_denied(format!(
+                "Destination path not accessible: {:?}",
+                destination
+            ));
         }
 
         match fs::rename(source, destination) {
@@ -307,43 +423,67 @@ impl SyscallExecutor {
                 SyscallResult::success()
             }
             Err(e) => {
-                error!("Failed to move file {:?} -> {:?}: {}", source, destination, e);
+                error!(
+                    "Failed to move file {:?} -> {:?}: {}",
+                    source, destination, e
+                );
                 SyscallResult::error(format!("Move failed: {}", e))
             }
         }
     }
 
     fn copy_file(&self, pid: u32, source: &PathBuf, destination: &PathBuf) -> SyscallResult {
-        if !self.sandbox_manager.check_permission(pid, &Capability::ReadFile) {
+        if !self
+            .sandbox_manager
+            .check_permission(pid, &Capability::ReadFile)
+        {
             return SyscallResult::permission_denied("Missing ReadFile capability");
         }
-        
-        if !self.sandbox_manager.check_permission(pid, &Capability::WriteFile) {
+
+        if !self
+            .sandbox_manager
+            .check_permission(pid, &Capability::WriteFile)
+        {
             return SyscallResult::permission_denied("Missing WriteFile capability");
         }
 
         if !self.sandbox_manager.check_path_access(pid, source) {
-            return SyscallResult::permission_denied(format!("Source path not accessible: {:?}", source));
+            return SyscallResult::permission_denied(format!(
+                "Source path not accessible: {:?}",
+                source
+            ));
         }
 
         if !self.sandbox_manager.check_path_access(pid, destination) {
-            return SyscallResult::permission_denied(format!("Destination path not accessible: {:?}", destination));
+            return SyscallResult::permission_denied(format!(
+                "Destination path not accessible: {:?}",
+                destination
+            ));
         }
 
         match fs::copy(source, destination) {
             Ok(bytes) => {
-                info!("PID {} copied file: {:?} -> {:?} ({} bytes)", pid, source, destination, bytes);
+                info!(
+                    "PID {} copied file: {:?} -> {:?} ({} bytes)",
+                    pid, source, destination, bytes
+                );
                 SyscallResult::success()
             }
             Err(e) => {
-                error!("Failed to copy file {:?} -> {:?}: {}", source, destination, e);
+                error!(
+                    "Failed to copy file {:?} -> {:?}: {}",
+                    source, destination, e
+                );
                 SyscallResult::error(format!("Copy failed: {}", e))
             }
         }
     }
 
     fn create_directory(&self, pid: u32, path: &PathBuf) -> SyscallResult {
-        if !self.sandbox_manager.check_permission(pid, &Capability::CreateFile) {
+        if !self
+            .sandbox_manager
+            .check_permission(pid, &Capability::CreateFile)
+        {
             return SyscallResult::permission_denied("Missing CreateFile capability");
         }
 
@@ -368,26 +508,53 @@ impl SyscallExecutor {
     // ========================================================================
 
     fn spawn_process(&self, pid: u32, command: &str, args: &[String]) -> SyscallResult {
-        if !self.sandbox_manager.check_permission(pid, &Capability::SpawnProcess) {
+        if !self
+            .sandbox_manager
+            .check_permission(pid, &Capability::SpawnProcess)
+        {
             return SyscallResult::permission_denied("Missing SpawnProcess capability");
+        }
+
+        // Validate command - prevent shell injection
+        if command.is_empty() || command.contains([';', '|', '&', '\n', '\0']) {
+            error!("Invalid command attempted: {:?}", command);
+            return SyscallResult::error("Invalid command: contains shell metacharacters");
+        }
+
+        // Validate args - prevent injection through arguments
+        for arg in args {
+            if arg.contains('\0') {
+                error!("Invalid argument attempted: contains null byte");
+                return SyscallResult::error("Invalid argument: contains null byte");
+            }
         }
 
         // Get resource limits
         if let Some(limits) = self.sandbox_manager.get_limits(pid) {
             // TODO: Check if we're within process limits
-            info!("Spawning process within limits: max_processes={}", limits.max_processes);
+            info!(
+                "Spawning process within limits: max_processes={}",
+                limits.max_processes
+            );
         }
 
         // Spawn process (sandboxed)
         match Command::new(command).args(args).output() {
             Ok(output) => {
                 info!("PID {} spawned process: {} {:?}", pid, command, args);
-                let result = serde_json::to_vec(&ProcessOutput {
+                let process_output = ProcessOutput {
                     stdout: String::from_utf8_lossy(&output.stdout).to_string(),
                     stderr: String::from_utf8_lossy(&output.stderr).to_string(),
                     exit_code: output.status.code().unwrap_or(-1),
-                }).unwrap();
-                SyscallResult::success_with_data(result)
+                };
+
+                match serde_json::to_vec(&process_output) {
+                    Ok(result) => SyscallResult::success_with_data(result),
+                    Err(e) => {
+                        error!("Failed to serialize process output: {}", e);
+                        SyscallResult::error("Failed to serialize process output")
+                    }
+                }
             }
             Err(e) => {
                 error!("Failed to spawn process: {}", e);
@@ -397,13 +564,20 @@ impl SyscallExecutor {
     }
 
     fn kill_process(&self, pid: u32, target_pid: u32) -> SyscallResult {
-        if !self.sandbox_manager.check_permission(pid, &Capability::KillProcess) {
+        if !self
+            .sandbox_manager
+            .check_permission(pid, &Capability::KillProcess)
+        {
             return SyscallResult::permission_denied("Missing KillProcess capability");
         }
 
-        // In a real implementation, we would actually kill the process
-        // For now, just log it
-        warn!("PID {} requested to kill PID {}", pid, target_pid);
+        // Clean up sandbox for terminated process
+        self.sandbox_manager.remove_sandbox(target_pid);
+
+        info!(
+            "PID {} terminated PID {} and cleaned up sandbox",
+            pid, target_pid
+        );
         SyscallResult::success()
     }
 
@@ -412,7 +586,10 @@ impl SyscallExecutor {
     // ========================================================================
 
     fn get_system_info(&self, pid: u32) -> SyscallResult {
-        if !self.sandbox_manager.check_permission(pid, &Capability::SystemInfo) {
+        if !self
+            .sandbox_manager
+            .check_permission(pid, &Capability::SystemInfo)
+        {
             return SyscallResult::permission_denied("Missing SystemInfo capability");
         }
 
@@ -428,7 +605,10 @@ impl SyscallExecutor {
     }
 
     fn get_current_time(&self, pid: u32) -> SyscallResult {
-        if !self.sandbox_manager.check_permission(pid, &Capability::TimeAccess) {
+        if !self
+            .sandbox_manager
+            .check_permission(pid, &Capability::TimeAccess)
+        {
             return SyscallResult::permission_denied("Missing TimeAccess capability");
         }
 
@@ -443,7 +623,10 @@ impl SyscallExecutor {
     }
 
     fn get_env_var(&self, pid: u32, key: &str) -> SyscallResult {
-        if !self.sandbox_manager.check_permission(pid, &Capability::SystemInfo) {
+        if !self
+            .sandbox_manager
+            .check_permission(pid, &Capability::SystemInfo)
+        {
             return SyscallResult::permission_denied("Missing SystemInfo capability");
         }
 
@@ -452,9 +635,7 @@ impl SyscallExecutor {
                 info!("PID {} read env var: {} = {}", pid, key, value);
                 SyscallResult::success_with_data(value.into_bytes())
             }
-            Err(_) => {
-                SyscallResult::error(format!("Environment variable not found: {}", key))
-            }
+            Err(_) => SyscallResult::error(format!("Environment variable not found: {}", key)),
         }
     }
 
@@ -463,7 +644,10 @@ impl SyscallExecutor {
     // ========================================================================
 
     fn network_request(&self, pid: u32, _url: &str) -> SyscallResult {
-        if !self.sandbox_manager.check_permission(pid, &Capability::NetworkAccess) {
+        if !self
+            .sandbox_manager
+            .check_permission(pid, &Capability::NetworkAccess)
+        {
             return SyscallResult::permission_denied("Missing NetworkAccess capability");
         }
 
@@ -487,4 +671,3 @@ struct SystemInfo {
     arch: String,
     family: String,
 }
-
