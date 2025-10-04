@@ -16,47 +16,59 @@ interface LauncherProps {
 
 export const Launcher: React.FC<LauncherProps> = React.memo(({ onAppLaunch, onCreateNew }) => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  
+
   // Use TanStack Query for data fetching with automatic caching
-  const { 
-    data, 
-    isLoading, 
-    error: queryError, 
-    refetch 
+  const {
+    data,
+    isLoading,
+    error: queryError,
+    refetch,
   } = useRegistryApps(selectedCategory || undefined);
-  
+
   // Use mutation hooks for app actions
   const { launchApp, deleteApp } = useRegistryMutations();
 
   const apps = data?.apps ?? [];
   const error = queryError?.message ?? (launchApp.error?.message || deleteApp.error?.message);
 
-  const handleLaunchApp = useCallback(async (packageId: string) => {
-    launchApp.mutate(packageId, {
-      onSuccess: (response) => {
-        if (onAppLaunch) {
-          onAppLaunch(response.app_id, response.ui_spec);
-        }
-      },
-    });
-  }, [launchApp, onAppLaunch]);
+  const handleLaunchApp = useCallback(
+    async (packageId: string) => {
+      launchApp.mutate(packageId, {
+        onSuccess: (response) => {
+          if (onAppLaunch) {
+            onAppLaunch(response.app_id, response.ui_spec);
+          }
+        },
+      });
+    },
+    [launchApp, onAppLaunch]
+  );
 
-  const handleDeleteApp = useCallback(async (packageId: string, event: React.MouseEvent) => {
-    event.stopPropagation();
+  const handleDeleteApp = useCallback(
+    async (packageId: string, event: React.MouseEvent) => {
+      event.stopPropagation();
 
-    if (!confirm("Are you sure you want to delete this app?")) {
-      return;
-    }
+      if (!confirm("Are you sure you want to delete this app?")) {
+        return;
+      }
 
-    deleteApp.mutate(packageId);
-  }, [deleteApp]);
+      deleteApp.mutate(packageId);
+    },
+    [deleteApp]
+  );
 
   const categories = ["all", "productivity", "utilities", "games", "creative", "general"];
 
   return (
     <div className="launcher">
       <div className="launcher-header">
-        <h1 className="launcher-title"><Rocket size={28} style={{ display: 'inline-block', marginRight: '12px', verticalAlign: 'middle' }} />App Launcher</h1>
+        <h1 className="launcher-title">
+          <Rocket
+            size={28}
+            style={{ display: "inline-block", marginRight: "12px", verticalAlign: "middle" }}
+          />
+          App Launcher
+        </h1>
         <p className="launcher-subtitle">
           {apps.length} {apps.length === 1 ? "app" : "apps"} installed
         </p>
@@ -80,7 +92,10 @@ export const Launcher: React.FC<LauncherProps> = React.memo(({ onAppLaunch, onCr
 
       {error && (
         <div className="launcher-error">
-          <span><AlertTriangle size={16} style={{ marginRight: '6px', verticalAlign: 'middle' }} />{error}</span>
+          <span>
+            <AlertTriangle size={16} style={{ marginRight: "6px", verticalAlign: "middle" }} />
+            {error}
+          </span>
           <button onClick={() => refetch()}>Retry</button>
         </div>
       )}
@@ -133,7 +148,9 @@ export const Launcher: React.FC<LauncherProps> = React.memo(({ onAppLaunch, onCr
             )}
             onClick={onCreateNew}
           >
-            <div className="app-icon"><Plus size={32} /></div>
+            <div className="app-icon">
+              <Plus size={32} />
+            </div>
             <div className="app-name">Create New App</div>
             <div className="app-description">Generate a new app with AI</div>
           </div>
@@ -143,4 +160,4 @@ export const Launcher: React.FC<LauncherProps> = React.memo(({ onAppLaunch, onCr
   );
 });
 
-Launcher.displayName = 'Launcher';
+Launcher.displayName = "Launcher";

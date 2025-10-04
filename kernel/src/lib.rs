@@ -11,7 +11,7 @@ pub mod syscall;
 pub mod grpc_server;
 
 pub use process::ProcessManager;
-pub use memory::MemoryManager;
+pub use memory::{MemoryManager, MemoryError, MemoryStats};
 pub use ipc::IPCManager;
 pub use sandbox::{SandboxManager, SandboxConfig, Capability, ResourceLimits};
 pub use syscall::{SyscallExecutor, Syscall, SyscallResult};

@@ -35,19 +35,10 @@ export function useSessionManager(options: UseSessionManagerOptions = {}) {
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hasRestoredRef = useRef(false);
 
-  // Get state from store
-  const messages = useAppStore((state) => state.messages);
-  const thoughts = useAppStore((state) => state.thoughts);
-  const uiSpec = useAppStore((state) => state.uiSpec);
-  const isLoading = useAppStore((state) => state.isLoading);
-  const storeError = useAppStore((state) => state.error);
-  const generationThoughts = useAppStore((state) => state.generationThoughts);
-  const generationPreview = useAppStore((state) => state.generationPreview);
-
   // Derive state from mutations
   const isSaving = saveSessionMutation.isPending || saveDefaultMutation.isPending;
   const isRestoring = restoreSessionMutation.isPending;
-  const error = 
+  const error =
     saveSessionMutation.error?.message ||
     saveDefaultMutation.error?.message ||
     restoreSessionMutation.error?.message ||
@@ -55,29 +46,32 @@ export function useSessionManager(options: UseSessionManagerOptions = {}) {
 
   /**
    * Capture current frontend state
+   * Access store directly to avoid recreating this callback on every state change
    */
   const captureState = useCallback(() => {
+    const state = useAppStore.getState();
+
     const chatState: ChatState = {
-      messages: messages.map((m) => ({
+      messages: state.messages.map((m) => ({
         type: m.type,
         content: m.content,
         timestamp: m.timestamp,
       })),
-      thoughts: thoughts.map((t) => ({
+      thoughts: state.thoughts.map((t) => ({
         content: t.content,
         timestamp: t.timestamp,
       })),
     };
 
     const uiState: UIState = {
-      generation_thoughts: generationThoughts,
-      generation_preview: generationPreview,
-      is_loading: isLoading,
-      error: storeError || undefined,
+      generation_thoughts: state.generationThoughts,
+      generation_preview: state.generationPreview,
+      is_loading: state.isLoading,
+      error: state.error || undefined,
     };
 
     return { chatState, uiState };
-  }, [messages, thoughts, generationThoughts, generationPreview, isLoading, storeError]);
+  }, []); // No dependencies - reads from store directly
 
   /**
    * Save session with default name (for auto-save)
@@ -122,85 +116,88 @@ export function useSessionManager(options: UseSessionManagerOptions = {}) {
   /**
    * Restore a session
    */
-  const restore = useCallback(async (sessionId: string) => {
-    const store = useAppStore.getState();
-    
-    // Prevent restore during active generation to avoid interrupting streaming
-    if (store.isStreaming || store.isLoading) {
-      logger.warn("Cannot restore session while generation is in progress", {
-        component: "SessionManager",
-        isStreaming: store.isStreaming,
-        isLoading: store.isLoading,
-      });
-      throw new Error("Cannot restore session during active generation");
-    }
+  const restore = useCallback(
+    async (sessionId: string) => {
+      const store = useAppStore.getState();
 
-    const result = await restoreSessionMutation.mutateAsync(sessionId);
-
-    // Wait a bit for backend to finish restoring apps before updating frontend state
-    // This is non-blocking and won't interfere with any future streaming
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    // Restore frontend state
-    const { workspace } = result;
-
-    // Reset state first to ensure clean slate
-    store.resetState();
-
-    if (workspace.chat_state) {
-      // Restore messages and thoughts
-      workspace.chat_state.messages.forEach((msg) => {
-        store.addMessage({
-          type: msg.type as "user" | "assistant" | "system",
-          content: msg.content,
-          timestamp: msg.timestamp,
+      // Prevent restore during active generation to avoid interrupting streaming
+      if (store.isStreaming || store.isLoading) {
+        logger.warn("Cannot restore session while generation is in progress", {
+          component: "SessionManager",
+          isStreaming: store.isStreaming,
+          isLoading: store.isLoading,
         });
-      });
-
-      workspace.chat_state.thoughts.forEach((thought) => {
-        store.addThought({
-          content: thought.content,
-          timestamp: thought.timestamp,
-        });
-      });
-    }
-
-    if (workspace.ui_state) {
-      // Only restore error state, never loading/streaming state during restore
-      if (workspace.ui_state.error) {
-        store.setError(workspace.ui_state.error);
+        throw new Error("Cannot restore session during active generation");
       }
-    }
 
-    // Restore focused app UI - use requestAnimationFrame for next frame to prevent race
-    // This ensures we don't conflict with any React render cycles
-    if (workspace.focused_app_id && workspace.apps.length > 0) {
-      const focusedApp = workspace.apps.find((app) => app.id === workspace.focused_app_id);
-      if (focusedApp) {
-        // Use requestAnimationFrame + setTimeout to schedule after current render cycle
-        requestAnimationFrame(() => {
-          setTimeout(() => {
-            // Double-check we're not in the middle of streaming before setting UI
-            const currentStore = useAppStore.getState();
-            if (!currentStore.isStreaming && !currentStore.isLoading) {
-              logger.info("Restoring focused app UI", {
-                component: "SessionManager",
-                appId: focusedApp.id,
-                title: focusedApp.title,
-              });
-              currentStore.setUISpec(focusedApp.ui_spec as any, focusedApp.id);
-            } else {
-              logger.warn("Skipped UI restore due to active generation", {
-                component: "SessionManager",
-              });
-            }
-          }, 100);
+      const result = await restoreSessionMutation.mutateAsync(sessionId);
+
+      // Wait a bit for backend to finish restoring apps before updating frontend state
+      // This is non-blocking and won't interfere with any future streaming
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Restore frontend state
+      const { workspace } = result;
+
+      // Reset state first to ensure clean slate
+      store.resetState();
+
+      if (workspace.chat_state) {
+        // Restore messages and thoughts
+        workspace.chat_state.messages.forEach((msg) => {
+          store.addMessage({
+            type: msg.type as "user" | "assistant" | "system",
+            content: msg.content,
+            timestamp: msg.timestamp,
+          });
+        });
+
+        workspace.chat_state.thoughts.forEach((thought) => {
+          store.addThought({
+            content: thought.content,
+            timestamp: thought.timestamp,
+          });
         });
       }
-    }
 
-    return result;
-  }, [restoreSessionMutation]);
+      if (workspace.ui_state) {
+        // Only restore error state, never loading/streaming state during restore
+        if (workspace.ui_state.error) {
+          store.setError(workspace.ui_state.error);
+        }
+      }
+
+      // Restore focused app UI - use requestAnimationFrame for next frame to prevent race
+      // This ensures we don't conflict with any React render cycles
+      if (workspace.focused_app_id && workspace.apps.length > 0) {
+        const focusedApp = workspace.apps.find((app) => app.id === workspace.focused_app_id);
+        if (focusedApp) {
+          // Use requestAnimationFrame + setTimeout to schedule after current render cycle
+          requestAnimationFrame(() => {
+            setTimeout(() => {
+              // Double-check we're not in the middle of streaming before setting UI
+              const currentStore = useAppStore.getState();
+              if (!currentStore.isStreaming && !currentStore.isLoading) {
+                logger.info("Restoring focused app UI", {
+                  component: "SessionManager",
+                  appId: focusedApp.id,
+                  title: focusedApp.title,
+                });
+                currentStore.setUISpec(focusedApp.ui_spec as any, focusedApp.id);
+              } else {
+                logger.warn("Skipped UI restore due to active generation", {
+                  component: "SessionManager",
+                });
+              }
+            }, 100);
+          });
+        }
+      }
+
+      return result;
+    },
+    [restoreSessionMutation]
+  );
 
   /**
    * Restore default session on mount
@@ -243,7 +240,11 @@ export function useSessionManager(options: UseSessionManagerOptions = {}) {
     // Setup new timer
     autoSaveTimerRef.current = setInterval(() => {
       // Only auto-save if there's something to save (has messages or an app loaded)
-      if (messages.length > 0 || uiSpec) {
+      // Access current state directly from store to avoid dependency issues
+      const currentMessages = useAppStore.getState().messages;
+      const currentUISpec = useAppStore.getState().uiSpec;
+
+      if (currentMessages.length > 0 || currentUISpec) {
         saveDefault();
       }
     }, autoSaveInterval * 1000);
@@ -259,7 +260,7 @@ export function useSessionManager(options: UseSessionManagerOptions = {}) {
         autoSaveTimerRef.current = null;
       }
     };
-  }, [enableAutoSave, autoSaveInterval, saveDefault, messages.length, uiSpec]);
+  }, [enableAutoSave, autoSaveInterval, saveDefault]); // Removed messages.length and uiSpec from deps
 
   return {
     save,

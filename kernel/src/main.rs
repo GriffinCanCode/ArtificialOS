@@ -14,7 +14,7 @@ use std::path::PathBuf;
 
 use ai_os_kernel::{
     ProcessManager, MemoryManager, IPCManager,
-    SandboxManager, SandboxConfig, Capability,
+    SandboxManager, SandboxConfig,
     SyscallExecutor, Syscall, start_grpc_server
 };
 
@@ -30,10 +30,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     
     // Initialize kernel subsystems
     info!("Initializing memory manager...");
-    let _memory_manager = MemoryManager::new();
+    let memory_manager = MemoryManager::new();
     
-    info!("Initializing process manager...");
-    let process_manager = ProcessManager::new();
+    info!("Initializing process manager with memory management...");
+    let process_manager = ProcessManager::with_memory_manager(memory_manager.clone());
     
     info!("Initializing IPC system...");
     let _ipc_manager = IPCManager::new();
@@ -49,6 +49,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     
     // Demo: Create a test process with sandboxing
     demo_sandboxed_execution(&process_manager, &sandbox_manager, &syscall_executor);
+    
+    // Demo: Memory management with OOM handling
+    demo_memory_management(&memory_manager);
     
     info!("Kernel entering main loop...");
     info!("Press Ctrl+C to exit");
@@ -78,10 +81,22 @@ async fn main() -> Result<(), Box<dyn Error>> {
     info!("✅ gRPC server started");
     info!("Kernel is ready to receive syscalls from AI service");
     
-    // Kernel main loop
+    // Clone memory manager for monitoring loop
+    let monitor_mem_mgr = memory_manager.clone();
+    
+    // Kernel main loop with memory monitoring
     loop {
-        // Monitor system state
-        tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+        // Log memory statistics periodically
+        let stats = monitor_mem_mgr.get_detailed_stats();
+        info!(
+            "Memory: {:.1}% used ({} MB / {} MB), {} blocks allocated",
+            stats.usage_percentage,
+            stats.used_memory / (1024 * 1024),
+            stats.total_memory / (1024 * 1024),
+            stats.allocated_blocks
+        );
+        
+        tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
     }
 }
 
@@ -136,6 +151,63 @@ fn demo_sandboxed_execution(
     
     info!("-----------------------------------");
     info!("Sandboxed execution demo complete!");
+    info!("");
+}
+
+/// Demonstration of memory management with OOM handling
+fn demo_memory_management(memory_manager: &MemoryManager) {
+    info!("Running memory management demo...");
+    info!("-----------------------------------");
+    
+    // Test 1: Normal allocation
+    info!("\n[Test 1] Normal memory allocation...");
+    let pid = 100;
+    match memory_manager.allocate(1024 * 1024, pid) {
+        Ok(addr) => info!("✅ Allocated 1 MB at address 0x{:x}", addr),
+        Err(e) => info!("❌ Allocation failed: {}", e),
+    }
+    
+    // Test 2: Large allocation triggering memory pressure warning
+    info!("\n[Test 2] Large allocation (should trigger warning)...");
+    let pid = 101;
+    let large_size = 900 * 1024 * 1024; // 900 MB
+    match memory_manager.allocate(large_size, pid) {
+        Ok(addr) => info!("✅ Allocated {} MB at address 0x{:x}", large_size / (1024 * 1024), addr),
+        Err(e) => info!("❌ Allocation failed: {}", e),
+    }
+    
+    // Test 3: OOM scenario
+    info!("\n[Test 3] OOM scenario (should fail gracefully)...");
+    let pid = 102;
+    let oom_size = 200 * 1024 * 1024; // 200 MB (should exceed 1GB total)
+    match memory_manager.allocate(oom_size, pid) {
+        Ok(addr) => info!("✅ Allocated {} MB at address 0x{:x}", oom_size / (1024 * 1024), addr),
+        Err(e) => info!("✅ Gracefully handled OOM: {}", e),
+    }
+    
+    // Test 4: Process memory cleanup
+    info!("\n[Test 4] Cleanup after process termination...");
+    let freed = memory_manager.free_process_memory(101);
+    info!("✅ Freed {} MB from PID 101", freed / (1024 * 1024));
+    
+    // Test 5: Retry allocation after cleanup
+    info!("\n[Test 5] Retry allocation after cleanup...");
+    let pid = 103;
+    match memory_manager.allocate(100 * 1024 * 1024, pid) {
+        Ok(addr) => info!("✅ Successfully allocated 100 MB at address 0x{:x} after cleanup", addr),
+        Err(e) => info!("❌ Allocation failed: {}", e),
+    }
+    
+    // Show final statistics
+    let stats = memory_manager.get_detailed_stats();
+    info!("\n[Final Statistics]");
+    info!("  Total Memory: {} MB", stats.total_memory / (1024 * 1024));
+    info!("  Used Memory: {} MB ({:.1}%)", stats.used_memory / (1024 * 1024), stats.usage_percentage);
+    info!("  Available: {} MB", stats.available_memory / (1024 * 1024));
+    info!("  Allocated Blocks: {}", stats.allocated_blocks);
+    
+    info!("-----------------------------------");
+    info!("Memory management demo complete!");
     info!("");
 }
 

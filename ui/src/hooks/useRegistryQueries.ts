@@ -22,8 +22,7 @@ import { logger } from "../utils/monitoring/logger";
 export const registryKeys = {
   all: ["registry"] as const,
   apps: () => [...registryKeys.all, "apps"] as const,
-  appsList: (category?: string) =>
-    [...registryKeys.apps(), "list", { category }] as const,
+  appsList: (category?: string) => [...registryKeys.apps(), "list", { category }] as const,
   app: (id: string) => [...registryKeys.apps(), "detail", id] as const,
 };
 
@@ -168,20 +167,17 @@ export function useDeleteApp() {
       });
 
       // Optimistically update all apps lists
-      queryClient.setQueriesData<ListAppsResponse>(
-        { queryKey: registryKeys.apps() },
-        (old) => {
-          if (!old) return old;
-          return {
-            ...old,
-            apps: old.apps.filter((app) => app.id !== packageId),
-            stats: {
-              ...old.stats,
-              total_packages: old.stats.total_packages - 1,
-            },
-          };
-        }
-      );
+      queryClient.setQueriesData<ListAppsResponse>({ queryKey: registryKeys.apps() }, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          apps: old.apps.filter((app) => app.id !== packageId),
+          stats: {
+            ...old.stats,
+            total_packages: old.stats.total_packages - 1,
+          },
+        };
+      });
 
       return { previousApps };
     },
@@ -223,4 +219,3 @@ export function useRegistryMutations() {
     deleteApp,
   };
 }
-

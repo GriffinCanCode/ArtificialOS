@@ -27,11 +27,15 @@ const TitleBar: React.FC<TitleBarProps> = React.memo(({ sessionManager }) => {
   const log = useLogger("TitleBar");
   const [showSessionMenu, setShowSessionMenu] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
-  
+
   // Use TanStack Query for sessions
-  const { data: sessionsData, refetch: refetchSessions, isLoading: isLoadingSessions } = useSessions();
+  const {
+    data: sessionsData,
+    refetch: refetchSessions,
+    isLoading: isLoadingSessions,
+  } = useSessions();
   const deleteSessionMutation = useDeleteSession();
-  
+
   const sessions = sessionsData?.sessions ?? [];
 
   const handleMinimize = useCallback(() => {
@@ -57,17 +61,20 @@ const TitleBar: React.FC<TitleBarProps> = React.memo(({ sessionManager }) => {
     setShowSaveDialog(true);
   }, [sessionManager]);
 
-  const handleSaveSubmit = useCallback(async (data: { name: string; description?: string }) => {
-    if (!sessionManager) return;
-    
-    try {
-      await sessionManager.save(data.name, data.description);
-      log.info("Session saved successfully", { name: data.name });
-    } catch (err) {
-      log.error("Failed to save session", err as Error);
-      throw err; // Let the dialog handle error display
-    }
-  }, [sessionManager, log]);
+  const handleSaveSubmit = useCallback(
+    async (data: { name: string; description?: string }) => {
+      if (!sessionManager) return;
+
+      try {
+        await sessionManager.save(data.name, data.description);
+        log.info("Session saved successfully", { name: data.name });
+      } catch (err) {
+        log.error("Failed to save session", err as Error);
+        throw err; // Let the dialog handle error display
+      }
+    },
+    [sessionManager, log]
+  );
 
   const handleShowSessions = useCallback(() => {
     setShowSessionMenu(!showSessionMenu);
@@ -77,32 +84,38 @@ const TitleBar: React.FC<TitleBarProps> = React.memo(({ sessionManager }) => {
     }
   }, [showSessionMenu, refetchSessions]);
 
-  const handleDeleteSession = useCallback(async (sessionId: string, event: React.MouseEvent) => {
-    event.stopPropagation();
-    
-    if (!confirm("Are you sure you want to delete this session?")) {
-      return;
-    }
-    
-    try {
-      await deleteSessionMutation.mutateAsync(sessionId);
-      log.info("Session deleted successfully", { sessionId });
-    } catch (err) {
-      log.error("Failed to delete session", err as Error);
-    }
-  }, [deleteSessionMutation, log]);
+  const handleDeleteSession = useCallback(
+    async (sessionId: string, event: React.MouseEvent) => {
+      event.stopPropagation();
 
-  const handleRestore = useCallback(async (sessionId: string) => {
-    if (!sessionManager) return;
+      if (!confirm("Are you sure you want to delete this session?")) {
+        return;
+      }
 
-    try {
-      await sessionManager.restore(sessionId);
-      setShowSessionMenu(false);
-      log.info("Session restored successfully", { sessionId });
-    } catch (err) {
-      log.error("Failed to restore session", err as Error);
-    }
-  }, [sessionManager, log]);
+      try {
+        await deleteSessionMutation.mutateAsync(sessionId);
+        log.info("Session deleted successfully", { sessionId });
+      } catch (err) {
+        log.error("Failed to delete session", err as Error);
+      }
+    },
+    [deleteSessionMutation, log]
+  );
+
+  const handleRestore = useCallback(
+    async (sessionId: string) => {
+      if (!sessionManager) return;
+
+      try {
+        await sessionManager.restore(sessionId);
+        setShowSessionMenu(false);
+        log.info("Session restored successfully", { sessionId });
+      } catch (err) {
+        log.error("Failed to restore session", err as Error);
+      }
+    },
+    [sessionManager, log]
+  );
 
   const closeSaveDialog = useCallback(() => {
     setShowSaveDialog(false);
@@ -155,7 +168,9 @@ const TitleBar: React.FC<TitleBarProps> = React.memo(({ sessionManager }) => {
           <div className="session-menu">
             <div className="session-menu-header">
               <h3>Saved Sessions</h3>
-              <button onClick={closeSessionMenu}><X size={16} /></button>
+              <button onClick={closeSessionMenu}>
+                <X size={16} />
+              </button>
             </div>
             <div className="session-list">
               {isLoadingSessions ? (
@@ -217,6 +232,6 @@ const TitleBar: React.FC<TitleBarProps> = React.memo(({ sessionManager }) => {
   );
 });
 
-TitleBar.displayName = 'TitleBar';
+TitleBar.displayName = "TitleBar";
 
 export default TitleBar;

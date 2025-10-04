@@ -1,0 +1,392 @@
+/**
+ * Animation Keyframes
+ * All @keyframes definitions for DynamicRenderer
+ */
+
+/* ============================================================================
+   BASE ANIMATIONS
+   ============================================================================ */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateX(-5px);
+  }
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateX(5px);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================================================
+   DESKTOP EMPTY STATE ANIMATIONS
+   ============================================================================ */
+
+@keyframes mesh-float {
+  0%, 100% { 
+    transform: translate(0%, 0%) rotate(0deg); 
+  }
+  33% { 
+    transform: translate(5%, -5%) rotate(120deg); 
+  }
+  66% { 
+    transform: translate(-3%, 3%) rotate(240deg); 
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-12px) scale(1.05);
+  }
+}
+
+@keyframes holographic-glow {
+  0%, 100% { 
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  25% { 
+    opacity: 0.7;
+    transform: scale(1.15);
+  }
+  50% { 
+    opacity: 0.9;
+    transform: scale(1.3);
+  }
+  75% { 
+    opacity: 0.7;
+    transform: scale(1.15);
+  }
+}
+
+@keyframes holographic-hue {
+  0%, 100% { 
+    filter: hue-rotate(0deg) saturate(1); 
+  }
+  25% { 
+    filter: hue-rotate(15deg) saturate(1.1); 
+  }
+  50% { 
+    filter: hue-rotate(30deg) saturate(1.2); 
+  }
+  75% { 
+    filter: hue-rotate(15deg) saturate(1.1); 
+  }
+}
+
+@keyframes gradient-shift {
+  0%, 100% { 
+    background-position: 0% 50%; 
+  }
+  50% { 
+    background-position: 100% 50%; 
+  }
+}
+
+/* ============================================================================
+   RENDERED APP ANIMATIONS
+   ============================================================================ */
+
+@keyframes app-appear {
+  0% {
+    opacity: 0;
+    transform: scale(0.92) translateY(30px);
+    filter: blur(10px);
+  }
+  60% {
+    transform: scale(1.02) translateY(-5px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes border-glow {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ============================================================================
+   BUTTON ANIMATIONS
+   ============================================================================ */
+
+@keyframes liquid-flow {
+  0%, 100% { 
+    left: -150%; 
+  }
+  10%, 90% { 
+    left: -150%; 
+  }
+  50% { 
+    left: 150%; 
+  }
+}
+
+@keyframes border-flow {
+  0%, 100% { 
+    background-position: 0% 50%; 
+  }
+  50% { 
+    background-position: 100% 50%; 
+  }
+}
+
+/* ============================================================================
+   INPUT ANIMATIONS
+   ============================================================================ */
+
+@keyframes input-pulse {
+  0%, 100% {
+    box-shadow: 
+      0 0 0 4px rgba(139, 92, 246, 0.12),
+      0 0 30px rgba(139, 92, 246, 0.2),
+      0 4px 12px rgba(99, 102, 241, 0.15),
+      inset 0 1px 3px rgba(0, 0, 0, 0.15),
+      0 0 0 1px rgba(139, 92, 246, 0.3) inset;
+  }
+  50% {
+    box-shadow: 
+      0 0 0 6px rgba(139, 92, 246, 0.08),
+      0 0 40px rgba(168, 85, 247, 0.25),
+      0 6px 16px rgba(99, 102, 241, 0.2),
+      inset 0 1px 3px rgba(0, 0, 0, 0.15),
+      0 0 0 1px rgba(168, 85, 247, 0.4) inset;
+  }
+}
+
+/* ============================================================================
+   BUILD MODE ANIMATIONS
+   ============================================================================ */
+
+@keyframes thought-emerge {
+  0% {
+    opacity: 0;
+    transform: translateX(-30px) scale(0.95);
+    filter: blur(10px);
+  }
+  60% {
+    transform: translateX(5px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes buildContainer {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes border-pulse {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes grid-scan {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 20px 20px;
+  }
+}
+
+@keyframes build-pulse {
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  25% {
+    transform: scale(1.08) rotate(-3deg);
+  }
+  50% {
+    transform: scale(1.12) rotate(0deg);
+    opacity: 0.9;
+  }
+  75% {
+    transform: scale(1.08) rotate(3deg);
+  }
+}
+
+@keyframes progress-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes progress-shine {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes progress-glow {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes component-appear {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes skeleton-wave {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes component-materialize {
+  0% {
+    opacity: 0.6;
+    filter: blur(4px) brightness(1.2);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0) brightness(1);
+  }
+}
+
+@keyframes assembly-pulse {
+  0%,
+  100% {
+    border-color: color-mix(in srgb, var(--color-electric-blue) 40%, transparent);
+    background: color-mix(in srgb, var(--color-electric-blue) 5%, transparent);
+  }
+  50% {
+    border-color: color-mix(in srgb, var(--color-neon-purple) 40%, transparent);
+    background: color-mix(in srgb, var(--color-neon-purple) 5%, transparent);
+  }
+}
+
+@keyframes completion-flash {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 40px 10px rgba(138, 101, 255, 0.6);
+  }
+  100% {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+}
+

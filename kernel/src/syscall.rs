@@ -6,9 +6,8 @@
 use log::{info, warn, error};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::process::{Command, Output};
+use std::process::Command;
 use std::fs;
-use std::io::{self, Read, Write};
 
 use crate::sandbox::{Capability, SandboxManager};
 
@@ -336,7 +335,7 @@ impl SyscallExecutor {
     // Network Operations
     // ========================================================================
 
-    fn network_request(&self, pid: u32, url: &str) -> SyscallResult {
+    fn network_request(&self, pid: u32, _url: &str) -> SyscallResult {
         if !self.sandbox_manager.check_permission(pid, &Capability::NetworkAccess) {
             return SyscallResult::permission_denied("Missing NetworkAccess capability");
         }

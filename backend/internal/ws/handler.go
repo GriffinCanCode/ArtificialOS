@@ -10,6 +10,7 @@ import (
 	"github.com/GriffinCanCode/AgentOS/backend/internal/app"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/grpc"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/types"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
@@ -125,6 +126,13 @@ func (h *Handler) handleGenerateUI(conn *websocket.Conn, msg types.WSMessage) {
 		}
 	}
 
+	// Validate context size to prevent DoS
+	if err := utils.ValidateContext(contextMap); err != nil {
+		log.Printf("Context validation failed: %v", err)
+		h.sendError(conn, "Context too large")
+		return
+	}
+
 	// Get parent ID if present
 	var parentID *string
 	if pid, ok := msg.Context["parent_app_id"].(string); ok {
@@ -150,6 +158,15 @@ func (h *Handler) handleGenerateUI(conn *websocket.Conn, msg types.WSMessage) {
 	// Collect tokens and forward to client
 	err = grpc.HandleUIStream(stream, func(tokenType, content string) error {
 		switch strings.ToUpper(tokenType) {
+		case "GENERATION_START":
+			// Reset buffer on new generation start (happens when LLM fails and falls back)
+			uiSpecJSON = ""
+			thoughts = []string{}
+			return h.send(conn, map[string]interface{}{
+				"type":      "generation_start",
+				"message":   content,
+				"timestamp": time.Now().Unix(),
+			})
 		case "THOUGHT":
 			thoughts = append(thoughts, content)
 			return h.send(conn, map[string]interface{}{
@@ -174,6 +191,13 @@ func (h *Handler) handleGenerateUI(conn *websocket.Conn, msg types.WSMessage) {
 
 	if err != nil {
 		h.sendError(conn, err.Error())
+		return
+	}
+
+	// Validate UI spec size and structure
+	if err := utils.ValidateUISpec(uiSpecJSON); err != nil {
+		log.Printf("UI spec validation failed: %v", err)
+		h.sendError(conn, "UI spec validation failed: too large or malformed")
 		return
 	}
 

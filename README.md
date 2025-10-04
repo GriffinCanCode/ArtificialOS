@@ -105,7 +105,7 @@ make logs
 
 **Backend**: Go (orchestration) + Python (AI) + Rust (kernel)  
 **Frontend**: TypeScript + React + Electron  
-**AI**: GPT-OSS-20B via Ollama with Metal GPU  
+**AI**: GPT-OSS-20B via llama.cpp with Metal GPU  
 **IPC**: gRPC + Protocol Buffers
 
 ## Features
@@ -118,6 +118,32 @@ make logs
 * High-performance Go orchestration
 * True concurrency with goroutines
 * **NEW:** App Registry - Save & launch apps instantly! ⚡
+
+## Core Architecture: Generate-Once-Execute-Many
+
+This system implements a **Generate-Once-Execute-Many** pattern that separates AI generation from execution:
+
+**Traditional Approach:**
+```
+User: "create calculator" → LLM generates UI (2-5s)
+User: clicks "7"          → LLM interprets (2-5s)
+User: clicks "+"          → LLM interprets (2-5s)
+```
+
+**Our Approach:**
+```
+User: "create calculator" → LLM generates UI spec ONCE (2-5s)
+User: clicks "7"          → Local tool executes (<10ms)
+User: clicks "+"          → Local tool executes (<10ms)
+```
+
+**Benefits:**
+- ⚡ **99% faster** interactions after initial generation
+- 💰 **99% cheaper** - one LLM call per app vs. per interaction
+- 🎯 **Deterministic** - tool behavior is predictable and debuggable
+- 🔒 **Secure** - no arbitrary code execution, only structured data
+
+The LLM generates a pure JSON specification with tool bindings. All subsequent interactions use fast, local JavaScript tools. See [Architecture](docs/ARCHITECTURE.md) for technical details.
 
 ## Makefile Commands
 

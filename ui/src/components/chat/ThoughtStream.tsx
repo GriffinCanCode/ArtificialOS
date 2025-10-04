@@ -21,11 +21,14 @@ const ThoughtStream: React.FC<ThoughtStreamProps> = React.memo(({ isVisible, onT
   const { client } = useWebSocket();
   const streamEndRef = useRef<HTMLDivElement>(null);
   const prevThoughtsLength = useRef(0);
-  
+
   // GSAP Animation hooks
   const toggleButtonRef = usePulse<HTMLButtonElement>(thoughts.length > 0);
   const backdropRef = useFadeIn<HTMLDivElement>({ duration: 0.3 });
-  const thoughtsListRef = useStaggerSlideUp<HTMLDivElement>('.thought-item', { stagger: 0.05, distance: 20 });
+  const thoughtsListRef = useStaggerSlideUp<HTMLDivElement>(".thought-item", {
+    stagger: 0.05,
+    distance: 20,
+  });
 
   const scrollToBottom = useCallback(() => {
     streamEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -78,7 +81,9 @@ const ThoughtStream: React.FC<ThoughtStreamProps> = React.memo(({ isVisible, onT
         onClick={onToggle}
         title="Toggle thought stream"
       >
-        <span className="thought-icon"><MessageCircle size={20} /></span>
+        <span className="thought-icon">
+          <MessageCircle size={20} />
+        </span>
         {thoughts.length > 0 && <span className="thought-badge">{thoughts.length}</span>}
       </button>
 
@@ -86,7 +91,13 @@ const ThoughtStream: React.FC<ThoughtStreamProps> = React.memo(({ isVisible, onT
       <div className={`thought-stream-panel ${isVisible ? "visible" : ""}`}>
         <div className="thought-stream">
           <div className="thought-header">
-            <h3><MessageCircle size={18} style={{ display: 'inline-block', marginRight: '8px', verticalAlign: 'middle' }} />Thought Stream</h3>
+            <h3>
+              <MessageCircle
+                size={18}
+                style={{ display: "inline-block", marginRight: "8px", verticalAlign: "middle" }}
+              />
+              Thought Stream
+            </h3>
             <div className="thought-header-actions">
               <span className="thought-count">{thoughts.length} steps</span>
               <button className="thought-close" onClick={onToggle}>
@@ -98,7 +109,9 @@ const ThoughtStream: React.FC<ThoughtStreamProps> = React.memo(({ isVisible, onT
           <div ref={thoughtsListRef} className="thoughts-container">
             {thoughts.length === 0 ? (
               <div className="empty-state">
-                <span className="empty-icon"><Brain size={48} /></span>
+                <span className="empty-icon">
+                  <Brain size={48} />
+                </span>
                 <p>AI thoughts will appear here...</p>
               </div>
             ) : (
@@ -123,6 +136,6 @@ const ThoughtStream: React.FC<ThoughtStreamProps> = React.memo(({ isVisible, onT
   );
 });
 
-ThoughtStream.displayName = 'ThoughtStream';
+ThoughtStream.displayName = "ThoughtStream";
 
 export default ThoughtStream;

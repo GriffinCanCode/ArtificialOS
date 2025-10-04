@@ -266,10 +266,18 @@
   border-radius: 0.75rem;
 }
 
-.card-padding-none { padding: 0; }
-.card-padding-sm { padding: 0.75rem; }
-.card-padding-md { padding: 1.5rem; }
-.card-padding-lg { padding: 2rem; }
+.card-padding-none {
+  padding: 0;
+}
+.card-padding-sm {
+  padding: 0.75rem;
+}
+.card-padding-md {
+  padding: 1.5rem;
+}
+.card-padding-lg {
+  padding: 2rem;
+}
 
 .card-hoverable:hover {
   transform: translateY(-2px);

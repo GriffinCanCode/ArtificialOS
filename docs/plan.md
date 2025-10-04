@@ -100,8 +100,8 @@ Build a lightweight, innovative operating system powered by a local AI model (GP
   - Streaming token generation
   - Low memory footprint
   
-- **Alternative**: **Ollama** or **vLLM**
-  - Ollama: Easy local model management
+- **Alternative**: **llama.cpp** or **vLLM**
+  - llama.cpp: Direct GGUF loading with Metal GPU acceleration
   - vLLM: High-throughput serving
 
 **Key Libraries**:

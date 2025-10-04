@@ -16,7 +16,7 @@ export const VIRTUAL_SCROLL_THRESHOLD = 50;
 export const DEFAULT_ITEM_HEIGHT = 60; // Default height for list items in pixels
 
 // Debounce settings
-export const PARSE_DEBOUNCE_MS = 150; // Parse at most every 150ms
+export const PARSE_DEBOUNCE_MS = 30; // Parse at most every 30ms for more responsive real-time rendering
 
 // ============================================================================
 // Validation Functions
@@ -35,17 +35,20 @@ export function validateJSONSize(jsonStr: string, maxSize: number = MAX_UI_SPEC_
 /**
  * Validate JSON nesting depth
  */
-export function validateJSONDepth(obj: any, maxDepth: number = MAX_JSON_DEPTH, currentDepth: number = 0): void {
+export function validateJSONDepth(
+  obj: any,
+  maxDepth: number = MAX_JSON_DEPTH,
+  currentDepth: number = 0
+): void {
   if (currentDepth > maxDepth) {
     throw new Error(`JSON nesting depth ${currentDepth} exceeds maximum ${maxDepth}`);
   }
-  
-  if (typeof obj === 'object' && obj !== null) {
+
+  if (typeof obj === "object" && obj !== null) {
     if (Array.isArray(obj)) {
-      obj.forEach(item => validateJSONDepth(item, maxDepth, currentDepth + 1));
+      obj.forEach((item) => validateJSONDepth(item, maxDepth, currentDepth + 1));
     } else {
-      Object.values(obj).forEach(value => validateJSONDepth(value, maxDepth, currentDepth + 1));
+      Object.values(obj).forEach((value) => validateJSONDepth(value, maxDepth, currentDepth + 1));
     }
   }
 }
-

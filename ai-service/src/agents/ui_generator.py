@@ -9,10 +9,18 @@ import logging
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 from langchain_core.language_models import BaseLLM
-from langchain_core.tools import tool
-from langchain_core.messages import HumanMessage, SystemMessage
+from .prompt import get_ui_generation_prompt, get_simple_system_prompt
+from .tools import ToolDefinition, ToolRegistry
 
 logger = logging.getLogger(__name__)
+
+# Import UI cache for performance optimization
+try:
+    from .ui_cache import UICache
+    _ui_cache_available = True
+except ImportError:
+    _ui_cache_available = False
+    logger.warning("UI cache not available")
 
 
 # ============================================================================
@@ -42,351 +50,6 @@ class UISpec(BaseModel):
 
 # Make UIComponent work with forward references
 UIComponent.model_rebuild()
-
-
-# ============================================================================
-# Tool Registry Schema
-# ============================================================================
-
-class ToolDefinition(BaseModel):
-    """Definition of a callable tool."""
-    id: str = Field(..., description="Unique tool identifier")
-    name: str = Field(..., description="Human-readable name")
-    description: str = Field(..., description="What the tool does")
-    parameters: Dict[str, Any] = Field(default_factory=dict, description="Parameter schema")
-    category: str = Field(default="general", description="Tool category (compute, ui, system, etc.)")
-
-
-class ToolRegistry:
-    """
-    Registry of available tools that the AI can call.
-    Tools are small, focused functions accessible via IPC.
-    """
-    
-    def __init__(self):
-        self.tools: Dict[str, ToolDefinition] = {}
-        self._initialize_builtin_tools()
-    
-    def _initialize_builtin_tools(self):
-        """Initialize built-in tools for common operations."""
-        
-        # Calculator tools
-        self.register_tool(ToolDefinition(
-            id="calc.add",
-            name="Add",
-            description="Add two numbers",
-            parameters={"a": "number", "b": "number"},
-            category="compute"
-        ))
-        
-        self.register_tool(ToolDefinition(
-            id="calc.subtract",
-            name="Subtract",
-            description="Subtract two numbers",
-            parameters={"a": "number", "b": "number"},
-            category="compute"
-        ))
-        
-        self.register_tool(ToolDefinition(
-            id="calc.multiply",
-            name="Multiply",
-            description="Multiply two numbers",
-            parameters={"a": "number", "b": "number"},
-            category="compute"
-        ))
-        
-        self.register_tool(ToolDefinition(
-            id="calc.divide",
-            name="Divide",
-            description="Divide two numbers",
-            parameters={"a": "number", "b": "number"},
-            category="compute"
-        ))
-        
-        # UI state tools
-        self.register_tool(ToolDefinition(
-            id="ui.set_state",
-            name="Set State",
-            description="Update UI state variable",
-            parameters={"key": "string", "value": "any"},
-            category="ui"
-        ))
-        
-        self.register_tool(ToolDefinition(
-            id="ui.get_state",
-            name="Get State",
-            description="Get UI state variable",
-            parameters={"key": "string"},
-            category="ui"
-        ))
-        
-        # System tools
-        self.register_tool(ToolDefinition(
-            id="system.alert",
-            name="Alert",
-            description="Show alert dialog",
-            parameters={"message": "string"},
-            category="system"
-        ))
-        
-        self.register_tool(ToolDefinition(
-            id="system.log",
-            name="Log",
-            description="Log message to console",
-            parameters={"message": "string", "level": "string"},
-            category="system"
-        ))
-        
-        # App management tools
-        self.register_tool(ToolDefinition(
-            id="app.spawn",
-            name="Spawn App",
-            description="Create and launch a new app from natural language request",
-            parameters={"request": "string"},
-            category="app"
-        ))
-        
-        self.register_tool(ToolDefinition(
-            id="app.close",
-            name="Close App",
-            description="Close the current app",
-            parameters={},
-            category="app"
-        ))
-        
-        self.register_tool(ToolDefinition(
-            id="app.list",
-            name="List Apps",
-            description="List all running apps",
-            parameters={},
-            category="app"
-        ))
-        
-        # Storage tools
-        self.register_tool(ToolDefinition(
-            id="storage.set",
-            name="Set Storage",
-            description="Store data in local storage",
-            parameters={"key": "string", "value": "any"},
-            category="storage"
-        ))
-        
-        self.register_tool(ToolDefinition(
-            id="storage.get",
-            name="Get Storage",
-            description="Retrieve data from local storage",
-            parameters={"key": "string"},
-            category="storage"
-        ))
-        
-        self.register_tool(ToolDefinition(
-            id="storage.remove",
-            name="Remove Storage",
-            description="Remove data from local storage",
-            parameters={"key": "string"},
-            category="storage"
-        ))
-        
-        # Network tools
-        self.register_tool(ToolDefinition(
-            id="http.get",
-            name="HTTP GET",
-            description="Fetch data from a URL",
-            parameters={"url": "string"},
-            category="network"
-        ))
-        
-        self.register_tool(ToolDefinition(
-            id="http.post",
-            name="HTTP POST",
-            description="Send data to a URL",
-            parameters={"url": "string", "data": "any"},
-            category="network"
-        ))
-        
-        # Timer tools
-        self.register_tool(ToolDefinition(
-            id="timer.set",
-            name="Set Timer",
-            description="Execute action after delay",
-            parameters={"delay": "number", "action": "string"},
-            category="timer"
-        ))
-        
-        self.register_tool(ToolDefinition(
-            id="timer.interval",
-            name="Set Interval",
-            description="Execute action repeatedly",
-            parameters={"interval": "number", "action": "string"},
-            category="timer"
-        ))
-        
-        self.register_tool(ToolDefinition(
-            id="timer.clear",
-            name="Clear Timer",
-            description="Stop a timer or interval",
-            parameters={"timer_id": "string"},
-            category="timer"
-        ))
-        
-    def register_tool(self, tool: ToolDefinition):
-        """Register a new tool."""
-        self.tools[tool.id] = tool
-        logger.info(f"Registered tool: {tool.id} ({tool.name})")
-    
-    def get_tool(self, tool_id: str) -> Optional[ToolDefinition]:
-        """Get tool by ID."""
-        return self.tools.get(tool_id)
-    
-    def list_tools(self, category: Optional[str] = None) -> List[ToolDefinition]:
-        """List all tools, optionally filtered by category."""
-        tools = list(self.tools.values())
-        if category:
-            tools = [t for t in tools if t.category == category]
-        return tools
-    
-    def get_tools_description(self) -> str:
-        """Get formatted description of all tools for AI context."""
-        lines = ["Available Tools:"]
-        for category in ["compute", "ui", "system", "app", "storage", "network", "timer"]:
-            category_tools = self.list_tools(category)
-            if category_tools:
-                lines.append(f"\n{category.upper()}:")
-                for tool in category_tools:
-                    params = ", ".join(f"{k}: {v}" for k, v in tool.parameters.items())
-                    params_str = f"({params})" if params else "(no params)"
-                    lines.append(f"  - {tool.id}: {tool.description} {params_str}")
-        return "\n".join(lines)
-
-
-# ============================================================================
-# Function Calling Tools for LLM UI Generation
-# ============================================================================
-
-@tool
-def create_button(id: str, text: str, on_click: Optional[str] = None, variant: str = "default", size: str = "medium") -> Dict:
-    """
-    Create a button component.
-    
-    Args:
-        id: Unique identifier for the button
-        text: Button label text
-        on_click: Tool ID to call when clicked (e.g., "calc.add", "ui.set_state")
-        variant: Button style variant (default, primary, danger)
-        size: Button size (small, medium, large)
-    
-    Returns:
-        Button component specification
-    """
-    return {
-        "type": "button",
-        "id": id,
-        "props": {"text": text, "variant": variant, "size": size},
-        "on_event": {"click": on_click} if on_click else None
-    }
-
-
-@tool
-def create_input(id: str, placeholder: str = "", value: str = "", input_type: str = "text", readonly: bool = False) -> Dict:
-    """
-    Create an input field component.
-    
-    Args:
-        id: Unique identifier for the input
-        placeholder: Placeholder text
-        value: Initial value
-        input_type: Input type (text, number, password, email)
-        readonly: Whether input is readonly
-    
-    Returns:
-        Input component specification
-    """
-    return {
-        "type": "input",
-        "id": id,
-        "props": {
-            "placeholder": placeholder,
-            "value": value,
-            "type": input_type,
-            "readonly": readonly
-        }
-    }
-
-
-@tool
-def create_text(id: str, content: str, variant: str = "body", style: Optional[Dict] = None) -> Dict:
-    """
-    Create a text/label component.
-    
-    Args:
-        id: Unique identifier
-        content: Text content to display
-        variant: Text style (h1, h2, h3, body, caption)
-        style: Optional inline styles (fontSize, fontWeight, color, etc.)
-    
-    Returns:
-        Text component specification
-    """
-    component = {
-        "type": "text",
-        "id": id,
-        "props": {"content": content, "variant": variant}
-    }
-    if style:
-        component["props"]["style"] = style
-    return component
-
-
-@tool
-def create_container(id: str, layout: str = "vertical", gap: int = 8) -> Dict:
-    """
-    Create a container for organizing child components.
-    
-    Args:
-        id: Unique identifier
-        layout: Layout direction (vertical, horizontal)
-        gap: Spacing between children in pixels
-    
-    Returns:
-        Container component specification (add children separately)
-    """
-    return {
-        "type": "container",
-        "id": id,
-        "props": {"layout": layout, "gap": gap},
-        "children": []
-    }
-
-
-@tool
-def create_grid(id: str, columns: int = 3, gap: int = 8) -> Dict:
-    """
-    Create a grid layout for arranging components in a grid.
-    
-    Args:
-        id: Unique identifier
-        columns: Number of columns
-        gap: Spacing between items in pixels
-    
-    Returns:
-        Grid component specification (add children separately)
-    """
-    return {
-        "type": "grid",
-        "id": id,
-        "props": {"columns": columns, "gap": gap},
-        "children": []
-    }
-
-
-# Tool list for LLM binding
-UI_COMPONENT_TOOLS = [
-    create_button,
-    create_input,
-    create_text,
-    create_container,
-    create_grid,
-]
 
 
 # ============================================================================
@@ -507,114 +170,16 @@ class UIGeneratorAgent:
     5. User: Clicks button -> calls tool via IPC -> updates UI
     """
     
-    SYSTEM_PROMPT = """You are a UI generation expert. Your ONLY job is to output valid JSON for UI specifications.
-
-CRITICAL RULES:
-1. Output ONLY valid JSON - no explanations, no markdown, no extra text
-2. EVERY component MUST have: "id", "type", "props", "children", "on_event"
-3. Keep JSON concise - avoid deeply nested structures
-4. For calculator: maximum 16 buttons (4x4 grid)
-
-{tools_description}
-
-EXACT COMPONENT SCHEMA:
-
-Button:
-{{
-  "type": "button",
-  "id": "unique-id",
-  "props": {{"text": "Label", "variant": "default", "size": "medium"}},
-  "children": [],
-  "on_event": {{"click": "tool.name"}}
-}}
-
-Input:
-{{
-  "type": "input",
-  "id": "unique-id",
-  "props": {{"placeholder": "...", "value": "...", "type": "text", "readonly": false}},
-  "children": [],
-  "on_event": null
-}}
-
-Text:
-{{
-  "type": "text",
-  "id": "unique-id",
-  "props": {{"content": "text here", "variant": "body"}},
-  "children": [],
-  "on_event": null
-}}
-
-Container:
-{{
-  "type": "container",
-  "id": "unique-id",
-  "props": {{"layout": "vertical", "gap": 8}},
-  "children": [/* nested components here */],
-  "on_event": null
-}}
-
-Grid:
-{{
-  "type": "grid",
-  "id": "unique-id",
-  "props": {{"columns": 3, "gap": 8}},
-  "children": [/* grid items here */],
-  "on_event": null
-}}
-
-COMPLETE EXAMPLE - Calculator:
-{{
-  "type": "app",
-  "title": "Calculator",
-  "layout": "vertical",
-  "components": [
-    {{
-      "type": "input",
-      "id": "display",
-      "props": {{"value": "0", "readonly": true}},
-      "children": [],
-      "on_event": null
-    }},
-    {{
-      "type": "grid",
-      "id": "button-grid",
-      "props": {{"columns": 4, "gap": 8}},
-      "children": [
-        {{"type": "button", "id": "btn-7", "props": {{"text": "7"}}, "children": [], "on_event": {{"click": "calc.add"}}}},
-        {{"type": "button", "id": "btn-8", "props": {{"text": "8"}}, "children": [], "on_event": {{"click": "calc.add"}}}},
-        {{"type": "button", "id": "btn-plus", "props": {{"text": "+"}}, "children": [], "on_event": {{"click": "calc.add"}}}},
-        {{"type": "button", "id": "btn-equals", "props": {{"text": "="}}, "children": [], "on_event": {{"click": "calc.add"}}}}
-      ],
-      "on_event": null
-    }}
-  ],
-  "style": {{}}
-}}
-
-INSTRUCTIONS:
-1. Keep it SIMPLE - fewer components means valid JSON
-2. Return COMPLETE JSON - don't truncate
-3. Use short IDs: "btn-1" not "button-number-1"
-4. Minimal props: only value, text, readonly, type, columns, gap
-5. Output ONLY the JSON object - nothing else
-
-REQUIRED ROOT STRUCTURE:
-{{
-  "type": "app",
-  "title": "App Name",
-  "layout": "vertical",
-  "components": [/* max 10 components */],
-  "style": {{}}
-}}"""
+    # Note: SYSTEM_PROMPT is now managed in prompt.py for better maintainability
+    # Use get_system_prompt() or get_ui_generation_prompt() instead
     
     def __init__(
         self,
         tool_registry: Optional[ToolRegistry] = None,
         llm: Optional[BaseLLM] = None,
         service_registry: Optional[Any] = None,
-        context_builder: Optional[Any] = None
+        context_builder: Optional[Any] = None,
+        enable_cache: bool = True
     ):
         """
         Initialize the UI generator agent.
@@ -624,6 +189,7 @@ REQUIRED ROOT STRUCTURE:
             llm: Optional LLM for generating UIs (if None, uses rule-based generation)
             service_registry: Service registry for BaaS
             context_builder: Context builder for intelligent prompts
+            enable_cache: Enable UI spec caching for performance (default: True)
         """
         self.tool_registry = tool_registry or ToolRegistry()
         self.templates = ComponentTemplates()
@@ -632,21 +198,23 @@ REQUIRED ROOT STRUCTURE:
         self.service_registry = service_registry
         self.context_builder = context_builder
         
+        # Initialize cache if available and enabled
+        self.cache = None
+        if enable_cache and _ui_cache_available:
+            self.cache = UICache(max_size=100, ttl_seconds=3600)
+            logger.info("UIGeneratorAgent: UI caching enabled")
+        
         if self.use_llm:
             logger.info("UIGeneratorAgent: LLM-based generation enabled")
         else:
             logger.info("UIGeneratorAgent: Using rule-based generation")
     
     def get_system_prompt(self, context_str: str = "") -> str:
-        """Get system prompt with current tool descriptions and service context."""
-        base_prompt = self.SYSTEM_PROMPT.format(
-            tools_description=self.tool_registry.get_tools_description()
+        """Get comprehensive system prompt with current tool descriptions and service context."""
+        return get_ui_generation_prompt(
+            tools_description=self.tool_registry.get_tools_description(),
+            context=context_str
         )
-        
-        if context_str:
-            return f"{base_prompt}\n\n{context_str}"
-        
-        return base_prompt
     
     def generate_ui(self, request: str, stream_callback=None) -> UISpec:
         """
@@ -675,8 +243,22 @@ REQUIRED ROOT STRUCTURE:
             
         Yields:
             str: JSON tokens during generation
+            dict: {"reset": True} to signal buffer reset (when LLM fails)
             UISpec: Final UI specification
         """
+        # Check cache first for performance
+        if self.cache:
+            cached_spec = self.cache.get(request)
+            if cached_spec:
+                logger.info(f"Using cached UI spec for: {request[:50]}...")
+                # Stream the cached JSON for live viewing (simulates generation)
+                json_str = json.dumps(cached_spec.model_dump(), indent=2)
+                chunk_size = 100  # Larger chunks for cached content (faster)
+                for i in range(0, len(json_str), chunk_size):
+                    yield json_str[i:i+chunk_size]
+                yield cached_spec
+                return
+        
         # Use LLM-based generation if available
         if self.use_llm:
             try:
@@ -687,9 +269,11 @@ REQUIRED ROOT STRUCTURE:
                 return
             except Exception as e:
                 logger.warning(f"LLM generation failed: {e}. Falling back to rules.")
+                # Signal backend to reset buffer before sending rule-based generation
+                yield {"reset": True}
                 # Fall through to rule-based generation
         
-        # Rule-based generation (fallback) - yield the JSON then the spec
+        # Rule-based generation (fallback) - stream JSON tokens for live viewing
         logger.info(f"Using rule-based generation for: {request}")
         request_lower = request.lower()
         
@@ -702,20 +286,29 @@ REQUIRED ROOT STRUCTURE:
         else:
             ui_spec = self._generate_placeholder(request)
         
-        # Yield the JSON as a single token for rule-based
-        yield json.dumps(ui_spec.model_dump())
+        # Stream JSON tokens character-by-character for live viewing
+        # This preserves the real-time "watching app being built" experience
+        json_str = json.dumps(ui_spec.model_dump(), indent=2)
+        chunk_size = 50  # Characters per chunk for smooth streaming
+        for i in range(0, len(json_str), chunk_size):
+            yield json_str[i:i+chunk_size]
+        
+        # Cache the generated UI spec for future requests
+        if self.cache:
+            self.cache.set(request, ui_spec)
+        
         yield ui_spec
     
     def _generate_with_llm_stream(self, request: str):
         """
-        Generate UI using LLM with structured output.
+        Generate UI using Gemini with structured JSON output.
         
         Args:
             request: User's natural language request
-            stream_callback: Optional callback(token) for real-time streaming
             
-        Returns:
-            UISpec: Generated UI specification
+        Yields:
+            str: JSON tokens during generation
+            UISpec: Final UI specification
         """
         # Build context with services if available
         context_str = ""
@@ -727,73 +320,97 @@ REQUIRED ROOT STRUCTURE:
             except Exception as e:
                 logger.warning(f"Context building failed: {e}")
         
-        # Create a single combined prompt (works better with Ollama)
-        system_prompt = self.get_system_prompt(context_str)
+        # Create comprehensive prompt with tool descriptions and context
+        tools_description = self.tool_registry.get_tools_description()
         
-        # Combine system and user prompts into one
-        full_prompt = f"""{system_prompt}
-
-===== USER REQUEST =====
-
-Generate a UI for: "{request}"
-
-Requirements:
-1. Analyze what components are needed
-2. Design the layout and arrangement
-3. Add interactivity by binding appropriate tools
-4. If services are available, bind components to service tools
-5. Return ONLY the JSON specification (no extra text)
-
-Output the complete UI specification as valid JSON now:"""
+        # Build the full prompt using our comprehensive prompt system
+        full_prompt = get_ui_generation_prompt(
+            tools_description=tools_description,
+            context=context_str
+        )
         
-        logger.info(f"Sending prompt to LLM for: {request}")
+        # Add user request at the end
+        full_prompt += f"\n\n=== USER REQUEST ===\n{request}\n\nGenerate the complete JSON specification now:"
+        
+        logger.info(f"Sending prompt to Gemini for: {request}")
         logger.debug(f"Full prompt length: {len(full_prompt)} characters")
         
-        # CRITICAL: Get a fresh LLM instance for each request to prevent cache pollution
-        # Import here to avoid circular dependency
-        from models import ModelLoader, ModelConfig
-        from models.config import ModelBackend, ModelSize
+        # Use the LLM instance (which should be GeminiModel)
+        if not self.llm:
+            raise ValueError("No LLM instance available for generation")
         
-        llm = ModelLoader.load(ModelConfig(
-            backend=ModelBackend.OLLAMA,
-            size=ModelSize.SMALL,
-            streaming=True,
-            cache_prompt=False,  # Disable caching to prevent context pollution
-            keep_alive="0"  # Unload immediately after request
-        ))
-        
-        logger.debug("Using fresh LLM instance for streaming (cache_prompt=False)")
+        # Check if this is a Gemini model with JSON streaming support
+        has_json_stream = hasattr(self.llm, 'stream_json')
         
         # Stream tokens in real-time
         content = ""
         chunk_count = 0
         
-        for chunk in llm.stream(full_prompt):
-            chunk_count += 1
-            if hasattr(chunk, 'content'):
-                token = chunk.content
-                content += token
-                # Yield token immediately for real-time streaming
-                if token:
-                    yield token
-        
-        logger.info(f"LLM response: {chunk_count} chunks, {len(content)} characters")
-        if content:
-            logger.debug(f"Response preview: {content[:200]}...")
-        else:
-            logger.warning("LLM returned empty content after streaming")
-        
-        # Parse JSON from response
-        ui_spec_json = self._extract_json(content)
-        
-        # Validate and convert to UISpec
         try:
+            # Use JSON streaming if available
+            if has_json_stream:
+                logger.debug("Using Gemini JSON streaming")
+                for token in self.llm.stream_json(full_prompt):
+                    chunk_count += 1
+                    content += token
+                    if token:
+                        yield token
+            else:
+                # Fallback to regular streaming
+                logger.debug("Using regular streaming")
+                for chunk in self.llm.stream(full_prompt):
+                    chunk_count += 1
+                    # Extract token - handle different response formats
+                    if hasattr(chunk, 'content'):
+                        token = chunk.content
+                    else:
+                        token = str(chunk) if chunk else ""
+                    
+                    content += token
+                    if token:
+                        yield token
+        
+            logger.info(f"Gemini response: {chunk_count} chunks, {len(content)} characters")
+            if content:
+                logger.debug(f"Response preview: {content[:200]}...")
+            else:
+                logger.warning("Gemini returned empty content after streaming")
+            
+            # Parse JSON from response
+            if has_json_stream:
+                # Gemini with JSON mode returns valid JSON directly
+                try:
+                    ui_spec_json = json.loads(content)
+                except json.JSONDecodeError as e:
+                    logger.error(f"JSON parse error: {e}")
+                    raise ValueError(f"Invalid JSON from Gemini: {e}")
+            else:
+                # Extract JSON from text response
+                from .gpt_oss_output_parser import extract_json_from_response
+                json_str = extract_json_from_response(content)
+                
+                if not json_str:
+                    json_str = self._extract_json(content)
+                    ui_spec_json = json_str
+                else:
+                    try:
+                        ui_spec_json = json.loads(json_str)
+                    except json.JSONDecodeError:
+                        ui_spec_json = self._extract_json(content)
+            
+            # Validate and convert to UISpec
             ui_spec = UISpec.model_validate(ui_spec_json)
             logger.info(f"Successfully generated UI: {ui_spec.title}")
+            
+            # Cache the generated UI spec for future requests
+            if self.cache:
+                self.cache.set(request, ui_spec)
+            
             yield ui_spec  # Yield the final UISpec
+            
         except Exception as e:
-            logger.error(f"Failed to validate UISpec: {e}")
-            logger.error(f"Response content: {content}")
+            logger.error(f"Failed to generate UI with Gemini: {e}")
+            logger.error(f"Response content: {content[:500] if content else 'empty'}")
             raise ValueError(f"Invalid UISpec generated: {e}")
     
     def _extract_json(self, text: str) -> Dict:
@@ -996,8 +613,8 @@ __all__ = [
     "UIGeneratorAgent",
     "UISpec",
     "UIComponent",
-    "ToolRegistry",
-    "ToolDefinition",
     "ComponentTemplates",
 ]
+
+# Note: ToolRegistry and ToolDefinition are now exported from tools.py
 

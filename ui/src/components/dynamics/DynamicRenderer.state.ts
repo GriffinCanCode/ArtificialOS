@@ -3,7 +3,7 @@
  * Full observer pattern implementation for component state
  */
 
-import { logger } from "../utils/monitoring/logger";
+import { logger } from "../../utils/monitoring/logger";
 
 // ============================================================================
 // Type Definitions
@@ -49,7 +49,7 @@ export interface SubscriptionOptions {
 
 /**
  * Full-featured Component State Manager with Observer Pattern
- * 
+ *
  * Features:
  * - Observable state with pub/sub
  * - Batch updates for performance
@@ -84,7 +84,7 @@ export class ComponentState {
     if (this.computed.has(key)) {
       return this.getComputed<T>(key);
     }
-    
+
     const value = this.state.get(key);
     return (value !== undefined ? value : defaultValue) as T;
   }
@@ -94,7 +94,7 @@ export class ComponentState {
    */
   set<T = any>(key: string, value: T): void {
     const oldValue = this.state.get(key);
-    
+
     // Skip if value hasn't changed (shallow comparison)
     if (oldValue === value) {
       return;
@@ -200,9 +200,9 @@ export class ComponentState {
     this.computed.clear();
     this.history = [];
     this.batchedChanges = [];
-    
+
     // Clear any active debounce timers
-    this.debounceTimers.forEach(timerId => clearTimeout(timerId));
+    this.debounceTimers.forEach((timerId) => clearTimeout(timerId));
     this.debounceTimers.clear();
   }
 
@@ -221,16 +221,19 @@ export class ComponentState {
     options?: SubscriptionOptions
   ): () => void {
     // Handle wildcard subscriptions (e.g., "user.*")
-    if (key.includes('*')) {
+    if (key.includes("*")) {
       return this.subscribeWildcard(key, listener as (event: StateChangeEvent) => void, options);
     }
 
     if (!this.listeners.has(key)) {
       this.listeners.set(key, new Set());
     }
-    
+
     // Wrap listener with options (debounce, filter)
-    const wrappedListener = this.wrapListener(listener as (value: any, oldValue?: any) => void, options);
+    const wrappedListener = this.wrapListener(
+      listener as (value: any, oldValue?: any) => void,
+      options
+    );
     this.listeners.get(key)!.add(wrappedListener);
 
     // Call immediately if requested
@@ -262,7 +265,7 @@ export class ComponentState {
     const unsubscribers: (() => void)[] = [];
     const values: Record<string, any> = {};
 
-    keys.forEach(key => {
+    keys.forEach((key) => {
       const unsub = this.subscribe(
         key,
         (newValue: any) => {
@@ -275,7 +278,7 @@ export class ComponentState {
     });
 
     return () => {
-      unsubscribers.forEach(unsub => unsub());
+      unsubscribers.forEach((unsub) => unsub());
     };
   }
 
@@ -290,7 +293,7 @@ export class ComponentState {
     if (!this.wildcardListeners.has(pattern)) {
       this.wildcardListeners.set(pattern, new Set());
     }
-    
+
     const wrappedListener = this.wrapWildcardListener(listener, pattern, options);
     this.wildcardListeners.get(pattern)!.add(wrappedListener);
 
@@ -352,8 +355,8 @@ export class ComponentState {
     pattern: string,
     options?: SubscriptionOptions
   ): (event: StateChangeEvent) => void {
-    const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
-    
+    const regex = new RegExp("^" + pattern.replace(/\*/g, ".*") + "$");
+
     return (event: StateChangeEvent) => {
       if (regex.test(event.key)) {
         if (!options?.filter || options.filter(event.newValue)) {
@@ -370,7 +373,7 @@ export class ComponentState {
     // Notify direct listeners
     const listeners = this.listeners.get(event.key);
     if (listeners) {
-      listeners.forEach(listener => {
+      listeners.forEach((listener) => {
         try {
           listener(event.newValue, event.oldValue);
         } catch (error) {
@@ -384,9 +387,9 @@ export class ComponentState {
 
     // Notify wildcard listeners
     this.wildcardListeners.forEach((listeners, pattern) => {
-      const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
+      const regex = new RegExp("^" + pattern.replace(/\*/g, ".*") + "$");
       if (regex.test(event.key)) {
-        listeners.forEach(listener => {
+        listeners.forEach((listener) => {
           try {
             listener(event);
           } catch (error) {
@@ -411,7 +414,7 @@ export class ComponentState {
    */
   batch(callback: () => void): void {
     const wasAlreadyBatching = this.isBatching;
-    
+
     if (!wasAlreadyBatching) {
       this.isBatching = true;
       this.batchedChanges = [];
@@ -422,12 +425,12 @@ export class ComponentState {
     } finally {
       if (!wasAlreadyBatching) {
         this.isBatching = false;
-        
+
         // Notify all batched changes
         const changes = this.batchedChanges;
         this.batchedChanges = [];
-        
-        changes.forEach(event => {
+
+        changes.forEach((event) => {
           this.notifyListeners(event);
         });
       }
@@ -499,7 +502,7 @@ export class ComponentState {
    */
   use(middleware: StateMiddleware): () => void {
     this.middleware.push(middleware);
-    
+
     // Return function to remove middleware
     return () => {
       const index = this.middleware.indexOf(middleware);
@@ -518,7 +521,7 @@ export class ComponentState {
    */
   private addToHistory(event: StateChangeEvent): void {
     this.history.push(event);
-    
+
     // Limit history size
     if (this.history.length > this.maxHistorySize) {
       this.history.shift();
@@ -536,14 +539,14 @@ export class ComponentState {
    * Get history for a specific key
    */
   getHistoryForKey(key: string): StateChangeEvent[] {
-    return this.history.filter(event => event.key === key);
+    return this.history.filter((event) => event.key === key);
   }
 
   /**
    * Restore state to a previous point in time
    */
   restoreToTimestamp(timestamp: number): void {
-    const targetIndex = this.history.findIndex(e => e.timestamp >= timestamp);
+    const targetIndex = this.history.findIndex((e) => e.timestamp >= timestamp);
     if (targetIndex === -1) return;
 
     // Clear current state
@@ -552,7 +555,7 @@ export class ComponentState {
     // Replay history up to target timestamp
     const eventsToReplay = this.history.slice(0, targetIndex);
     this.batch(() => {
-      eventsToReplay.forEach(event => {
+      eventsToReplay.forEach((event) => {
         if (event.newValue !== undefined) {
           this.state.set(event.key, event.newValue);
         }
@@ -572,7 +575,7 @@ export class ComponentState {
    */
   setMaxHistorySize(size: number): void {
     this.maxHistorySize = size;
-    
+
     // Trim if needed
     if (this.history.length > size) {
       this.history = this.history.slice(-size);
@@ -595,10 +598,10 @@ export class ComponentState {
     isBatching: boolean;
   } {
     let listenerCount = 0;
-    this.listeners.forEach(set => listenerCount += set.size);
-    
+    this.listeners.forEach((set) => (listenerCount += set.size));
+
     let wildcardListenerCount = 0;
-    this.wildcardListeners.forEach(set => wildcardListenerCount += set.size);
+    this.wildcardListeners.forEach((set) => (wildcardListenerCount += set.size));
 
     return {
       stateSize: this.state.size,
@@ -621,4 +624,3 @@ export class ComponentState {
     });
   }
 }
-

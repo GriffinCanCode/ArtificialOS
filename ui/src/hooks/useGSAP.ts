@@ -3,10 +3,10 @@
  * Easy-to-use hooks for integrating GSAP animations into React components
  */
 
-import { useEffect, useRef, useCallback, RefObject } from 'react';
-import gsap from 'gsap';
-import * as animations from '../utils/animation/gsapAnimations';
-import { ANIMATION_TIMING } from '../utils/animation/animationConfig';
+import { useEffect, useRef, useCallback, RefObject } from "react";
+import gsap from "gsap";
+import * as animations from "../utils/animation/gsapAnimations";
+import { ANIMATION_TIMING } from "../utils/animation/animationConfig";
 
 /**
  * Hook to animate element on mount
@@ -80,13 +80,8 @@ export function useScaleIn<T extends HTMLElement>(
 /**
  * Hook for app appear animation on mount
  */
-export function useAppAppear<T extends HTMLElement>(
-  options?: { delay?: number }
-) {
-  return useAnimateOnMount<T>(
-    (el) => animations.appAppear(el, options),
-    [options?.delay]
-  );
+export function useAppAppear<T extends HTMLElement>(options?: { delay?: number }) {
+  return useAnimateOnMount<T>((el) => animations.appAppear(el, options), [options?.delay]);
 }
 
 /**
@@ -121,10 +116,7 @@ export function useFloat<T extends HTMLElement>(
   enabled: boolean = true,
   options?: Parameters<typeof animations.floatAnimation>[1]
 ) {
-  return useInfiniteAnimation<T>(
-    (el) => animations.floatAnimation(el, options),
-    enabled
-  );
+  return useInfiniteAnimation<T>((el) => animations.floatAnimation(el, options), enabled);
 }
 
 /**
@@ -134,10 +126,7 @@ export function usePulse<T extends HTMLElement>(
   enabled: boolean = true,
   options?: Parameters<typeof animations.pulseAnimation>[1]
 ) {
-  return useInfiniteAnimation<T>(
-    (el) => animations.pulseAnimation(el, options),
-    enabled
-  );
+  return useInfiniteAnimation<T>((el) => animations.pulseAnimation(el, options), enabled);
 }
 
 /**
@@ -147,20 +136,14 @@ export function useSpin<T extends HTMLElement>(
   enabled: boolean = true,
   options?: Parameters<typeof animations.spinAnimation>[1]
 ) {
-  return useInfiniteAnimation<T>(
-    (el) => animations.spinAnimation(el, options),
-    enabled
-  );
+  return useInfiniteAnimation<T>((el) => animations.spinAnimation(el, options), enabled);
 }
 
 /**
  * Hook for build pulse animation
  */
 export function useBuildPulse<T extends HTMLElement>(enabled: boolean = true) {
-  return useInfiniteAnimation<T>(
-    (el) => animations.buildPulseAnimation(el),
-    enabled
-  );
+  return useInfiniteAnimation<T>((el) => animations.buildPulseAnimation(el), enabled);
 }
 
 /**
@@ -170,10 +153,7 @@ export function useGlowPulse<T extends HTMLElement>(
   enabled: boolean = true,
   options?: { color?: string; intensity?: number }
 ) {
-  return useInfiniteAnimation<T>(
-    (el) => animations.glowPulse(el, options),
-    enabled
-  );
+  return useInfiniteAnimation<T>((el) => animations.glowPulse(el, options), enabled);
 }
 
 /**
@@ -210,20 +190,14 @@ export function useHoverAnimation<T extends HTMLElement>(
  * Hook for button hover animation
  */
 export function useButtonHover<T extends HTMLElement>() {
-  return useHoverAnimation<T>(
-    animations.buttonHoverIn,
-    animations.buttonHoverOut
-  );
+  return useHoverAnimation<T>(animations.buttonHoverIn, animations.buttonHoverOut);
 }
 
 /**
  * Hook for scale hover animation
  */
 export function useScaleHover<T extends HTMLElement>(scale?: number) {
-  return useHoverAnimation<T>(
-    (el) => animations.scaleHoverIn(el, scale),
-    animations.scaleHoverOut
-  );
+  return useHoverAnimation<T>((el) => animations.scaleHoverIn(el, scale), animations.scaleHoverOut);
 }
 
 /**
@@ -233,9 +207,7 @@ export function useImperativeAnimation<T extends HTMLElement>() {
   const elementRef = useRef<T>(null);
 
   const animate = useCallback(
-    (
-      animationFn: (element: HTMLElement) => gsap.core.Tween | gsap.core.Timeline
-    ) => {
+    (animationFn: (element: HTMLElement) => gsap.core.Tween | gsap.core.Timeline) => {
       if (elementRef.current) {
         return animationFn(elementRef.current);
       }
@@ -329,7 +301,7 @@ export function useStaggerAnimation<T extends HTMLElement>(
  * Hook for stagger fade in on children
  */
 export function useStaggerFadeIn<T extends HTMLElement>(
-  selector: string = '> *',
+  selector: string = "> *",
   options?: Parameters<typeof animations.staggerFadeIn>[1]
 ) {
   return useStaggerAnimation<T>(
@@ -343,7 +315,7 @@ export function useStaggerFadeIn<T extends HTMLElement>(
  * Hook for stagger slide up on children
  */
 export function useStaggerSlideUp<T extends HTMLElement>(
-  selector: string = '> *',
+  selector: string = "> *",
   options?: Parameters<typeof animations.staggerSlideUp>[1]
 ) {
   return useStaggerAnimation<T>(
@@ -401,10 +373,7 @@ export function useElasticBounceIn<T extends HTMLElement>(
  * Hook for ripple effect animation
  */
 export function useRippleEffect<T extends HTMLElement>() {
-  return useAnimateOnMount<T>(
-    (el) => animations.rippleEffect(el),
-    []
-  );
+  return useAnimateOnMount<T>((el) => animations.rippleEffect(el), []);
 }
 
 /**
@@ -475,15 +444,12 @@ export function useGlitch<T extends HTMLElement>() {
 export function useParticleBurst<T extends HTMLElement>() {
   const elementRef = useRef<T>(null);
 
-  const burst = useCallback(
-    (options?: Parameters<typeof animations.particleBurst>[1]) => {
-      if (elementRef.current) {
-        return animations.particleBurst(elementRef.current, options);
-      }
-      return null;
-    },
-    []
-  );
+  const burst = useCallback((options?: Parameters<typeof animations.particleBurst>[1]) => {
+    if (elementRef.current) {
+      return animations.particleBurst(elementRef.current, options);
+    }
+    return null;
+  }, []);
 
   return {
     elementRef,
@@ -516,10 +482,7 @@ export function useSmoothMorph<T extends HTMLElement>() {
   const elementRef = useRef<T>(null);
 
   const morph = useCallback(
-    (
-      toProps: gsap.TweenVars,
-      options?: Parameters<typeof animations.smoothMorph>[2]
-    ) => {
+    (toProps: gsap.TweenVars, options?: Parameters<typeof animations.smoothMorph>[2]) => {
       if (elementRef.current) {
         return animations.smoothMorph(elementRef.current, toProps, options);
       }
@@ -550,4 +513,3 @@ export function useAnimationCleanup<T extends HTMLElement>() {
 
   return elementRef;
 }
-

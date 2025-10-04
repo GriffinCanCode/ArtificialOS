@@ -70,33 +70,36 @@ const ChatInterface: React.FC = React.memo(() => {
     return () => unsubscribe();
   }, [client, appendToLastMessage, addMessage, log]);
 
-  const onSubmit = useCallback((data: ChatFormData) => {
-    const message = data.message.trim();
-    if (message && isConnected) {
-      log.info("User sending message", {
-        messageLength: message.length,
-        messagePreview: message.substring(0, 50),
-      });
+  const onSubmit = useCallback(
+    (data: ChatFormData) => {
+      const message = data.message.trim();
+      if (message && isConnected) {
+        log.info("User sending message", {
+          messageLength: message.length,
+          messagePreview: message.substring(0, 50),
+        });
 
-      // Add user message to state immediately
-      addMessage({
-        type: "user",
-        content: message,
-        timestamp: Date.now(),
-      });
+        // Add user message to state immediately
+        addMessage({
+          type: "user",
+          content: message,
+          timestamp: Date.now(),
+        });
 
-      // Send via WebSocket
-      try {
-        sendChat(message, {});
-        log.debug("Message sent successfully");
-        reset(); // Clear form after successful send
-      } catch (error) {
-        log.error("Failed to send message", error as Error);
+        // Send via WebSocket
+        try {
+          sendChat(message, {});
+          log.debug("Message sent successfully");
+          reset(); // Clear form after successful send
+        } catch (error) {
+          log.error("Failed to send message", error as Error);
+        }
+      } else if (!isConnected) {
+        log.warn("Attempted to send message while disconnected");
       }
-    } else if (!isConnected) {
-      log.warn("Attempted to send message while disconnected");
-    }
-  }, [isConnected, log, addMessage, sendChat, reset]);
+    },
+    [isConnected, log, addMessage, sendChat, reset]
+  );
 
   return (
     <div className="chat-interface">
@@ -143,6 +146,6 @@ const ChatInterface: React.FC = React.memo(() => {
   );
 });
 
-ChatInterface.displayName = 'ChatInterface';
+ChatInterface.displayName = "ChatInterface";
 
 export default ChatInterface;

@@ -66,6 +66,18 @@ if [ ! -d "venv" ]; then
     echo "   ❌ Virtual environment not found. Please run: python3 -m venv venv"
     exit 1
 fi
+
+# Load environment variables from .env file
+if [ -f "src/.env" ]; then
+    echo "   📝 Loading environment variables from src/.env"
+    export $(grep -v '^#' src/.env | xargs)
+elif [ -f ".env" ]; then
+    echo "   📝 Loading environment variables from .env"
+    export $(grep -v '^#' .env | xargs)
+else
+    echo "   ⚠️  Warning: .env file not found. API key may not be set."
+fi
+
 source venv/bin/activate
 PYTHONPATH=src python3 -m grpc_server > ../logs/ai-grpc.log 2>&1 &
 AI_PID=$!

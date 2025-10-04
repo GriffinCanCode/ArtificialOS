@@ -3,7 +3,7 @@
  * Tracks and reports performance metrics for optimization
  */
 
-import { logger } from './logger';
+import { logger } from "./logger";
 
 export interface PerformanceMetrics {
   name: string;
@@ -31,9 +31,9 @@ class PerformanceMonitor {
   end(name: string, metadata?: Record<string, any>): number {
     const key = this.getKey(name, metadata);
     const startTime = this.timers.get(key);
-    
+
     if (!startTime) {
-      logger.warn('Performance timer not started', { name, component: 'PerformanceMonitor' });
+      logger.warn("Performance timer not started", { name, component: "PerformanceMonitor" });
       return 0;
     }
 
@@ -60,7 +60,7 @@ class PerformanceMonitor {
     if (duration > threshold) {
       logger.performance(name, duration, {
         ...metadata,
-        component: 'PerformanceMonitor',
+        component: "PerformanceMonitor",
         threshold,
       });
     }
@@ -88,11 +88,7 @@ class PerformanceMonitor {
   /**
    * Measure a sync operation
    */
-  measureSync<T>(
-    name: string,
-    operation: () => T,
-    metadata?: Record<string, any>
-  ): T {
+  measureSync<T>(name: string, operation: () => T, metadata?: Record<string, any>): T {
     this.start(name, metadata);
     try {
       return operation();
@@ -113,13 +109,13 @@ class PerformanceMonitor {
     p95: number;
     p99: number;
   } | null {
-    const relevantMetrics = this.metrics.filter(m => m.name === name);
-    
+    const relevantMetrics = this.metrics.filter((m) => m.name === name);
+
     if (relevantMetrics.length === 0) {
       return null;
     }
 
-    const durations = relevantMetrics.map(m => m.duration).sort((a, b) => a - b);
+    const durations = relevantMetrics.map((m) => m.duration).sort((a, b) => a - b);
     const sum = durations.reduce((acc, d) => acc + d, 0);
 
     return {
@@ -152,10 +148,10 @@ class PerformanceMonitor {
    * Generate a performance report
    */
   getReport(): string {
-    const metricNames = [...new Set(this.metrics.map(m => m.name))];
-    
-    let report = 'Performance Report\n';
-    report += '==================\n\n';
+    const metricNames = [...new Set(this.metrics.map((m) => m.name))];
+
+    let report = "Performance Report\n";
+    report += "==================\n\n";
 
     for (const name of metricNames) {
       const stats = this.getStats(name);
@@ -180,10 +176,10 @@ class PerformanceMonitor {
   private getThreshold(name: string): number {
     // Define thresholds for different operations
     const thresholds: Record<string, number> = {
-      'json_parse': 100,
-      'component_render': 50,
-      'ui_generation': 5000,
-      'token_stream': 1000,
+      json_parse: 100,
+      component_render: 50,
+      ui_generation: 5000,
+      token_stream: 1000,
     };
 
     return thresholds[name] || 1000; // Default 1s threshold
@@ -211,4 +207,3 @@ export const measurePerfSync = <T>(
   operation: () => T,
   metadata?: Record<string, any>
 ) => performanceMonitor.measureSync(name, operation, metadata);
-

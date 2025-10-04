@@ -19,7 +19,7 @@ Go Service → [gRPC] → Python AI Service
 ## What This Service Does
 
 ✅ **LLM Operations**
-- Load and manage language models (Ollama/llama.cpp)
+- Load and manage language models (llama.cpp)
 - Generate UI specifications from natural language
 - Stream chat responses
 - Token-level streaming for real-time updates
@@ -46,8 +46,8 @@ Server runs on port **50052**
 
 ### Configuration
 
-- Model: GPT-OSS-20B via Ollama
-- Backend: Ollama (for better chat templates)
+- Model: GPT-OSS-20B via llama.cpp
+- Backend: llama.cpp (direct GGUF loading)
 - Streaming: Enabled
 - Port: 50052 (gRPC)
 
@@ -102,7 +102,7 @@ ai-service/
 ## Dependencies
 
 **Kept:**
-- langchain, llama-cpp-python, langchain-ollama
+- langchain, llama-cpp-python
 - grpcio, grpcio-tools
 - pydantic
 
@@ -110,6 +110,7 @@ ai-service/
 - ❌ fastapi - No longer needed
 - ❌ uvicorn - No longer needed
 - ❌ websockets - No longer needed
+- ❌ langchain-ollama - Replaced with direct llama.cpp
 
 ## Development
 
@@ -127,7 +128,7 @@ from models import ModelLoader, ModelConfig
 from models.config import ModelBackend, ModelSize
 
 loader = ModelLoader()
-config = ModelConfig(backend=ModelBackend.OLLAMA, size=ModelSize.SMALL)
+config = ModelConfig(backend=ModelBackend.LLAMA_CPP, size=ModelSize.SMALL)
 llm = loader.load(config)
 ```
 

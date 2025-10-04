@@ -4,16 +4,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/types"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/utils"
+	"github.com/google/uuid"
 )
 
 // Manager orchestrates app lifecycle
 type Manager struct {
-	apps       sync.Map
-	focusedID  *string
-	mu         sync.RWMutex
-	kernelGRPC KernelClient
+	apps          sync.Map
+	focusedID     *string
+	focusedHash   *string // Hash of focused app for restoration
+	mu            sync.RWMutex
+	kernelGRPC    KernelClient
+	appIdentifier *utils.AppIdentifier
 }
 
 // KernelClient interface for dependency injection
@@ -24,7 +27,8 @@ type KernelClient interface {
 // NewManager creates a new app manager
 func NewManager(kernelClient KernelClient) *Manager {
 	return &Manager{
-		kernelGRPC: kernelClient,
+		kernelGRPC:    kernelClient,
+		appIdentifier: utils.NewAppIdentifier(utils.DefaultHasher()),
 	}
 }
 
@@ -40,6 +44,12 @@ func (m *Manager) Spawn(request string, uiSpec map[string]interface{}, parentID 
 		services = []string{}
 	}
 
+	// Create metadata
+	metadata := map[string]interface{}{"request": request}
+
+	// Generate deterministic hash for app identification
+	hash := m.appIdentifier.GenerateHash(title, parentID, metadata)
+
 	// Create sandboxed process if kernel available
 	var sandboxPID *uint32
 	if m.kernelGRPC != nil && len(services) > 0 {
@@ -50,18 +60,19 @@ func (m *Manager) Spawn(request string, uiSpec map[string]interface{}, parentID 
 
 	app := &types.App{
 		ID:         uuid.New().String(),
+		Hash:       hash,
 		Title:      title,
 		UISpec:     uiSpec,
 		State:      types.StateActive,
 		ParentID:   parentID,
 		CreatedAt:  time.Now(),
-		Metadata:   map[string]interface{}{"request": request},
+		Metadata:   metadata,
 		Services:   services,
 		SandboxPID: sandboxPID,
 	}
 
 	m.apps.Store(app.ID, app)
-	m.setFocused(app.ID)
+	m.setFocused(app.ID, hash)
 
 	return app, nil
 }
@@ -110,7 +121,7 @@ func (m *Manager) Focus(id string) bool {
 	// Focus new
 	app.State = types.StateActive
 	m.apps.Store(id, app)
-	m.setFocused(id)
+	m.setFocused(id, app.Hash)
 
 	return true
 }
@@ -167,26 +178,39 @@ func (m *Manager) Stats() types.Stats {
 	})
 
 	m.mu.RLock()
-	focused := m.focusedID
+	focusedID := m.focusedID
+	focusedHash := m.focusedHash
 	m.mu.RUnlock()
-
-	var focusedApp *string
-	if focused != nil {
-		if app, ok := m.Get(*focused); ok {
-			focusedApp = &app.Title
-		}
-	}
 
 	return types.Stats{
 		TotalApps:      total,
 		ActiveApps:     active,
 		BackgroundApps: background,
-		FocusedApp:     focusedApp,
+		FocusedAppID:   focusedID,
+		FocusedAppHash: focusedHash,
 	}
 }
 
-func (m *Manager) setFocused(id string) {
+func (m *Manager) setFocused(id string, hash string) {
 	m.mu.Lock()
 	m.focusedID = &id
+	m.focusedHash = &hash
 	m.mu.Unlock()
+}
+
+// FindByHash finds an app by its hash (for restoration)
+func (m *Manager) FindByHash(hash string) (*types.App, bool) {
+	var found *types.App
+	m.apps.Range(func(_, value interface{}) bool {
+		app := value.(*types.App)
+		if app.Hash == hash {
+			found = app
+			return false // Stop iteration
+		}
+		return true
+	})
+	if found != nil {
+		return found, true
+	}
+	return nil, false
 }

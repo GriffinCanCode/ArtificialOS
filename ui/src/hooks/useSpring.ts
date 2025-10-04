@@ -1,7 +1,7 @@
 /**
  * React Spring Animation Hooks
  * Physics-based, natural motion animations that complement GSAP
- * 
+ *
  * Use these for:
  * - Interactive, gesture-driven animations
  * - Component lifecycle animations
@@ -9,10 +9,10 @@
  * - Natural spring physics
  */
 
-import { useSpring, useTrail, useSprings, animated } from '@react-spring/web';
-import { useDrag } from '@use-gesture/react';
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { springConfigs } from '../utils/animation/gsapAnimations';
+import { useSpring, useTrail, useSprings, animated } from "@react-spring/web";
+import { useDrag } from "@use-gesture/react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { springConfigs } from "../utils/animation/gsapAnimations";
 
 // Re-export animated for convenience
 export { animated };
@@ -27,13 +27,13 @@ export { animated };
 export function useSpringFadeIn(active: boolean = true, springConfig = springConfigs.bouncy) {
   const spring = useSpring({
     from: { opacity: 0, scale: 0.9 },
-    to: { 
+    to: {
       opacity: active ? 1 : 0,
       scale: active ? 1 : 0.9,
     },
     config: springConfig,
   });
-  
+
   return spring;
 }
 
@@ -42,29 +42,33 @@ export function useSpringFadeIn(active: boolean = true, springConfig = springCon
  */
 export function useSpringSlideIn(
   active: boolean = true,
-  direction: 'left' | 'right' | 'top' | 'bottom' = 'bottom',
+  direction: "left" | "right" | "top" | "bottom" = "bottom",
   distance: number = 50,
   springConfig = springConfigs.bouncy
 ) {
   const getInitialPos = () => {
     switch (direction) {
-      case 'left': return { x: -distance, y: 0 };
-      case 'right': return { x: distance, y: 0 };
-      case 'top': return { y: -distance, x: 0 };
-      case 'bottom': return { y: distance, x: 0 };
+      case "left":
+        return { x: -distance, y: 0 };
+      case "right":
+        return { x: distance, y: 0 };
+      case "top":
+        return { y: -distance, x: 0 };
+      case "bottom":
+        return { y: distance, x: 0 };
     }
   };
-  
+
   const spring = useSpring({
     from: { ...getInitialPos(), opacity: 0 },
-    to: { 
+    to: {
       x: active ? 0 : getInitialPos().x,
       y: active ? 0 : getInitialPos().y,
       opacity: active ? 1 : 0,
     },
     config: springConfig,
   });
-  
+
   return spring;
 }
 
@@ -74,14 +78,14 @@ export function useSpringSlideIn(
 export function useSpringRotateIn(active: boolean = true, springConfig = springConfigs.wobbly) {
   const spring = useSpring({
     from: { opacity: 0, scale: 0, rotate: -180 },
-    to: { 
+    to: {
       opacity: active ? 1 : 0,
       scale: active ? 1 : 0,
       rotate: active ? 0 : -180,
     },
     config: springConfig,
   });
-  
+
   return spring;
 }
 
@@ -95,46 +99,56 @@ export function useSpringRotateIn(active: boolean = true, springConfig = springC
 export function useMagneticHover(strength: number = 0.2, springConfig = springConfigs.bouncy) {
   const [{ x, y }, api] = useSpring(() => ({ x: 0, y: 0, config: springConfig }));
   const ref = useRef<HTMLElement>(null);
-  
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!ref.current) return;
-    const rect = ref.current.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    
-    const deltaX = (e.clientX - centerX) * strength;
-    const deltaY = (e.clientY - centerY) * strength;
-    
-    api.start({ x: deltaX, y: deltaY });
-  }, [api, strength]);
-  
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (!ref.current) return;
+      const rect = ref.current.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+
+      const deltaX = (e.clientX - centerX) * strength;
+      const deltaY = (e.clientY - centerY) * strength;
+
+      api.start({ x: deltaX, y: deltaY });
+    },
+    [api, strength]
+  );
+
   const handleMouseLeave = useCallback(() => {
     api.start({ x: 0, y: 0 });
   }, [api]);
-  
-  return { style: { x, y }, ref, handlers: { onMouseMove: handleMouseMove, onMouseLeave: handleMouseLeave } };
+
+  return {
+    style: { x, y },
+    ref,
+    handlers: { onMouseMove: handleMouseMove, onMouseLeave: handleMouseLeave },
+  };
 }
 
 /**
  * Drag with spring physics and rubber band effect
  */
 export function useDraggableSpring(
-  onDragEnd?: (info: { offset: [number, number], velocity: [number, number] }) => void,
+  onDragEnd?: (info: { offset: [number, number]; velocity: [number, number] }) => void,
   springConfig = springConfigs.rubber
 ) {
   const [{ x, y }, api] = useSpring(() => ({ x: 0, y: 0, config: springConfig }));
-  
-  const bind = useDrag(({ offset: [ox, oy], velocity: [vx, vy], down }) => {
-    api.start({ x: ox, y: oy, immediate: down });
-    
-    if (!down && onDragEnd) {
-      onDragEnd({ offset: [ox, oy], velocity: [vx, vy] });
+
+  const bind = useDrag(
+    ({ offset: [ox, oy], velocity: [vx, vy], down }) => {
+      api.start({ x: ox, y: oy, immediate: down });
+
+      if (!down && onDragEnd) {
+        onDragEnd({ offset: [ox, oy], velocity: [vx, vy] });
+      }
+    },
+    {
+      from: () => [x.get(), y.get()],
     }
-  }, {
-    from: () => [x.get(), y.get()],
-  });
-  
-  return { style: { x, y, touchAction: 'none' }, bind };
+  );
+
+  return { style: { x, y, touchAction: "none" }, bind };
 }
 
 /**
@@ -142,18 +156,18 @@ export function useDraggableSpring(
  */
 export function useParallax(depth: number = 0.05, springConfig = springConfigs.gentle) {
   const [{ x, y }, api] = useSpring(() => ({ x: 0, y: 0, config: springConfig }));
-  
+
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       const x = (e.clientX - window.innerWidth / 2) * depth;
       const y = (e.clientY - window.innerHeight / 2) * depth;
       api.start({ x, y });
     };
-    
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
   }, [api, depth]);
-  
+
   return { x, y };
 }
 
@@ -170,14 +184,14 @@ export function useFloatSpring(
   springConfig = springConfigs.gentle
 ) {
   const [flip, setFlip] = useState(false);
-  
+
   const spring = useSpring({
     from: { y: 0 },
     to: { y: flip ? -amplitude : amplitude },
     config: springConfig,
     onRest: () => setFlip(!flip),
   });
-  
+
   return spring;
 }
 
@@ -189,14 +203,14 @@ export function useBreatheSpring(
   duration: number = 3000
 ) {
   const [flip, setFlip] = useState(false);
-  
+
   const spring = useSpring({
     from: { scale: scaleRange[0] },
     to: { scale: flip ? scaleRange[1] : scaleRange[0] },
     config: { duration: duration },
     onRest: () => setFlip(!flip),
   });
-  
+
   return spring;
 }
 
@@ -214,14 +228,14 @@ export function useSpringTrail<T>(
 ) {
   const trail = useTrail(items.length, {
     from: { opacity: 0, x: -20, scale: 0.9 },
-    to: { 
+    to: {
       opacity: active ? 1 : 0,
       x: active ? 0 : -20,
       scale: active ? 1 : 0.9,
     },
     config: springConfig,
   });
-  
+
   return trail;
 }
 
@@ -239,7 +253,7 @@ export function useSpringChain(
     y: 0,
     config: springConfig,
   }));
-  
+
   useEffect(() => {
     api.start((index) => {
       const offset = index * spacing;
@@ -250,7 +264,7 @@ export function useSpringChain(
       };
     });
   }, [leadPosition, spacing, api]);
-  
+
   return springs;
 }
 
@@ -266,35 +280,39 @@ export function useSwipeToDismiss(
   threshold: number = 100,
   springConfig = springConfigs.stiff
 ) {
-  const [{ x, opacity }, api] = useSpring(() => ({ 
-    x: 0, 
+  const [{ x, opacity }, api] = useSpring(() => ({
+    x: 0,
     opacity: 1,
     config: springConfig,
   }));
-  
-  const bind = useDrag(({ offset: [ox], velocity: [vx], down, direction: [dirX] }) => {
-    const trigger = Math.abs(ox) > threshold || (Math.abs(vx) > 0.5 && Math.abs(ox) > threshold * 0.5);
-    
-    if (trigger && !down) {
-      api.start({ 
-        x: dirX > 0 ? window.innerWidth : -window.innerWidth,
-        opacity: 0,
-        config: { ...springConfig, velocity: vx * 1000 },
-        onRest: onDismiss,
-      });
-    } else {
-      api.start({ 
-        x: down ? ox : 0,
-        opacity: 1 - Math.min(Math.abs(ox) / threshold, 0.7),
-        immediate: down,
-      });
+
+  const bind = useDrag(
+    ({ offset: [ox], velocity: [vx], down, direction: [dirX] }) => {
+      const trigger =
+        Math.abs(ox) > threshold || (Math.abs(vx) > 0.5 && Math.abs(ox) > threshold * 0.5);
+
+      if (trigger && !down) {
+        api.start({
+          x: dirX > 0 ? window.innerWidth : -window.innerWidth,
+          opacity: 0,
+          config: { ...springConfig, velocity: vx * 1000 },
+          onRest: onDismiss,
+        });
+      } else {
+        api.start({
+          x: down ? ox : 0,
+          opacity: 1 - Math.min(Math.abs(ox) / threshold, 0.7),
+          immediate: down,
+        });
+      }
+    },
+    {
+      axis: "x",
+      from: () => [x.get(), 0],
     }
-  }, {
-    axis: 'x',
-    from: () => [x.get(), 0],
-  });
-  
-  return { style: { x, opacity, touchAction: 'pan-y' }, bind };
+  );
+
+  return { style: { x, opacity, touchAction: "pan-y" }, bind };
 }
 
 /**
@@ -306,40 +324,43 @@ export function usePullToRefresh(
   springConfig = springConfigs.rubber
 ) {
   const [refreshing, setRefreshing] = useState(false);
-  const [{ y, rotate }, api] = useSpring(() => ({ 
+  const [{ y, rotate }, api] = useSpring(() => ({
     y: 0,
     rotate: 0,
     config: springConfig,
   }));
-  
-  const bind = useDrag(({ offset: [, oy], down, direction: [, dirY] }) => {
-    if (refreshing) return;
-    
-    const pullDistance = Math.max(0, oy);
-    const trigger = pullDistance > threshold && !down && dirY > 0;
-    
-    if (trigger) {
-      setRefreshing(true);
-      api.start({ y: threshold, rotate: 360 });
-      onRefresh().finally(() => {
-        setRefreshing(false);
-        api.start({ y: 0, rotate: 0 });
-      });
-    } else {
-      const dampedY = down ? pullDistance * 0.5 : 0;
-      api.start({ 
-        y: dampedY,
-        rotate: (pullDistance / threshold) * 180,
-        immediate: down,
-      });
+
+  const bind = useDrag(
+    ({ offset: [, oy], down, direction: [, dirY] }) => {
+      if (refreshing) return;
+
+      const pullDistance = Math.max(0, oy);
+      const trigger = pullDistance > threshold && !down && dirY > 0;
+
+      if (trigger) {
+        setRefreshing(true);
+        api.start({ y: threshold, rotate: 360 });
+        onRefresh().finally(() => {
+          setRefreshing(false);
+          api.start({ y: 0, rotate: 0 });
+        });
+      } else {
+        const dampedY = down ? pullDistance * 0.5 : 0;
+        api.start({
+          y: dampedY,
+          rotate: (pullDistance / threshold) * 180,
+          immediate: down,
+        });
+      }
+    },
+    {
+      axis: "y",
+      bounds: { top: 0 },
+      rubberband: true,
+      from: () => [0, y.get()],
     }
-  }, {
-    axis: 'y',
-    bounds: { top: 0 },
-    rubberband: true,
-    from: () => [0, y.get()],
-  });
-  
+  );
+
   return { style: { y, rotate }, bind, refreshing };
 }
 
@@ -355,7 +376,7 @@ export function useJelloWobble(trigger: boolean) {
     from: { skewX: 0, skewY: 0, scaleX: 1, scaleY: 1 },
     config: springConfigs.jello,
   }));
-  
+
   useEffect(() => {
     if (trigger) {
       const sequence = async () => {
@@ -368,7 +389,7 @@ export function useJelloWobble(trigger: boolean) {
       sequence();
     }
   }, [trigger, api]);
-  
+
   return springs[0];
 }
 
@@ -388,7 +409,7 @@ export function useBounceAttention(active: boolean) {
     },
     config: springConfigs.bouncy,
   });
-  
+
   return spring;
 }
 
@@ -405,11 +426,11 @@ export function useFollowValue(target: number, springConfig = springConfigs.defa
     to: { value: target },
     config: springConfig,
   });
-  
+
   useEffect(() => {
     spring.value.start(target);
   }, [target, spring]);
-  
+
   return spring.value;
 }
 
@@ -430,4 +451,3 @@ export default {
   useBounceAttention,
   useFollowValue,
 };
-

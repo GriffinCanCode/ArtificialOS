@@ -4,10 +4,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type {
-  SaveSessionRequest,
-  ListSessionsResponse,
-} from "../types/session";
+import type { SaveSessionRequest, ListSessionsResponse } from "../types/session";
 import { SessionClient } from "../utils/api/sessionClient";
 import { logger } from "../utils/monitoring/logger";
 
@@ -110,30 +107,27 @@ export function useSaveSession() {
       });
 
       // Add the new session to the cache optimistically
-      queryClient.setQueryData<ListSessionsResponse>(
-        sessionKeys.list(),
-        (old) => {
-          if (!old) return old;
-          
-          // Check if session already exists (update case)
-          const existingIndex = old.sessions.findIndex(s => s.id === data.session.id);
-          if (existingIndex >= 0) {
-            const updated = [...old.sessions];
-            updated[existingIndex] = data.session;
-            return { ...old, sessions: updated };
-          }
-          
-          // New session - add to beginning
-          return {
-            ...old,
-            sessions: [data.session, ...old.sessions],
-            stats: {
-              ...old.stats,
-              total_sessions: old.stats.total_sessions + 1,
-            },
-          };
+      queryClient.setQueryData<ListSessionsResponse>(sessionKeys.list(), (old) => {
+        if (!old) return old;
+
+        // Check if session already exists (update case)
+        const existingIndex = old.sessions.findIndex((s) => s.id === data.session.id);
+        if (existingIndex >= 0) {
+          const updated = [...old.sessions];
+          updated[existingIndex] = data.session;
+          return { ...old, sessions: updated };
         }
-      );
+
+        // New session - add to beginning
+        return {
+          ...old,
+          sessions: [data.session, ...old.sessions],
+          stats: {
+            ...old.stats,
+            total_sessions: old.stats.total_sessions + 1,
+          },
+        };
+      });
 
       // Invalidate to ensure fresh data
       queryClient.invalidateQueries({ queryKey: sessionKeys.lists() });
@@ -172,7 +166,7 @@ export function useSaveDefaultSession() {
       });
 
       // Silently update cache in background
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         queryKey: sessionKeys.lists(),
         refetchType: "none", // Don't refetch, just mark as stale
       });
@@ -246,20 +240,17 @@ export function useDeleteSession() {
       const previousSessions = queryClient.getQueryData(sessionKeys.list());
 
       // Optimistically update
-      queryClient.setQueryData<ListSessionsResponse>(
-        sessionKeys.list(),
-        (old) => {
-          if (!old) return old;
-          return {
-            ...old,
-            sessions: old.sessions.filter((s) => s.id !== sessionId),
-            stats: {
-              ...old.stats,
-              total_sessions: old.stats.total_sessions - 1,
-            },
-          };
-        }
-      );
+      queryClient.setQueryData<ListSessionsResponse>(sessionKeys.list(), (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          sessions: old.sessions.filter((s) => s.id !== sessionId),
+          stats: {
+            ...old.stats,
+            total_sessions: old.stats.total_sessions - 1,
+          },
+        };
+      });
 
       return { previousSessions };
     },
@@ -301,4 +292,3 @@ export function useSessionMutations() {
     deleteSession,
   };
 }
-

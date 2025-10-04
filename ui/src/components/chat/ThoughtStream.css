@@ -3,23 +3,19 @@
  * Inspired by macOS Notification Center
  */
 
-/* Toggle Button - Fixed in top-right */
+/* Toggle Button - Fixed in bottom-right, more visible */
 .thought-toggle {
   position: fixed;
-  top: 1rem;
-  right: 1rem;
+  bottom: 2rem;
+  right: 2rem;
   z-index: 999;
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.08) 0%,
-    rgba(139, 92, 246, 0.06) 100%
-  );
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.3) 100%);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1.5px solid rgba(139, 92, 246, 0.5);
   color: white;
   cursor: pointer;
   display: flex;
@@ -28,22 +24,20 @@
   font-size: 1.5rem;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
-  box-shadow: 
-    0 4px 16px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 8px 24px rgba(139, 92, 246, 0.4),
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .thought-toggle:hover {
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.12) 0%,
-    rgba(139, 92, 246, 0.1) 100%
-  );
-  transform: scale(1.05) rotate(-5deg);
-  border-color: rgba(139, 92, 246, 0.3);
-  box-shadow: 
-    0 6px 20px rgba(139, 92, 246, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.35) 0%, rgba(139, 92, 246, 0.4) 100%);
+  transform: scale(1.1) rotate(-5deg);
+  border-color: rgba(139, 92, 246, 0.7);
+  box-shadow:
+    0 12px 32px rgba(139, 92, 246, 0.5),
+    0 6px 16px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 .thought-toggle:active {
@@ -111,10 +105,10 @@
   }
 
   .thought-toggle {
-    top: 0.75rem;
-    right: 0.75rem;
-    width: 44px;
-    height: 44px;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    width: 48px;
+    height: 48px;
   }
 }
 
@@ -201,6 +195,14 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.thoughts-container::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .empty-state {

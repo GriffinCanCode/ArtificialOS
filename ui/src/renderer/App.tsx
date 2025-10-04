@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { Save, Sparkles, CheckCircle } from "lucide-react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import ThoughtStream from "../components/chat/ThoughtStream";
-import DynamicRenderer from "../components/DynamicRenderer";
+import DynamicRenderer from "../components/dynamics/DynamicRenderer";
 import TitleBar from "../components/layout/TitleBar";
 import { WebSocketProvider, useWebSocket } from "../contexts/WebSocketContext";
 import { useAppActions } from "../store/appStore";
@@ -39,12 +39,15 @@ function AppContent() {
 
   // Initialize session manager with auto-save every 30s
   // Memoize options to prevent hooks order issues during HMR
-  const sessionManagerOptions = React.useMemo(() => ({
-    autoSaveInterval: 30,
-    enableAutoSave: true,
-    restoreOnMount: true,
-  }), []);
-  
+  const sessionManagerOptions = React.useMemo(
+    () => ({
+      autoSaveInterval: 30,
+      enableAutoSave: true,
+      restoreOnMount: true,
+    }),
+    []
+  );
+
   const sessionManager = useSessionManager(sessionManagerOptions);
 
   // Handle incoming WebSocket messages with type safety
@@ -105,14 +108,19 @@ function AppContent() {
 
   const [showThoughts, setShowThoughts] = React.useState(false);
   const [inputFocused, setInputFocused] = React.useState(false);
-  
+
   // React Hook Form for spotlight input
-  const { register, handleSubmit: handleFormSubmit, reset, watch } = useForm<SpotlightFormData>({
+  const {
+    register,
+    handleSubmit: handleFormSubmit,
+    reset,
+    watch,
+  } = useForm<SpotlightFormData>({
     defaultValues: { prompt: "" },
   });
 
   const inputValue = watch("prompt");
-  
+
   // Get ref from register for keyboard shortcut access
   const { ref: inputRefCallback, ...inputRegisterProps } = register("prompt", {
     required: true,
@@ -125,9 +133,9 @@ function AppContent() {
       setInputFocused(false);
     },
   });
-  
+
   const inputRef = React.useRef<HTMLInputElement | null>(null);
-  
+
   // Combine refs for both react-hook-form and keyboard shortcut
   const setInputRef = React.useCallback(
     (node: HTMLInputElement | null) => {
@@ -138,7 +146,7 @@ function AppContent() {
     },
     [inputRefCallback]
   );
-  
+
   // GSAP Animation hooks
   const spotlightContainerRef = useFadeIn<HTMLDivElement>({ duration: 0.3 });
   const hintRef = useFadeIn<HTMLDivElement>({ duration: 0.3 });
@@ -164,14 +172,17 @@ function AppContent() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [inputFocused]);
 
-  const onSubmitSpotlight = useCallback((data: SpotlightFormData) => {
-    const message = data.prompt.trim();
-    if (message) {
-      // Send to AI for UI generation using the context method
-      generateUI(message, {});
-      reset(); // Clear form after submission
-    }
-  }, [generateUI, reset]);
+  const onSubmitSpotlight = useCallback(
+    (data: SpotlightFormData) => {
+      const message = data.prompt.trim();
+      if (message) {
+        // Send to AI for UI generation using the context method
+        generateUI(message, {});
+        reset(); // Clear form after submission
+      }
+    },
+    [generateUI, reset]
+  );
 
   const formatTimeSinceMemo = useCallback((date: Date): string => {
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -193,9 +204,14 @@ function AppContent() {
       </div>
 
       {/* Floating Spotlight-style Input Bar */}
-      <div ref={spotlightContainerRef} className={`spotlight-input-container ${inputFocused ? "focused" : ""}`}>
+      <div
+        ref={spotlightContainerRef}
+        className={`spotlight-input-container ${inputFocused ? "focused" : ""}`}
+      >
         <form className="spotlight-input-wrapper" onSubmit={handleFormSubmit(onSubmitSpotlight)}>
-          <div className="spotlight-icon"><Sparkles size={20} /></div>
+          <div className="spotlight-icon">
+            <Sparkles size={20} />
+          </div>
           <input
             type="text"
             className="spotlight-input"
@@ -205,17 +221,15 @@ function AppContent() {
             {...inputRegisterProps}
           />
           {inputValue && (
-            <button
-              type="submit"
-              className="spotlight-send"
-              aria-label="Send message"
-            >
+            <button type="submit" className="spotlight-send" aria-label="Send message">
               →
             </button>
           )}
         </form>
         {inputFocused && (
-          <div ref={hintRef} className="spotlight-hint">Press Enter to generate • Esc to close</div>
+          <div ref={hintRef} className="spotlight-hint">
+            Press Enter to generate • Esc to close
+          </div>
         )}
       </div>
 
@@ -223,10 +237,16 @@ function AppContent() {
       <ThoughtStream isVisible={showThoughts} onToggle={() => setShowThoughts(!showThoughts)} />
 
       {/* Session Status Indicator */}
-      {sessionManager.isSaving && <div ref={sessionStatusRef} className="session-status saving"><Save size={14} style={{ marginRight: '6px', verticalAlign: 'middle' }} />Saving...</div>}
+      {sessionManager.isSaving && (
+        <div ref={sessionStatusRef} className="session-status saving">
+          <Save size={14} style={{ marginRight: "6px", verticalAlign: "middle" }} />
+          Saving...
+        </div>
+      )}
       {sessionManager.lastSaveTime && !sessionManager.isSaving && (
         <div ref={sessionStatusRef} className="session-status saved">
-          <CheckCircle size={14} style={{ marginRight: '6px', verticalAlign: 'middle' }} />Saved {formatTimeSinceMemo(sessionManager.lastSaveTime)}
+          <CheckCircle size={14} style={{ marginRight: "6px", verticalAlign: "middle" }} />
+          Saved {formatTimeSinceMemo(sessionManager.lastSaveTime)}
         </div>
       )}
     </div>

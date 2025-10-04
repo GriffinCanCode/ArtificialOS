@@ -15,15 +15,17 @@ type Session struct {
 
 // Workspace contains the complete state of all apps and UI
 type Workspace struct {
-	Apps      []AppSnapshot `json:"apps"`
-	FocusedID *string       `json:"focused_app_id,omitempty"`
-	ChatState *ChatState    `json:"chat_state,omitempty"`
-	UIState   *UIState      `json:"ui_state,omitempty"`
+	Apps        []AppSnapshot `json:"apps"`
+	FocusedID   *string       `json:"focused_app_id,omitempty"`
+	FocusedHash *string       `json:"focused_app_hash,omitempty"` // Hash for restoration by properties
+	ChatState   *ChatState    `json:"chat_state,omitempty"`
+	UIState     *UIState      `json:"ui_state,omitempty"`
 }
 
 // AppSnapshot captures complete app state for restoration
 type AppSnapshot struct {
 	ID             string                 `json:"id"`
+	Hash           string                 `json:"hash"` // Deterministic hash for matching
 	Title          string                 `json:"title"`
 	UISpec         map[string]interface{} `json:"ui_spec"`
 	State          State                  `json:"state"`

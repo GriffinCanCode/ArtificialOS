@@ -1,6 +1,6 @@
 """
 Chat agent implementation.
-Handles conversational AI with streaming support.
+Handles conversational AI with streaming support using Gemini.
 """
 
 import logging
@@ -56,14 +56,14 @@ class ChatHistory(BaseModel):
 
 class ChatAgent:
     """
-    Conversational AI agent with streaming.
+    Conversational AI agent with streaming using Gemini.
     Stateless design - history managed externally.
     """
     
     SYSTEM_PROMPT = """You are a helpful AI assistant."""
     
     def __init__(self, llm: BaseLLM):
-        """Initialize with LLM instance."""
+        """Initialize with LLM instance (GeminiModel)."""
         self.llm = llm
         self.prompt = self._create_prompt()
     
@@ -71,15 +71,9 @@ class ChatAgent:
     def _create_prompt() -> ChatPromptTemplate:
         """
         Create chat prompt template.
-        Uses simple format since LlamaCpp doesn't auto-apply chat templates.
+        Returns None since we'll use simple format for Gemini.
         """
-        # Simple prompt format that works with GGUF models
-        template = """### Instruction:
-{input}
-
-### Response:
-"""
-        return ChatPromptTemplate.from_template(template)
+        return None
     
     async def stream_response(
         self,
@@ -87,7 +81,7 @@ class ChatAgent:
         history: Optional[ChatHistory] = None,
     ) -> AsyncGenerator[str, None]:
         """
-        Stream response token by token.
+        Stream response token by token using Gemini.
         
         Args:
             user_input: User's message
@@ -98,15 +92,22 @@ class ChatAgent:
         """
         history = history or ChatHistory()
         
-        # Format prompt (simple format for GGUF)
-        prompt_text = self.prompt.format(input=user_input)
+        # Build conversation context for Gemini
+        conversation_context = ""
+        for msg in history.messages:
+            if msg.role in ["user", "assistant"]:
+                role_label = "User" if msg.role == "user" else "Assistant"
+                conversation_context += f"{role_label}: {msg.content}\n\n"
         
-        logger.info(f"Generating response for: {user_input[:50]}...")
+        # Build simple prompt for Gemini
+        prompt_text = f"{self.SYSTEM_PROMPT}\n\n{conversation_context}User: {user_input}"
         
-        # Stream tokens
+        logger.info(f"Generating chat response for: {user_input[:50]}...")
+        
+        # Stream tokens from Gemini
         full_response = ""
         async for chunk in self.llm.astream(prompt_text):
-            # Extract content from chunk (handles AIMessageChunk objects)
+            # Handle different response formats
             if hasattr(chunk, 'content'):
                 token = chunk.content
             else:
@@ -132,10 +133,21 @@ class ChatAgent:
         Returns:
             Complete response text
         """
-        prompt_text = self.prompt.format(input=user_input)
+        history = history or ChatHistory()
+        
+        # Build conversation context
+        conversation_context = ""
+        for msg in history.messages:
+            if msg.role in ["user", "assistant"]:
+                role_label = "User" if msg.role == "user" else "Assistant"
+                conversation_context += f"{role_label}: {msg.content}\n\n"
+        
+        # Build prompt
+        prompt_text = f"{self.SYSTEM_PROMPT}\n\n{conversation_context}User: {user_input}"
+        
         response = await self.llm.ainvoke(prompt_text)
         
-        # Extract content from response (handles both str and message objects)
+        # Extract content from response
         if hasattr(response, 'content'):
             return response.content
         return str(response)
@@ -169,4 +181,3 @@ class ChatAgent:
             content=content,
             timestamp=time.time()
         )
-

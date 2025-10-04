@@ -273,6 +273,409 @@ export const controlButtonVariants = cva("control-btn-base", {
 export type ControlButtonVariants = VariantProps<typeof controlButtonVariants>;
 
 // ============================================================================
+// Select/Dropdown Variants
+// ============================================================================
+
+export const selectVariants = cva("dynamic-select", {
+  variants: {
+    variant: {
+      default: "select-default",
+      filled: "select-filled",
+      outline: "select-outline",
+    },
+    size: {
+      small: "select-sm",
+      medium: "select-md",
+      large: "select-lg",
+    },
+    error: {
+      true: "select-error",
+    },
+    disabled: {
+      true: "select-disabled",
+    },
+  },
+  defaultVariants: {
+    variant: "default",
+    size: "medium",
+  },
+});
+
+export type SelectVariants = VariantProps<typeof selectVariants>;
+
+// ============================================================================
+// Checkbox Variants
+// ============================================================================
+
+export const checkboxVariants = cva("dynamic-checkbox", {
+  variants: {
+    size: {
+      small: "checkbox-sm",
+      medium: "checkbox-md",
+      large: "checkbox-lg",
+    },
+    variant: {
+      default: "checkbox-default",
+      primary: "checkbox-primary",
+    },
+    disabled: {
+      true: "checkbox-disabled",
+    },
+  },
+  defaultVariants: {
+    size: "medium",
+    variant: "default",
+  },
+});
+
+export type CheckboxVariants = VariantProps<typeof checkboxVariants>;
+
+// ============================================================================
+// Radio Variants
+// ============================================================================
+
+export const radioVariants = cva("dynamic-radio", {
+  variants: {
+    size: {
+      small: "radio-sm",
+      medium: "radio-md",
+      large: "radio-lg",
+    },
+    disabled: {
+      true: "radio-disabled",
+    },
+  },
+  defaultVariants: {
+    size: "medium",
+  },
+});
+
+export type RadioVariants = VariantProps<typeof radioVariants>;
+
+// ============================================================================
+// Textarea Variants
+// ============================================================================
+
+export const textareaVariants = cva("dynamic-textarea", {
+  variants: {
+    variant: {
+      default: "textarea-default",
+      filled: "textarea-filled",
+      outline: "textarea-outline",
+    },
+    size: {
+      small: "textarea-sm",
+      medium: "textarea-md",
+      large: "textarea-lg",
+    },
+    error: {
+      true: "textarea-error",
+    },
+    disabled: {
+      true: "textarea-disabled",
+    },
+    resize: {
+      none: "textarea-resize-none",
+      vertical: "textarea-resize-vertical",
+      horizontal: "textarea-resize-horizontal",
+      both: "textarea-resize-both",
+    },
+  },
+  defaultVariants: {
+    variant: "default",
+    size: "medium",
+    resize: "vertical",
+  },
+});
+
+export type TextareaVariants = VariantProps<typeof textareaVariants>;
+
+// ============================================================================
+// Image Variants
+// ============================================================================
+
+export const imageVariants = cva("dynamic-image", {
+  variants: {
+    fit: {
+      cover: "image-fit-cover",
+      contain: "image-fit-contain",
+      fill: "image-fit-fill",
+      none: "image-fit-none",
+    },
+    rounded: {
+      none: "image-rounded-none",
+      small: "image-rounded-sm",
+      medium: "image-rounded-md",
+      large: "image-rounded-lg",
+      full: "image-rounded-full",
+    },
+  },
+  defaultVariants: {
+    fit: "cover",
+    rounded: "none",
+  },
+});
+
+export type ImageVariants = VariantProps<typeof imageVariants>;
+
+// ============================================================================
+// Slider Variants
+// ============================================================================
+
+export const sliderVariants = cva("dynamic-slider", {
+  variants: {
+    size: {
+      small: "slider-sm",
+      medium: "slider-md",
+      large: "slider-lg",
+    },
+    variant: {
+      default: "slider-default",
+      primary: "slider-primary",
+    },
+    disabled: {
+      true: "slider-disabled",
+    },
+  },
+  defaultVariants: {
+    size: "medium",
+    variant: "default",
+  },
+});
+
+export type SliderVariants = VariantProps<typeof sliderVariants>;
+
+// ============================================================================
+// Progress Variants
+// ============================================================================
+
+export const progressVariants = cva("dynamic-progress", {
+  variants: {
+    variant: {
+      default: "progress-default",
+      primary: "progress-primary",
+      success: "progress-success",
+      error: "progress-error",
+    },
+    size: {
+      small: "progress-sm",
+      medium: "progress-md",
+      large: "progress-lg",
+    },
+  },
+  defaultVariants: {
+    variant: "default",
+    size: "medium",
+  },
+});
+
+export type ProgressVariants = VariantProps<typeof progressVariants>;
+
+// ============================================================================
+// Badge Variants
+// ============================================================================
+
+export const badgeVariants = cva("dynamic-badge", {
+  variants: {
+    variant: {
+      default: "badge-default",
+      primary: "badge-primary",
+      secondary: "badge-secondary",
+      success: "badge-success",
+      error: "badge-error",
+      warning: "badge-warning",
+    },
+    size: {
+      small: "badge-sm",
+      medium: "badge-md",
+      large: "badge-lg",
+    },
+  },
+  defaultVariants: {
+    variant: "default",
+    size: "medium",
+  },
+});
+
+export type BadgeVariants = VariantProps<typeof badgeVariants>;
+
+// ============================================================================
+// Divider Variants
+// ============================================================================
+
+export const dividerVariants = cva("dynamic-divider", {
+  variants: {
+    orientation: {
+      horizontal: "divider-horizontal",
+      vertical: "divider-vertical",
+    },
+    variant: {
+      solid: "divider-solid",
+      dashed: "divider-dashed",
+      dotted: "divider-dotted",
+    },
+  },
+  defaultVariants: {
+    orientation: "horizontal",
+    variant: "solid",
+  },
+});
+
+export type DividerVariants = VariantProps<typeof dividerVariants>;
+
+// ============================================================================
+// Tab Variants
+// ============================================================================
+
+export const tabVariants = cva("dynamic-tab", {
+  variants: {
+    variant: {
+      default: "tab-default",
+      bordered: "tab-bordered",
+      pills: "tab-pills",
+    },
+    size: {
+      small: "tab-sm",
+      medium: "tab-md",
+      large: "tab-lg",
+    },
+  },
+  defaultVariants: {
+    variant: "default",
+    size: "medium",
+  },
+});
+
+export type TabVariants = VariantProps<typeof tabVariants>;
+
+// ============================================================================
+// Modal Variants
+// ============================================================================
+
+export const modalVariants = cva("dynamic-modal", {
+  variants: {
+    size: {
+      small: "modal-sm",
+      medium: "modal-md",
+      large: "modal-lg",
+      fullscreen: "modal-fullscreen",
+    },
+    centered: {
+      true: "modal-centered",
+    },
+  },
+  defaultVariants: {
+    size: "medium",
+    centered: true,
+  },
+});
+
+export type ModalVariants = VariantProps<typeof modalVariants>;
+
+// ============================================================================
+// List Variants
+// ============================================================================
+
+export const listVariants = cva("dynamic-list", {
+  variants: {
+    variant: {
+      default: "list-default",
+      bordered: "list-bordered",
+      striped: "list-striped",
+    },
+    spacing: {
+      none: "list-spacing-none",
+      small: "list-spacing-sm",
+      medium: "list-spacing-md",
+      large: "list-spacing-lg",
+    },
+  },
+  defaultVariants: {
+    variant: "default",
+    spacing: "medium",
+  },
+});
+
+export type ListVariants = VariantProps<typeof listVariants>;
+
+// ============================================================================
+// Canvas Variants
+// ============================================================================
+
+export const canvasVariants = cva("dynamic-canvas", {
+  variants: {
+    bordered: {
+      true: "canvas-bordered",
+    },
+  },
+  defaultVariants: {},
+});
+
+export type CanvasVariants = VariantProps<typeof canvasVariants>;
+
+// ============================================================================
+// Iframe Variants
+// ============================================================================
+
+export const iframeVariants = cva("dynamic-iframe", {
+  variants: {
+    bordered: {
+      true: "iframe-bordered",
+    },
+    rounded: {
+      true: "iframe-rounded",
+    },
+  },
+  defaultVariants: {},
+});
+
+export type IframeVariants = VariantProps<typeof iframeVariants>;
+
+// ============================================================================
+// Video Variants
+// ============================================================================
+
+export const videoVariants = cva("dynamic-video", {
+  variants: {
+    fit: {
+      cover: "video-fit-cover",
+      contain: "video-fit-contain",
+      fill: "video-fit-fill",
+    },
+    rounded: {
+      none: "video-rounded-none",
+      small: "video-rounded-sm",
+      medium: "video-rounded-md",
+      large: "video-rounded-lg",
+    },
+  },
+  defaultVariants: {
+    fit: "contain",
+    rounded: "none",
+  },
+});
+
+export type VideoVariants = VariantProps<typeof videoVariants>;
+
+// ============================================================================
+// Audio Variants
+// ============================================================================
+
+export const audioVariants = cva("dynamic-audio", {
+  variants: {
+    variant: {
+      default: "audio-default",
+      minimal: "audio-minimal",
+    },
+  },
+  defaultVariants: {
+    variant: "default",
+  },
+});
+
+export type AudioVariants = VariantProps<typeof audioVariants>;
+
+// ============================================================================
 // Utility Functions
 // ============================================================================
 
@@ -304,4 +707,3 @@ export function extractVariantProps<T extends Record<string, any>>(
 
   return [variantProps, otherProps];
 }
-

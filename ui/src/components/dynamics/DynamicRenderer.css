@@ -1,0 +1,21 @@
+/**
+ * DynamicRenderer Main Stylesheet
+ * Imports all modular stylesheets
+ */
+
+/* Import modular stylesheets */
+@import './styles/_base.css';
+@import './styles/_components.css';
+@import './styles/_build-mode.css';
+@import './styles/_animations.css';
+@import './styles/_variants.css';
+@import './styles/_virtual-scrolling.css';
+
+/* All styles have been organized into modular files:
+ * - _base.css: Core structure, canvas, empty state, error, rendered app
+ * - _components.css: All dynamic component styles
+ * - _build-mode.css: Build/generation UI
+ * - _animations.css: All @keyframes
+ * - _variants.css: CVA variant classes
+ * - _virtual-scrolling.css: Virtual scrolling optimizations
+ */

@@ -9,6 +9,7 @@ import json
 import asyncio
 from concurrent import futures
 import grpc
+import sys
 
 # Import generated protobuf code
 import ai_pb2
@@ -17,10 +18,35 @@ import ai_pb2_grpc
 # Import AI modules
 from agents.ui_generator import UIGeneratorAgent, ToolRegistry
 from agents.chat import ChatAgent, ChatHistory, ChatMessage
-from models import ModelConfig, ModelLoader
-from models.config import ModelSize, ModelBackend
+from models.loader import ModelLoader, GeminiModel
+from models.config import GeminiConfig
 
 logger = logging.getLogger(__name__)
+
+# JSON size limits (in bytes)
+MAX_UI_SPEC_SIZE = 512 * 1024  # 512KB
+MAX_CONTEXT_SIZE = 64 * 1024   # 64KB
+MAX_JSON_DEPTH = 20            # Maximum nesting depth
+
+
+def validate_json_size(data: str, max_size: int, name: str = "JSON") -> None:
+    """Validate JSON size to prevent DoS attacks"""
+    size = sys.getsizeof(data)
+    if size > max_size:
+        raise ValueError(f"{name} size {size} bytes exceeds maximum {max_size} bytes")
+
+
+def validate_json_depth(obj: any, max_depth: int = MAX_JSON_DEPTH, current_depth: int = 0) -> None:
+    """Validate JSON nesting depth to prevent stack overflow"""
+    if current_depth > max_depth:
+        raise ValueError(f"JSON nesting depth {current_depth} exceeds maximum {max_depth}")
+    
+    if isinstance(obj, dict):
+        for value in obj.values():
+            validate_json_depth(value, max_depth, current_depth + 1)
+    elif isinstance(obj, list):
+        for item in obj:
+            validate_json_depth(item, max_depth, current_depth + 1)
 
 
 class AIServiceImpl(ai_pb2_grpc.AIServiceServicer):
@@ -40,6 +66,13 @@ class AIServiceImpl(ai_pb2_grpc.AIServiceServicer):
             ui_spec = self.ui_generator.generate_ui(request.message)
             ui_json = json.dumps(ui_spec.model_dump())
             
+            # Validate generated UI spec size
+            validate_json_size(ui_json, MAX_UI_SPEC_SIZE, "UI spec")
+            
+            # Validate nesting depth
+            ui_spec_dict = ui_spec.model_dump()
+            validate_json_depth(ui_spec_dict)
+            
             thoughts = [
                 f"Analyzed request: {request.message}",
                 f"Generated {ui_spec.title}",
@@ -53,6 +86,16 @@ class AIServiceImpl(ai_pb2_grpc.AIServiceServicer):
                 success=True
             )
         
+        except ValueError as e:
+            # Validation error
+            logger.error(f"GenerateUI validation error: {e}")
+            return ai_pb2.UIResponse(
+                app_id="",
+                ui_spec_json="",
+                thoughts=[],
+                success=False,
+                error=f"Validation failed: {str(e)}"
+            )
         except Exception as e:
             logger.error(f"GenerateUI error: {e}", exc_info=True)
             return ai_pb2.UIResponse(
@@ -87,10 +130,20 @@ class AIServiceImpl(ai_pb2_grpc.AIServiceServicer):
             ui_spec = None
             token_buffer = ""
             token_count = 0
-            BATCH_SIZE = 50  # chars per batch
+            BATCH_SIZE = 20  # chars per batch - smaller for more real-time updates
             
             for item in self.ui_generator.generate_ui_stream(request.message):
-                if isinstance(item, str):
+                if isinstance(item, dict) and item.get("reset"):
+                    # LLM failed, resetting - send GENERATION_START to signal fresh start
+                    logger.info("LLM generation failed, falling back to rule-based generation")
+                    yield ai_pb2.UIToken(
+                        type=ai_pb2.UIToken.GENERATION_START,
+                        content="Using rule-based generation...",
+                        timestamp=int(time.time())
+                    )
+                    token_buffer = ""  # Clear any accumulated garbage
+                    token_count = 0
+                elif isinstance(item, str):
                     token_count += 1
                     token_buffer += item
                     
@@ -172,16 +225,15 @@ class AIServiceImpl(ai_pb2_grpc.AIServiceServicer):
                 timestamp=int(time.time())
             )
             
-            # Load LLM and create agent - use fresh instance to prevent cache pollution
-            llm = self.model_loader.load(ModelConfig(
-                backend=ModelBackend.OLLAMA,
-                size=ModelSize.SMALL,
+            # Load Gemini model for chat - fresh instance each time
+            llm = self.model_loader.load(GeminiConfig(
+                model_name="gemini-2.0-flash-exp",
                 streaming=True,
-                cache_prompt=False,  # Disable caching to prevent context pollution
-                keep_alive="0"  # Unload model immediately after request
+                temperature=0.7,  # Higher temperature for natural chat responses
+                max_tokens=2048
             ))
             
-            logger.debug("Using fresh LLM instance for chat streaming (cache_prompt=False)")
+            logger.debug("Using Gemini for chat streaming")
             agent = ChatAgent(llm)
             
             # Stream response - run async in sync context
@@ -236,19 +288,21 @@ def serve(port="50052"):
         context_builder=None
     )
     
-    # Try to load LLM
+    # Load Gemini model for UI generation
     try:
-        logger.info("Loading LLM...")
-        llm = model_loader.load(ModelConfig(
-            backend=ModelBackend.OLLAMA,
-            size=ModelSize.SMALL,
-            streaming=True
+        logger.info("Loading Gemini model...")
+        llm = model_loader.load(GeminiConfig(
+            model_name="gemini-2.0-flash-exp",
+            streaming=True,
+            temperature=0.1,  # Low temperature for structured JSON output
+            max_tokens=4096,  # Larger for complex UIs
+            json_mode=False  # We'll handle JSON in prompts for better streaming visibility
         ))
         ui_generator.llm = llm
         ui_generator.use_llm = True
-        logger.info("✅ LLM loaded")
+        logger.info("✅ Gemini model loaded successfully")
     except Exception as e:
-        logger.warning(f"Could not load LLM: {e}. Using rule-based generation.")
+        logger.warning(f"Could not load Gemini: {e}. Using rule-based generation.")
     
     # Create gRPC server
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))

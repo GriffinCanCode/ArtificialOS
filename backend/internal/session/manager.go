@@ -146,6 +146,7 @@ func (m *Manager) Restore(id string) error {
 	}
 
 	// Clear current workspace (close all apps)
+	// Use a consistent snapshot to avoid concurrent modification issues
 	currentApps := m.appManager.List(nil)
 	for _, app := range currentApps {
 		// Only close top-level apps (children will be closed automatically)
@@ -158,9 +159,10 @@ func (m *Manager) Restore(id string) error {
 	appMap := make(map[string]string) // old ID -> new ID
 
 	// First pass: restore apps without parents
-	for _, snapshot := range session.Workspace.Apps {
+	for i := range session.Workspace.Apps {
+		snapshot := &session.Workspace.Apps[i]
 		if snapshot.ParentID == nil {
-			newApp, err := m.restoreApp(&snapshot, nil, appMap)
+			newApp, err := m.restoreApp(snapshot, nil, appMap)
 			if err != nil {
 				return fmt.Errorf("failed to restore app %s: %w", snapshot.ID, err)
 			}
@@ -169,13 +171,14 @@ func (m *Manager) Restore(id string) error {
 	}
 
 	// Second pass: restore child apps
-	for _, snapshot := range session.Workspace.Apps {
+	for i := range session.Workspace.Apps {
+		snapshot := &session.Workspace.Apps[i]
 		if snapshot.ParentID != nil {
 			newParentID, ok := appMap[*snapshot.ParentID]
 			if !ok {
 				continue // Parent wasn't restored, skip child
 			}
-			newApp, err := m.restoreApp(&snapshot, &newParentID, appMap)
+			newApp, err := m.restoreApp(snapshot, &newParentID, appMap)
 			if err != nil {
 				return fmt.Errorf("failed to restore child app %s: %w", snapshot.ID, err)
 			}
@@ -183,8 +186,19 @@ func (m *Manager) Restore(id string) error {
 		}
 	}
 
-	// Restore focus
-	if session.Workspace.FocusedID != nil {
+	// Restore focus using hash (more reliable than ID)
+	// Try hash-based matching first, fall back to ID mapping
+	if session.Workspace.FocusedHash != nil {
+		// Find app with matching hash using type assertion safely
+		if finder, ok := m.appManager.(interface {
+			FindByHash(string) (*types.App, bool)
+		}); ok {
+			if app, found := finder.FindByHash(*session.Workspace.FocusedHash); found {
+				m.appManager.Focus(app.ID)
+			}
+		}
+	} else if session.Workspace.FocusedID != nil {
+		// Fallback to ID mapping (for backwards compatibility)
 		if newID, ok := appMap[*session.Workspace.FocusedID]; ok {
 			m.appManager.Focus(newID)
 		}
@@ -256,6 +270,7 @@ func (m *Manager) captureWorkspace() (*types.Workspace, error) {
 	for i, app := range apps {
 		snapshots[i] = types.AppSnapshot{
 			ID:             app.ID,
+			Hash:           app.Hash,
 			Title:          app.Title,
 			UISpec:         app.UISpec,
 			State:          app.State,
@@ -269,22 +284,13 @@ func (m *Manager) captureWorkspace() (*types.Workspace, error) {
 
 	// Get focused app
 	stats := m.appManager.Stats()
-	var focusedID *string
-	if stats.FocusedApp != nil {
-		// Find app ID by title
-		for _, app := range apps {
-			if app.Title == *stats.FocusedApp {
-				focusedID = &app.ID
-				break
-			}
-		}
-	}
 
 	workspace := &types.Workspace{
-		Apps:      snapshots,
-		FocusedID: focusedID,
-		ChatState: nil, // TODO: Capture from frontend
-		UIState:   nil, // TODO: Capture from frontend
+		Apps:        snapshots,
+		FocusedID:   stats.FocusedAppID,
+		FocusedHash: stats.FocusedAppHash,
+		ChatState:   nil, // TODO: Capture from frontend
+		UIState:     nil, // TODO: Capture from frontend
 	}
 
 	return workspace, nil

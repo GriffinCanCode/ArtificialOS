@@ -16,6 +16,7 @@ const (
 // App represents a running application instance
 type App struct {
 	ID         string                 `json:"id"`
+	Hash       string                 `json:"hash"` // Deterministic hash for identification
 	Title      string                 `json:"title"`
 	UISpec     map[string]interface{} `json:"ui_spec"`
 	State      State                  `json:"state"`
@@ -31,5 +32,6 @@ type Stats struct {
 	TotalApps      int     `json:"total_apps"`
 	ActiveApps     int     `json:"active_apps"`
 	BackgroundApps int     `json:"background_apps"`
-	FocusedApp     *string `json:"focused_app,omitempty"`
+	FocusedAppID   *string `json:"focused_app_id,omitempty"`   // App ID
+	FocusedAppHash *string `json:"focused_app_hash,omitempty"` // App hash for restoration
 }

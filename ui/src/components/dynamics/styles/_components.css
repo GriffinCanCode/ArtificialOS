@@ -1,0 +1,810 @@
+/**
+ * Dynamic Component Styles
+ * Base styles for all dynamically rendered components
+ */
+
+/* ============================================================================
+   CORE COMPONENTS - Button, Input, Text, Containers
+   ============================================================================ */
+
+/* Dynamic Components - Ultra Refined with Liquid Glass Effect */
+.dynamic-button {
+  position: relative;
+  padding: 1rem 2rem;
+  background: linear-gradient(
+    140deg,
+    rgba(99, 102, 241, 0.12) 0%,
+    rgba(139, 92, 246, 0.15) 50%,
+    rgba(168, 85, 247, 0.1) 100%
+  );
+  border: none;
+  border-radius: 14px;
+  color: rgba(255, 255, 255, 0.96);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 3.25rem;
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  box-shadow: 
+    0 4px 16px rgba(0, 0, 0, 0.2),
+    0 1px 3px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Liquid glass reflection effect */
+.dynamic-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 30%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0.1) 70%,
+    transparent 100%
+  );
+  transform: skewX(-25deg);
+  animation: liquid-flow 8s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Animated gradient border with shimmer */
+.dynamic-button::after {
+  content: none;
+}
+
+.dynamic-button:hover {
+  background: linear-gradient(
+    140deg,
+    rgba(99, 102, 241, 0.22) 0%,
+    rgba(139, 92, 246, 0.25) 50%,
+    rgba(168, 85, 247, 0.18) 100%
+  );
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 
+    0 4px 16px rgba(0, 0, 0, 0.2),
+    0 1px 3px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  will-change: transform;
+}
+
+
+.dynamic-button:active {
+  transform: translateY(-1px) scale(0.99);
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    0 1px 3px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+}
+
+.dynamic-input {
+  position: relative;
+  width: 100%;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(139, 92, 246, 0.015) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 1rem;
+  font-weight: 400;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  box-shadow: 
+    inset 0 1px 3px rgba(0, 0, 0, 0.2),
+    0 1px 0 rgba(255, 255, 255, 0.05),
+    0 0 0 0 rgba(139, 92, 246, 0);
+}
+
+.dynamic-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.dynamic-input:focus {
+  outline: none;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(139, 92, 246, 0.04) 100%
+  );
+  border-color: rgba(139, 92, 246, 0.6);
+  box-shadow: 
+    0 0 0 3px rgba(139, 92, 246, 0.12),
+    inset 0 1px 3px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+.dynamic-input[readonly] {
+  cursor: default;
+  background: rgba(255, 255, 255, 0.02);
+  opacity: 0.6;
+  border-style: dashed;
+}
+
+.dynamic-text {
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0;
+  line-height: 1.6;
+}
+
+.dynamic-text-h1 {
+  font-size: 2.25rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  background: linear-gradient(
+    125deg,
+    rgba(255, 255, 255, 1) 0%,
+    rgba(192, 132, 252, 1) 35%,
+    rgba(139, 92, 246, 1) 65%,
+    rgba(168, 85, 247, 0.95) 85%,
+    rgba(217, 70, 239, 0.9) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 4px 20px rgba(139, 92, 246, 0.4));
+  margin-bottom: 0.5rem;
+}
+
+.dynamic-text-h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  color: rgba(255, 255, 255, 0.95);
+  margin-bottom: 0.5rem;
+}
+
+.dynamic-text-body {
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.dynamic-text-caption {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.02em;
+}
+
+.dynamic-container {
+  display: flex;
+  animation: fadeIn 0.4s ease;
+  position: relative;
+}
+
+.dynamic-container-vertical {
+  flex-direction: column;
+}
+
+.dynamic-container-horizontal {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.dynamic-grid {
+  display: grid;
+  width: 100%;
+  animation: fadeIn 0.4s ease;
+  gap: 1rem;
+}
+
+/* Add subtle hover effect to containers */
+.dynamic-container:hover,
+.dynamic-grid:hover {
+  background: rgba(255, 255, 255, 0.01);
+  border-radius: 8px;
+  transition: background 0.3s ease;
+}
+
+.dynamic-unknown {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  background: color-mix(in srgb, #fb923c 10%, transparent);
+  border: 1px dashed color-mix(in srgb, #fb923c 30%, transparent);
+  border-radius: 0.25rem;
+  color: #fb923c;
+  font-size: 0.75rem;
+  margin: 0.25rem;
+  opacity: 0.5;
+}
+
+/* ============================================================================
+   FORM COMPONENTS - Select, Checkbox, Radio, Textarea
+   ============================================================================ */
+
+/* Select/Dropdown Component */
+.dynamic-select {
+  width: 100%;
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1rem;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  animation: fadeIn 0.3s ease;
+}
+
+.dynamic-select:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(139, 92, 246, 0.4);
+}
+
+.dynamic-select:focus {
+  outline: none;
+  border-color: rgba(139, 92, 246, 0.6);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
+}
+
+/* Checkbox Component */
+.dynamic-checkbox-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  user-select: none;
+  animation: fadeIn 0.3s ease;
+}
+
+.dynamic-checkbox {
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.dynamic-checkbox:checked {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.8), rgba(168, 85, 247, 0.9));
+  border-color: rgba(139, 92, 246, 1);
+}
+
+.dynamic-checkbox:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.dynamic-checkbox:hover { 
+  border-color: rgba(139, 92, 246, 0.5); 
+}
+
+.checkbox-label {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 1rem;
+}
+
+/* Radio Component */
+.dynamic-radio-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  user-select: none;
+  animation: fadeIn 0.3s ease;
+}
+
+.dynamic-radio {
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.dynamic-radio:checked {
+  border-color: rgba(139, 92, 246, 1);
+}
+
+.dynamic-radio:checked::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 1), rgba(168, 85, 247, 1));
+}
+
+.dynamic-radio:hover { 
+  border-color: rgba(139, 92, 246, 0.5); 
+}
+
+.radio-label {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 1rem;
+}
+
+/* Textarea Component */
+.dynamic-textarea {
+  width: 100%;
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1rem;
+  font-family: inherit;
+  line-height: 1.6;
+  transition: all 0.2s ease;
+  animation: fadeIn 0.3s ease;
+  resize: vertical;
+}
+
+.dynamic-textarea:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(139, 92, 246, 0.4);
+}
+
+.dynamic-textarea:focus {
+  outline: none;
+  border-color: rgba(139, 92, 246, 0.6);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* ============================================================================
+   MEDIA COMPONENTS - Image, Video, Audio, Canvas, Iframe
+   ============================================================================ */
+
+/* Image Component */
+.dynamic-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  animation: fadeIn 0.4s ease;
+}
+
+/* Video Component */
+.dynamic-video {
+  display: block;
+  max-width: 100%;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.4);
+  animation: fadeIn 0.4s ease;
+}
+
+/* Audio Component */
+.dynamic-audio {
+  width: 100%;
+  border-radius: 8px;
+  animation: fadeIn 0.4s ease;
+}
+
+.audio-minimal {
+  height: 40px;
+}
+
+/* Canvas Component */
+.dynamic-canvas {
+  display: block;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+  animation: fadeIn 0.4s ease;
+  cursor: crosshair;
+}
+
+.canvas-bordered {
+  border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Iframe Component */
+.dynamic-iframe {
+  width: 100%;
+  border: none;
+  background: rgba(255, 255, 255, 0.02);
+  animation: fadeIn 0.4s ease;
+}
+
+.iframe-bordered {
+  border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.iframe-rounded {
+  border-radius: 12px;
+}
+
+/* ============================================================================
+   INPUT COMPONENTS - Slider, Progress
+   ============================================================================ */
+
+/* Slider Component */
+.dynamic-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  outline: none;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  animation: fadeIn 0.3s ease;
+}
+
+.dynamic-slider:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.dynamic-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 1), rgba(168, 85, 247, 1));
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.dynamic-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.dynamic-slider::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 1), rgba(168, 85, 247, 1));
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+  border: none;
+}
+
+/* Progress Component */
+.dynamic-progress {
+  width: 100%;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+  animation: fadeIn 0.3s ease;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, rgba(139, 92, 246, 1), rgba(168, 85, 247, 1));
+  border-radius: 6px;
+  transition: width 0.3s ease;
+}
+
+/* ============================================================================
+   UI COMPONENTS - Badge, Divider, Tabs, Modal
+   ============================================================================ */
+
+/* Badge Component */
+.dynamic-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  animation: fadeIn 0.3s ease;
+  cursor: default;
+  user-select: none;
+}
+
+.badge-default {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.badge-primary {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(168, 85, 247, 0.3));
+  color: rgba(192, 132, 252, 1);
+  border: 1px solid rgba(139, 92, 246, 0.5);
+}
+
+.badge-secondary {
+  background: rgba(168, 85, 247, 0.2);
+  color: rgba(192, 132, 252, 1);
+}
+
+.badge-success {
+  background: rgba(74, 222, 128, 0.2);
+  color: rgba(74, 222, 128, 1);
+}
+
+.badge-error {
+  background: rgba(239, 68, 68, 0.2);
+  color: rgba(248, 113, 113, 1);
+}
+
+.badge-warning {
+  background: rgba(251, 146, 60, 0.2);
+  color: rgba(251, 146, 60, 1);
+}
+
+/* Divider Component */
+.dynamic-divider {
+  border: none;
+  animation: fadeIn 0.3s ease;
+}
+
+.divider-horizontal {
+  width: 100%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 1rem 0;
+}
+
+.divider-vertical {
+  width: 1px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0 1rem;
+}
+
+.divider-solid { 
+  background: rgba(255, 255, 255, 0.1); 
+}
+
+.divider-dashed { 
+  background: repeating-linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0.2) 0px,
+    rgba(255, 255, 255, 0.2) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+}
+
+.divider-dotted {
+  background: repeating-linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0.2) 0px,
+    rgba(255, 255, 255, 0.2) 3px,
+    transparent 3px,
+    transparent 9px
+  );
+}
+
+/* Tabs Component */
+.dynamic-tabs {
+  width: 100%;
+  animation: fadeIn 0.4s ease;
+}
+
+.tabs-header {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 1.5rem;
+}
+
+.dynamic-tab button {
+  padding: 1rem 1.5rem;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+}
+
+.tab-active {
+  color: rgba(255, 255, 255, 1) !important;
+  border-bottom-color: rgba(139, 92, 246, 1) !important;
+}
+
+.tab-inactive:hover {
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tabs-content {
+  animation: fadeIn 0.3s ease;
+}
+
+.tab-bordered .tabs-header {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px 12px 0 0;
+}
+
+.tab-pills button {
+  border-radius: 9999px;
+  border-bottom: none;
+}
+
+.tab-pills .tab-active {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(168, 85, 247, 0.3));
+  border-bottom-color: transparent !important;
+}
+
+/* Modal Component */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+  padding: 1rem;
+}
+
+.dynamic-modal {
+  background: linear-gradient(135deg, rgba(17, 24, 39, 0.98), rgba(31, 41, 55, 0.98));
+  border-radius: 20px;
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: auto;
+  animation: slideInUp 0.3s ease;
+}
+
+.modal-centered {
+  margin: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.modal-header button {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 2rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.modal-header button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 1);
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+/* ============================================================================
+   LAYOUT COMPONENTS - List, Card
+   ============================================================================ */
+
+/* List Component */
+.dynamic-list {
+  width: 100%;
+  animation: fadeIn 0.4s ease;
+}
+
+.list-item {
+  animation: fadeIn 0.2s ease;
+}
+
+.list-default .list-item {
+  padding: 0.75rem 0;
+}
+
+.list-bordered .list-item {
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  transition: all 0.2s ease;
+}
+
+.list-bordered .list-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+.list-striped .list-item:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* Card Component */
+.dynamic-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  overflow: hidden;
+  animation: fadeIn 0.4s ease;
+  transition: all 0.3s ease;
+}
+
+.dynamic-card:hover {
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+.card-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.card-header h4 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.card-body {
+  padding: 1.5rem;
+}
+
+.card-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
