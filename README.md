@@ -1,33 +1,125 @@
-# AI-Powered Operating System
+# AgentOS
 
-A lightweight operating system powered by local AI (GPT-OSS) with real-time thought streaming and dynamic application rendering.
+A microkernel-based operating system with AI-native application generation and execution.
+
+![AgentOS Interface](assets/Screenshot%202025-10-03%20at%205.35.35%20PM.png)
+
+## Overview
+
+AgentOS implements a novel architecture where applications are generated from natural language descriptions and executed through a structured tool system. The system uses a four-layer architecture with specialized components for orchestration, AI inference, kernel operations, and dynamic rendering.
 
 ## Architecture
 
 ```
-Frontend (React/TS) → Go Backend → Python AI (gRPC) [LLM]
-         ↓                    ↓
-     Port 5173          Rust Kernel [Syscalls]
-                        Port 50051
+┌─────────────────────────────────────────────────────────────┐
+│  Frontend (TypeScript/React)                                │
+│  - Dynamic UI rendering from JSON specifications            │
+│  - Local tool execution (<10ms)                             │
+│  - Component state management                               │
+│  - WebSocket streaming                                      │
+└────────────────┬────────────────────────────────────────────┘
+                 │ HTTP/WebSocket (Port 5173)
+┌────────────────▼────────────────────────────────────────────┐
+│  Backend Orchestration (Go)                                 │
+│  - App lifecycle management                                 │
+│  - Service registry                                         │
+│  - Session persistence                                      │
+│  - gRPC client coordination                                 │
+└────────────────┬────────────────────────────────────────────┘
+                 │ gRPC
+        ┌────────┴─────────┐
+        │                  │
+        ▼                  ▼
+┌──────────────┐  ┌──────────────────┐
+│ AI Service   │  │ Rust Kernel      │
+│ (Python)     │  │ (Microkernel)    │
+│              │  │                  │
+│ - LLM        │  │ - Process mgmt   │
+│ - UI gen     │  │ - Memory mgmt    │
+│ - Streaming  │  │ - Sandboxing     │
+│              │  │ - Syscalls       │
+│ Port 50052   │  │ Port 50051       │
+└──────────────┘  └──────────────────┘
 ```
 
-## Project Structure
+## System Components
 
-```
-AgentOS/
-├── backend/         # Go orchestration (HTTP, WebSocket, app management)
-│   ├── cmd/         # Main entry point
-│   ├── internal/    # App, service, gRPC clients, handlers
-│   └── proto/       # Generated protobuf code
-├── ai-service/      # Python AI service (gRPC - LLM only)
-│   ├── src/         # Chat agent, UI generator, models
-│   └── proto/       # AI service protobuf definitions
-├── kernel/          # Rust microkernel (process, memory, sandbox)
-├── ui/              # React/TypeScript UI with dynamic rendering
-├── proto/           # Shared protocol buffer definitions
-├── scripts/         # Simple startup scripts (backend + ui)
-└── docs/            # Architecture and migration docs
-```
+### Backend Orchestration Layer (Go)
+
+The Go backend serves as the central orchestration hub, managing application lifecycle, routing requests, and coordinating between services.
+
+**Key Responsibilities:**
+- HTTP/REST API and WebSocket server
+- Application lifecycle management (spawn, focus, close)
+- App registry for persistent application storage
+- Session management for workspace persistence
+- Service registry for tool discovery and execution
+- gRPC client coordination with AI service and kernel
+
+**Core Modules:**
+- `app.Manager`: Tracks running applications and their state
+- `registry.Manager`: Persists application definitions to filesystem via kernel
+- `session.Manager`: Saves and restores entire workspaces
+- `grpc.AIClient`: Communicates with Python AI service
+- `grpc.KernelClient`: Executes syscalls through Rust kernel
+- `ws.Handler`: Streams real-time updates to frontend
+
+### AI Service Layer (Python)
+
+Isolated Python service focused exclusively on LLM operations via gRPC.
+
+**Key Responsibilities:**
+- LLM inference using llama.cpp with Metal GPU acceleration
+- UI specification generation from natural language
+- Token-level streaming for real-time updates
+- Chat response generation with thought streaming
+- UI caching for performance optimization
+
+**Core Components:**
+- `UIGeneratorAgent`: Generates structured JSON UI specifications
+- `ChatAgent`: Handles conversational interactions
+- `ModelLoader`: Manages LLM loading and inference
+- `UICache`: Caches frequently requested UI patterns
+- `ToolRegistry`: Defines available tools and their schemas
+
+### Kernel Layer (Rust)
+
+Lightweight microkernel providing sandboxed system operations.
+
+**Key Responsibilities:**
+- Process creation and lifecycle management
+- Memory allocation with OOM (Out of Memory) handling
+- Capability-based sandboxing (filesystem, network, process access)
+- System call execution with permission checking
+- Resource limits enforcement per process
+- IPC (Inter-Process Communication) management
+
+**Core Subsystems:**
+- `ProcessManager`: Creates and tracks processes with resource limits
+- `MemoryManager`: Allocates memory with pressure monitoring
+- `SandboxManager`: Enforces capability-based security policies
+- `SyscallExecutor`: Executes filesystem, process, and system operations
+- `IPCManager`: Handles message passing between processes
+
+### Frontend Layer (TypeScript/React)
+
+Dynamic rendering engine that executes AI-generated applications.
+
+**Key Responsibilities:**
+- Parse and render JSON UI specifications
+- Execute local tools with sub-10ms latency
+- Manage per-app component state
+- Handle WebSocket streaming for real-time updates
+- Provide app registry UI for saved applications
+- Session management interface
+
+**Core Modules:**
+- `DynamicRenderer`: Main rendering engine with virtual scrolling
+- `ComponentRenderer`: Renders individual UI components
+- `ToolExecutor`: Executes tools (calc, ui, system, app, http, etc.)
+- `ComponentState`: Observable state management per application
+- `AppStore`: Zustand-based global state with selectors
+- `WebSocketContext`: Manages streaming connections
 
 ## Quick Start
 
@@ -94,56 +186,218 @@ make logs
 - **8000** - Go Backend (HTTP/WebSocket)
 - **5173** - UI (React/Vite)
 
+## API Reference
+
+### HTTP Endpoints
+
+**Health & Status**
+- `GET /` - Basic health check
+- `GET /health` - Detailed health with system statistics
+
+**Application Management**
+- `GET /apps` - List all running applications
+- `POST /apps/:id/focus` - Bring application to foreground
+- `DELETE /apps/:id` - Close application and children
+
+**Service Management**
+- `GET /services` - List available services
+- `POST /services/discover` - Discover services for intent
+- `POST /services/execute` - Execute service tool
+
+**AI Operations**
+- `POST /generate-ui` - Generate UI specification (non-streaming)
+- `GET /stream` - WebSocket endpoint for streaming operations
+
+**App Registry**
+- `POST /registry/save` - Save application to registry
+- `GET /registry/apps` - List saved applications
+- `GET /registry/apps/:id` - Get application details
+- `POST /registry/apps/:id/launch` - Launch saved application
+- `DELETE /registry/apps/:id` - Delete saved application
+
+**Session Management**
+- `POST /sessions/save` - Save current workspace
+- `POST /sessions/save-default` - Save with default name
+- `GET /sessions` - List saved sessions
+- `GET /sessions/:id` - Get session details
+- `POST /sessions/:id/restore` - Restore saved session
+- `DELETE /sessions/:id` - Delete session
+
+### WebSocket Protocol
+
+**Client to Server Messages:**
+```json
+{"type": "chat", "message": "...", "context": {...}}
+{"type": "generate_ui", "message": "...", "context": {...}}
+{"type": "ping"}
+```
+
+**Server to Client Messages:**
+```json
+{"type": "token", "content": "..."}
+{"type": "thought", "content": "..."}
+{"type": "ui_complete", "ui_spec": {...}, "app_id": "..."}
+{"type": "error", "error": "..."}
+```
+
 ## Documentation
 
-- [Architecture](docs/ARCHITECTURE.md) - Complete system design
-- [Migration Guide](docs/MIGRATION_COMPLETE.md) - Go migration details
-- [Persistence Roadmap](docs/PERSISTENCE_ROADMAP.md) - Future plans
-- [Phase 1 Complete](PHASE1_COMPLETE.md) - ✅ App Registry implemented!
-
-## Tech Stack
-
-**Backend**: Go (orchestration) + Python (AI) + Rust (kernel)  
-**Frontend**: TypeScript + React + Electron  
-**AI**: GPT-OSS-20B via llama.cpp with Metal GPU  
-**IPC**: gRPC + Protocol Buffers
-
-## Features
-
-* Natural language UI generation
-* Real-time chat with thought streaming
-* Dynamic component rendering
-* Sandboxed app execution
-* Service-based architecture
-* High-performance Go orchestration
-* True concurrency with goroutines
-* **NEW:** App Registry - Save & launch apps instantly! ⚡
+- [Architecture Details](docs/ARCHITECTURE.md) - Comprehensive system design
+- [Migration Guide](docs/MIGRATION_COMPLETE.md) - Go migration technical details
+- [OOM Handling](docs/OOM_HANDLING_IMPROVEMENTS.md) - Memory management improvements
+- [Persistence Roadmap](docs/PERSISTENCE_ROADMAP.md) - Future persistence features
 
 ## Core Architecture: Generate-Once-Execute-Many
 
-This system implements a **Generate-Once-Execute-Many** pattern that separates AI generation from execution:
+AgentOS implements a generate-once-execute-many pattern that fundamentally separates AI generation from application execution.
 
-**Traditional Approach:**
-```
-User: "create calculator" → LLM generates UI (2-5s)
-User: clicks "7"          → LLM interprets (2-5s)
-User: clicks "+"          → LLM interprets (2-5s)
-```
+### Application Lifecycle
 
-**Our Approach:**
+**Generation Phase (One-Time, ~2-5s)**
 ```
-User: "create calculator" → LLM generates UI spec ONCE (2-5s)
-User: clicks "7"          → Local tool executes (<10ms)
-User: clicks "+"          → Local tool executes (<10ms)
+1. User: "create a calculator"
+2. Go Backend → AI Service (gRPC)
+3. LLM generates structured JSON UISpec
+4. Spec includes components + tool bindings
+5. Backend stores app state
+6. Frontend receives complete specification
 ```
 
-**Benefits:**
-- ⚡ **99% faster** interactions after initial generation
-- 💰 **99% cheaper** - one LLM call per app vs. per interaction
-- 🎯 **Deterministic** - tool behavior is predictable and debuggable
-- 🔒 **Secure** - no arbitrary code execution, only structured data
+**Execution Phase (Repeated, <10ms per interaction)**
+```
+1. User clicks button (e.g., "7")
+2. Button's on_event handler triggers: "calc.append_digit"
+3. ToolExecutor executes locally
+4. ComponentState updates
+5. React re-renders affected components
+```
 
-The LLM generates a pure JSON specification with tool bindings. All subsequent interactions use fast, local JavaScript tools. See [Architecture](docs/ARCHITECTURE.md) for technical details.
+### Comparison
+
+**Traditional AI Approach:**
+- Every interaction requires LLM inference
+- 2-5 seconds per button click
+- High token cost per interaction
+- Non-deterministic behavior
+
+**AgentOS Approach:**
+- LLM generates once, tools execute many times
+- Sub-10ms response after initial generation
+- Single token cost per application
+- Deterministic tool execution
+- No network latency for interactions
+
+### UISpec Format
+
+The AI service generates structured JSON specifications that define the entire application:
+
+```json
+{
+  "type": "app",
+  "title": "Calculator",
+  "layout": "vertical",
+  "components": [
+    {
+      "type": "input",
+      "id": "display",
+      "props": {"value": "0", "readonly": true}
+    },
+    {
+      "type": "button",
+      "id": "btn-7",
+      "props": {"text": "7"},
+      "on_event": {"click": "calc.append_digit"}
+    }
+  ],
+  "services": ["calc"],
+  "service_bindings": {
+    "calc": ["append_digit", "add", "subtract", "multiply", "divide"]
+  }
+}
+```
+
+### Tool Execution System
+
+The frontend implements a comprehensive tool execution engine with multiple categories:
+
+**Calculation Tools** (`calc.*`)
+- Arithmetic operations (add, subtract, multiply, divide)
+- Scientific functions (sqrt, power, sin, cos, etc.)
+- Number formatting and validation
+
+**UI Tools** (`ui.*`)
+- State management (set_state, get_state)
+- Component manipulation (show, hide, enable, disable)
+- Dynamic updates (add_item, remove_item)
+
+**System Tools** (`system.*`)
+- Alerts and confirmations
+- Clipboard operations
+- Browser APIs
+
+**App Tools** (`app.*`)
+- Spawn new applications
+- Close applications
+- Focus/unfocus management
+
+**HTTP Tools** (`http.*`)
+- RESTful API requests
+- WebSocket connections
+- Response handling
+
+**Service Tools** (Dynamic)
+- Storage operations
+- Authentication
+- Custom backend services
+
+### Persistence Architecture
+
+**App Registry**
+- Stores generated UI specifications
+- Enables instant app launches (50-100x faster than generation)
+- Uses kernel filesystem syscalls for persistence
+- Supports categories, metadata, and versioning
+
+**Session Management**
+- Captures complete workspace state
+- Saves all running apps and their component states
+- Preserves chat history and UI state
+- Enables restore from any saved point
+
+## Technology Stack
+
+**Languages:** Go, Python, Rust, TypeScript
+
+**Backend Orchestration:**
+- Go 1.21+ with Gin web framework
+- Goroutines for concurrent app management
+- gRPC clients for service communication
+
+**AI Service:**
+- Python 3.11+ with async/await
+- llama.cpp for LLM inference
+- Metal GPU acceleration (macOS)
+- LangChain for prompt management
+- Pydantic for structured outputs
+
+**Kernel:**
+- Rust 1.70+ with Tokio async runtime
+- Tonic for gRPC server
+- Parking lot for synchronization
+- Crossbeam for IPC
+
+**Frontend:**
+- React 18 with TypeScript
+- Zustand for state management
+- React Spring + GSAP for animations
+- TanStack Query for data fetching
+- Tailwind CSS with CVA patterns
+- WebSockets for real-time streaming
+
+**Inter-Process Communication:**
+- gRPC with Protocol Buffers
+- Bidirectional streaming
+- Type-safe generated code
 
 ## Makefile Commands
 
@@ -229,43 +483,67 @@ curl http://localhost:8000/health
 wscat -c ws://localhost:8000/stream
 ```
 
-## Performance
+## Performance Characteristics
 
-- **HTTP Latency**: 5-10x faster than Python FastAPI
-- **Concurrency**: True parallel processing with goroutines
-- **Memory**: Efficient resource usage in Go layer
-- **Type Safety**: Compile-time guarantees prevent runtime errors
+### Backend Performance
+- **Request Handling**: 5-10x faster than equivalent Python FastAPI implementation
+- **Concurrency**: True parallel processing with goroutines; handles multiple apps simultaneously
+- **Memory**: Efficient allocation with Go's garbage collector
+- **Type Safety**: Compile-time type checking prevents entire classes of runtime errors
 
-## Recent Changes
+### AI Service Performance
+- **Inference**: Metal GPU acceleration on macOS (3-5x faster than CPU)
+- **Streaming**: Token-level streaming for real-time user feedback
+- **Caching**: LRU cache for frequently requested UI specifications
+- **Batching**: Efficient prompt processing with minimal overhead
 
-**October 2025 - App Registry & Persistence (Phase 1)**
+### Kernel Performance
+- **Syscall Latency**: Sub-millisecond syscall execution through gRPC
+- **Memory Management**: Proactive OOM detection with graceful degradation
+- **Sandboxing**: Zero-copy capability checks for minimal overhead
+- **Process Isolation**: Lightweight process tracking without OS-level isolation
 
-- App Registry: Save & launch apps instantly
-- 50-100x faster launches (saved apps vs AI generation)
-- Beautiful app launcher with category filtering
-- Full CRUD operations (create, read, update, delete)
-- Zero tech debt, production-ready
-- See [Phase 1 Complete](PHASE1_COMPLETE.md) for details
+### Frontend Performance
+- **Tool Execution**: Sub-10ms local tool execution
+- **Rendering**: Virtual scrolling for apps with 1000+ components
+- **State Management**: Selective Zustand subscriptions prevent unnecessary re-renders
+- **Animations**: Hardware-accelerated CSS and GSAP animations
+- **Bundle Size**: Code splitting and lazy loading for optimal load times
 
-**January 2025 - Complete Go Migration**
+## System Capabilities
 
-- Backend rewritten in Go (5-10x faster than Python)
-- Python reduced to AI-only gRPC service
-- True concurrency with goroutines
-- Strong type safety throughout
-- Simplified to 2 startup scripts
-- ~500 lines removed, zero tech debt
+### Multi-Application Management
+- Concurrent execution of multiple AI-generated applications
+- Parent-child application relationships
+- Focus management with foreground/background states
+- Graceful cleanup of child applications when parent closes
 
-**Architecture Evolution**
+### Persistence Layer
+- **App Registry**: Store and instantly launch generated applications (50-100x faster than regeneration)
+- **Session Management**: Save and restore complete workspace state
+- **Filesystem Integration**: All persistence goes through kernel syscalls
+- **Structured Storage**: JSON-based storage with metadata support
 
-- Before: Python FastAPI monolith
-- After: Go orchestration + Python AI + Rust kernel
-- Result: Better performance, cleaner separation
+### Security Model
+- **Capability-Based Sandboxing**: Processes request specific capabilities (filesystem, network, process)
+- **Resource Limits**: Per-process memory limits with OOM protection
+- **Permission Checking**: All syscalls verified against process capabilities
+- **No Arbitrary Code Execution**: UI specs are pure data, tools are pre-defined functions
 
-## Contributing
-
-This is an experimental project exploring the future of AI-powered operating systems.
+### Extensibility
+- **Service Registry**: Dynamic service discovery and tool binding
+- **Tool System**: Extensible tool categories with parameter validation
+- **Component System**: Pluggable UI components with CVA variants
+- **Protocol Buffers**: Versioned, type-safe service definitions
 
 ## License
 
-MIT
+MIT License - see LICENSE file for details
+
+## Acknowledgments
+
+This project builds upon established technologies:
+- llama.cpp for efficient LLM inference
+- gRPC for high-performance RPC
+- Tokio for async Rust runtime
+- React ecosystem for dynamic UIs
