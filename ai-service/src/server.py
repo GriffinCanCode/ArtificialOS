@@ -5,7 +5,7 @@ Modern async gRPC server with grpc.aio.
 
 import asyncio
 import signal
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 import grpc
 
@@ -23,12 +23,12 @@ logger = get_logger(__name__)
 
 class AsyncAIService(ai_pb2_grpc.AIServiceServicer):
     """Async AI Service with native grpc.aio."""
-    
-    def __init__(self, ui_handler: UIHandler, chat_handler: ChatHandler):
+
+    def __init__(self, ui_handler: UIHandler, chat_handler: ChatHandler) -> None:
         self.ui_handler = ui_handler
         self.chat_handler = chat_handler
         logger.info("service_ready")
-    
+
     async def GenerateUI(
         self,
         request: ai_pb2.UIRequest,
@@ -38,7 +38,7 @@ class AsyncAIService(ai_pb2_grpc.AIServiceServicer):
         # Run sync handler in executor to avoid blocking
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, self.ui_handler.generate, request)
-    
+
     async def StreamUI(
         self,
         request: ai_pb2.UIRequest,
@@ -47,14 +47,14 @@ class AsyncAIService(ai_pb2_grpc.AIServiceServicer):
         """Stream UI generation (async)."""
         # Run sync generator in thread pool
         loop = asyncio.get_event_loop()
-        
+
         def sync_stream():
             return list(self.ui_handler.stream(request))
-        
+
         tokens = await loop.run_in_executor(None, sync_stream)
         for token in tokens:
             yield token
-    
+
     async def StreamChat(
         self,
         request: ai_pb2.ChatRequest,
@@ -69,18 +69,18 @@ async def serve_async():
     """Start async gRPC server."""
     settings = get_settings()
     configure_logging(settings.log_level, settings.json_logs)
-    
+
     logger.info("starting", port=settings.grpc_port)
-    
+
     # Resolve dependencies
     container = create_container(settings.backend_url)
     ui_generator = container.get(UIGenerator)
-    
+
     # Create handlers
     ui_handler = UIHandler(ui_generator)
     chat_handler = ChatHandler(ModelLoader)
     service = AsyncAIService(ui_handler, chat_handler)
-    
+
     # Create async server with keepalive options
     server = grpc.aio.server(
         options=[
@@ -96,23 +96,23 @@ async def serve_async():
         ]
     )
     ai_pb2_grpc.add_AIServiceServicer_to_server(service, server)
-    
+
     # Listen
     address = f"[::]:{settings.grpc_port}"
     server.add_insecure_port(address)
-    
+
     logger.info("listening", address=address)
-    
+
     # Start server
     await server.start()
-    
+
     # Setup graceful shutdown
     async def shutdown(sig):
         logger.info("shutdown_signal", signal=sig.name)
         await server.stop(grace=5)
         ModelLoader.unload()
         logger.info("stopped")
-    
+
     # Handle signals
     loop = asyncio.get_event_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):
@@ -120,7 +120,7 @@ async def serve_async():
             sig,
             lambda s=sig: asyncio.create_task(shutdown(s))
         )
-    
+
     # Wait for termination
     await server.wait_for_termination()
 

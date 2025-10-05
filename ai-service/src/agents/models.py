@@ -1,16 +1,16 @@
 """UI Data Models."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 from pydantic import BaseModel, Field
 
 
 class BlueprintComponent(BaseModel):
     """UI component specification."""
     type: str = Field(..., description="Component type")
-    id: Optional[str] = Field(default=None, description="Unique identifier")
-    props: Dict[str, Any] = Field(default_factory=dict)
-    children: List["BlueprintComponent"] = Field(default_factory=list)
-    on_event: Optional[Dict[str, str]] = Field(default=None)
+    id: str | None = Field(default=None, description="Unique identifier")
+    props: dict[str, Any] = Field(default_factory=dict)
+    children: list["BlueprintComponent"] = Field(default_factory=list)
+    on_event: dict[str, str] | None = Field(default=None)
 
 
 class Blueprint(BaseModel):
@@ -18,11 +18,11 @@ class Blueprint(BaseModel):
     type: str = Field(default="app")
     title: str
     layout: str = Field(default="vertical")
-    components: List[BlueprintComponent] = Field(default_factory=list)
-    style: Dict[str, Any] = Field(default_factory=dict)
-    services: List[str] = Field(default_factory=list)
-    service_bindings: Dict[str, str] = Field(default_factory=dict)
-    lifecycle_hooks: Dict[str, List[str]] = Field(default_factory=dict)
+    components: list[BlueprintComponent] = Field(default_factory=list)
+    style: dict[str, Any] = Field(default_factory=dict)
+    services: list[str] = Field(default_factory=list)
+    service_bindings: dict[str, str] = Field(default_factory=dict)
+    lifecycle_hooks: dict[str, list[str]] = Field(default_factory=dict)
 
 
 BlueprintComponent.model_rebuild()

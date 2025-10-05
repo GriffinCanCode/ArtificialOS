@@ -1,6 +1,6 @@
 """Tool Registry - Modular system with strong typing."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 from pydantic import BaseModel, Field
 
 from core import get_logger
@@ -23,7 +23,7 @@ class ToolDefinition(BaseModel):
     id: str = Field(..., description="Unique tool identifier")
     name: str = Field(..., description="Human-readable name")
     description: str = Field(..., description="What the tool does")
-    parameters: Dict[str, Any] = Field(default_factory=dict, description="Parameter schema")
+    parameters: dict[str, Any] = Field(default_factory=dict, description="Parameter schema")
     category: str = Field(default="general", description="Tool category (compute, ui, system, etc.)")
 
 
@@ -32,56 +32,53 @@ class ToolRegistry:
     Modular tool registry with category-based organization.
     Uses hybrid approach: generic tools + specialized tools for common apps.
     """
-    
-    def __init__(self):
-        self.tools: Dict[str, ToolDefinition] = {}
+
+    def __init__(self) -> None:
+        self.tools: dict[str, ToolDefinition] = {}
         self._initialize_builtin_tools()
-    
-    def _initialize_builtin_tools(self):
+
+    def _initialize_builtin_tools(self) -> None:
         """Initialize built-in tools from modular categories."""
         logger.info("Initializing modular tool system...")
-        
+
         # Register tools from each category module
         register_ui_tools(self, ToolDefinition)
         register_app_tools(self, ToolDefinition)
         register_system_tools(self, ToolDefinition)
         register_math_tools(self, ToolDefinition)
-        
+
         logger.info(f"Registered {len(self.tools)} tools across {len(self.get_categories())} categories")
-        
-    def register_tool(self, tool: ToolDefinition):
+
+    def register_tool(self, tool: ToolDefinition) -> None:
         """Register a new tool."""
         self.tools[tool.id] = tool
         logger.info(f"Registered tool: {tool.id} ({tool.name})")
-    
-    def get_tool(self, tool_id: str) -> Optional[ToolDefinition]:
+
+    def get_tool(self, tool_id: str) -> ToolDefinition | None:
         """Get tool by ID."""
         return self.tools.get(tool_id)
-    
-    def get_categories(self) -> List[str]:
+
+    def get_categories(self) -> list[str]:
         """Get list of all tool categories."""
-        categories = set()
-        for tool in self.tools.values():
-            categories.add(tool.category)
-        return sorted(list(categories))
-    
-    def list_tools(self, category: Optional[str] = None) -> List[ToolDefinition]:
+        return sorted({tool.category for tool in self.tools.values()})
+
+    def list_tools(self, category: str | None = None) -> list[ToolDefinition]:
         """List all tools, optionally filtered by category."""
         tools = list(self.tools.values())
         if category:
             tools = [t for t in tools if t.category == category]
         return tools
-    
+
     def get_tools_description(self) -> str:
         """Get formatted description of all tools for AI context."""
         lines = ["=== FRONTEND TOOLS ==="]
-        
+
         # Define category order (generic first, specialized later)
         categories = [
-            "ui", "app", "browser", "system", "math", "storage", 
+            "ui", "app", "browser", "system", "math", "storage",
             "network", "timer", "clipboard", "notification"
         ]
-        
+
         for category in categories:
             category_tools = self.list_tools(category)
             if category_tools:
@@ -90,7 +87,7 @@ class ToolRegistry:
                     params = ", ".join(f"{k}: {v}" for k, v in tool.parameters.items())
                     params_str = f"({params})" if params else "(no params)"
                     lines.append(f"  - {tool.id}: {tool.description} {params_str}")
-        
+
         return "\n".join(lines)
 
 

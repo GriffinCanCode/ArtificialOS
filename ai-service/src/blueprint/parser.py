@@ -1,6 +1,6 @@
 """Blueprint Parser - JSON to Blueprint with validation."""
 
-from typing import Dict, Any, List, Union
+from typing import Any
 from datetime import datetime
 
 from core import get_logger, ValidationError
@@ -11,41 +11,41 @@ logger = get_logger(__name__)
 
 class BlueprintParser:
     """Parses Blueprint (.bp) files into Package format"""
-    
-    def __init__(self):
-        self.templates = {}
+
+    def __init__(self) -> None:
+        self.templates: dict[str, Any] = {}
         self._id_counter = 0
-    
-    def parse(self, bp_content: str) -> Dict[str, Any]:
+
+    def parse(self, bp_content: str) -> dict[str, Any]:
         """
         Parse Blueprint JSON string to Package dict
-        
+
         Args:
             bp_content: JSON content string
-            
+
         Returns:
             Package dictionary compatible with types.Package
         """
         # Reset ID counter for each parse
         self._id_counter = 0
-        
+
         # Use optimized JSON parser with automatic extraction and repair
         try:
             bp = extract_json(bp_content, repair=True)
         except JSONParseError as e:
             logger.error("json_parse_failed", error=str(e))
             raise ValidationError(f"Invalid JSON: {e}") from e
-        
+
         if not bp or not isinstance(bp, dict):
             logger.error("invalid_format", type=type(bp).__name__)
             raise ValidationError("Invalid Blueprint format: expected JSON object")
-        
+
         if "app" not in bp:
             logger.error("missing_app_section")
             raise ValidationError("Invalid Blueprint: missing 'app' section")
-        
+
         app = bp["app"]
-        
+
         # Validate required fields
         if not app.get("id"):
             logger.error("missing_field", field="app.id")
@@ -53,13 +53,13 @@ class BlueprintParser:
         if not app.get("name"):
             logger.error("missing_field", field="app.name")
             raise ValidationError("app.name is required")
-        
+
         # Default timestamp
         now = datetime.utcnow().isoformat() + "Z"
-        
+
         # Store templates for reuse
         self.templates = bp.get("templates", {})
-        
+
         return {
             "id": app["id"],
             "name": app["name"],
@@ -76,21 +76,21 @@ class BlueprintParser:
             "ui_spec": self._expand_ui(bp.get("ui", {})),
             "config": bp.get("config", {})  # App-specific configuration
         }
-    
-    def _expand_services(self, services: List[Any]) -> List[Union[str, Dict[str, Any]]]:
+
+    def _expand_services(self, services: list[Any]) -> list[str | dict[str, Any]]:
         """
         Expand service definitions
-        
+
         Supports:
         - Simple strings: ["storage"] → all tools
         - Array syntax: [{storage: [get, set]}] → specific tools
         - Wildcard: [{storage: "*"}] → all tools (explicit)
         - Object config: [{storage: {tools: [get, set], scope: app}}]
-        
+
         Returns mixed list for backward compatibility, but preserves tool info
         """
-        result = []
-        
+        result: list[str | dict[str, Any]] = []
+
         for svc in services:
             if isinstance(svc, str):
                 # Simple import - all tools
@@ -121,10 +121,10 @@ class BlueprintParser:
                     else:
                         # Fallback - just service name
                         result.append(key)
-        
+
         return result
-    
-    def _expand_ui(self, ui: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _expand_ui(self, ui: dict[str, Any]) -> dict[str, Any]:
         """Expand UI specification with all shortcuts"""
         if not ui:
             return {
@@ -133,7 +133,7 @@ class BlueprintParser:
                 "layout": "vertical",
                 "components": []
             }
-        
+
         return {
             "type": "app",
             "title": ui.get("title", "Untitled"),
@@ -141,19 +141,19 @@ class BlueprintParser:
             "lifecycle_hooks": self._expand_lifecycle(ui.get("lifecycle", {})),
             "components": self._expand_components(ui.get("components", []))
         }
-    
-    def _expand_lifecycle(self, lifecycle: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _expand_lifecycle(self, lifecycle: dict[str, Any]) -> dict[str, Any]:
         """
         Expand lifecycle hooks
-        
+
         Supports:
         - Single action: {on_mount: "storage.get"}
         - Multiple actions: {on_mount: ["storage.get", "ui.init"]}
         """
         if not lifecycle:
             return {}
-        
-        result = {}
+
+        result: dict[str, list[str]] = {}
         for hook, action in lifecycle.items():
             if isinstance(action, str):
                 result[hook] = [action]
@@ -161,26 +161,25 @@ class BlueprintParser:
                 result[hook] = action
             else:
                 result[hook] = []
-        
+
         return result
-    
-    def _expand_components(self, components: List[Any]) -> List[Dict[str, Any]]:
+
+    def _expand_components(self, components: list[Any]) -> list[dict[str, Any]]:
         """Recursively expand component list"""
-        result = []
-        
+        result: list[dict[str, Any]] = []
+
         for comp in components:
-            expanded = self._expand_component(comp)
-            if expanded:
+            if expanded := self._expand_component(comp):
                 result.append(expanded)
-        
+
         return result
-    
-    def _expand_component(self, comp: Any) -> Dict[str, Any]:
+
+    def _expand_component(self, comp: Any) -> dict[str, Any] | None:
         """
         Expand a single component - explicit format only for streaming
-        
+
         Format: {type: "button", id: "save", props: {...}, on_event: {...}, children: [...]}
-        
+
         Special cases:
         - Simple strings: "Hello" -> {type: "text", id: "text-N", props: {content: "Hello"}}
         - Layout shortcuts: type="row" -> type="container" + layout="horizontal"
@@ -194,31 +193,31 @@ class BlueprintParser:
                 "id": comp_id,
                 "props": {"content": comp}
             }
-        
+
         # Component object
         if isinstance(comp, dict):
             # Check format: explicit (has "type") or compact (first key is "type#id")
             if "type" in comp:
                 # Explicit format - optimal for streaming
                 return self._expand_explicit_component(comp)
-            
+
             # Compact format - for hand-written .bp files
             for key, props in comp.items():
                 if not isinstance(props, dict):
                     props = {}
-                
+
                 # Parse "type#id" or just "type"
                 parts = key.split("#", 1)
                 comp_type = parts[0]
                 comp_id = parts[1] if len(parts) > 1 else f"{parts[0]}-{self._id_counter}"
                 if comp_id == parts[0]:
                     self._id_counter += 1
-                
+
                 # Convert to explicit format by extracting @ events and children
                 explicit_props = {}
                 events = {}
                 children_data = None
-                
+
                 for k, v in props.items():
                     if k.startswith("@"):
                         events[k[1:]] = v
@@ -226,7 +225,7 @@ class BlueprintParser:
                         children_data = v
                     else:
                         explicit_props[k] = v
-                
+
                 # Build explicit component and recursively expand
                 explicit_comp = {
                     "type": comp_type,
@@ -237,12 +236,12 @@ class BlueprintParser:
                     explicit_comp["on_event"] = events
                 if children_data:
                     explicit_comp["children"] = children_data
-                
+
                 return self._expand_explicit_component(explicit_comp)
-        
+
         return None
-    
-    def _expand_explicit_component(self, comp: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _expand_explicit_component(self, comp: dict[str, Any]) -> dict[str, Any]:
         """
         Expand explicit format component {type, id, props, on_event, children}
         This format is optimal for streaming as it's easy to parse incrementally
@@ -252,11 +251,11 @@ class BlueprintParser:
         if not comp_id:
             comp_id = f"{comp_type}-{self._id_counter}"
             self._id_counter += 1
-        
+
         props = comp.get("props", {})
         events = comp.get("on_event", {})
         children_data = comp.get("children", [])
-        
+
         # Handle layout shortcuts on type
         if comp_type == "row":
             comp_type = "container"
@@ -268,35 +267,35 @@ class BlueprintParser:
             props["role"] = comp_type
             comp_type = "container"
             props["layout"] = props.get("layout", "vertical")
-        
+
         # Recursively expand children
         children = None
         if children_data:
             children = self._expand_components(children_data)
-        
+
         # Build result
         result = {
             "type": comp_type,
             "id": comp_id,
             "props": props
         }
-        
+
         if events:
             result["on_event"] = events
-        
+
         if children:
             result["children"] = children
-        
+
         return result
 
 
-def parse_blueprint(content: str) -> Dict[str, Any]:
+def parse_blueprint(content: str) -> dict[str, Any]:
     """
     Convenience function to parse Blueprint content
-    
+
     Args:
         content: Blueprint JSON string
-        
+
     Returns:
         Package dictionary
     """

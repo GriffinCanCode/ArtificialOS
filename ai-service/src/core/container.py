@@ -1,7 +1,6 @@
 """Dependency Injection Container."""
 
 from injector import Injector, Module, provider, singleton
-from typing import Optional
 
 from models.loader import ModelLoader, GeminiModel
 from models.config import GeminiConfig
@@ -12,19 +11,19 @@ from clients.backend import BackendClient
 
 class CoreModule(Module):
     """Core dependencies."""
-    
-    def __init__(self, backend_url: str = "http://localhost:8000"):
+
+    def __init__(self, backend_url: str = "http://localhost:8000") -> None:
         self.backend_url = backend_url
-    
+
     @singleton
     @provider
     def provide_tool_registry(self) -> ToolRegistry:
         """Provide tool registry singleton."""
         return ToolRegistry()
-    
+
     @singleton
     @provider
-    def provide_backend_client(self) -> Optional[BackendClient]:
+    def provide_backend_client(self) -> BackendClient | None:
         """Provide backend client with service discovery."""
         try:
             client = BackendClient(self.backend_url)
@@ -33,7 +32,7 @@ class CoreModule(Module):
             return None
         except Exception:
             return None
-    
+
     @singleton
     @provider
     def provide_gemini_model(self) -> GeminiModel:
@@ -46,20 +45,20 @@ class CoreModule(Module):
             json_mode=False
         )
         return ModelLoader.load(config)
-    
+
     @singleton
     @provider
     def provide_ui_generator(
         self,
         tool_registry: ToolRegistry,
         model: GeminiModel,
-        backend: Optional[BackendClient]
+        backend: BackendClient | None
     ) -> UIGenerator:
         """Provide UI generator with all dependencies."""
         backend_services = []
         if backend:
             backend_services = backend.discover_services()
-        
+
         return UIGenerator(
             tool_registry=tool_registry,
             llm=model,

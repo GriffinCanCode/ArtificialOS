@@ -1,7 +1,7 @@
 """Chat Handler."""
 
 import time
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 import ai_pb2
 
 from core import get_logger, ChatRequest, ValidationError
@@ -15,10 +15,10 @@ logger = get_logger(__name__)
 
 class ChatHandler:
     """Handles chat requests."""
-    
-    def __init__(self, model_loader: type[ModelLoader]):
+
+    def __init__(self, model_loader: type[ModelLoader]) -> None:
         self.model_loader = model_loader
-    
+
     async def stream(self, request: ai_pb2.ChatRequest) -> AsyncGenerator[ai_pb2.ChatToken, None]:
         """Stream chat response."""
         try:
@@ -27,7 +27,7 @@ class ChatHandler:
                 history_count=len(request.history)
             )
             logger.info("chat", message=validated.message[:50])
-            
+
             # Build history
             history = ChatHistory()
             for msg in request.history:
@@ -37,14 +37,14 @@ class ChatHandler:
                     timestamp=msg.timestamp
                 ))
             history.add(ChatAgent.create_user_message(validated.message))
-            
+
             # Start
             yield ai_pb2.ChatToken(
                 type=ai_pb2.ChatToken.GENERATION_START,
                 content="",
                 timestamp=int(time.time())
             )
-            
+
             # Load model
             llm = self.model_loader.load(GeminiConfig(
                 model_name="gemini-2.0-flash-exp",
@@ -52,7 +52,7 @@ class ChatHandler:
                 temperature=0.7,
                 max_tokens=2048
             ))
-            
+
             # Stream
             agent = ChatAgent(llm)
             tokens = 0
@@ -63,9 +63,9 @@ class ChatHandler:
                     content=token,
                     timestamp=int(time.time())
                 )
-            
+
             logger.info("complete", tokens=tokens)
-            
+
             yield ai_pb2.ChatToken(
                 type=ai_pb2.ChatToken.COMPLETE,
                 content="",

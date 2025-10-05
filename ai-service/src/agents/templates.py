@@ -3,7 +3,6 @@ App Templates
 Pre-built templates for common app patterns
 """
 
-from typing import Dict, List
 from pydantic import BaseModel
 
 
@@ -13,13 +12,13 @@ class Template(BaseModel):
     name: str
     description: str
     pattern: str
-    components: List[str]
-    service_requirements: List[str]
+    components: list[str]
+    service_requirements: list[str]
 
 
 class TemplateLibrary:
     """Library of app templates"""
-    
+
     TEMPLATES = {
         "crud": Template(
             id="crud",
@@ -42,7 +41,7 @@ Layout:
             components=["list", "form", "button", "input"],
             service_requirements=["storage"]
         ),
-        
+
         "form": Template(
             id="form",
             name="Form Application",
@@ -63,7 +62,7 @@ Layout:
             components=["form", "input", "button", "text"],
             service_requirements=["storage"]
         ),
-        
+
         "dashboard": Template(
             id="dashboard",
             name="Dashboard",
@@ -84,7 +83,7 @@ Layout:
             components=["grid", "card", "chart", "button"],
             service_requirements=["storage"]
         ),
-        
+
         "chat": Template(
             id="chat",
             name="Chat Interface",
@@ -106,28 +105,28 @@ Layout:
             service_requirements=["storage", "ai"]
         ),
     }
-    
+
     @classmethod
     def get(cls, template_id: str) -> Template:
         """Get template by ID"""
         return cls.TEMPLATES.get(template_id)
-    
+
     @classmethod
-    def list_all(cls) -> List[Template]:
+    def list_all(cls) -> list[Template]:
         """List all templates"""
         return list(cls.TEMPLATES.values())
-    
+
     @classmethod
-    def search(cls, query: str) -> List[Template]:
+    def search(cls, query: str) -> list[Template]:
         """Search templates by query"""
         query_lower = query.lower()
         results = []
-        
+
         for template in cls.TEMPLATES.values():
             if (query_lower in template.name.lower() or
                 query_lower in template.description.lower() or
                 any(query_lower in req for req in template.service_requirements)):
                 results.append(template)
-        
+
         return results
 
