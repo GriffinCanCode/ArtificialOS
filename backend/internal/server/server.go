@@ -137,6 +137,7 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	// App management
 	router.GET("/apps", handlers.ListApps)
 	router.POST("/apps/:id/focus", handlers.FocusApp)
+	router.POST("/apps/:id/window", handlers.UpdateWindowState)
 	router.DELETE("/apps/:id", handlers.CloseApp)
 
 	// Service management

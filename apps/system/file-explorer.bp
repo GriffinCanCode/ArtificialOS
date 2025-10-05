@@ -1,114 +1,291 @@
----
-# File Explorer - Browse and manage files with modern interface
-app:
-  id: file-explorer
-  name: File Explorer
-  icon: 📁
-  category: system
-  version: 1.0.0
-  author: system
-  tags: [files, explorer, system, utility]
-  permissions: [READ_FILE, WRITE_FILE, CREATE_FILE, DELETE_FILE, LIST_DIRECTORY]
-
-services:
-  - filesystem: [list, stat, read, write, create, mkdir, delete, move, copy, exists]
-  - storage: [get, set]
-
-ui:
-  title: File Explorer
-  layout: horizontal
-  
-  lifecycle:
-    on_mount: filesystem.list
-  
-  components:
-    # Sidebar with quick locations
-    - sidebar:
-        layout: vertical
-        gap: 8
-        padding: medium
-        style: { width: 240px, borderRight: 1px solid rgba(255,255,255,0.1), backgroundColor: rgba(0,0,0,0.2) }
-        
-        children:
-          - text#sidebar-title:
-              content: Locations
-              variant: h3
-              weight: bold
-          
-          - list#locations:
-              variant: default
-              spacing: small
-              children:
-                - button#home-btn: { text: "🏠 Home", variant: ghost, fullWidth: true, "@click": filesystem.list }
-                - button#applications-btn: { text: "📦 Applications", variant: ghost, fullWidth: true, "@click": filesystem.list }
-                - button#documents-btn: { text: "📄 Documents", variant: ghost, fullWidth: true, "@click": filesystem.list }
-                - button#data-btn: { text: "💾 Data", variant: ghost, fullWidth: true, "@click": filesystem.list }
-                - button#system-btn: { text: "⚙️ System", variant: ghost, fullWidth: true, "@click": filesystem.list }
-    
-    # Main panel
-    - main:
-        layout: vertical
-        gap: 12
-        padding: large
-        style: { flex: 1 }
-        
-        children:
-          # Toolbar
-          - row:
-              gap: 8
-              align: center
-              children:
-                - button#back: { text: "←", variant: outline, size: small, "@click": ui.set }
-                - button#forward: { text: "→", variant: outline, size: small, "@click": ui.set }
-                - button#up: { text: "↑", variant: outline, size: small, "@click": ui.set }
-                - input#path-input:
-                    placeholder: /Users/...
-                    value: /tmp/ai-os-storage
-                    type: text
-                    style: { flex: 1 }
-                    "@change": filesystem.list
-                - button#refresh: { text: "⟳", variant: outline, size: small, "@click": filesystem.list }
-                - button#new-folder: { text: "+ Folder", variant: primary, size: small, "@click": filesystem.mkdir }
-          
-          # Breadcrumbs
-          - row:
-              gap: 4
-              style: { fontSize: 14px, color: rgba(255,255,255,0.7) }
-              children:
-                - text#current-path:
-                    content: /tmp/ai-os-storage
-                    variant: caption
-          
-          - divider:
-              orientation: horizontal
-          
-          # File list
-          - col:
-              gap: 0
-              style: { flex: 1, overflowY: auto, backgroundColor: rgba(0,0,0,0.1), borderRadius: 8px, padding: 8px }
-              children:
-                # Header row
-                - row:
-                    gap: 16
-                    padding: small
-                    style: { fontWeight: bold, borderBottom: 1px solid rgba(255,255,255,0.1), marginBottom: 8px }
-                    children:
-                      - text#header-name: { content: Name, variant: label, weight: bold, style: { flex: 1 } }
-                      - text#header-modified: { content: Modified, variant: label, weight: bold, style: { width: 180px } }
-                      - text#header-size: { content: Size, variant: label, weight: bold, style: { width: 100px } }
-                      - text#header-actions: { content: Actions, variant: label, weight: bold, style: { width: 120px } }
-                
-                # File list (dynamically populated)
-                - list#file-list:
-                    variant: default
-                    spacing: small
-          
-          # Status bar
-          - row:
-              gap: 16
-              padding: small
-              style: { borderTop: 1px solid rgba(255,255,255,0.1), fontSize: 12px, color: rgba(255,255,255,0.6) }
-              children:
-                - text#item-count: { content: "0 items", variant: caption }
-                - text#selected-count: { content: "0 selected", variant: caption }
-
+{
+  "app": {
+    "id": "file-explorer",
+    "name": "File Explorer",
+    "icon": "📁",
+    "category": "system",
+    "version": "1.0.0",
+    "author": "system",
+    "tags": ["files", "explorer", "system", "utility"],
+    "permissions": ["READ_FILE", "WRITE_FILE", "CREATE_FILE", "DELETE_FILE", "LIST_DIRECTORY"]
+  },
+  "services": [
+    {
+      "filesystem": ["list", "stat", "read", "write", "create", "mkdir", "delete", "move", "copy", "exists"]
+    },
+    {
+      "storage": ["get", "set"]
+    }
+  ],
+  "ui": {
+    "title": "File Explorer",
+    "layout": "horizontal",
+    "lifecycle": {
+      "on_mount": "filesystem.list"
+    },
+    "components": [
+      {
+        "sidebar": {
+          "layout": "vertical",
+          "gap": 8,
+          "padding": "medium",
+          "style": {
+            "width": "240px",
+            "borderRight": "1px solid rgba(255,255,255,0.1)",
+            "backgroundColor": "rgba(0,0,0,0.2)"
+          },
+          "children": [
+            {
+              "text#sidebar-title": {
+                "content": "Locations",
+                "variant": "h3",
+                "weight": "bold"
+              }
+            },
+            {
+              "list#locations": {
+                "variant": "default",
+                "spacing": "small",
+                "children": [
+                  {
+                    "button#home-btn": {
+                      "text": "🏠 Home",
+                      "variant": "ghost",
+                      "fullWidth": true,
+                      "@click": "ui.set"
+                    }
+                  },
+                  {
+                    "button#applications-btn": {
+                      "text": "📦 Applications",
+                      "variant": "ghost",
+                      "fullWidth": true,
+                      "@click": "ui.set"
+                    }
+                  },
+                  {
+                    "button#documents-btn": {
+                      "text": "📄 Documents",
+                      "variant": "ghost",
+                      "fullWidth": true,
+                      "@click": "ui.set"
+                    }
+                  },
+                  {
+                    "button#data-btn": {
+                      "text": "💾 Data",
+                      "variant": "ghost",
+                      "fullWidth": true,
+                      "@click": "ui.set"
+                    }
+                  },
+                  {
+                    "button#system-btn": {
+                      "text": "⚙️ System",
+                      "variant": "ghost",
+                      "fullWidth": true,
+                      "@click": "ui.set"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "main": {
+          "layout": "vertical",
+          "gap": 12,
+          "padding": "large",
+          "style": {
+            "flex": 1
+          },
+          "children": [
+            {
+              "row": {
+                "gap": 8,
+                "align": "center",
+                "children": [
+                  {
+                    "button#back": {
+                      "text": "←",
+                      "variant": "outline",
+                      "size": "small",
+                      "@click": "ui.set"
+                    }
+                  },
+                  {
+                    "button#forward": {
+                      "text": "→",
+                      "variant": "outline",
+                      "size": "small",
+                      "@click": "ui.set"
+                    }
+                  },
+                  {
+                    "button#up": {
+                      "text": "↑",
+                      "variant": "outline",
+                      "size": "small",
+                      "@click": "ui.set"
+                    }
+                  },
+                  {
+                    "input#path-input": {
+                      "placeholder": "Enter path...",
+                      "value": "/tmp/ai-os-storage",
+                      "type": "text",
+                      "style": {
+                        "flex": 1
+                      },
+                      "@change": "filesystem.list"
+                    }
+                  },
+                  {
+                    "button#refresh": {
+                      "text": "⟳",
+                      "variant": "outline",
+                      "size": "small",
+                      "@click": "filesystem.list"
+                    }
+                  },
+                  {
+                    "button#new-folder": {
+                      "text": "+ Folder",
+                      "variant": "primary",
+                      "size": "small",
+                      "@click": "ui.set"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "gap": 4,
+                "style": {
+                  "fontSize": "14px",
+                  "color": "rgba(255,255,255,0.7)"
+                },
+                "children": [
+                  {
+                    "text#current-path": {
+                      "content": "/tmp/ai-os-storage",
+                      "variant": "caption"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "divider": {
+                "orientation": "horizontal"
+              }
+            },
+            {
+              "col": {
+                "gap": 0,
+                "style": {
+                  "flex": 1,
+                  "overflowY": "auto",
+                  "backgroundColor": "rgba(0,0,0,0.1)",
+                  "borderRadius": "8px",
+                  "padding": "8px"
+                },
+                "children": [
+                  {
+                    "row": {
+                      "gap": 16,
+                      "padding": "small",
+                      "style": {
+                        "fontWeight": "bold",
+                        "borderBottom": "1px solid rgba(255,255,255,0.1)",
+                        "marginBottom": "8px"
+                      },
+                      "children": [
+                        {
+                          "text#header-name": {
+                            "content": "Name",
+                            "variant": "label",
+                            "weight": "bold",
+                            "style": {
+                              "flex": 1
+                            }
+                          }
+                        },
+                        {
+                          "text#header-modified": {
+                            "content": "Modified",
+                            "variant": "label",
+                            "weight": "bold",
+                            "style": {
+                              "width": "180px"
+                            }
+                          }
+                        },
+                        {
+                          "text#header-size": {
+                            "content": "Size",
+                            "variant": "label",
+                            "weight": "bold",
+                            "style": {
+                              "width": "100px"
+                            }
+                          }
+                        },
+                        {
+                          "text#header-actions": {
+                            "content": "Actions",
+                            "variant": "label",
+                            "weight": "bold",
+                            "style": {
+                              "width": "120px"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "col#file-list": {
+                      "gap": 0,
+                      "style": {
+                        "flex": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "gap": 16,
+                "padding": "small",
+                "style": {
+                  "borderTop": "1px solid rgba(255,255,255,0.1)",
+                  "fontSize": "12px",
+                  "color": "rgba(255,255,255,0.6)"
+                },
+                "children": [
+                  {
+                    "text#item-count": {
+                      "content": "0 items",
+                      "variant": "caption"
+                    }
+                  },
+                  {
+                    "text#selected-count": {
+                      "content": "0 selected",
+                      "variant": "caption"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

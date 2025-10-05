@@ -7,11 +7,11 @@ import { useForm } from "react-hook-form";
 import { Save, Sparkles, CheckCircle } from "lucide-react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import ThoughtStream from "../components/chat/ThoughtStream";
-import DynamicRenderer from "../components/dynamics/DynamicRenderer";
 import TitleBar from "../components/layout/TitleBar";
 import { Desktop } from "../components/layout/Desktop";
 import { WindowManager } from "../components/layout/WindowManager";
 import { Taskbar } from "../components/layout/Taskbar";
+import DynamicRenderer from "../components/dynamics/DynamicRenderer";
 import { WebSocketProvider, useWebSocket } from "../contexts/WebSocketContext";
 import { useAppActions } from "../store/appStore";
 import { useWindowActions } from "../store/windowStore";
@@ -211,7 +211,7 @@ function AppContent() {
       const data = await response.json();
       if (data.error) {
         log.error("Failed to launch app", undefined, { appId, error: data.error });
-      } else if (data.ui_spec) {
+      } else if (data.blueprint) {
         // Successfully launched - open in a window
         log.info("App launched successfully", { appId, appInstanceId: data.app_id });
         
@@ -220,7 +220,7 @@ function AppContent() {
         const metaData = await metaResponse.json();
         const icon = metaData.icon || "📦";
         
-        openWindow(data.app_id, data.ui_spec.title, data.ui_spec, icon);
+        openWindow(data.app_id, data.blueprint.title, data.blueprint, icon);
       }
     } catch (error) {
       log.error("Failed to launch app", error as Error, { appId });
@@ -261,12 +261,10 @@ function AppContent() {
         />
       </div>
 
-      {/* Full-screen App Canvas (for AI-generated apps) */}
-      <div className="os-canvas">
-        <DynamicRenderer />
-      </div>
+      {/* Dynamic Renderer (handles AI-generated UI) */}
+      <DynamicRenderer />
 
-      {/* Window Manager (for windowed apps) */}
+      {/* Window Manager (PRIMARY app container) */}
       <WindowManager />
 
       {/* Taskbar (shows open windows) */}

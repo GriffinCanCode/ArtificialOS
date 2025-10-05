@@ -7,7 +7,7 @@ import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { useMemo } from "react";
 import { logger } from "../utils/monitoring/logger";
-import { UISpec } from "./appStore";
+import { Blueprint } from "./appStore";
 
 // ============================================================================
 // Type Definitions
@@ -28,7 +28,7 @@ export interface WindowState {
   appId: string;
   title: string;
   icon?: string;
-  uiSpec: UISpec;
+  uiSpec: Blueprint;
   position: WindowPosition;
   size: WindowSize;
   isMinimized: boolean;
@@ -41,7 +41,7 @@ interface WindowStore {
   nextZIndex: number;
   
   // Actions
-  openWindow: (appId: string, title: string, uiSpec: UISpec, icon?: string) => string;
+  openWindow: (appId: string, title: string, uiSpec: Blueprint, icon?: string) => string;
   closeWindow: (windowId: string) => void;
   minimizeWindow: (windowId: string) => void;
   restoreWindow: (windowId: string) => void;

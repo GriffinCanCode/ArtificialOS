@@ -49,7 +49,6 @@ aiostream>=0.5.2  # Composable async stream utilities
 # ============================================================================
 # Configuration Management
 # ============================================================================
-ruamel.yaml>=0.18.0  # Fast YAML parser with better error messages
 python-dotenv>=1.0.0
 tomli>=2.0.0; python_version < '3.11'  # TOML parsing (built-in tomllib for 3.11+)
 tomli-w>=1.0.0  # TOML writing (no stdlib equivalent)

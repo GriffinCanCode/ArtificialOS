@@ -6,6 +6,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useAppStore } from "../store/appStore";
+import { useWindowStore } from "../store/windowStore";
 import type { ChatState, UIState } from "../types/session";
 import { logger } from "../utils/monitoring/logger";
 import {
@@ -119,6 +120,7 @@ export function useSessionManager(options: UseSessionManagerOptions = {}) {
   const restore = useCallback(
     async (sessionId: string) => {
       const store = useAppStore.getState();
+      const { openWindow, updateWindowPosition, updateWindowSize, clearAllWindows } = useWindowStore.getState();
 
       // Prevent restore during active generation to avoid interrupting streaming
       if (store.isStreaming || store.isLoading) {
@@ -141,6 +143,7 @@ export function useSessionManager(options: UseSessionManagerOptions = {}) {
 
       // Reset state first to ensure clean slate
       store.resetState();
+      clearAllWindows();
 
       if (workspace.chat_state) {
         // Restore messages and thoughts
@@ -167,32 +170,41 @@ export function useSessionManager(options: UseSessionManagerOptions = {}) {
         }
       }
 
-      // Restore focused app UI - use requestAnimationFrame for next frame to prevent race
-      // This ensures we don't conflict with any React render cycles
-      if (workspace.focused_app_id && workspace.apps.length > 0) {
-        const focusedApp = workspace.apps.find((app) => app.id === workspace.focused_app_id);
-        if (focusedApp) {
-          // Use requestAnimationFrame + setTimeout to schedule after current render cycle
-          requestAnimationFrame(() => {
+      // Restore all apps as windows with saved positions
+      if (workspace.apps && workspace.apps.length > 0) {
+        workspace.apps.forEach((app: any) => {
+          // Open window with saved or default position/size
+          const windowId = openWindow(
+            app.id,
+            app.title,
+            app.ui_spec,
+            app.ui_spec?.icon || "📦"
+          );
+
+          // Restore window geometry if saved
+          if (app.window_pos && app.window_size) {
+            // Small delay to ensure window is created
             setTimeout(() => {
-              // Double-check we're not in the middle of streaming before setting UI
-              const currentStore = useAppStore.getState();
-              if (!currentStore.isStreaming && !currentStore.isLoading) {
-                logger.info("Restoring focused app UI", {
-                  component: "SessionManager",
-                  appId: focusedApp.id,
-                  title: focusedApp.title,
-                });
-                currentStore.setUISpec(focusedApp.ui_spec as any, focusedApp.id);
-              } else {
-                logger.warn("Skipped UI restore due to active generation", {
-                  component: "SessionManager",
-                });
-              }
-            }, 100);
-          });
-        }
+              updateWindowPosition(windowId, {
+                x: app.window_pos.x,
+                y: app.window_pos.y,
+              });
+              updateWindowSize(windowId, {
+                width: app.window_size.width,
+                height: app.window_size.height,
+              });
+            }, 50);
+          }
+        });
+
+        logger.info("Restored session with windows", {
+          component: "SessionManager",
+          count: workspace.apps.length,
+        });
       }
+
+      // Note: We no longer restore focused app UI to fullscreen DynamicRenderer
+      // since apps are now windowed by default
 
       return result;
     },
@@ -242,7 +254,7 @@ export function useSessionManager(options: UseSessionManagerOptions = {}) {
       // Only auto-save if there's something to save (has messages or an app loaded)
       // Access current state directly from store to avoid dependency issues
       const currentMessages = useAppStore.getState().messages;
-      const currentUISpec = useAppStore.getState().uiSpec;
+      const currentUISpec = useAppStore.getState().blueprint;
 
       if (currentMessages.length > 0 || currentUISpec) {
         saveDefault();
@@ -260,7 +272,7 @@ export function useSessionManager(options: UseSessionManagerOptions = {}) {
         autoSaveTimerRef.current = null;
       }
     };
-  }, [enableAutoSave, autoSaveInterval, saveDefault]); // Removed messages.length and uiSpec from deps
+  }, [enableAutoSave, autoSaveInterval, saveDefault]); // Removed messages.length and blueprint from deps
 
   return {
     save,

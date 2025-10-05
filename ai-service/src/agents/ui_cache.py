@@ -3,14 +3,14 @@
 from typing import Optional
 
 from core import LRUCache
-from .models import UISpec
+from .models import Blueprint
 
 
 class UICache:
     """
     Type-safe LRU cache for UI specifications.
     
-    Wrapper around core.LRUCache with UISpec type enforcement.
+    Wrapper around core.LRUCache with Blueprint type enforcement.
     """
     
     def __init__(self, max_size: int = 100, ttl_seconds: int = 3600):
@@ -21,16 +21,16 @@ class UICache:
             max_size: Maximum cached specs
             ttl_seconds: Time-to-live in seconds
         """
-        self._cache: LRUCache[UISpec] = LRUCache(
+        self._cache: LRUCache[Blueprint] = LRUCache(
             max_size=max_size,
             ttl_seconds=ttl_seconds
         )
     
-    def get(self, key: str) -> Optional[UISpec]:
+    def get(self, key: str) -> Optional[Blueprint]:
         """Get cached UI spec if valid."""
         return self._cache.get(key)
     
-    def set(self, key: str, spec: UISpec) -> None:
+    def set(self, key: str, spec: Blueprint) -> None:
         """Cache UI spec."""
         self._cache.set(key, spec)
     

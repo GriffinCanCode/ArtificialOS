@@ -120,7 +120,7 @@ def validate_json_depth(
             validate_json_depth(item, max_depth, current_depth + 1)
 
 
-class UISpecValidator:
+class BlueprintValidator:
     """Validates generated UI specifications."""
     
     @staticmethod
@@ -164,7 +164,7 @@ def validate_ui_spec(spec: dict[str, Any], json_str: str) -> Result[None, Valida
         Result indicating success or validation error
     """
     try:
-        UISpecValidator.validate(spec, json_str)
+        BlueprintValidator.validate(spec, json_str)
         return Success(None)
     except ValidationError as e:
         return Failure(ValidationResult(str(e)))

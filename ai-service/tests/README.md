@@ -292,7 +292,7 @@ Coverage is configured in `pytest.ini`:
 ```python
 # Good test names
 def test_chat_agent_stream_response()
-def test_blueprint_parser_handles_invalid_yaml()
+def test_blueprint_parser_handles_invalid_json()
 def test_cache_evicts_least_recently_used_entry()
 
 # Bad test names

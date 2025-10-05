@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field
 from core import get_logger
 from .tool_categories import (
     register_ui_tools,
-    register_browser_tools,
     register_app_tools,
     register_system_tools,
     register_math_tools,
@@ -44,7 +43,6 @@ class ToolRegistry:
         
         # Register tools from each category module
         register_ui_tools(self, ToolDefinition)
-        register_browser_tools(self, ToolDefinition)
         register_app_tools(self, ToolDefinition)
         register_system_tools(self, ToolDefinition)
         register_math_tools(self, ToolDefinition)

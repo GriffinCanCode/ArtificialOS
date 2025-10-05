@@ -13,7 +13,7 @@ export interface Package {
   author: string;
   created_at: string;
   updated_at: string;
-  ui_spec: Record<string, any>;
+  blueprint: Record<string, any>;
   services: string[];
   permissions: string[];
   tags: string[];
@@ -57,6 +57,6 @@ export interface ListAppsResponse {
 
 export interface LaunchAppResponse {
   app_id: string;
-  ui_spec: Record<string, any>;
+  blueprint: Record<string, any>;
   title: string;
 }

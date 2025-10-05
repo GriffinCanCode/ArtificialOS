@@ -5,7 +5,7 @@
 
 import React, { useRef, useCallback } from "react";
 import { List as VirtualList } from "react-window";
-import { UIComponent } from "../../store/appStore";
+import { BlueprintComponent } from "../../store/appStore";
 import { ComponentState } from "./DynamicRenderer.state";
 import { ToolExecutor } from "./DynamicRenderer.executor";
 import { VIRTUAL_SCROLL_THRESHOLD, DEFAULT_ITEM_HEIGHT } from "./DynamicRenderer.constants";
@@ -14,7 +14,7 @@ import { logger } from "../../utils/monitoring/logger";
 // Forward declaration to avoid circular dependency
 // ComponentRenderer will be passed as a prop
 type ComponentRendererType = React.ComponentType<{
-  component: UIComponent;
+  component: BlueprintComponent;
   state: ComponentState;
   executor: ToolExecutor;
 }>;
@@ -24,7 +24,7 @@ type ComponentRendererType = React.ComponentType<{
 // ============================================================================
 
 interface VirtualizedListProps {
-  children: UIComponent[];
+  children: BlueprintComponent[];
   state: ComponentState;
   executor: ToolExecutor;
   itemHeight?: number;
@@ -57,7 +57,7 @@ export const VirtualizedList: React.FC<VirtualizedListProps> = React.memo(
     if (children.length < VIRTUAL_SCROLL_THRESHOLD) {
       return (
         <div className={className} ref={containerRef}>
-          {children.map((child: UIComponent, idx: number) => (
+          {children.map((child: BlueprintComponent, idx: number) => (
             <ComponentRendererComponent
               key={`${child.id}-${idx}`}
               component={child}
@@ -92,7 +92,7 @@ export const VirtualizedList: React.FC<VirtualizedListProps> = React.memo(
                 gap: "1rem",
               }}
             >
-              {rowItems.map((child: UIComponent, idx: number) => (
+              {rowItems.map((child: BlueprintComponent, idx: number) => (
                 <ComponentRendererComponent
                   key={`${child.id}-${startIdx + idx}`}
                   component={child}

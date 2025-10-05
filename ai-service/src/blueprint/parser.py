@@ -1,16 +1,12 @@
-"""Blueprint Parser - YAML to JSON UISpec with validation."""
+"""Blueprint Parser - JSON to Blueprint with validation."""
 
-from ruamel.yaml import YAML
 from typing import Dict, Any, List, Union
 from datetime import datetime
 
 from core import get_logger, ValidationError
+from core.json import extract_json, JSONParseError
 
 logger = get_logger(__name__)
-
-# Initialize YAML parser with safe loading
-yaml = YAML(typ='safe', pure=True)
-yaml.default_flow_style = False
 
 
 class BlueprintParser:
@@ -18,26 +14,31 @@ class BlueprintParser:
     
     def __init__(self):
         self.templates = {}
+        self._id_counter = 0
     
     def parse(self, bp_content: str) -> Dict[str, Any]:
         """
-        Parse Blueprint YAML string to Package dict
+        Parse Blueprint JSON string to Package dict
         
         Args:
-            bp_content: YAML content string
+            bp_content: JSON content string
             
         Returns:
             Package dictionary compatible with types.Package
         """
+        # Reset ID counter for each parse
+        self._id_counter = 0
+        
+        # Use optimized JSON parser with automatic extraction and repair
         try:
-            bp = yaml.load(bp_content)
-        except Exception as e:
-            logger.error("yaml_parse_failed", error=str(e))
-            raise ValidationError(f"Invalid YAML: {e}") from e
+            bp = extract_json(bp_content, repair=True)
+        except JSONParseError as e:
+            logger.error("json_parse_failed", error=str(e))
+            raise ValidationError(f"Invalid JSON: {e}") from e
         
         if not bp or not isinstance(bp, dict):
             logger.error("invalid_format", type=type(bp).__name__)
-            raise ValidationError("Invalid Blueprint format: expected YAML object")
+            raise ValidationError("Invalid Blueprint format: expected JSON object")
         
         if "app" not in bp:
             logger.error("missing_app_section")
@@ -176,104 +177,117 @@ class BlueprintParser:
     
     def _expand_component(self, comp: Any) -> Dict[str, Any]:
         """
-        Expand a single component with all Blueprint shortcuts
+        Expand a single component - explicit format only for streaming
         
-        Supports:
-        - Simple strings: "Hello" -> {type: text, props: {content: "Hello"}}
-        - Type#ID syntax: button#save -> {type: button, id: save}
-        - Event shortcuts: @click -> on_event.click
-        - Layout shortcuts: row/col -> container with layout
-        - Templates: $template -> apply template
-        - Conditional: $if -> conditional rendering
-        - Loop: $for -> repeat component
+        Format: {type: "button", id: "save", props: {...}, on_event: {...}, children: [...]}
+        
+        Special cases:
+        - Simple strings: "Hello" -> {type: "text", id: "text-N", props: {content: "Hello"}}
+        - Layout shortcuts: type="row" -> type="container" + layout="horizontal"
         """
         # Simple string becomes text component
         if isinstance(comp, str):
+            comp_id = f"text-{self._id_counter}"
+            self._id_counter += 1
             return {
                 "type": "text",
+                "id": comp_id,
                 "props": {"content": comp}
             }
         
         # Component object
         if isinstance(comp, dict):
-            # Extract type and ID from first key
+            # Check format: explicit (has "type") or compact (first key is "type#id")
+            if "type" in comp:
+                # Explicit format - optimal for streaming
+                return self._expand_explicit_component(comp)
+            
+            # Compact format - for hand-written .bp files
             for key, props in comp.items():
                 if not isinstance(props, dict):
                     props = {}
                 
-                # Check for template reference
-                template_name = props.get("$template")
-                if template_name and template_name in self.templates:
-                    template = self.templates[template_name]
-                    # Merge template with current props (current props override)
-                    props = {**template, **{k: v for k, v in props.items() if k != "$template"}}
-                
                 # Parse "type#id" or just "type"
                 parts = key.split("#", 1)
                 comp_type = parts[0]
-                comp_id = parts[1] if len(parts) > 1 else None
+                comp_id = parts[1] if len(parts) > 1 else f"{parts[0]}-{self._id_counter}"
+                if comp_id == parts[0]:
+                    self._id_counter += 1
                 
-                # Handle layout shortcuts
-                if comp_type == "row":
-                    comp_type = "container"
-                    props["layout"] = "horizontal"
-                elif comp_type == "col":
-                    comp_type = "container"
-                    props["layout"] = "vertical"
-                
-                # Extract special directives and events
+                # Convert to explicit format by extracting @ events and children
+                explicit_props = {}
                 events = {}
-                clean_props = {}
-                children = None
-                conditional = None
-                loop_config = None
+                children_data = None
                 
                 for k, v in props.items():
                     if k.startswith("@"):
-                        # Event handler: @click -> click
-                        event_name = k[1:]
-                        events[event_name] = v
+                        events[k[1:]] = v
                     elif k == "children":
-                        # Recursively expand children
-                        if isinstance(v, list):
-                            children = self._expand_components(v)
-                    elif k == "$if":
-                        # Conditional rendering
-                        conditional = v
-                    elif k == "$for":
-                        # Loop directive
-                        loop_config = v
-                    elif k.startswith("$"):
-                        # Skip other directives (already processed)
-                        continue
+                        children_data = v
                     else:
-                        clean_props[k] = v
+                        explicit_props[k] = v
                 
-                # Build result
-                result = {
+                # Build explicit component and recursively expand
+                explicit_comp = {
                     "type": comp_type,
-                    "props": clean_props
+                    "id": comp_id,
+                    "props": explicit_props
                 }
-                
-                if comp_id:
-                    result["id"] = comp_id
-                
                 if events:
-                    result["on_event"] = events
+                    explicit_comp["on_event"] = events
+                if children_data:
+                    explicit_comp["children"] = children_data
                 
-                if children:
-                    result["children"] = children
-                
-                # Add metadata for conditional/loop (frontend will handle)
-                if conditional:
-                    result["$if"] = conditional
-                
-                if loop_config:
-                    result["$for"] = loop_config
-                
-                return result
+                return self._expand_explicit_component(explicit_comp)
         
         return None
+    
+    def _expand_explicit_component(self, comp: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Expand explicit format component {type, id, props, on_event, children}
+        This format is optimal for streaming as it's easy to parse incrementally
+        """
+        comp_type = comp.get("type", "container")
+        comp_id = comp.get("id")
+        if not comp_id:
+            comp_id = f"{comp_type}-{self._id_counter}"
+            self._id_counter += 1
+        
+        props = comp.get("props", {})
+        events = comp.get("on_event", {})
+        children_data = comp.get("children", [])
+        
+        # Handle layout shortcuts on type
+        if comp_type == "row":
+            comp_type = "container"
+            props["layout"] = props.get("layout", "horizontal")
+        elif comp_type == "col":
+            comp_type = "container"
+            props["layout"] = props.get("layout", "vertical")
+        elif comp_type in ("sidebar", "main", "editor", "header", "footer", "content", "section"):
+            props["role"] = comp_type
+            comp_type = "container"
+            props["layout"] = props.get("layout", "vertical")
+        
+        # Recursively expand children
+        children = None
+        if children_data:
+            children = self._expand_components(children_data)
+        
+        # Build result
+        result = {
+            "type": comp_type,
+            "id": comp_id,
+            "props": props
+        }
+        
+        if events:
+            result["on_event"] = events
+        
+        if children:
+            result["children"] = children
+        
+        return result
 
 
 def parse_blueprint(content: str) -> Dict[str, Any]:
@@ -281,7 +295,7 @@ def parse_blueprint(content: str) -> Dict[str, Any]:
     Convenience function to parse Blueprint content
     
     Args:
-        content: Blueprint YAML string
+        content: Blueprint JSON string
         
     Returns:
         Package dictionary

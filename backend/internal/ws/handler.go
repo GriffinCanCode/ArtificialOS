@@ -2,13 +2,13 @@ package ws
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/GriffinCanCode/AgentOS/backend/internal/app"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/blueprint"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/grpc"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/types"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/utils"
@@ -166,7 +166,7 @@ func (h *Handler) handleGenerateUI(conn *websocket.Conn, msg types.WSMessage, re
 		return
 	}
 
-	var uiSpecJSON string
+	var blueprintJSON string
 	var thoughts []string
 
 	// Collect tokens and forward to client
@@ -174,7 +174,7 @@ func (h *Handler) handleGenerateUI(conn *websocket.Conn, msg types.WSMessage, re
 		switch strings.ToUpper(tokenType) {
 		case "GENERATION_START":
 			// Reset buffer on new generation start (happens when LLM fails and falls back)
-			uiSpecJSON = ""
+			blueprintJSON = ""
 			thoughts = []string{}
 			return h.send(conn, map[string]interface{}{
 				"type":      "generation_start",
@@ -189,7 +189,7 @@ func (h *Handler) handleGenerateUI(conn *websocket.Conn, msg types.WSMessage, re
 				"timestamp": time.Now().Unix(),
 			})
 		case "TOKEN":
-			uiSpecJSON += content
+			blueprintJSON += content
 			return h.send(conn, map[string]interface{}{
 				"type":      "generation_token",
 				"content":   content,
@@ -208,26 +208,49 @@ func (h *Handler) handleGenerateUI(conn *websocket.Conn, msg types.WSMessage, re
 		return
 	}
 
-	// Validate UI spec size and structure
-	if err := utils.ValidateUISpec(uiSpecJSON); err != nil {
-		log.Printf("UI spec validation failed: %v", err)
+	// Validate size
+	if len(blueprintJSON) > 512*1024 {
+		log.Printf("Blueprint too large: %d bytes", len(blueprintJSON))
 		h.sendError(conn, "UI spec validation failed: too large or malformed")
 		return
 	}
 
-	// Parse UI spec
-	var uiSpec map[string]interface{}
-	if err := json.Unmarshal([]byte(uiSpecJSON), &uiSpec); err != nil {
-		h.sendError(conn, "failed to parse UI spec")
+	// Clean up markdown artifacts that might have slipped through
+	// Remove leading "json" or other language markers
+	blueprintJSON = strings.TrimSpace(blueprintJSON)
+	if strings.HasPrefix(blueprintJSON, "json\n") {
+		blueprintJSON = strings.TrimPrefix(blueprintJSON, "json\n")
+	} else if strings.HasPrefix(blueprintJSON, "json ") {
+		blueprintJSON = strings.TrimPrefix(blueprintJSON, "json ")
+	}
+
+	// Remove legacy YAML document separators if at start (for backward compatibility)
+	blueprintJSON = strings.TrimPrefix(blueprintJSON, "---\n")
+	blueprintJSON = strings.TrimSpace(blueprintJSON)
+
+	// Remove trailing markdown code block markers
+	if strings.HasSuffix(blueprintJSON, "```") {
+		blueprintJSON = strings.TrimSuffix(blueprintJSON, "```")
+		blueprintJSON = strings.TrimSpace(blueprintJSON)
+	}
+
+	// Parse Blueprint JSON to get UISpec
+	pkg, err := blueprint.ParseFile([]byte(blueprintJSON))
+	if err != nil {
+		log.Printf("Failed to parse Blueprint: %v", err)
+		log.Printf("Blueprint content (first 200 chars): %s", blueprintJSON[:min(200, len(blueprintJSON))])
+		h.sendError(conn, "UI spec validation failed: too large or malformed")
 		return
 	}
+
+	blueprint := pkg.Blueprint
 
 	// Create fresh context for app spawning (AI context may be near timeout)
 	spawnCtx, spawnCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer spawnCancel()
 
 	// Register app with dedicated spawn context
-	app, err := h.appManager.Spawn(spawnCtx, msg.Message, uiSpec, parentID)
+	app, err := h.appManager.Spawn(spawnCtx, msg.Message, blueprint, parentID)
 	if err != nil {
 		h.sendError(conn, err.Error())
 		return
@@ -237,7 +260,7 @@ func (h *Handler) handleGenerateUI(conn *websocket.Conn, msg types.WSMessage, re
 	h.send(conn, map[string]interface{}{
 		"type":      "ui_generated",
 		"app_id":    app.ID,
-		"ui_spec":   uiSpec,
+		"ui_spec":   blueprint,
 		"timestamp": time.Now().Unix(),
 	})
 

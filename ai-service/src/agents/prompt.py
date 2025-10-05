@@ -8,27 +8,42 @@ System prompts and component documentation for AI-powered UI generation.
 # ============================================================================
 
 BLUEPRINT_DOCUMENTATION = """
-=== BLUEPRINT DSL (.bp) - CONCISE YAML FORMAT ===
+=== BLUEPRINT DSL (.bp) - EXPLICIT JSON FORMAT ===
 
-You are generating Blueprint files - a YAML-based DSL that's 80% more concise than JSON.
-Output ONLY valid YAML in Blueprint format. NO markdown, NO explanations.
+You are generating Blueprint files - a JSON-based DSL for building applications.
+Output ONLY valid JSON in Blueprint format. NO markdown, NO explanations.
 
-=== BASIC SYNTAX ===
+CRITICAL FOR STREAMING: Use explicit format with type/id/props fields!
 
-1. Component with ID: type#id
-   button#save:  → <button id="save">
-   
-2. Events: "@eventName" (must be quoted)
-   "@click": tool.name  → on_event: { click: tool.name }
-   
-3. Layouts: row (horizontal), col (vertical), grid
-   row:  → container with layout: horizontal
-   col:  → container with layout: vertical
-   
-4. Services with Tools:
-   services:
-     - storage: [get, set, list]  → Only these 3 tools
-     - filesystem: *              → All filesystem tools
+=== COMPONENT FORMAT ===
+
+Standard component structure (ALWAYS use this):
+{
+  "type": "button",
+  "id": "save",
+  "props": {"text": "Save", "variant": "primary"},
+  "on_event": {"click": "storage.save"}
+}
+
+Required fields:
+- "type": Component type (button, input, text, container, grid, etc.)
+- "id": Unique identifier
+
+Optional fields:
+- "props": Component properties as object
+- "on_event": Event handlers as object {event: "tool.id"}
+- "children": Array of nested components
+
+Layout shortcuts (use as type):
+- "row" → horizontal container
+- "col" → vertical container  
+- "grid" → grid layout
+
+Services:
+  "services": [
+    {"storage": ["get", "set", "list"]},
+    {"filesystem": "*"}
+  ]
 
 === AVAILABLE COMPONENTS ===
 
@@ -37,23 +52,24 @@ LAYOUT:
 - row: Horizontal container (shortcut)
 - col: Vertical container (shortcut)
 - grid: Grid layout with responsive columns  
+- sidebar, main, editor, header, footer, content, section: Semantic containers (better readability)
 - card: Card container with header/body
 - list: Styled list (default, bordered, striped)
-   - tabs: Tabbed interface
-   - modal: Popup dialog
+- tabs: Tabbed interface
+- modal: Popup dialog
 
 INPUT:
 - button: Clickable button (primary, outline, ghost, danger)
 - input: Text input (text, email, password, number)
-   - textarea: Multi-line text input
-   - select: Dropdown selection
-   - checkbox: Checkbox with label
-   - radio: Radio button
-   - slider: Range slider
+- textarea: Multi-line text input
+- select: Dropdown selection
+- checkbox: Checkbox with label
+- radio: Radio button
+- slider: Range slider
 
 DISPLAY:
 - text: Text/headings (h1, h2, h3, body, caption, label)
-   - image: Display images
+- image: Display images
 - video: Video player
 - audio: Audio player
 - progress: Progress bar
@@ -139,340 +155,231 @@ Note: Most UI interactions use ui.* tools. Backend services (storage, filesystem
 BLUEPRINT_EXAMPLES = """
 === BLUEPRINT EXAMPLES ===
 
-1. TASK MANAGER (Productivity App)
----
-app:
-  id: task-manager
-  name: Task Manager
-  icon: ✅
-  category: productivity
-  tags: [tasks, todo, productivity]
-  permissions: [STANDARD]
+CRITICAL FOR STREAMING: Use explicit format with type/id/props fields:
+✅ GOOD:  {"type": "button", "id": "save", "props": {"text": "Save"}, "on_event": {"click": "storage.save"}}
+❌ BAD:   {"button#save": {"text": "Save", "@click": "storage.save"}}
 
-services:
-  - storage: [get, set, list]
+The explicit format enables real-time component rendering as you generate them!
 
-ui:
-  title: Task Manager
-  layout: vertical
-  
-  lifecycle:
-    on_mount: storage.get
-  
-  components:
-    - text#header:
-        content: "My Tasks"
-        variant: h1
-    
-    - row:
-        gap: 12
-        children:
-          - input#task-input:
-              placeholder: "What needs to be done?"
-              type: text
-              style: { flex: 1 }
-          
-          - button#add-task:
-              text: "Add Task"
-              variant: primary
-              "@click": ui.add_todo
-    
-    - col:
-        gap: 8
-        children:
-          - list#task-list:
-              variant: bordered
----
+1. CALCULATOR (Utility App)
+{
+  "app": {
+    "id": "calculator",
+    "name": "Calculator",
+    "icon": "🧮",
+    "category": "utilities",
+    "tags": ["math", "calculator", "tools"],
+    "permissions": ["STANDARD"]
+  },
+  "services": [],
+  "ui": {
+    "title": "Calculator",
+    "layout": "vertical",
+    "components": [
+      {
+        "type": "input",
+        "id": "display",
+        "props": {"value": "0", "readonly": true, "type": "text", "style": {"fontSize": "32px", "textAlign": "right", "padding": "16px"}}
+      },
+      {
+        "type": "grid",
+        "id": "buttons",
+        "props": {"columns": 4, "gap": 8},
+        "children": [
+          {"type": "button", "id": "7", "props": {"text": "7", "variant": "outline"}, "on_event": {"click": "ui.append"}},
+          {"type": "button", "id": "8", "props": {"text": "8", "variant": "outline"}, "on_event": {"click": "ui.append"}},
+          {"type": "button", "id": "9", "props": {"text": "9", "variant": "outline"}, "on_event": {"click": "ui.append"}},
+          {"type": "button", "id": "div", "props": {"text": "÷", "variant": "secondary"}, "on_event": {"click": "ui.append"}},
+          {"type": "button", "id": "4", "props": {"text": "4", "variant": "outline"}, "on_event": {"click": "ui.append"}},
+          {"type": "button", "id": "5", "props": {"text": "5", "variant": "outline"}, "on_event": {"click": "ui.append"}},
+          {"type": "button", "id": "6", "props": {"text": "6", "variant": "outline"}, "on_event": {"click": "ui.append"}},
+          {"type": "button", "id": "mul", "props": {"text": "×", "variant": "secondary"}, "on_event": {"click": "ui.append"}},
+          {"type": "button", "id": "1", "props": {"text": "1", "variant": "outline"}, "on_event": {"click": "ui.append"}},
+          {"type": "button", "id": "2", "props": {"text": "2", "variant": "outline"}, "on_event": {"click": "ui.append"}},
+          {"type": "button", "id": "3", "props": {"text": "3", "variant": "outline"}, "on_event": {"click": "ui.append"}},
+          {"type": "button", "id": "sub", "props": {"text": "−", "variant": "secondary"}, "on_event": {"click": "ui.append"}},
+          {"type": "button", "id": "0", "props": {"text": "0", "variant": "outline"}, "on_event": {"click": "ui.append"}},
+          {"type": "button", "id": "clear", "props": {"text": "C", "variant": "danger"}, "on_event": {"click": "ui.clear"}},
+          {"type": "button", "id": "equals", "props": {"text": "=", "variant": "primary"}, "on_event": {"click": "ui.compute"}},
+          {"type": "button", "id": "add", "props": {"text": "+", "variant": "secondary"}, "on_event": {"click": "ui.append"}}
+        ]
+      }
+    ]
+  }
+}
 
 2. NOTE EDITOR (Productivity App)
----
-app:
-  id: note-editor  
-  name: Note Editor
-  icon: 📝
-  category: productivity
-  tags: [notes, writing, markdown]
-  permissions: [STANDARD]
+{
+  "app": {
+    "id": "note-editor",
+    "name": "Note Editor",
+    "icon": "📝",
+    "category": "productivity",
+    "tags": ["notes", "writing", "markdown"],
+    "permissions": ["STANDARD"]
+  },
+  "services": [
+    {"storage": ["get", "set", "list"]},
+    {"filesystem": ["read", "write"]}
+  ],
+  "templates": {
+    "toolbar-btn": {
+      "variant": "ghost",
+      "size": "small"
+    }
+  },
+  "ui": {
+    "title": "Note Editor",
+    "layout": "horizontal",
+    "components": [
+      {
+        "sidebar": {
+          "layout": "vertical",
+          "gap": 8,
+          "padding": "medium",
+          "style": {"width": "200px", "borderRight": "1px solid rgba(255,255,255,0.1)"},
+          "children": [
+            {
+              "button#new-note": {
+                "$template": "toolbar-btn",
+                "text": "+ New",
+                "variant": "primary",
+                "fullWidth": true,
+                "@click": "storage.set"
+              }
+            },
+            {
+              "list#notes": {
+                "variant": "default"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "editor": {
+          "layout": "vertical",
+          "gap": 12,
+          "padding": "large",
+          "style": {"flex": 1},
+          "children": [
+            {
+              "input#title": {
+                "placeholder": "Title...",
+                "type": "text",
+                "style": {"fontSize": "24px", "fontWeight": "bold"},
+                "@change": "storage.set"
+              }
+            },
+            {
+              "textarea#content": {
+                "placeholder": "Start typing...",
+                "rows": 20,
+                "resize": "vertical",
+                "@change": "storage.set"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
 
-services:
-  - storage: [get, set, list]
-  - filesystem: [read, write]
-
-templates:
-  toolbar-btn:
-    variant: ghost
-    size: small
-
-ui:
-  title: Note Editor
-  layout: horizontal
-  
-  components:
-    - sidebar:
-        layout: vertical
-        gap: 8
-        padding: medium
-        style: { width: 200px, borderRight: 1px solid rgba(255,255,255,0.1) }
-        children:
-          - button#new-note:
-              $template: toolbar-btn
-              text: "+ New"
-              variant: primary
-              fullWidth: true
-              "@click": storage.set
-          
-          - list#notes:
-              variant: default
-    
-    - editor:
-        layout: vertical
-        gap: 12
-        padding: large
-        style: { flex: 1 }
-        children:
-          - input#title:
-              placeholder: "Title..."
-              type: text
-              style: { fontSize: 24px, fontWeight: bold }
-              "@change": storage.set
-          
-          - textarea#content:
-              placeholder: "Start typing..."
-              rows: 20
-              resize: vertical
-              "@change": storage.set
----
-
-3. DATA DASHBOARD (Business App)
----
-app:
-  id: analytics-dashboard
-  name: Analytics Dashboard
-  icon: 📊
-  category: business
-  tags: [analytics, metrics, data]
-  permissions: [STANDARD]
-
-services:
-  - storage: [get, list]
-  - system: [time, log]
-
-ui:
-  title: Analytics Dashboard
-  layout: vertical
-  
-  lifecycle:
-    on_mount:
-      - storage.get
-      - system.time
-  
-  components:
-    - text#header:
-        content: "Analytics Dashboard"
-        variant: h1
-    
-    - grid:
-        columns: 3
-        gap: 16
-        responsive: true
-        children:
-          - card#users:
-              title: "Active Users"
-              children:
-                - text: { content: "10,234", variant: h2, color: primary }
-                - text: { content: "+12% this month", variant: caption, color: success }
-          
-          - card#revenue:
-              title: "Revenue"
-              children:
-                - text: { content: "$45,231", variant: h2, color: primary }
-                - text: { content: "+8% this month", variant: caption, color: success }
-          
-          - card#orders:
-              title: "Orders"
-              children:
-                - text: { content: "1,284", variant: h2, color: primary }
-                - text: { content: "-3% this month", variant: caption, color: error }
-    
-    - card#activity:
-        title: "Recent Activity"
-        children:
-          - list#activity-log:
-              variant: striped
----
-
-4. PROJECT TRACKER (Productivity App)
----
-app:
-  id: project-tracker
-  name: Project Tracker
-  icon: 🎯
-  category: productivity
-  tags: [projects, planning, tracking]
-  permissions: [STANDARD]
-
-services:
-  - storage: *
-
-ui:
-  title: Project Tracker
-  layout: vertical
-  
-  components:
-    - row:
-        gap: 16
-        align: center
-        padding: medium
-        style: { borderBottom: 2px solid rgba(255,255,255,0.1) }
-        children:
-          - text#title: { content: "Projects", variant: h1, style: { flex: 1 } }
-          - button#new-project: { text: "+ New Project", variant: primary, "@click": ui.set }
-    
-    - tabs#project-tabs:
-        variant: default
-        defaultTab: active
-        children:
-          - col#active:
-              label: "Active"
-              gap: 12
-              padding: large
-              children:
-                - grid: { columns: 2, gap: 16 }
-          
-          - col#completed:
-              label: "Completed"
-              gap: 12
-              padding: large
-              children:
-                - list: { variant: default }
----
-
-5. CALCULATOR (Utility App)
----
-app:
-  id: calculator
-  name: Calculator
-  icon: 🧮
-  category: utilities
-  tags: [math, calculator, tools]
-  permissions: [STANDARD]
-
-ui:
-  title: Calculator
-  layout: vertical
-  
-  components:
-    - input#display:
-        value: "0"
-        readonly: true
-        type: text
-        style: { fontSize: 32px, textAlign: right, padding: 16px }
-    
-    - grid:
-        columns: 4
-        gap: 8
-        children:
-          - button#7: { text: "7", variant: outline, "@click": ui.append }
-          - button#8: { text: "8", variant: outline, "@click": ui.append }
-          - button#9: { text: "9", variant: outline, "@click": ui.append }
-          - button#div: { text: "÷", variant: secondary, "@click": ui.append }
-          - button#4: { text: "4", variant: outline, "@click": ui.append }
-          - button#5: { text: "5", variant: outline, "@click": ui.append }
-          - button#6: { text: "6", variant: outline, "@click": ui.append }
-          - button#mul: { text: "×", variant: secondary, "@click": ui.append }
-          - button#1: { text: "1", variant: outline, "@click": ui.append }
-          - button#2: { text: "2", variant: outline, "@click": ui.append }
-          - button#3: { text: "3", variant: outline, "@click": ui.append }
-          - button#sub: { text: "−", variant: secondary, "@click": ui.append }
-          - button#0: { text: "0", variant: outline, "@click": ui.append }
-          - button#clear: { text: "C", variant: danger, "@click": ui.clear }
-          - button#equals: { text: "=", variant: primary, "@click": ui.compute }
-          - button#add: { text: "+", variant: secondary, "@click": ui.append }
----
-
-6. WEB BROWSER (Utility App)
----
-app:
-  id: web-browser
-  name: Web Browser
-  icon: 🌐
-  category: utilities
-  tags: [browser, web, internet]
-  permissions: [STANDARD]
-
-services:
-  - storage: [get, set]  # For bookmarks/history
-
-ui:
-  title: Web Browser
-  layout: vertical
-  
-  components:
-    - row:
-        gap: 8
-        padding: small
-        children:
-          - button#back: { text: "←", variant: ghost, "@click": ui.set }
-          - button#forward: { text: "→", variant: ghost, "@click": ui.set }
-          - button#refresh: { text: "⟳", variant: ghost, "@click": ui.set }
-          - input#url:
-              placeholder: "Enter URL..."
-              value: "https://google.com"
-              type: text
-              style: { flex: 1 }
-          - button#go: { text: "Go", variant: primary, "@click": ui.set }
-          - button#bookmark: { text: "⭐", variant: ghost, "@click": storage.set }
-    
-    - iframe#webpage:
-        src: "https://google.com"
-        width: 100%
-        height: 600
-        sandbox: "allow-scripts allow-same-origin"
----
+3. TASK MANAGER (Productivity App)
+{
+  "app": {
+    "id": "task-manager",
+    "name": "Task Manager",
+    "icon": "✅",
+    "category": "productivity",
+    "tags": ["tasks", "todo", "productivity"],
+    "permissions": ["STANDARD"]
+  },
+  "services": [
+    {"storage": ["get", "set", "list"]}
+  ],
+  "ui": {
+    "title": "Task Manager",
+    "layout": "vertical",
+    "lifecycle": {
+      "on_mount": "storage.get"
+    },
+    "components": [
+      {
+        "text#header": {
+          "content": "My Tasks",
+          "variant": "h1"
+        }
+      },
+      {
+        "row": {
+          "gap": 12,
+          "children": [
+            {
+              "input#task-input": {
+                "placeholder": "What needs to be done?",
+                "type": "text",
+                "style": {"flex": 1}
+              }
+            },
+            {
+              "button#add-task": {
+                "text": "Add Task",
+                "variant": "primary",
+                "@click": "ui.add_todo"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "col": {
+          "gap": 8,
+          "children": [
+            {
+              "list#task-list": {
+                "variant": "bordered"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
 
 === PATTERNS TO FOLLOW ===
 
 1. **Productivity Apps** (Task Manager, Notes, Calendar):
-   - Services: storage: [get, set, list]
-   - Layout: Sidebar + main content (horizontal)
+   - Services: {"storage": ["get", "set", "list"]}
+   - Layout: Use "sidebar" + "main" for better readability (horizontal parent)
    - Tools: ui.set for interactions, storage.* for persistence
    - Pattern: List views with add/edit/delete actions
 
 2. **Data/Analytics Apps** (Dashboard, Reports):
-   - Services: storage: [get, list], system: [time, log]
+   - Services: {"storage": ["get", "list"]}, {"system": ["time", "log"]}
    - Layout: Grid for cards/metrics
    - Tools: system.time for timestamps, storage.get for data
    - Pattern: Cards with metrics, visual hierarchy
 
 3. **Utility Apps** (Calculator, Timer, Converter):
-   - Services: None (or storage: [get, set] for preferences)
+   - Services: [] (or {"storage": ["get", "set"]} for preferences)
    - Layout: Compact, focused interface
    - Tools: ui.append, ui.compute, ui.clear
    - Pattern: Input display + action buttons
 
 4. **File Management Apps** (File Explorer, Text Editor):
-   - Services: filesystem: [list, read, write, create, delete], storage: [get, set]
-   - Layout: Sidebar + main panel
+   - Services: {"filesystem": ["list", "read", "write", "create", "delete"]}, {"storage": ["get", "set"]}
+   - Layout: Use "sidebar" + "main" or "editor" for semantic meaning
    - Tools: filesystem.* for file ops, ui.set for navigation
    - Pattern: Tree/list views, breadcrumbs, CRUD operations
 
 5. **Form-Heavy Apps** (Settings, Registration, Surveys):
-   - Services: storage: [set, get], auth: [register, login]
+   - Services: {"storage": ["set", "get"]}, {"auth": ["register", "login"]}
    - Layout: Vertical with sections
    - Tools: ui.set for validation, storage.set to save, auth.* for accounts
    - Pattern: Input fields + validation + submit button
-
-6. **Web/HTTP Apps** (API Client, Web Browser, RSS Reader):
-   - Services: storage: [get, set] for history/bookmarks
-   - Layout: Toolbar + content area
-   - Tools: ui.set for URL input, iframe component for display
-   - Pattern: URL bar + navigation + content iframe
-
-7. **Media Apps** (Music Player, Video Player, Gallery):
-   - Services: filesystem: [list, read], storage: [get, set]
-   - Layout: Controls + display area
-   - Tools: player.* for playback, filesystem.list for library
-   - Pattern: Media controls + playlist/library + display
 
 IMPORTANT SERVICE USAGE:
 - storage.get/set/list: For app data (tasks, notes, settings)
@@ -498,16 +405,27 @@ def get_ui_generation_prompt(tools_description: str, context: str = "") -> str:
     Returns:
         Complete system prompt for Blueprint generation
     """
-    return f"""You are an expert AI that generates Blueprint (.bp) files - a concise YAML-based DSL for building applications.
+    return f"""You are an expert AI that generates Blueprint (.bp) files - a JSON-based DSL for building applications.
 
-CRITICAL RULES:
-1. Output ONLY valid YAML in Blueprint format
-2. NO markdown code blocks, NO explanations, NO extra text
-3. Start with ---
-4. Use "@eventName" (quoted) for event handlers
-5. Specify exact service tools: storage: [get, set] not storage: *
-6. Use row/col shortcuts for layouts
-7. Every component needs an ID: button#save
+CRITICAL RULES FOR VALID JSON OUTPUT:
+1. Output ONLY raw JSON - start with {{ and end with }}
+2. NO markdown blocks (no ```json), NO explanations before/after
+3. NO trailing commas in objects or arrays
+4. All strings must use double quotes (not single quotes)
+5. All keys must be quoted strings
+6. Booleans: true/false (lowercase, not quoted)
+
+BLUEPRINT DSL SYNTAX (EXPLICIT FORMAT FOR STREAMING):
+1. Components: {{"type": "button", "id": "save", "props": {{"text": "Save"}}, "on_event": {{"click": "storage.save"}}}}
+2. Event handlers: "on_event": {{"click": "ui.append", "hover": "ui.highlight"}}
+3. Layout shortcuts: type="row" (horizontal), type="col" (vertical), type="grid"
+4. Services: {{"storage": ["get", "set"]}} - specify exact tools needed
+
+WHY EXPLICIT FORMAT:
+- Each component renders as soon as it's complete (real-time streaming!)
+- Clear boundaries between components
+- Easy to parse incrementally
+- No special key syntax to decode
 
 {BLUEPRINT_DOCUMENTATION}
 
@@ -522,40 +440,50 @@ Available Backend Services and Tools:
 
 Generate a complete Blueprint (.bp) file for the user's request.
 
-Think about:
-1. What TYPE of app? (productivity, utility, business, creative)
-2. What SERVICES needed? (storage for data, filesystem for files, system for logging)
-3. What LAYOUT works best? (row/col for simple, grid for dashboards, tabs for complex)
-4. What TOOLS to wire up? (ui.* for generic, specific services for backend)
+Design considerations:
+1. App type? (productivity, utility, business, creative, system)
+2. Services needed? (storage for persistence, filesystem for files)
+3. Layout? (vertical stack, horizontal split, grid, tabs)
+4. Tools? (ui.* for state, service.tool for backend)
 
-Output format:
----
-app:
-  id: app-name
-  name: App Name
-  icon: 🎯
-  category: productivity
-  tags: [tag1, tag2]
-  permissions: [STANDARD]
+OUTPUT FORMAT - EXPLICIT COMPONENTS (valid JSON only, no markdown):
+{{
+  "app": {{
+    "id": "app-id",
+    "name": "App Name",
+    "icon": "🎯",
+    "category": "utilities",
+    "tags": ["tag1", "tag2"],
+    "permissions": ["STANDARD"]
+  }},
+  "services": [],
+  "ui": {{
+    "title": "App Title",
+    "layout": "vertical",
+    "components": [
+      {{
+        "type": "input",
+        "id": "display",
+        "props": {{"value": "0", "readonly": true}}
+      }},
+      {{
+        "type": "grid",
+        "id": "buttons",
+        "props": {{"columns": 4, "gap": 8}},
+        "children": [
+          {{"type": "button", "id": "1", "props": {{"text": "1"}}, "on_event": {{"click": "ui.append"}}}}
+        ]
+      }}
+    ]
+  }}
+}}
 
-services:
-  - service: [tool1, tool2]
-
-ui:
-  title: App Name
-  layout: vertical
-  components:
-    - component#id:
-        prop: value
-        "@event": tool.name
----
-
-NOW GENERATE THE BLUEPRINT:"""
+Remember: Output ONLY the JSON object. Start immediately with {{ character."""
 
 
 def get_simple_system_prompt() -> str:
     """Get a simpler system prompt for rule-based generation fallback."""
-    return """You are a Blueprint generator. Output valid YAML Blueprint files only."""
+    return """You are a Blueprint generator. Output valid JSON Blueprint files only."""
 
 
 # Backwards compatibility - export old constant names

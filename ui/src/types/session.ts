@@ -23,7 +23,7 @@ export interface Workspace {
 export interface AppSnapshot {
   id: string;
   title: string;
-  ui_spec: Record<string, any>;
+  blueprint: Record<string, any>;
   state: string;
   parent_id?: string;
   created_at: string;

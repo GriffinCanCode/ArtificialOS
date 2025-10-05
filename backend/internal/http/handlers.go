@@ -111,6 +111,35 @@ func (h *Handlers) CloseApp(c *gin.Context) {
 	})
 }
 
+// UpdateWindowState updates window state for an app
+func (h *Handlers) UpdateWindowState(c *gin.Context) {
+	appID := c.Param("id")
+
+	// Validate app ID
+	if err := utils.ValidateID(appID, "app_id", true); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var req struct {
+		WindowID string                `json:"window_id" binding:"required"`
+		Position *types.WindowPosition `json:"position"`
+		Size     *types.WindowSize     `json:"size"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if !h.appManager.UpdateWindow(appID, req.WindowID, req.Position, req.Size) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "app not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
 // ListServices lists all available services
 func (h *Handlers) ListServices(c *gin.Context) {
 	categoryStr := c.Query("category")
@@ -241,9 +270,9 @@ func (h *Handlers) GenerateUI(c *gin.Context) {
 	resp, err := h.aiClient.GenerateUI(c.Request.Context(), req.Message, contextMap, req.ParentID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   err.Error(),
-			"app_id":  nil,
-			"ui_spec": nil,
+			"error":     err.Error(),
+			"app_id":    nil,
+			"blueprint": nil,
 		})
 		return
 	}
@@ -254,9 +283,9 @@ func (h *Handlers) GenerateUI(c *gin.Context) {
 			errorStr = *resp.Error
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   errorStr,
-			"app_id":  nil,
-			"ui_spec": nil,
+			"error":     errorStr,
+			"app_id":    nil,
+			"blueprint": nil,
 		})
 		return
 	}
@@ -280,9 +309,9 @@ func (h *Handlers) GenerateUI(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"app_id":   app.ID,
-		"ui_spec":  uiSpec,
-		"thoughts": resp.Thoughts,
+		"app_id":    app.ID,
+		"blueprint": uiSpec,
+		"thoughts":  resp.Thoughts,
 	})
 }
 
@@ -349,7 +378,7 @@ func (h *Handlers) SaveAppToRegistry(c *gin.Context) {
 		Author:      "user",
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
-		UISpec:      app.UISpec,
+		Blueprint:   app.Blueprint,
 		Services:    app.Services,
 		Permissions: []string{"STANDARD"},
 		Tags:        req.Tags,
@@ -427,7 +456,7 @@ func (h *Handlers) LaunchRegistryApp(c *gin.Context) {
 	app, err := h.appManager.Spawn(
 		c.Request.Context(),
 		"Launch "+pkg.Name,
-		pkg.UISpec,
+		pkg.Blueprint,
 		nil,
 	)
 	if err != nil {
@@ -440,9 +469,9 @@ func (h *Handlers) LaunchRegistryApp(c *gin.Context) {
 	app.Metadata["package_id"] = pkg.ID
 
 	c.JSON(http.StatusOK, gin.H{
-		"app_id":  app.ID,
-		"ui_spec": app.UISpec,
-		"title":   app.Title,
+		"app_id":    app.ID,
+		"blueprint": app.Blueprint,
+		"title":     app.Title,
 	})
 }
 

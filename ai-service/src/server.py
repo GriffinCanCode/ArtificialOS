@@ -15,6 +15,7 @@ import ai_pb2_grpc
 from core import configure_logging, get_logger, get_settings, create_container
 from handlers import UIHandler, ChatHandler
 from models.loader import ModelLoader
+from agents.ui_generator import UIGenerator
 
 
 logger = get_logger(__name__)
@@ -73,15 +74,27 @@ async def serve_async():
     
     # Resolve dependencies
     container = create_container(settings.backend_url)
-    ui_generator = container.get('UIGeneratorAgent')
+    ui_generator = container.get(UIGenerator)
     
     # Create handlers
     ui_handler = UIHandler(ui_generator)
     chat_handler = ChatHandler(ModelLoader)
     service = AsyncAIService(ui_handler, chat_handler)
     
-    # Create async server
-    server = grpc.aio.server()
+    # Create async server with keepalive options
+    server = grpc.aio.server(
+        options=[
+            # Keepalive settings to match client expectations
+            ('grpc.keepalive_time_ms', 10000),  # 10 seconds
+            ('grpc.keepalive_timeout_ms', 3000),  # 3 seconds
+            ('grpc.keepalive_permit_without_calls', 1),  # Allow pings without active RPCs
+            ('grpc.http2.min_time_between_pings_ms', 10000),  # Minimum 10s between pings
+            ('grpc.http2.max_pings_without_data', 0),  # Allow unlimited pings without data
+            # Message size limits
+            ('grpc.max_send_message_length', 50 * 1024 * 1024),  # 50MB
+            ('grpc.max_receive_message_length', 10 * 1024 * 1024),  # 10MB
+        ]
+    )
     ai_pb2_grpc.add_AIServiceServicer_to_server(service, server)
     
     # Listen

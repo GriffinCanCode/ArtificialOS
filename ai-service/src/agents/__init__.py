@@ -1,7 +1,7 @@
 """Agent orchestration and management."""
 
 from .chat import ChatAgent, ChatHistory, ChatMessage
-from .ui_generator import UIGeneratorAgent, UISpec
+from .ui_generator import UIGeneratorAgent, Blueprint
 from .tools import ToolRegistry, ToolDefinition
 
 __all__ = [
@@ -9,7 +9,7 @@ __all__ = [
     "ChatHistory",
     "ChatMessage",
     "UIGeneratorAgent",
-    "UISpec",
+    "Blueprint",
     "ToolRegistry",
     "ToolDefinition",
 ]

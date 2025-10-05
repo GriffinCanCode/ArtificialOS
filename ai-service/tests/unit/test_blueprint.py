@@ -54,18 +54,24 @@ def test_blueprint_parser_ui_components(sample_blueprint):
 @pytest.mark.unit
 def test_blueprint_parser_type_id_syntax():
     """Test type#id syntax parsing."""
-    blueprint = """---
-app:
-  id: test
-  name: Test
-
-ui:
-  title: Test
-  components:
-    - button#save:
-        text: "Save"
-        "@click": ui.save
-"""
+    blueprint = """{
+  "app": {
+    "id": "test",
+    "name": "Test"
+  },
+  "services": [],
+  "ui": {
+    "title": "Test",
+    "components": [
+      {
+        "button#save": {
+          "text": "Save",
+          "@click": "ui.save"
+        }
+      }
+    ]
+  }
+}"""
     parser = BlueprintParser()
     result = parser.parse(blueprint)
     
@@ -78,19 +84,25 @@ ui:
 @pytest.mark.unit
 def test_blueprint_parser_event_handlers():
     """Test event handler parsing."""
-    blueprint = """---
-app:
-  id: test
-  name: Test
-
-ui:
-  title: Test
-  components:
-    - button#submit:
-        text: "Submit"
-        "@click": ui.submit
-        "@hover": ui.highlight
-"""
+    blueprint = """{
+  "app": {
+    "id": "test",
+    "name": "Test"
+  },
+  "services": [],
+  "ui": {
+    "title": "Test",
+    "components": [
+      {
+        "button#submit": {
+          "text": "Submit",
+          "@click": "ui.submit",
+          "@hover": "ui.highlight"
+        }
+      }
+    ]
+  }
+}"""
     parser = BlueprintParser()
     result = parser.parse(blueprint)
     
@@ -103,23 +115,34 @@ ui:
 @pytest.mark.unit
 def test_blueprint_parser_layout_shortcuts():
     """Test row/col layout shortcuts."""
-    blueprint = """---
-app:
-  id: test
-  name: Test
-
-ui:
-  title: Test
-  components:
-    - row:
-        gap: 12
-        children:
-          - button#btn1: {text: "Button 1"}
-    - col:
-        gap: 8
-        children:
-          - text: "Text"
-"""
+    blueprint = """{
+  "app": {
+    "id": "test",
+    "name": "Test"
+  },
+  "services": [],
+  "ui": {
+    "title": "Test",
+    "components": [
+      {
+        "row": {
+          "gap": 12,
+          "children": [
+            {"button#btn1": {"text": "Button 1"}}
+          ]
+        }
+      },
+      {
+        "col": {
+          "gap": 8,
+          "children": [
+            {"text": "Text"}
+          ]
+        }
+      }
+    ]
+  }
+}"""
     parser = BlueprintParser()
     result = parser.parse(blueprint)
     
@@ -137,23 +160,30 @@ ui:
 @pytest.mark.unit
 def test_blueprint_parser_templates():
     """Test template expansion."""
-    blueprint = """---
-app:
-  id: test
-  name: Test
-
-templates:
-  primary-btn:
-    variant: primary
-    size: large
-
-ui:
-  title: Test
-  components:
-    - button#save:
-        $template: primary-btn
-        text: "Save"
-"""
+    blueprint = """{
+  "app": {
+    "id": "test",
+    "name": "Test"
+  },
+  "services": [],
+  "templates": {
+    "primary-btn": {
+      "variant": "primary",
+      "size": "large"
+    }
+  },
+  "ui": {
+    "title": "Test",
+    "components": [
+      {
+        "button#save": {
+          "$template": "primary-btn",
+          "text": "Save"
+        }
+      }
+    ]
+  }
+}"""
     parser = BlueprintParser()
     result = parser.parse(blueprint)
     
@@ -166,20 +196,21 @@ ui:
 @pytest.mark.unit
 def test_blueprint_parser_lifecycle_hooks():
     """Test lifecycle hook parsing."""
-    blueprint = """---
-app:
-  id: test
-  name: Test
-
-ui:
-  title: Test
-  lifecycle:
-    on_mount: storage.get
-    on_unmount:
-      - storage.save
-      - ui.cleanup
-  components: []
-"""
+    blueprint = """{
+  "app": {
+    "id": "test",
+    "name": "Test"
+  },
+  "services": [],
+  "ui": {
+    "title": "Test",
+    "lifecycle": {
+      "on_mount": "storage.get",
+      "on_unmount": ["storage.save", "ui.cleanup"]
+    },
+    "components": []
+  }
+}"""
     parser = BlueprintParser()
     result = parser.parse(blueprint)
     
@@ -192,24 +223,35 @@ ui:
 @pytest.mark.unit
 def test_blueprint_parser_nested_children():
     """Test nested component parsing."""
-    blueprint = """---
-app:
-  id: test
-  name: Test
-
-ui:
-  title: Test
-  components:
-    - container#main:
-        layout: vertical
-        children:
-          - text#header: {content: "Header"}
-          - container#nested:
-              layout: horizontal
-              children:
-                - button#btn1: {text: "Button 1"}
-                - button#btn2: {text: "Button 2"}
-"""
+    blueprint = """{
+  "app": {
+    "id": "test",
+    "name": "Test"
+  },
+  "services": [],
+  "ui": {
+    "title": "Test",
+    "components": [
+      {
+        "container#main": {
+          "layout": "vertical",
+          "children": [
+            {"text#header": {"content": "Header"}},
+            {
+              "container#nested": {
+                "layout": "horizontal",
+                "children": [
+                  {"button#btn1": {"text": "Button 1"}},
+                  {"button#btn2": {"text": "Button 2"}}
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}"""
     parser = BlueprintParser()
     result = parser.parse(blueprint)
     
@@ -224,10 +266,11 @@ ui:
 @pytest.mark.unit
 def test_blueprint_parser_missing_app_section():
     """Test error on missing app section."""
-    blueprint = """---
-ui:
-  title: Test
-"""
+    blueprint = """{
+  "ui": {
+    "title": "Test"
+  }
+}"""
     parser = BlueprintParser()
     
     with pytest.raises(ValidationError, match="missing 'app' section"):
@@ -237,10 +280,11 @@ ui:
 @pytest.mark.unit
 def test_blueprint_parser_missing_required_fields():
     """Test error on missing required fields."""
-    blueprint = """---
-app:
-  name: Test
-"""
+    blueprint = """{
+  "app": {
+    "name": "Test"
+  }
+}"""
     parser = BlueprintParser()
     
     with pytest.raises(ValidationError, match="app.id is required"):
@@ -248,12 +292,12 @@ app:
 
 
 @pytest.mark.unit
-def test_blueprint_parser_invalid_yaml():
-    """Test error on invalid YAML."""
-    blueprint = "not: valid: yaml: ["
+def test_blueprint_parser_invalid_json():
+    """Test error on invalid JSON."""
+    blueprint = "{not: valid json: ["
     parser = BlueprintParser()
     
-    with pytest.raises(ValidationError, match="Invalid YAML"):
+    with pytest.raises(ValidationError, match="Invalid JSON"):
         parser.parse(blueprint)
 
 
@@ -269,19 +313,20 @@ def test_parse_blueprint_convenience_function(sample_blueprint):
 @pytest.mark.unit
 def test_blueprint_service_wildcard():
     """Test service wildcard expansion."""
-    blueprint = """---
-app:
-  id: test
-  name: Test
-
-services:
-  - storage: "*"
-  - filesystem
-
-ui:
-  title: Test
-  components: []
-"""
+    blueprint = """{
+  "app": {
+    "id": "test",
+    "name": "Test"
+  },
+  "services": [
+    {"storage": "*"},
+    "filesystem"
+  ],
+  "ui": {
+    "title": "Test",
+    "components": []
+  }
+}"""
     parser = BlueprintParser()
     result = parser.parse(blueprint)
     
@@ -294,18 +339,19 @@ ui:
 @pytest.mark.unit
 def test_blueprint_service_explicit_tools():
     """Test explicit tool list."""
-    blueprint = """---
-app:
-  id: test
-  name: Test
-
-services:
-  - storage: [get, set, list]
-
-ui:
-  title: Test
-  components: []
-"""
+    blueprint = """{
+  "app": {
+    "id": "test",
+    "name": "Test"
+  },
+  "services": [
+    {"storage": ["get", "set", "list"]}
+  ],
+  "ui": {
+    "title": "Test",
+    "components": []
+  }
+}"""
     parser = BlueprintParser()
     result = parser.parse(blueprint)
     
@@ -316,4 +362,3 @@ ui:
     assert "tools" in storage_service
     assert "get" in storage_service["tools"]
     assert "set" in storage_service["tools"]
-

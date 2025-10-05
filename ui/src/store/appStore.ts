@@ -23,19 +23,19 @@ export interface ThoughtStep {
   timestamp: number;
 }
 
-export interface UIComponent {
+export interface BlueprintComponent {
   type: string;
   id: string;
   props: Record<string, any>;
-  children?: UIComponent[];
+  children?: BlueprintComponent[];
   on_event?: Record<string, string>;
 }
 
-export interface UISpec {
+export interface Blueprint {
   type: string;
   title: string;
   layout: string;
-  components: UIComponent[];
+  components: BlueprintComponent[];
   style?: Record<string, any>;
   services?: string[];
   service_bindings?: Record<string, string>;
@@ -54,8 +54,8 @@ interface AppState {
   thoughts: ThoughtStep[];
 
   // Dynamic renderer state
-  uiSpec: UISpec | null;
-  partialUISpec: Partial<UISpec> | null; // Accumulates during streaming
+  blueprint: Blueprint | null;
+  partialBlueprint: Partial<Blueprint> | null; // Accumulates during streaming
   isLoading: boolean;
   isStreaming: boolean; // True when actively building UI
   error: string | null;
@@ -68,9 +68,9 @@ interface AppState {
   addMessage: (message: Message) => void;
   appendToLastMessage: (content: string) => void;
   addThought: (thought: ThoughtStep) => void;
-  setUISpec: (uiSpec: UISpec, appId: string) => void;
-  setPartialUISpec: (partial: Partial<UISpec>) => void;
-  addComponentToPartial: (component: UIComponent) => void;
+  setBlueprint: (blueprint: Blueprint, appId: string) => void;
+  setPartialBlueprint: (partial: Partial<Blueprint>) => void;
+  addComponentToPartial: (component: BlueprintComponent) => void;
   setLoading: (loading: boolean) => void;
   setStreaming: (streaming: boolean) => void;
   setBuildProgress: (progress: number) => void;
@@ -79,7 +79,7 @@ interface AppState {
   appendGenerationPreview: (content: string) => void;
   clearGenerationPreview: () => void;
   clearGenerationThoughts: () => void;
-  clearUISpec: () => void;
+  clearBlueprint: () => void;
   resetState: () => void;
 }
 
@@ -90,8 +90,8 @@ interface AppState {
 const initialState = {
   messages: [],
   thoughts: [],
-  uiSpec: null,
-  partialUISpec: null,
+  blueprint: null,
+  partialBlueprint: null,
   isLoading: false,
   isStreaming: false,
   error: null,
@@ -175,22 +175,22 @@ export const useAppStore = create<AppState>()(
       },
 
       // Dynamic renderer actions
-      setUISpec: (uiSpec, appId) => {
+      setBlueprint: (blueprint, appId) => {
         logger.info("Setting UI spec", {
           component: "AppStore",
           appId,
-          uiType: uiSpec.type,
-          componentCount: uiSpec.components.length,
+          uiType: blueprint.type,
+          componentCount: blueprint.components.length,
         });
         return set(
           {
-            uiSpec,
+            blueprint,
             appId,
             isLoading: false,
             error: null,
           },
           false,
-          "setUISpec"
+          "setBlueprint"
         );
       },
 
@@ -278,12 +278,12 @@ export const useAppStore = create<AppState>()(
         );
       },
 
-      clearUISpec: () => {
+      clearBlueprint: () => {
         logger.info("Clearing UI spec", { component: "AppStore" });
         return set(
           {
-            uiSpec: null,
-            partialUISpec: null,
+            blueprint: null,
+            partialBlueprint: null,
             appId: null,
             error: null,
             generationThoughts: [],
@@ -292,18 +292,18 @@ export const useAppStore = create<AppState>()(
             isStreaming: false,
           },
           false,
-          "clearUISpec"
+          "clearBlueprint"
         );
       },
 
       // Partial UI spec actions for streaming
-      setPartialUISpec: (partial) => {
+      setPartialBlueprint: (partial) => {
         logger.debug("Setting partial UI spec", {
           component: "AppStore",
           hasTitle: !!partial.title,
           componentCount: partial.components?.length || 0,
         });
-        return set({ partialUISpec: partial }, false, "setPartialUISpec");
+        return set({ partialBlueprint: partial }, false, "setPartialBlueprint");
       },
 
       addComponentToPartial: (component) => {
@@ -314,10 +314,10 @@ export const useAppStore = create<AppState>()(
         });
         return set(
           (state) => {
-            const current = state.partialUISpec || { components: [] };
+            const current = state.partialBlueprint || { components: [] };
             const components = [...(current.components || []), component];
             return {
-              partialUISpec: {
+              partialBlueprint: {
                 ...current,
                 components,
               },
@@ -361,8 +361,8 @@ export const useMessages = () => useAppStore((state) => state.messages);
 export const useThoughts = () => useAppStore((state) => state.thoughts);
 
 // Only re-render when UI spec changes
-export const useUISpec = () => useAppStore((state) => state.uiSpec);
-export const usePartialUISpec = () => useAppStore((state) => state.partialUISpec);
+export const useBlueprint = () => useAppStore((state) => state.blueprint);
+export const usePartialBlueprint = () => useAppStore((state) => state.partialBlueprint);
 
 // Individual loading state selectors to prevent unnecessary re-renders
 export const useIsLoading = () => useAppStore((state) => state.isLoading);
@@ -377,8 +377,8 @@ export const useAppActions = () => {
   const addMessage = useAppStore((state) => state.addMessage);
   const appendToLastMessage = useAppStore((state) => state.appendToLastMessage);
   const addThought = useAppStore((state) => state.addThought);
-  const setUISpec = useAppStore((state) => state.setUISpec);
-  const setPartialUISpec = useAppStore((state) => state.setPartialUISpec);
+  const setBlueprint = useAppStore((state) => state.setBlueprint);
+  const setPartialBlueprint = useAppStore((state) => state.setPartialBlueprint);
   const addComponentToPartial = useAppStore((state) => state.addComponentToPartial);
   const setLoading = useAppStore((state) => state.setLoading);
   const setStreaming = useAppStore((state) => state.setStreaming);
@@ -388,7 +388,7 @@ export const useAppActions = () => {
   const appendGenerationPreview = useAppStore((state) => state.appendGenerationPreview);
   const clearGenerationPreview = useAppStore((state) => state.clearGenerationPreview);
   const clearGenerationThoughts = useAppStore((state) => state.clearGenerationThoughts);
-  const clearUISpec = useAppStore((state) => state.clearUISpec);
+  const clearBlueprint = useAppStore((state) => state.clearBlueprint);
   const resetState = useAppStore((state) => state.resetState);
 
   return useMemo(
@@ -396,8 +396,8 @@ export const useAppActions = () => {
       addMessage,
       appendToLastMessage,
       addThought,
-      setUISpec,
-      setPartialUISpec,
+      setBlueprint,
+      setPartialBlueprint,
       addComponentToPartial,
       setLoading,
       setStreaming,
@@ -407,15 +407,15 @@ export const useAppActions = () => {
       appendGenerationPreview,
       clearGenerationPreview,
       clearGenerationThoughts,
-      clearUISpec,
+      clearBlueprint,
       resetState,
     }),
     [
       addMessage,
       appendToLastMessage,
       addThought,
-      setUISpec,
-      setPartialUISpec,
+      setBlueprint,
+      setPartialBlueprint,
       addComponentToPartial,
       setLoading,
       setStreaming,
@@ -425,7 +425,7 @@ export const useAppActions = () => {
       appendGenerationPreview,
       clearGenerationPreview,
       clearGenerationThoughts,
-      clearUISpec,
+      clearBlueprint,
       resetState,
     ]
   );

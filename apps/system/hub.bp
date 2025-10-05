@@ -1,103 +1,151 @@
----
-# Hub - Browse and launch installed applications
-app:
-  id: hub
-  name: Hub
-  description: Browse and launch installed applications
-  icon: 🚀
-  category: system
-  version: 1.0.0
-  author: system
-  tags: [launcher, hub, apps, store]
-  permissions: [STANDARD]
-
-services: []
-
-ui:
-  title: Hub
-  layout: vertical
-  
-  lifecycle:
-    on_mount: hub.load_apps
-  
-  components:
-    # Header with search
-    - row:
-        gap: 16
-        padding: large
-        align: center
-        style: { borderBottom: 2px solid rgba(255,255,255,0.1) }
-        children:
-          - text#title:
-              content: "🚀 Hub"
-              variant: h1
-              style: { flex: 1 }
-          
-          - input#search:
-              placeholder: "Search apps..."
-              type: text
-              style: { width: 300px }
-              "@change": ui.set
-          
-          - button#refresh:
-              text: "⟳"
-              variant: ghost
-              "@click": hub.load_apps
-    
-    # Tabbed app categories
-    - tabs#tabs:
-        variant: default
-        defaultTab: all
-        children:
-          - col#all:
-              label: "All Apps"
-              gap: 16
-              padding: large
-              children:
-                - text#all-count:
-                    content: "Loading..."
-                    variant: caption
-                    color: secondary
-                
-                - grid#all-apps-grid:
-                    columns: 4
-                    gap: 20
-                    responsive: true
-          
-          - col#system:
-              label: "System"
-              gap: 16
-              padding: large
-              children:
-                - text#system-count:
-                    content: "Loading..."
-                    variant: caption
-                    color: secondary
-                
-                - grid#system-apps-grid:
-                    columns: 4
-                    gap: 20
-          
-          - col#productivity:
-              label: "Productivity"
-              gap: 16
-              padding: large
-              children:
-                - text#productivity-count:
-                    content: "Loading..."
-                    variant: caption
-                    color: secondary
-                
-                - grid#productivity-apps-grid:
-                    columns: 4
-                    gap: 20
-          
-          - col#utilities:
-              label: "Utilities"
-              gap: 16
-              padding: large
-              children:
-                - grid#utilities-apps-grid:
-                    columns: 4
-                    gap: 20
-
+{
+  "app": {
+    "id": "hub",
+    "name": "Hub",
+    "description": "Browse and launch installed applications",
+    "icon": "🚀",
+    "category": "system",
+    "version": "1.0.0",
+    "author": "system",
+    "tags": ["launcher", "hub", "apps", "store"],
+    "permissions": ["STANDARD"]
+  },
+  "services": [],
+  "ui": {
+    "title": "Hub",
+    "layout": "vertical",
+    "lifecycle": {
+      "on_mount": "hub.load_apps"
+    },
+    "components": [
+      {
+        "row": {
+          "gap": 16,
+          "padding": "large",
+          "align": "center",
+          "style": {
+            "borderBottom": "2px solid rgba(255,255,255,0.1)"
+          },
+          "children": [
+            {
+              "text#title": {
+                "content": "🚀 Hub",
+                "variant": "h1",
+                "style": {
+                  "flex": 1
+                }
+              }
+            },
+            {
+              "input#search": {
+                "placeholder": "Search apps...",
+                "type": "text",
+                "style": {
+                  "width": "300px"
+                },
+                "@change": "ui.set"
+              }
+            },
+            {
+              "button#refresh": {
+                "text": "⟳",
+                "variant": "ghost",
+                "@click": "hub.load_apps"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "tabs#tabs": {
+          "variant": "default",
+          "defaultTab": "all",
+          "children": [
+            {
+              "col#all": {
+                "label": "All Apps",
+                "gap": 16,
+                "padding": "large",
+                "children": [
+                  {
+                    "text#all-count": {
+                      "content": "Loading...",
+                      "variant": "caption",
+                      "color": "secondary"
+                    }
+                  },
+                  {
+                    "grid#all-apps-grid": {
+                      "columns": 4,
+                      "gap": 20,
+                      "responsive": true
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "col#system": {
+                "label": "System",
+                "gap": 16,
+                "padding": "large",
+                "children": [
+                  {
+                    "text#system-count": {
+                      "content": "Loading...",
+                      "variant": "caption",
+                      "color": "secondary"
+                    }
+                  },
+                  {
+                    "grid#system-apps-grid": {
+                      "columns": 4,
+                      "gap": 20
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "col#productivity": {
+                "label": "Productivity",
+                "gap": 16,
+                "padding": "large",
+                "children": [
+                  {
+                    "text#productivity-count": {
+                      "content": "Loading...",
+                      "variant": "caption",
+                      "color": "secondary"
+                    }
+                  },
+                  {
+                    "grid#productivity-apps-grid": {
+                      "columns": 4,
+                      "gap": 20
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "col#utilities": {
+                "label": "Utilities",
+                "gap": 16,
+                "padding": "large",
+                "children": [
+                  {
+                    "grid#utilities-apps-grid": {
+                      "columns": 4,
+                      "gap": 20
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

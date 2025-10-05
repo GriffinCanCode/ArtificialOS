@@ -19,7 +19,7 @@ AI_PORT_PID=$(lsof -ti :50052 2>/dev/null)
 if [ ! -z "$AI_PORT_PID" ]; then
     kill -9 $AI_PORT_PID 2>/dev/null && echo "   ✅ AI Service stopped (PID: $AI_PORT_PID)"
 else
-    pkill -f "grpc_server" 2>/dev/null && echo "   ✅ AI Service stopped" || echo "   ℹ️  AI Service not running"
+    pkill -f "ai-service.*server" 2>/dev/null && echo "   ✅ AI Service stopped" || echo "   ℹ️  AI Service not running"
 fi
 
 # Kill process on port 8000 (Backend)

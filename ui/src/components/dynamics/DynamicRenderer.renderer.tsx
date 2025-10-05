@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useCallback } from "react";
-import { UIComponent } from "../../store/appStore";
+import { BlueprintComponent } from "../../store/appStore";
 import { ComponentState, SubscriptionOptions } from "./DynamicRenderer.state";
 import { ToolExecutor } from "./DynamicRenderer.executor";
 import { VIRTUAL_SCROLL_THRESHOLD, DEFAULT_ITEM_HEIGHT } from "./DynamicRenderer.constants";
@@ -38,7 +38,7 @@ import {
 // ============================================================================
 
 interface RendererProps {
-  component: UIComponent;
+  component: BlueprintComponent;
   state: ComponentState;
   executor: ToolExecutor;
 }
@@ -219,7 +219,9 @@ export const ComponentRenderer: React.FC<RendererProps> = React.memo(
             padding: component.props?.padding as any,
             align: component.props?.align as any,
             justify: component.props?.justify as any,
-          })
+          }),
+          // Add semantic role class if present (sidebar, main, editor, etc.)
+          component.props?.role ? `semantic-${component.props.role}` : null
         );
 
         const containerStyle = {
@@ -251,8 +253,12 @@ export const ComponentRenderer: React.FC<RendererProps> = React.memo(
 
         // Normal rendering for small lists
         return (
-          <div className={containerClassName} style={containerStyle}>
-            {component.children?.map((child: UIComponent) => (
+          <div 
+            className={containerClassName} 
+            style={containerStyle}
+            data-role={component.props?.role || undefined}
+          >
+            {component.children?.map((child: BlueprintComponent) => (
               <ComponentRenderer
                 key={child.id}
                 component={child}
@@ -304,7 +310,7 @@ export const ComponentRenderer: React.FC<RendererProps> = React.memo(
         // Normal rendering for small grids
         return (
           <div className={gridClassName} style={gridStyle}>
-            {component.children?.map((child: UIComponent) => (
+            {component.children?.map((child: BlueprintComponent) => (
               <ComponentRenderer
                 key={child.id}
                 component={child}

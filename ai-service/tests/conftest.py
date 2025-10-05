@@ -207,33 +207,41 @@ def sample_ui_spec():
 
 @pytest.fixture
 def sample_blueprint():
-    """Sample Blueprint YAML."""
-    return """---
-app:
-  id: test-app
-  name: Test App
-  icon: 🧪
-  category: utilities
-  tags: [test]
-  permissions: [STANDARD]
-
-services:
-  - storage: [get, set]
-
-ui:
-  title: Test App
-  layout: vertical
-  
-  components:
-    - text#header:
-        content: "Test Header"
-        variant: h1
-    
-    - button#submit:
-        text: "Submit"
-        variant: primary
-        "@click": ui.submit
-"""
+    """Sample Blueprint JSON."""
+    return """{
+  "app": {
+    "id": "test-app",
+    "name": "Test App",
+    "icon": "🧪",
+    "category": "utilities",
+    "tags": ["test"],
+    "permissions": ["STANDARD"]
+  },
+  "services": [
+    {
+      "storage": ["get", "set"]
+    }
+  ],
+  "ui": {
+    "title": "Test App",
+    "layout": "vertical",
+    "components": [
+      {
+        "text#header": {
+          "content": "Test Header",
+          "variant": "h1"
+        }
+      },
+      {
+        "button#submit": {
+          "text": "Submit",
+          "variant": "primary",
+          "@click": "ui.submit"
+        }
+      }
+    ]
+  }
+}"""
 
 
 # ============================================================================

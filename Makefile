@@ -145,7 +145,7 @@ run-backend-dev: ## Run backend in development mode
 
 run-ai: ## Run AI gRPC service directly
 	@echo "$(YELLOW)🚀 Starting AI service...$(NC)"
-	@cd ai-service && . venv/bin/activate && PYTHONPATH=src python3 -m grpc_server
+	@cd ai-service && . venv/bin/activate && PYTHONPATH=src python3 -m server
 
 ##@ Stop & Clean
 

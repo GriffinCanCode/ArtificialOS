@@ -13,7 +13,7 @@ type Package struct {
 	Author      string                 `json:"author"`
 	CreatedAt   time.Time              `json:"created_at"`
 	UpdatedAt   time.Time              `json:"updated_at"`
-	UISpec      map[string]interface{} `json:"ui_spec"`
+	Blueprint   map[string]interface{} `json:"blueprint"`
 	Services    []string               `json:"services"`
 	Permissions []string               `json:"permissions"`
 	Tags        []string               `json:"tags"`

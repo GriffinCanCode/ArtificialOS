@@ -41,7 +41,7 @@ fi
 # Also try pattern matching as backup
 pkill -f "ai_os_kernel" 2>/dev/null || true
 pkill -f "backend/bin/server" 2>/dev/null || true
-pkill -f "grpc_server" 2>/dev/null || true
+pkill -f "server" 2>/dev/null || true
 
 sleep 2
 
@@ -79,7 +79,7 @@ else
 fi
 
 source venv/bin/activate
-PYTHONPATH=src python3 -m grpc_server > ../logs/ai-grpc.log 2>&1 &
+PYTHONPATH=src python3 -m server > ../logs/ai-grpc.log 2>&1 &
 AI_PID=$!
 echo "   ✅ AI gRPC Service started (PID: $AI_PID)"
 cd ..

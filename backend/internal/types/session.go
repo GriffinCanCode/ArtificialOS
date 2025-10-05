@@ -27,7 +27,7 @@ type AppSnapshot struct {
 	ID             string                 `json:"id"`
 	Hash           string                 `json:"hash"` // Deterministic hash for matching
 	Title          string                 `json:"title"`
-	UISpec         map[string]interface{} `json:"ui_spec"`
+	Blueprint      map[string]interface{} `json:"ui_spec"`
 	State          State                  `json:"state"`
 	ParentID       *string                `json:"parent_id,omitempty"`
 	CreatedAt      time.Time              `json:"created_at"`

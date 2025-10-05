@@ -83,21 +83,21 @@ export const GenerationStartMessageSchema = z.object({
   timestamp: z.number(),
 });
 
-export const UIComponentSchema: z.ZodType<any> = z.lazy(() =>
+export const BlueprintComponentSchema: z.ZodType<any> = z.lazy(() =>
   z.object({
     type: z.string(),
     id: z.string(),
     props: z.record(z.string(), z.unknown()),
-    children: z.array(UIComponentSchema).optional(),
+    children: z.array(BlueprintComponentSchema).optional(),
     on_event: z.record(z.string(), z.string()).nullish(),
   })
 );
 
-export const UISpecSchema = z.object({
+export const BlueprintSchema = z.object({
   type: z.string(),
   title: z.string(),
   layout: z.string(),
-  components: z.array(UIComponentSchema),
+  components: z.array(BlueprintComponentSchema),
   style: z.record(z.string(), z.unknown()).optional(),
   services: z.array(z.string()).optional(),
   service_bindings: z.record(z.string(), z.string()).optional(),
@@ -112,7 +112,7 @@ export const UISpecSchema = z.object({
 export const UIGeneratedMessageSchema = z.object({
   type: z.literal("ui_generated"),
   app_id: z.string(),
-  ui_spec: UISpecSchema,
+  ui_spec: BlueprintSchema,
   timestamp: z.number(),
 });
 
@@ -187,7 +187,7 @@ export const ChatResponseSchema = z.object({
 // Generate UI Response
 export const GenerateUIResponseSchema = z.object({
   app_id: z.string().nullable(),
-  ui_spec: UISpecSchema.nullable(),
+  ui_spec: BlueprintSchema.nullable(),
   thoughts: z.array(z.string()).optional(),
   error: z.string().optional(),
 });
@@ -270,8 +270,8 @@ export type TokenMessage = z.infer<typeof TokenMessageSchema>;
 export type ThoughtMessage = z.infer<typeof ThoughtMessageSchema>;
 export type CompleteMessage = z.infer<typeof CompleteMessageSchema>;
 export type GenerationStartMessage = z.infer<typeof GenerationStartMessageSchema>;
-export type UIComponent = z.infer<typeof UIComponentSchema>;
-export type UISpec = z.infer<typeof UISpecSchema>;
+export type BlueprintComponent = z.infer<typeof BlueprintComponentSchema>;
+export type Blueprint = z.infer<typeof BlueprintSchema>;
 export type UIGeneratedMessage = z.infer<typeof UIGeneratedMessageSchema>;
 export type ErrorMessage = z.infer<typeof ErrorMessageSchema>;
 export type ChatMessageItem = z.infer<typeof ChatMessageItemSchema>;
@@ -308,6 +308,7 @@ export function parseServerMessage(data: unknown): ServerMessage | null {
   } catch (error) {
     // Note: logger is not imported here to avoid circular dependencies
     // Validation errors are logged by the WebSocket client
+    console.error("Server message validation failed:", error, "Data:", data);
     return null;
   }
 }

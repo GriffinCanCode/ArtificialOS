@@ -2,16 +2,30 @@
 
 ## Overview
 
-Blueprint is a concise, YAML-based DSL for describing full-stack applications in the AI OS ecosystem. It combines UI/UX specifications with backend service integration in a format that's easy for both humans and AI to read and write.
+Blueprint is a JSON-based DSL for describing full-stack applications in the AI OS ecosystem. It combines UI/UX specifications with backend service integration in a format optimized for real-time streaming and incremental rendering.
 
-## Why YAML?
+## Design Principles
 
-- **80% less verbose** than JSON
-- No excessive brackets, braces, or quotes
-- Supports comments
-- Widely understood by AI models
-- Excellent Python/Go parsing support
-- Human-readable indentation-based structure
+- **Streaming-first** - Components render as they're generated, not at the end
+- **Explicit structure** - All fields are clear key-value pairs (no special syntax in keys)
+- **AI-friendly** - Clear, unambiguous structure for language models
+- **Human-readable** - Easy to read, write, and understand
+- **Type-safe** - Strong validation at runtime
+- **Incrementally parsable** - Can extract complete components from partial JSON
+
+## Why Explicit Format?
+
+**Explicit format:**
+```json
+{"type": "button", "id": "save", "props": {"text": "Save"}}
+```
+
+**Why this works for streaming:**
+- ✅ Type and ID are VALUES (easy to extract with regex during streaming)
+- ✅ Complete objects render immediately as they finish
+- ✅ No special parsing logic for key syntax
+- ✅ Simpler parsers across all languages
+- ✅ Clear component boundaries for incremental rendering
 
 ## File Format
 
@@ -19,83 +33,86 @@ Blueprint files use the `.bp` extension and are interpreted at runtime (no compi
 
 ## Basic Structure
 
-```yaml
----
-# Metadata
-app:
-  id: notes
-  name: Notes
-  icon: 📝
-  category: productivity
-  version: 1.0.0
-  author: system
-  tags: [notes, markdown, productivity]
-  permissions: [STANDARD]
-
-# Backend Services
-services:
-  - storage
-  - filesystem
-
-# UI Specification
-ui:
-  title: Notes
-  layout: horizontal
-  
-  lifecycle:
-    on_mount: storage.get
-  
-  components:
-    - sidebar:
-        layout: vertical
-        gap: 8
-        padding: medium
-        style:
-          width: 200px
-          borderRight: 1px solid rgba(255,255,255,0.1)
-        
-        children:
-          - button#new-note:
-              text: "+ New Note"
-              variant: primary
-              fullWidth: true
-              @click: ui.set
-          
-          - list#notes-list:
-              variant: default
-    
-    - editor:
-        layout: vertical
-        gap: 12
-        padding: large
-        style: { flex: 1 }
-        
-        children:
-          - input#note-title:
-              placeholder: "Note title..."
-              type: text
-              style: { fontSize: 24px, fontWeight: bold }
-              @change: storage.set
-          
-          - textarea#note-content:
-              placeholder: "Start typing..."
-              rows: 20
-              resize: vertical
-              @change: storage.set
+```json
+{
+  "app": {
+    "id": "notes",
+    "name": "Notes",
+    "icon": "📝",
+    "category": "productivity",
+    "version": "1.0.0",
+    "author": "system",
+    "tags": ["notes", "markdown", "productivity"],
+    "permissions": ["STANDARD"]
+  },
+  "services": [{"storage": ["get", "set", "list"]}],
+  "ui": {
+    "title": "Notes",
+    "layout": "horizontal",
+    "lifecycle": {"on_mount": "storage.get"},
+    "components": [
+      {
+        "type": "container",
+        "id": "sidebar",
+        "props": {
+          "layout": "vertical",
+          "gap": 8,
+          "padding": "medium",
+          "style": {"width": "200px", "borderRight": "1px solid rgba(255,255,255,0.1)"}
+        },
+        "children": [
+          {
+            "type": "button",
+            "id": "new-note",
+            "props": {"text": "+ New Note", "variant": "primary", "fullWidth": true},
+            "on_event": {"click": "ui.set"}
+          },
+          {
+            "type": "list",
+            "id": "notes-list",
+            "props": {"variant": "default"}
+          }
+        ]
+      },
+      {
+        "type": "container",
+        "id": "editor",
+        "props": {
+          "layout": "vertical",
+          "gap": 12,
+          "padding": "large",
+          "style": {"flex": 1}
+        },
+        "children": [
+          {
+            "type": "input",
+            "id": "note-title",
+            "props": {
+              "placeholder": "Note title...",
+              "type": "text",
+              "style": {"fontSize": "24px", "fontWeight": "bold"}
+            },
+            "on_event": {"change": "storage.set"}
+          },
+          {
+            "type": "textarea",
+            "id": "note-content",
+            "props": {"placeholder": "Start typing...", "rows": 20, "resize": "vertical"},
+            "on_event": {"change": "storage.set"}
+          }
+        ]
+      }
+    ]
+  }
+}
 ```
 
-## Syntax Features
+## Component Format
 
-### 1. Component Declaration
+### Standard Component Structure
 
-**Concise syntax with inline ID:**
-```yaml
-button#my-button:
-  text: Click me
-  variant: primary
-```
+All components use explicit format:
 
-**Equivalent to JSON:**
 ```json
 {
   "type": "button",
@@ -107,245 +124,420 @@ button#my-button:
 }
 ```
 
-### 2. Event Handlers
+**Required fields:**
+- `type` - Component type (button, input, text, container, grid, etc.)
+- `id` - Unique identifier within the app
 
-Use `"@"` prefix for events (must be quoted in YAML):
-```yaml
-button#submit:
-  text: Submit
-  "@click": form.submit
-  "@hover": ui.highlight
+**Optional fields:**
+- `props` - Component properties (text, value, style, etc.)
+- `on_event` - Event handlers (click, change, etc.)
+- `children` - Nested components (for containers)
+
+### Event Handlers
+
+Use the `on_event` object:
+```json
+{
+  "type": "button",
+  "id": "submit",
+  "props": {"text": "Submit"},
+  "on_event": {
+    "click": "form.submit",
+    "hover": "ui.highlight"
+  }
+}
 ```
 
-### 3. Service Integration
+### Service Integration
 
 **Simple import (all tools):**
-```yaml
-services:
-  - storage              # All tools: set, get, remove, list, clear
-  - filesystem           # All tools: list, stat, read, write, create, mkdir, delete, move, copy, exists
+```json
+{
+  "services": ["storage", "filesystem"]
+}
 ```
 
 **Explicit tool selection:**
-```yaml
-services:
-  - storage: [get, set]              # Only specific tools
-  - filesystem: [list, read, mkdir]  # Limited filesystem access
-  - system: [info, time]             # Read-only system info
-```
-
-**Explicit all tools:**
-```yaml
-services:
-  - storage: *           # Same as simple import, but explicit
-  - filesystem: *
+```json
+{
+  "services": [
+    {
+      "storage": ["get", "set"]
+    },
+    {
+      "filesystem": ["list", "read", "mkdir"]
+    },
+    {
+      "system": ["info", "time"]
+    }
+  ]
+}
 ```
 
 **With configuration (future):**
-```yaml
-services:
-  - storage:
-      tools: [get, set, remove]
-      scope: app
-      persist: true
-  - filesystem:
-      tools: *
-      root: /tmp/ai-os-storage
-      readonly: false
+```json
+{
+  "services": [
+    {
+      "storage": {
+        "tools": ["get", "set", "remove"],
+        "scope": "app",
+        "persist": true
+      }
+    },
+    {
+      "filesystem": {
+        "tools": "*",
+        "root": "/tmp/ai-os-storage",
+        "readonly": false
+      }
+    }
+  ]
+}
 ```
 
-### 4. Lifecycle Hooks
+### Lifecycle Hooks
 
-```yaml
-lifecycle:
-  on_mount: storage.get
-  on_unmount: storage.save
-  on_focus: ui.refresh
+```json
+{
+  "lifecycle": {
+    "on_mount": "storage.get",
+    "on_unmount": "storage.save",
+    "on_focus": "ui.refresh"
+  }
+}
 ```
 
 Multiple actions:
-```yaml
-lifecycle:
-  on_mount:
-    - storage.get
-    - system.log
-    - ui.init
+```json
+{
+  "lifecycle": {
+    "on_mount": [
+      "storage.get",
+      "system.log",
+      "ui.init"
+    ]
+  }
+}
 ```
 
-### 5. Layout Shortcuts
+### Layout Shortcuts
 
-**Shorthand for common patterns:**
-```yaml
-# Instead of verbose container definitions
-row:          # horizontal container
-  gap: 16
-  children:
-    - text: Hello
-    - text: World
+Use `type: "row"` or `type: "col"` for horizontal/vertical containers:
 
-col:          # vertical container
-  gap: 8
-  children:
-    - button: Top
-    - button: Bottom
-
-grid:
-  columns: 3
-  gap: 20
-  children:
-    - card: Item 1
-    - card: Item 2
-    - card: Item 3
+**Horizontal row:**
+```json
+{
+  "type": "row",
+  "id": "controls",
+  "props": {"gap": 16},
+  "children": [
+    {"type": "text", "id": "label1", "props": {"content": "Hello"}},
+    {"type": "text", "id": "label2", "props": {"content": "World"}}
+  ]
+}
 ```
+
+**Vertical column:**
+```json
+{
+  "type": "col",
+  "id": "sidebar",
+  "props": {"gap": 8},
+  "children": [
+    {"type": "button", "id": "top", "props": {"text": "Top"}},
+    {"type": "button", "id": "bottom", "props": {"text": "Bottom"}}
+  ]
+}
+```
+
+```json
+{
+  "grid": {
+    "columns": 3,
+    "gap": 20,
+    "children": [
+      {
+        "card": "Item 1"
+      },
+      {
+        "card": "Item 2"
+      },
+      {
+        "card": "Item 3"
+      }
+    ]
+  }
+}
+```
+
+**Semantic containers** (for better readability and styling):
+```json
+{
+  "sidebar": {
+    "gap": 8,
+    "padding": "medium",
+    "style": {
+      "width": "240px"
+    },
+    "children": []
+  }
+}
+```
+
+Available semantic types: `sidebar`, `main`, `editor`, `header`, `footer`, `content`, `section`
+
+These expand to `container` with a `role` property for semantic meaning:
+- Adds `semantic-{role}` CSS class
+- Adds `data-role="{role}"` attribute
+- Defaults to `vertical` layout unless specified
 
 ### 6. Component Shortcuts
 
 For simple components:
-```yaml
-# Short form
-text: "Hello World"
+```json
+// Short form
+"text": "Hello World"
 
-# Expands to
-text#auto-id:
-  content: "Hello World"
-  variant: body
+// Expands to
+{
+  "text#auto-id": {
+    "content": "Hello World",
+    "variant": "body"
+  }
+}
 ```
 
 ### 7. Inline Styles
 
-YAML's flow style for compact CSS:
-```yaml
-style: { width: 300px, height: 200px, backgroundColor: #1a1a1a }
-
-# Or multiline
-style:
-  width: 300px
-  height: 200px
-  backgroundColor: "#1a1a1a"
+JSON objects for CSS properties:
+```json
+{
+  "style": {
+    "width": "300px",
+    "height": "200px",
+    "backgroundColor": "#1a1a1a"
+  }
+}
 ```
 
 ### 8. Templates & Reuse
 
-```yaml
-templates:
-  action-button:
-    type: button
-    variant: primary
-    size: medium
-  
-  card-style:
-    padding: large
-    borderRadius: 8px
-    backgroundColor: rgba(0,0,0,0.2)
-
-components:
-  - button#save:
-      $template: action-button
-      text: Save
-  
-  - container#card:
-      $template: card-style
-      children:
-        - text: Content
+```json
+{
+  "templates": {
+    "action-button": {
+      "type": "button",
+      "variant": "primary",
+      "size": "medium"
+    },
+    "card-style": {
+      "padding": "large",
+      "borderRadius": "8px",
+      "backgroundColor": "rgba(0,0,0,0.2)"
+    }
+  },
+  "components": [
+    {
+      "button#save": {
+        "$template": "action-button",
+        "text": "Save"
+      }
+    },
+    {
+      "container#card": {
+        "$template": "card-style",
+        "children": [
+          {
+            "text": "Content"
+          }
+        ]
+      }
+    }
+  ]
+}
 ```
 
 ## Complete Example: File Explorer
 
-```yaml
----
-app:
-  id: file-explorer
-  name: File Explorer
-  icon: 📁
-  category: system
-  version: 1.0.0
-  permissions: [READ_FILE, WRITE_FILE, CREATE_FILE, DELETE_FILE, LIST_DIRECTORY]
-  tags: [files, explorer, system]
-
-services:
-  - filesystem:
-      root: /tmp/ai-os-storage
-  - storage:
-      scope: app
-
-ui:
-  title: File Explorer
-  layout: horizontal
-  
-  lifecycle:
-    on_mount: filesystem.list
-  
-  components:
-    # Sidebar
-    - sidebar:
-        layout: vertical
-        gap: 8
-        padding: medium
-        style: { width: 240px, borderRight: 1px solid rgba(255,255,255,0.1) }
-        
-        children:
-          - text#sidebar-title:
-              content: Locations
-              variant: h3
-              weight: bold
-          
-          - list#locations:
-              variant: default
-              spacing: small
-              children:
-                - button#home-btn:
-                    text: 🏠 Home
-                    variant: ghost
-                    fullWidth: true
-                    @click: filesystem.list
-                
-                - button#documents-btn:
-                    text: 📄 Documents
-                    variant: ghost
-                    fullWidth: true
-                    @click: filesystem.list
-    
-    # Main panel
-    - main:
-        layout: vertical
-        gap: 12
-        padding: large
-        style: { flex: 1 }
-        
-        children:
-          # Toolbar
-          - row:
-              gap: 8
-              align: center
-              children:
-                - button#back: { text: "←", variant: outline, size: small, @click: ui.set }
-                - button#forward: { text: "→", variant: outline, size: small, @click: ui.set }
-                - button#up: { text: "↑", variant: outline, size: small, @click: ui.set }
-                - input#path-input:
-                    placeholder: /Users/...
-                    value: /tmp/ai-os-storage
-                    type: text
-                    style: { flex: 1 }
-                    @change: filesystem.list
-                - button#refresh: { text: "⟳", variant: outline, size: small, @click: filesystem.list }
-                - button#new-folder: { text: "+ Folder", variant: primary, size: small, @click: filesystem.mkdir }
-          
-          # Breadcrumbs
-          - text#current-path:
-              content: /tmp/ai-os-storage
-              variant: caption
-          
-          - divider:
-              orientation: horizontal
-          
-          # File list
-          - col:
-              gap: 0
-              style: { flex: 1, overflowY: auto, backgroundColor: rgba(0,0,0,0.1), borderRadius: 8px }
-              children:
-                - list#file-list:
-                    variant: default
-                    spacing: small
+```json
+{
+  "app": {
+    "id": "file-explorer",
+    "name": "File Explorer",
+    "icon": "📁",
+    "category": "system",
+    "version": "1.0.0",
+    "permissions": ["READ_FILE", "WRITE_FILE", "CREATE_FILE", "DELETE_FILE", "LIST_DIRECTORY"],
+    "tags": ["files", "explorer", "system"]
+  },
+  "services": [
+    {
+      "filesystem": {
+        "root": "/tmp/ai-os-storage"
+      }
+    },
+    {
+      "storage": {
+        "scope": "app"
+      }
+    }
+  ],
+  "ui": {
+    "title": "File Explorer",
+    "layout": "horizontal",
+    "lifecycle": {
+      "on_mount": "filesystem.list"
+    },
+    "components": [
+      {
+        "sidebar": {
+          "layout": "vertical",
+          "gap": 8,
+          "padding": "medium",
+          "style": {
+            "width": "240px",
+            "borderRight": "1px solid rgba(255,255,255,0.1)"
+          },
+          "children": [
+            {
+              "text#sidebar-title": {
+                "content": "Locations",
+                "variant": "h3",
+                "weight": "bold"
+              }
+            },
+            {
+              "list#locations": {
+                "variant": "default",
+                "spacing": "small",
+                "children": [
+                  {
+                    "button#home-btn": {
+                      "text": "🏠 Home",
+                      "variant": "ghost",
+                      "fullWidth": true,
+                      "@click": "filesystem.list"
+                    }
+                  },
+                  {
+                    "button#documents-btn": {
+                      "text": "📄 Documents",
+                      "variant": "ghost",
+                      "fullWidth": true,
+                      "@click": "filesystem.list"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "main": {
+          "layout": "vertical",
+          "gap": 12,
+          "padding": "large",
+          "style": {
+            "flex": 1
+          },
+          "children": [
+            {
+              "row": {
+                "gap": 8,
+                "align": "center",
+                "children": [
+                  {
+                    "button#back": {
+                      "text": "←",
+                      "variant": "outline",
+                      "size": "small",
+                      "@click": "ui.set"
+                    }
+                  },
+                  {
+                    "button#forward": {
+                      "text": "→",
+                      "variant": "outline",
+                      "size": "small",
+                      "@click": "ui.set"
+                    }
+                  },
+                  {
+                    "button#up": {
+                      "text": "↑",
+                      "variant": "outline",
+                      "size": "small",
+                      "@click": "ui.set"
+                    }
+                  },
+                  {
+                    "input#path-input": {
+                      "placeholder": "/Users/...",
+                      "value": "/tmp/ai-os-storage",
+                      "type": "text",
+                      "style": {
+                        "flex": 1
+                      },
+                      "@change": "filesystem.list"
+                    }
+                  },
+                  {
+                    "button#refresh": {
+                      "text": "⟳",
+                      "variant": "outline",
+                      "size": "small",
+                      "@click": "filesystem.list"
+                    }
+                  },
+                  {
+                    "button#new-folder": {
+                      "text": "+ Folder",
+                      "variant": "primary",
+                      "size": "small",
+                      "@click": "filesystem.mkdir"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "text#current-path": {
+                "content": "/tmp/ai-os-storage",
+                "variant": "caption"
+              }
+            },
+            {
+              "divider": {
+                "orientation": "horizontal"
+              }
+            },
+            {
+              "col": {
+                "gap": 0,
+                "style": {
+                  "flex": 1,
+                  "overflowY": "auto",
+                  "backgroundColor": "rgba(0,0,0,0.1)",
+                  "borderRadius": "8px"
+                },
+                "children": [
+                  {
+                    "list#file-list": {
+                      "variant": "default",
+                      "spacing": "small"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
 ```
 
 ## Available Services Reference
@@ -355,10 +547,14 @@ ui:
 **Tools**: `set`, `get`, `remove`, `list`, `clear`  
 **Use for**: Persistent key-value data, app settings, user preferences
 
-```yaml
-services:
-  - storage: [get, set]  # Most common for simple apps
-  - storage: *           # All tools for advanced storage needs
+```json
+{
+  "services": [
+    {
+      "storage": ["get", "set"]
+    }
+  ]
+}
 ```
 
 ### Filesystem Service
@@ -366,11 +562,14 @@ services:
 **Tools**: `list`, `stat`, `read`, `write`, `create`, `mkdir`, `delete`, `move`, `copy`, `exists`  
 **Use for**: File management, directory browsing, file I/O
 
-```yaml
-services:
-  - filesystem: [list, read]           # Read-only file browser
-  - filesystem: [list, read, write]    # File editor
-  - filesystem: *                      # Full file manager
+```json
+{
+  "services": [
+    {
+      "filesystem": ["list", "read"]
+    }
+  ]
+}
 ```
 
 ### System Service
@@ -378,11 +577,14 @@ services:
 **Tools**: `info`, `time`, `log`, `getLogs`, `ping`  
 **Use for**: System monitoring, logging, diagnostics
 
-```yaml
-services:
-  - system: [info, time]  # System info display
-  - system: [log]         # Logging only
-  - system: *             # Full system access
+```json
+{
+  "services": [
+    {
+      "system": ["info", "time"]
+    }
+  ]
+}
 ```
 
 ### Auth Service
@@ -390,17 +592,21 @@ services:
 **Tools**: `register`, `login`, `logout`, `verify`, `getUser`  
 **Use for**: User authentication, session management
 
-```yaml
-services:
-  - auth: [login, logout, verify]  # Basic auth
-  - auth: *                        # Full auth including registration
+```json
+{
+  "services": [
+    {
+      "auth": ["login", "logout", "verify"]
+    }
+  ]
+}
 ```
 
 ## Parser Implementation
 
 The Blueprint parser will:
 
-1. **Parse YAML** → Internal representation
+1. **Parse JSON** → Internal representation
 2. **Expand shortcuts** → Full component tree
 3. **Validate services** → Check against registry
 4. **Resolve templates** → Apply reusable patterns
@@ -410,13 +616,13 @@ The Blueprint parser will:
 
 ```python
 # ai-service/src/blueprint/parser.py
-import yaml
+import json
 from typing import Dict, Any
 
 class BlueprintParser:
     def parse(self, bp_content: str) -> Dict[str, Any]:
-        """Parse Blueprint YAML to UISpec JSON"""
-        bp = yaml.safe_load(bp_content)
+        """Parse Blueprint JSON to UISpec"""
+        bp = json.loads(bp_content)
         
         return {
             "id": bp["app"]["id"],
@@ -501,18 +707,18 @@ class BlueprintParser:
 package blueprint
 
 import (
-    "gopkg.in/yaml.v3"
+    "encoding/json"
 )
 
 type Blueprint struct {
-    App      App                    `yaml:"app"`
-    Services []interface{}          `yaml:"services"`
-    UI       UI                     `yaml:"ui"`
+    App      App                    `json:"app"`
+    Services []interface{}          `json:"services"`
+    UI       UI                     `json:"ui"`
 }
 
 func Parse(content []byte) (*types.Package, error) {
     var bp Blueprint
-    if err := yaml.Unmarshal(content, &bp); err != nil {
+    if err := json.Unmarshal(content, &bp); err != nil {
         return nil, err
     }
     
@@ -535,15 +741,15 @@ func Parse(content []byte) (*types.Package, error) {
 
 ## Benefits
 
-| Feature | JSON | Blueprint (YAML) |
-|---------|------|------------------|
-| File size | 4.2 KB | **0.9 KB** (78% smaller) |
-| Lines | 97 | **32** (67% fewer) |
+| Feature | Legacy .aiapp | Blueprint (.bp) |
+|---------|---------------|-----------------|
+| Format | Raw JSON | Structured JSON with shortcuts |
 | Readability | Medium | **High** |
-| Comments | No | **Yes** |
+| IDE Support | Good | **Excellent** |
 | AI generation | Good | **Excellent** |
 | Type safety | Runtime | Runtime |
 | Parsing speed | Fast | Fast |
+| Shortcuts | No | **Yes** (row/col, @events, #id) |
 
 ## AI System Prompt
 
@@ -552,41 +758,49 @@ To teach AI models the Blueprint DSL:
 ```
 You are generating Blueprint (.bp) files for the AI OS platform.
 
-Blueprint is a YAML-based DSL with these conventions:
-1. Components use type#id syntax: `button#save:`
-2. Events use @ prefix: `@click: tool.name`
-3. Layouts use shortcuts: `row`, `col`, `grid`
-4. Services are simple imports: `services: [storage, filesystem]`
-5. Keep it concise - no unnecessary nesting
+Blueprint is a JSON-based DSL with these conventions:
+1. Components use type#id syntax: {"button#save": {...}}
+2. Events use @ prefix: "@click": "tool.name"
+3. Layouts use shortcuts: "row", "col", "grid"
+4. Services are simple imports or objects: ["storage"] or [{"storage": ["get", "set"]}]
+5. Keep it structured and clear
 
 Example:
-```yaml
-app: { id: calc, name: Calculator, icon: 🧮 }
-services: [storage]
-ui:
-  title: Calculator
-  layout: vertical
-  components:
-    - display#result:
-        type: input
-        value: "0"
-        readonly: true
-    - grid:
-        columns: 4
-        children:
-          - button#btn-1: { text: "1", @click: calc.digit }
-          - button#btn-2: { text: "2", @click: calc.digit }
-```
+{
+  "app": {"id": "calc", "name": "Calculator", "icon": "🧮"},
+  "services": [{"storage": ["get", "set"]}],
+  "ui": {
+    "title": "Calculator",
+    "layout": "vertical",
+    "components": [
+      {
+        "input#result": {
+          "type": "input",
+          "value": "0",
+          "readonly": true
+        }
+      },
+      {
+        "grid": {
+          "columns": 4,
+          "children": [
+            {"button#btn-1": {"text": "1", "@click": "calc.digit"}},
+            {"button#btn-2": {"text": "2", "@click": "calc.digit"}}
+          ]
+        }
+      }
+    ]
+  }
+}
 
-Always output valid YAML. Test your indentation.
+Always output valid JSON. Validate your syntax.
 ```
 
 ## Next Steps
 
-1. Implement Blueprint parser in Python (ai-service)
-2. Implement Blueprint parser in Go (backend)
-3. Update registry seeder to support `.bp` files
+1. ✓ Implement Blueprint parser in Python (ai-service)
+2. ✓ Implement Blueprint parser in Go (backend)
+3. ✓ Update registry seeder to support `.bp` files
 4. Add Blueprint validation
 5. Create migration tool: `.aiapp` → `.bp`
 6. Update documentation
-

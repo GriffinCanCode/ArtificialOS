@@ -1,39 +1,40 @@
 package blueprint
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/GriffinCanCode/AgentOS/backend/internal/types"
-	"gopkg.in/yaml.v3"
 )
 
 // Blueprint represents the root structure of a .bp file
 type Blueprint struct {
-	App       AppMetadata            `yaml:"app"`
-	Services  []interface{}          `yaml:"services"`
-	UI        map[string]interface{} `yaml:"ui"`
-	Templates map[string]interface{} `yaml:"templates,omitempty"`
-	Config    map[string]interface{} `yaml:"config,omitempty"`
+	App       AppMetadata            `json:"app"`
+	Services  []interface{}          `json:"services"`
+	UI        map[string]interface{} `json:"ui"`
+	Templates map[string]interface{} `json:"templates,omitempty"`
+	Config    map[string]interface{} `json:"config,omitempty"`
 }
 
 // AppMetadata contains app identification and metadata
 type AppMetadata struct {
-	ID          string   `yaml:"id"`
-	Name        string   `yaml:"name"`
-	Description string   `yaml:"description,omitempty"`
-	Icon        string   `yaml:"icon,omitempty"`
-	Category    string   `yaml:"category,omitempty"`
-	Version     string   `yaml:"version"`
-	Author      string   `yaml:"author"`
-	Tags        []string `yaml:"tags,omitempty"`
-	Permissions []string `yaml:"permissions"`
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	Description string   `json:"description,omitempty"`
+	Icon        string   `json:"icon,omitempty"`
+	Category    string   `json:"category,omitempty"`
+	Version     string   `json:"version"`
+	Author      string   `json:"author"`
+	Tags        []string `json:"tags,omitempty"`
+	Permissions []string `json:"permissions"`
 }
 
 // Parser handles Blueprint to Package conversion
 type Parser struct {
 	templates map[string]interface{}
+	idCounter int
 }
 
 // NewParser creates a new Blueprint parser
@@ -43,11 +44,14 @@ func NewParser() *Parser {
 	}
 }
 
-// Parse converts Blueprint YAML content to a Package
+// Parse converts Blueprint JSON content to a Package
 func (p *Parser) Parse(content []byte) (*types.Package, error) {
+	// Reset ID counter for each parse
+	p.idCounter = 0
+
 	var bp Blueprint
-	if err := yaml.Unmarshal(content, &bp); err != nil {
-		return nil, fmt.Errorf("failed to parse YAML: %w", err)
+	if err := json.Unmarshal(content, &bp); err != nil {
+		return nil, fmt.Errorf("failed to parse JSON: %w", err)
 	}
 
 	// Validate required fields
@@ -70,7 +74,7 @@ func (p *Parser) Parse(content []byte) (*types.Package, error) {
 	services := p.expandServices(bp.Services)
 
 	// Expand UI components
-	uiSpec := p.expandUISpec(bp.UI)
+	blueprint := p.expandUISpec(bp.UI)
 
 	return &types.Package{
 		ID:          bp.App.ID,
@@ -85,7 +89,7 @@ func (p *Parser) Parse(content []byte) (*types.Package, error) {
 		Services:    services,
 		Permissions: bp.App.Permissions,
 		Tags:        bp.App.Tags,
-		UISpec:      uiSpec,
+		Blueprint:   blueprint,
 	}, nil
 }
 
@@ -183,8 +187,11 @@ func (p *Parser) expandComponent(comp interface{}) map[string]interface{} {
 	switch v := comp.(type) {
 	case string:
 		// Simple string: "Hello" -> text component
+		compID := fmt.Sprintf("text-%d", p.idCounter)
+		p.idCounter++
 		return map[string]interface{}{
 			"type": "text",
+			"id":   compID,
 			"props": map[string]interface{}{
 				"content": v,
 			},
@@ -215,6 +222,14 @@ func (p *Parser) expandComponent(comp interface{}) map[string]interface{} {
 			case "col":
 				compType = "container"
 				propsMap["layout"] = "vertical"
+			case "sidebar", "main", "editor", "header", "footer", "content", "section":
+				// Semantic container shortcuts - preserve semantic meaning via role
+				role := compType
+				compType = "container"
+				propsMap["role"] = role // Add role for styling/identification
+				if _, hasLayout := propsMap["layout"]; !hasLayout {
+					propsMap["layout"] = "vertical"
+				}
 			}
 
 			// Check for template reference
@@ -269,8 +284,13 @@ func (p *Parser) expandComponent(comp interface{}) map[string]interface{} {
 				"props": cleanProps,
 			}
 
+			// Ensure every component has an ID (required by frontend)
 			if compID != "" {
 				result["id"] = compID
+			} else {
+				// Generate auto ID: type-N (e.g., "container-0", "button-1")
+				result["id"] = fmt.Sprintf("%s-%d", compType, p.idCounter)
+				p.idCounter++
 			}
 
 			if len(events) > 0 {

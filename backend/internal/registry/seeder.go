@@ -49,7 +49,7 @@ func (s *Seeder) SeedApps() error {
 			return nil
 		}
 
-		// Process .aiapp (JSON) and .bp (YAML) files
+		// Process .aiapp and .bp (both JSON) files
 		if !strings.HasSuffix(info.Name(), ".aiapp") && !strings.HasSuffix(info.Name(), ".bp") {
 			return nil
 		}
@@ -74,7 +74,7 @@ func (s *Seeder) SeedApps() error {
 	return nil
 }
 
-// loadApp loads a single .aiapp (JSON) or .bp (YAML) file and registers it
+// loadApp loads a single .aiapp or .bp (both JSON) file and registers it
 func (s *Seeder) loadApp(path string) error {
 	// Read file
 	data, err := os.ReadFile(path)
@@ -86,7 +86,7 @@ func (s *Seeder) loadApp(path string) error {
 
 	// Parse based on file extension
 	if strings.HasSuffix(path, ".bp") {
-		// Blueprint YAML format
+		// Blueprint JSON format
 		parsed, err := blueprint.ParseFile(data)
 		if err != nil {
 			return err
@@ -125,7 +125,7 @@ func (s *Seeder) SeedDefaultApps() error {
 			Services:    []string{},
 			Permissions: []string{"STANDARD"},
 			Tags:        []string{"launcher", "apps", "system"},
-			UISpec: map[string]interface{}{
+			Blueprint: map[string]interface{}{
 				"type":   "app",
 				"title":  "App Launcher",
 				"layout": "vertical",
@@ -169,7 +169,7 @@ func (s *Seeder) SeedDefaultApps() error {
 			Services:    []string{"storage", "system"},
 			Permissions: []string{"STANDARD"},
 			Tags:        []string{"settings", "config", "system"},
-			UISpec: map[string]interface{}{
+			Blueprint: map[string]interface{}{
 				"type":   "app",
 				"title":  "Settings",
 				"layout": "horizontal",
@@ -232,7 +232,7 @@ func (s *Seeder) SeedDefaultApps() error {
 			Services:    []string{},
 			Permissions: []string{"STANDARD"},
 			Tags:        []string{"calculator", "math", "utility"},
-			UISpec: map[string]interface{}{
+			Blueprint: map[string]interface{}{
 				"type":   "app",
 				"title":  "Calculator",
 				"layout": "vertical",

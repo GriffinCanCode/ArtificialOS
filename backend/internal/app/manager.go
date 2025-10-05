@@ -35,13 +35,13 @@ func NewManager(kernelClient KernelClient) *Manager {
 }
 
 // Spawn creates a new app instance
-func (m *Manager) Spawn(ctx context.Context, request string, uiSpec map[string]interface{}, parentID *string) (*types.App, error) {
-	title, _ := uiSpec["title"].(string)
+func (m *Manager) Spawn(ctx context.Context, request string, blueprint map[string]interface{}, parentID *string) (*types.App, error) {
+	title, _ := blueprint["title"].(string)
 	if title == "" {
 		title = "Untitled App"
 	}
 
-	services, _ := uiSpec["services"].([]string)
+	services, _ := blueprint["services"].([]string)
 	if services == nil {
 		services = []string{}
 	}
@@ -64,7 +64,7 @@ func (m *Manager) Spawn(ctx context.Context, request string, uiSpec map[string]i
 		ID:         uuid.New().String(),
 		Hash:       hash,
 		Title:      title,
-		UISpec:     uiSpec,
+		Blueprint:  blueprint,
 		State:      types.StateActive,
 		ParentID:   parentID,
 		CreatedAt:  time.Now(),
@@ -238,4 +238,21 @@ func (m *Manager) FindByHash(hash string) (*types.App, bool) {
 		}
 	}
 	return nil, false
+}
+
+// UpdateWindow updates window state for an app
+func (m *Manager) UpdateWindow(id string, windowID string, pos *types.WindowPosition, size *types.WindowSize) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	app, ok := m.apps[id]
+	if !ok {
+		return false
+	}
+
+	app.WindowID = &windowID
+	app.WindowPos = pos
+	app.WindowSize = size
+
+	return true
 }

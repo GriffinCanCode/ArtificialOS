@@ -3,7 +3,7 @@
 import time
 import ai_pb2
 
-from core import get_logger, UIGenerationRequest, ValidationError, UISpecValidator, safe_json_dumps
+from core import get_logger, UIGenerationRequest, ValidationError, BlueprintValidator, safe_json_dumps
 from agents.ui_generator import UIGenerator
 
 
@@ -29,7 +29,7 @@ class UIHandler:
             ui_json = safe_json_dumps(spec_dict, indent=2)
             
             # Validate before sending
-            UISpecValidator.validate(spec_dict, ui_json)
+            BlueprintValidator.validate(spec_dict, ui_json)
             
             return ai_pb2.UIResponse(
                 app_id="",
@@ -79,6 +79,7 @@ class UIHandler:
                     )
                 elif isinstance(item, str):
                     tokens += 1
+                    # Send tokens for incremental parsing
                     yield ai_pb2.UIToken(
                         type=ai_pb2.UIToken.TOKEN,
                         content=item,
@@ -95,6 +96,11 @@ class UIHandler:
                     content=f"{len(ui_spec.components)} components",
                     timestamp=int(time.time())
                 )
+                
+                # Validate the final spec
+                spec_dict = ui_spec.model_dump()
+                ui_json = safe_json_dumps(spec_dict, indent=2)
+                BlueprintValidator.validate(spec_dict, ui_json)
             
             yield ai_pb2.UIToken(
                 type=ai_pb2.UIToken.COMPLETE,

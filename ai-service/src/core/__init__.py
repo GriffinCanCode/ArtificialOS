@@ -5,7 +5,7 @@ from .validate import (
     ValidationError,
     UIGenerationRequest,
     ChatRequest,
-    UISpecValidator,
+    BlueprintValidator,
     validate_json_size,
     validate_json_depth,
     validate_ui_spec
@@ -36,7 +36,7 @@ __all__ = [
     "ValidationError",
     "UIGenerationRequest",
     "ChatRequest",
-    "UISpecValidator",
+    "BlueprintValidator",
     "validate_json_size",
     "validate_json_depth",
     "validate_ui_spec",

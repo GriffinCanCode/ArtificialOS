@@ -282,7 +282,7 @@ func (m *Manager) captureWorkspace() (*types.Workspace, error) {
 			ID:             app.ID,
 			Hash:           app.Hash,
 			Title:          app.Title,
-			UISpec:         app.UISpec,
+			Blueprint:      app.Blueprint,
 			State:          app.State,
 			ParentID:       app.ParentID,
 			CreatedAt:      app.CreatedAt,
@@ -315,7 +315,7 @@ func (m *Manager) restoreApp(ctx context.Context, snapshot *types.AppSnapshot, p
 	}
 
 	// Spawn app with saved UISpec
-	app, err := m.appManager.Spawn(ctx, request, snapshot.UISpec, parentID)
+	app, err := m.appManager.Spawn(ctx, request, snapshot.Blueprint, parentID)
 	if err != nil {
 		return nil, err
 	}

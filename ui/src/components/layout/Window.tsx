@@ -7,6 +7,7 @@ import React, { useCallback } from "react";
 import { Rnd } from "react-rnd";
 import { X, Minus, Maximize2 } from "lucide-react";
 import { useWindowActions, WindowState } from "../../store/windowStore";
+import { useLogger } from "../../utils/monitoring/useLogger";
 import "./Window.css";
 
 interface WindowProps {
@@ -22,12 +23,26 @@ export const Window: React.FC<WindowProps> = ({ window, children }) => {
     updateWindowPosition,
     updateWindowSize,
   } = useWindowActions();
+  const log = useLogger("Window");
 
   const handleDragStop = useCallback(
     (_e: any, d: { x: number; y: number }) => {
       updateWindowPosition(window.id, { x: d.x, y: d.y });
+      
+      // Sync to backend for session restoration (fire-and-forget)
+      fetch(`http://localhost:8000/apps/${window.appId}/window`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          window_id: window.id,
+          position: { x: d.x, y: d.y },
+          size: window.size,
+        }),
+      }).catch((error) => {
+        log.error("Failed to sync window position", error as Error);
+      });
     },
-    [window.id, updateWindowPosition]
+    [window.id, window.appId, window.size, updateWindowPosition, log]
   );
 
   const handleResizeStop = useCallback(
@@ -38,13 +53,28 @@ export const Window: React.FC<WindowProps> = ({ window, children }) => {
       _delta: any,
       position: { x: number; y: number }
     ) => {
-      updateWindowSize(window.id, {
+      const newSize = {
         width: ref.offsetWidth,
         height: ref.offsetHeight,
-      });
+      };
+      
+      updateWindowSize(window.id, newSize);
       updateWindowPosition(window.id, position);
+      
+      // Sync to backend for session restoration (fire-and-forget)
+      fetch(`http://localhost:8000/apps/${window.appId}/window`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          window_id: window.id,
+          position: position,
+          size: newSize,
+        }),
+      }).catch((error) => {
+        log.error("Failed to sync window size", error as Error);
+      });
     },
-    [window.id, updateWindowSize, updateWindowPosition]
+    [window.id, window.appId, updateWindowSize, updateWindowPosition, log]
   );
 
   const handleMouseDown = useCallback(() => {
