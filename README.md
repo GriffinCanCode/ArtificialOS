@@ -50,16 +50,22 @@ The Go backend serves as the central orchestration hub, managing application lif
 
 **Key Responsibilities:**
 - HTTP/REST API and WebSocket server
-- Application lifecycle management (spawn, focus, close)
+- Application lifecycle management (spawn, focus, close, window state)
+- Blueprint DSL (.bp file) parsing and prebuilt app seeding
 - App registry for persistent application storage
 - Session management for workspace persistence
 - Service registry for tool discovery and execution
+- Middleware layer (CORS, rate limiting)
 - gRPC client coordination with AI service and kernel
 
 **Core Modules:**
 - `app.Manager`: Tracks running applications and their state
 - `registry.Manager`: Persists application definitions to filesystem via kernel
+- `registry.Seeder`: Loads prebuilt apps from `/apps` directory
+- `blueprint.Parser`: Parses Blueprint DSL (.bp) files
 - `session.Manager`: Saves and restores entire workspaces
+- `middleware.RateLimit`: Per-IP rate limiting with token bucket algorithm
+- `middleware.CORS`: Cross-origin resource sharing configuration
 - `grpc.AIClient`: Communicates with Python AI service
 - `grpc.KernelClient`: Executes syscalls through Rust kernel
 - `ws.Handler`: Streams real-time updates to frontend
@@ -77,10 +83,11 @@ Isolated Python service focused exclusively on LLM operations via gRPC.
 
 **Core Components:**
 - `UIGeneratorAgent`: Generates structured JSON UI specifications
+- `BlueprintParser`: Parses Blueprint DSL into Package format
 - `ChatAgent`: Handles conversational interactions
 - `ModelLoader`: Manages LLM loading and inference
 - `UICache`: Caches frequently requested UI patterns
-- `ToolRegistry`: Defines available tools and their schemas
+- `ToolRegistry`: Modular tool system with 80+ tools across 5 categories (UI, app, system, math, network)
 
 ### Kernel Layer (Rust)
 
@@ -92,32 +99,36 @@ Lightweight microkernel providing sandboxed system operations.
 - Capability-based sandboxing (filesystem, network, process access)
 - System call execution with permission checking
 - Resource limits enforcement per process
-- IPC (Inter-Process Communication) management
+- IPC (Inter-Process Communication) with pipes and shared memory
 
 **Core Subsystems:**
 - `ProcessManager`: Creates and tracks processes with resource limits
 - `MemoryManager`: Allocates memory with pressure monitoring
-- `SandboxManager`: Enforces capability-based security policies
-- `SyscallExecutor`: Executes filesystem, process, and system operations
-- `IPCManager`: Handles message passing between processes
+- `SandboxManager`: Enforces capability-based security policies (14 capability types)
+- `SyscallExecutor`: Executes 30+ syscalls (filesystem, process, network, IPC)
+- `IPCManager`: Manages pipes and shared memory segments for process communication
 
 ### Frontend Layer (TypeScript/React)
 
-Dynamic rendering engine that executes AI-generated applications.
+Dynamic rendering engine that executes AI-generated applications with desktop-grade window management.
 
 **Key Responsibilities:**
-- Parse and render JSON UI specifications
+- Parse and render JSON UI specifications (23 component types)
 - Execute local tools with sub-10ms latency
+- Window management (snap-to-edge, drag, resize, minimize, maximize)
 - Manage per-app component state
 - Handle WebSocket streaming for real-time updates
+- Keyboard shortcuts (⌘K spotlight, Alt+Tab switching)
 - Provide app registry UI for saved applications
 - Session management interface
 
 **Core Modules:**
-- `DynamicRenderer`: Main rendering engine with virtual scrolling
-- `ComponentRenderer`: Renders individual UI components
-- `ToolExecutor`: Executes tools (calc, ui, system, app, http, etc.)
+- `DynamicRenderer`: Main rendering engine with virtual scrolling and modular architecture
+- `ComponentRegistry`: 23 registered components across 6 categories (primitives, layout, forms, media, ui, special)
+- `WindowManager`: Desktop-grade window system with snap zones and keyboard shortcuts
+- `ToolExecutor`: Executes 10+ tool categories (ui, app, system, hub, http, timer, clipboard, notification, etc.)
 - `ComponentState`: Observable state management per application
+- `InputHandler`: Centralized keyboard, mouse, and gesture handling
 - `AppStore`: Zustand-based global state with selectors
 - `WebSocketContext`: Manages streaming connections
 
@@ -207,6 +218,7 @@ make logs
 **Application Management**
 - `GET /apps` - List all running applications
 - `POST /apps/:id/focus` - Bring application to foreground
+- `POST /apps/:id/window` - Update window state (position, size, minimized, maximized)
 - `DELETE /apps/:id` - Close application and children
 
 **Service Management**
@@ -253,9 +265,77 @@ make logs
 ## Documentation
 
 - [Architecture Details](docs/ARCHITECTURE.md) - Comprehensive system design
-- [Migration Guide](docs/MIGRATION_COMPLETE.md) - Go migration technical details
-- [OOM Handling](docs/OOM_HANDLING_IMPROVEMENTS.md) - Memory management improvements
-- [Persistence Roadmap](docs/PERSISTENCE_ROADMAP.md) - Future persistence features
+- [Blueprint DSL](docs/BLUEPRINT_DSL.md) - Blueprint specification and syntax
+- [Desktop System](docs/DESKTOP_SYSTEM.md) - Window management architecture
+- [Prebuilt Apps](docs/PREBUILT_APPS.md) - Creating and loading prebuilt applications
+
+## Blueprint DSL
+
+AgentOS uses Blueprint - a JSON-based domain-specific language for defining applications. Applications can be created in two ways:
+
+1. **AI Generation**: Natural language → LLM generates Blueprint JSON
+2. **Manual Definition**: Write `.bp` files directly and drop in `/apps` directory
+
+### Why Blueprint?
+
+**Streaming-First Design:**
+- Components render incrementally as they're generated
+- Explicit JSON structure enables real-time parsing during token streaming
+- No special syntax in keys - just clean `type`, `id`, `props` fields
+
+**Example Blueprint:**
+```json
+{
+  "app": {
+    "id": "calculator",
+    "name": "Calculator",
+    "icon": "🧮",
+    "category": "utilities",
+    "permissions": ["STANDARD"]
+  },
+  "services": [],
+  "ui": {
+    "title": "Calculator",
+    "layout": "vertical",
+    "components": [
+      {
+        "type": "input",
+        "id": "display",
+        "props": {"value": "0", "readonly": true}
+      },
+      {
+        "type": "button",
+        "id": "btn-7",
+        "props": {"text": "7"},
+        "on_event": {"click": "ui.append"}
+      }
+    ]
+  }
+}
+```
+
+### Prebuilt Apps
+
+Drop `.bp` files in the `/apps` directory:
+```
+apps/
+├── creative/
+├── productivity/
+│   └── notes.bp
+├── system/
+│   ├── file-explorer.bp
+│   ├── hub.bp
+│   └── task-manager.bp
+└── utilities/
+```
+
+The system automatically:
+1. Discovers all `.bp` files on startup
+2. Parses and validates Blueprint format
+3. Registers apps in the app registry
+4. Makes them instantly launchable (sub-100ms vs 2-5s for AI generation)
+
+Default system apps (calculator, settings, app-launcher) are automatically seeded if not present.
 
 ## Core Architecture: Generate-Once-Execute-Many
 
@@ -326,41 +406,106 @@ The AI service generates structured JSON specifications that define the entire a
 }
 ```
 
+### Component System
+
+The frontend provides 23 registered components across 6 categories, all with Zod validation:
+
+**Primitives** (6 components)
+- `button` - Clickable buttons with variants (primary, outline, ghost, danger)
+- `input` - Text inputs (text, email, password, number)
+- `text` - Text and headings (h1, h2, h3, body, caption, label)
+- `checkbox` - Checkbox with label
+- `radio` - Radio button selection
+- `slider` - Range slider input
+
+**Layout** (3 components)
+- `container` - Flexbox container (row/col shortcuts available)
+- `grid` - Responsive grid layout
+- `list` - Styled lists (default, bordered, striped)
+
+**Forms** (2 components)
+- `select` - Dropdown selection
+- `textarea` - Multi-line text input
+
+**Media** (4 components)
+- `image` - Image display
+- `video` - Video player
+- `audio` - Audio player
+- `canvas` - HTML5 canvas for drawing/games
+
+**UI** (5 components)
+- `badge` - Status badges (success, warning, error, info)
+- `card` - Card container with header/body
+- `divider` - Visual separator
+- `modal` - Popup dialog
+- `tabs` - Tabbed interface
+
+**Special** (3 components)
+- `app_shortcut` - Launch other apps
+- `iframe` - Embed external content
+- `progress` - Progress bar
+
+All components use a registry-based architecture with automatic registration, making it easy to add new component types.
+
 ### Tool Execution System
 
-The frontend implements a comprehensive tool execution engine with multiple categories:
-
-**Calculation Tools** (`calc.*`)
-- Arithmetic operations (add, subtract, multiply, divide)
-- Scientific functions (sqrt, power, sin, cos, etc.)
-- Number formatting and validation
+The system implements a comprehensive tool execution engine with 80+ tools across multiple categories:
 
 **UI Tools** (`ui.*`)
-- State management (set_state, get_state)
+- State management (set, get, append, clear, toggle, backspace, compute)
 - Component manipulation (show, hide, enable, disable)
 - Dynamic updates (add_item, remove_item)
+- Generic operations work for ALL app types
 
-**System Tools** (`system.*`)
-- Alerts and confirmations
-- Clipboard operations
-- Browser APIs
+**Math Tools** (`math.*` - 80+ tools via AI service)
+- **Arithmetic** (24 tools): add, subtract, multiply, divide, power, sqrt, log, factorial, etc.
+- **Trigonometry** (13 tools): sin, cos, tan, asin, acos, atan, sinh, cosh, etc.
+- **Statistics** (15 tools): mean, median, mode, stdev, variance, percentile, correlation
+- **Algebra** (11 tools): solve, factor, expand, simplify, matrix operations
+- **Calculus** (9 tools): derivative, integrate, limit, series, taylor
+- **Constants** (6): pi, e, tau, phi, infinity, nan
 
 **App Tools** (`app.*`)
 - Spawn new applications
 - Close applications
 - Focus/unfocus management
+- List running apps
+
+**System Tools** (`system.*`)
+- Alerts, confirmations, notifications
+- Clipboard operations (copy, paste)
+- Timer operations (start, stop, reset)
+- Browser APIs
 
 **HTTP Tools** (`http.*`)
-- RESTful API requests
-- WebSocket connections
+- RESTful API requests (get, post, request)
 - Response handling
+- Web content fetching
 
-**Service Tools** (Dynamic)
-- Storage operations
-- Authentication
-- Custom backend services
+**Hub Tools** (`hub.*`)
+- App launcher integration
+- Registry management
+
+**Service Tools** (Backend-integrated)
+- **Storage**: Persistent key-value store (set, get, remove, list, clear)
+- **Filesystem**: File operations (read, write, create, delete, list, move, copy)
+- **System**: System info and logging (info, time, log, getLogs, ping)
+- **Auth**: User authentication (register, login, logout, verify, getUser)
 
 ### Persistence Architecture
+
+**Blueprint DSL (.bp files)**
+- JSON-based domain-specific language for defining applications
+- Streaming-first architecture for real-time component rendering
+- Explicit format optimized for LLM generation and incremental parsing
+- Supports templates, service bindings, and lifecycle hooks
+- Located in `/apps` directory with automatic seeding on startup
+
+**Prebuilt Apps**
+- System automatically loads `.bp` and `.aiapp` files from `/apps` directory
+- Organized by category (creative/, productivity/, system/, utilities/)
+- Default apps (calculator, settings, app-launcher) seeded if not present
+- Instant launch without AI generation (sub-100ms)
 
 **App Registry**
 - Stores generated UI specifications
@@ -371,6 +516,7 @@ The frontend implements a comprehensive tool execution engine with multiple cate
 **Session Management**
 - Captures complete workspace state
 - Saves all running apps and their component states
+- Preserves window positions, sizes, and states
 - Preserves chat history and UI state
 - Enables restore from any saved point
 
@@ -522,29 +668,54 @@ wscat -c ws://localhost:8000/stream
 
 ## System Capabilities
 
+### Desktop-Grade Window Management
+- **Drag & Drop**: Free-form window dragging with smooth animations
+- **Snap-to-Edge**: Automatic window snapping to screen edges and corners (9 zones)
+- **Resize**: Interactive window resizing with min/max constraints
+- **Minimize/Maximize**: Window state management with restore functionality
+- **Keyboard Shortcuts**: 
+  - `⌘K` / `Ctrl+K` - Spotlight-style app creator
+  - `Alt+Tab` - Cycle through open windows
+  - `⌘W` / `Ctrl+W` - Close focused window
+  - `⌘M` / `Ctrl+M` - Minimize focused window
+- **Cascade Positioning**: Automatic cascading for new windows
+- **Z-Index Management**: Automatic focus and bring-to-front
+- **State Persistence**: Window positions and sizes synced to backend
+
 ### Multi-Application Management
 - Concurrent execution of multiple AI-generated applications
 - Parent-child application relationships
 - Focus management with foreground/background states
 - Graceful cleanup of child applications when parent closes
+- Desktop environment with menu bar, dock, and taskbar
 
 ### Persistence Layer
+- **Blueprint DSL**: Define apps in `.bp` files with streaming-optimized JSON format
+- **Prebuilt Apps**: Auto-load apps from `/apps` directory on startup
 - **App Registry**: Store and instantly launch generated applications (50-100x faster than regeneration)
-- **Session Management**: Save and restore complete workspace state
+- **Session Management**: Save and restore complete workspace state (apps, windows, positions, sizes)
 - **Filesystem Integration**: All persistence goes through kernel syscalls
 - **Structured Storage**: JSON-based storage with metadata support
 
 ### Security Model
-- **Capability-Based Sandboxing**: Processes request specific capabilities (filesystem, network, process)
+- **Capability-Based Sandboxing**: Processes request specific capabilities (14 types: filesystem, network, process, IPC)
 - **Resource Limits**: Per-process memory limits with OOM protection
-- **Permission Checking**: All syscalls verified against process capabilities
+- **Path Restrictions**: Allowed/blocked path lists for filesystem access
+- **Permission Checking**: All 30+ syscalls verified against process capabilities
+- **Rate Limiting**: Per-IP token bucket algorithm (configurable RPS and burst)
+- **CORS Configuration**: Configurable cross-origin policies
 - **No Arbitrary Code Execution**: UI specs are pure data, tools are pre-defined functions
 
 ### Extensibility
+- **Blueprint DSL**: Extensible component and service definitions via `.bp` files
+- **Prebuilt Apps**: Drop `.bp` files in `/apps` directory for automatic loading
 - **Service Registry**: Dynamic service discovery and tool binding
-- **Tool System**: Extensible tool categories with parameter validation
-- **Component System**: Pluggable UI components with CVA variants
+- **Tool System**: 80+ modular tools across 10+ categories with parameter validation
+- **Component System**: 23 pluggable UI components across 6 categories with Zod validation
+- **Modular Architecture**: Registry-based component and tool registration
+- **Middleware Stack**: Extensible HTTP middleware (CORS, rate limiting, auth-ready)
 - **Protocol Buffers**: Versioned, type-safe service definitions
+- **IPC System**: Pipes and shared memory for process communication
 
 ## License
 

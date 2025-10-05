@@ -46,6 +46,7 @@ const DynamicRenderer: React.FC = () => {
     setError,
     addGenerationThought,
     appendGenerationPreview,
+    clearGenerationPreview,
   } = useAppActions();
 
   const { open: openWindow, update: updateWindow, close: closeWindow } = useActions();
@@ -117,6 +118,7 @@ const DynamicRenderer: React.FC = () => {
           addGenerationThought(message.message);
           setBuildProgress(0);
           setPartialBlueprint({ components: [] });
+          clearGenerationPreview(); // Clear accumulated preview from previous generation
           renderedComponentIdsRef.current = new Set(); // Reset for new generation
           setLastComponentCount(0);
           previousComponentsRef.current = []; // Reset previous components for animation tracking
@@ -412,6 +414,7 @@ const DynamicRenderer: React.FC = () => {
     setError,
     addGenerationThought,
     appendGenerationPreview,
+    clearGenerationPreview,
     setBuildProgress,
     setPartialBlueprint,
     openWindow,
