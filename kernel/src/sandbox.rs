@@ -214,6 +214,8 @@ impl SandboxConfig {
 #[derive(Clone)]
 pub struct SandboxManager {
     sandboxes: Arc<RwLock<std::collections::HashMap<u32, SandboxConfig>>>,
+    // Track spawned processes per PID for limit enforcement
+    spawned_counts: Arc<RwLock<std::collections::HashMap<u32, u32>>>,
 }
 
 impl SandboxManager {
@@ -221,6 +223,7 @@ impl SandboxManager {
         info!("Sandbox manager initialized");
         Self {
             sandboxes: Arc::new(RwLock::new(std::collections::HashMap::new())),
+            spawned_counts: Arc::new(RwLock::new(std::collections::HashMap::new())),
         }
     }
 
@@ -300,6 +303,36 @@ impl SandboxManager {
         } else {
             false
         }
+    }
+
+    /// Check if process can spawn another process (within limits)
+    pub fn can_spawn_process(&self, pid: u32) -> bool {
+        let sandboxes = self.sandboxes.read();
+        if let Some(sandbox) = sandboxes.get(&pid) {
+            let current_count = *self.spawned_counts.read().get(&pid).unwrap_or(&0);
+            current_count < sandbox.resource_limits.max_processes
+        } else {
+            false
+        }
+    }
+
+    /// Record a spawned process for a PID
+    pub fn record_spawn(&self, pid: u32) {
+        let mut counts = self.spawned_counts.write();
+        *counts.entry(pid).or_insert(0) += 1;
+    }
+
+    /// Record a terminated spawned process for a PID
+    pub fn record_termination(&self, pid: u32) {
+        let mut counts = self.spawned_counts.write();
+        if let Some(count) = counts.get_mut(&pid) {
+            *count = count.saturating_sub(1);
+        }
+    }
+
+    /// Get spawned process count for a PID
+    pub fn get_spawn_count(&self, pid: u32) -> u32 {
+        *self.spawned_counts.read().get(&pid).unwrap_or(&0)
     }
 }
 

@@ -328,7 +328,7 @@ describe("WebSocketClient", () => {
       client.destroy();
 
       expect(client.isConnected()).toBe(false);
-      
+
       // Try to send message after destroy - should not throw
       expect(() => {
         client.sendChat("Test");
@@ -336,4 +336,3 @@ describe("WebSocketClient", () => {
     });
   });
 });
-

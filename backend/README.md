@@ -1,4 +1,4 @@
-# Go Service
+# Go Backend Service
 
 High-performance orchestration layer for the AI-OS system.
 
@@ -7,6 +7,21 @@ High-performance orchestration layer for the AI-OS system.
 ```
 Frontend → Go Service → Python AI Service (LLM)
                     → Rust Kernel (Syscalls)
+```
+
+## Package Organization
+
+Each package includes a `doc.go` file with comprehensive documentation.
+Use `go doc` to view package documentation:
+
+```bash
+# View package documentation
+go doc github.com/GriffinCanCode/AgentOS/backend/internal/app
+go doc github.com/GriffinCanCode/AgentOS/backend/internal/providers/filesystem
+
+# View specific types/functions
+go doc app.Manager
+go doc filesystem.BasicOps
 ```
 
 ## Features
@@ -24,25 +39,141 @@ Frontend → Go Service → Python AI Service (LLM)
 ## Structure
 
 ```
-go-service/
+backend/
 ├── cmd/server/          # Main entry point
+│   ├── main.go         # Server startup and signal handling
+│   └── doc.go          # Package documentation
 ├── internal/
 │   ├── app/            # App lifecycle management
+│   │   ├── manager.go  # App creation, focus, state management
+│   │   └── doc.go      # Package documentation
+│   ├── blueprint/      # Blueprint DSL parsing
+│   │   ├── parser.go   # .bp file to Package transformation
+│   │   └── doc.go      # Package documentation
 │   ├── config/         # Configuration management
+│   │   ├── config.go   # Environment-based config
+│   │   └── doc.go      # Package documentation
 │   ├── grpc/           # gRPC clients (kernel, AI)
+│   │   ├── kernel.go   # Kernel client wrapper
+│   │   ├── ai.go       # AI client wrapper
+│   │   └── doc.go      # Package documentation
 │   ├── http/           # HTTP handlers
-│   ├── logging/        # Structured logging
-│   ├── middleware/     # HTTP middleware (CORS, rate limiting)
-│   ├── providers/      # Service providers (auth, storage, filesystem)
-│   ├── registry/       # App registry management
-│   ├── server/         # Server setup
-│   ├── service/        # Service registry
-│   ├── session/        # Session management
+│   │   ├── handlers.go # REST API endpoints
+│   │   └── doc.go      # Package documentation
+│   ├── logging/        # Structured logging (zap)
+│   │   ├── logger.go   # Logger configuration
+│   │   └── doc.go      # Package documentation
+│   ├── middleware/     # HTTP middleware
+│   │   ├── cors.go     # CORS configuration
+│   │   ├── rate.go     # Rate limiting
+│   │   └── doc.go      # Package documentation
+│   ├── providers/      # Service providers
+│   │   ├── filesystem/ # File operations (modular)
+│   │   │   ├── basic.go      # Read, write, create, delete
+│   │   │   ├── directory.go  # List, walk, tree
+│   │   │   ├── operations.go # Copy, move, rename
+│   │   │   ├── metadata.go   # Stat, size, mime type
+│   │   │   ├── search.go     # Find, glob, filter
+│   │   │   ├── formats.go    # JSON, YAML, CSV, TOML
+│   │   │   ├── archives.go   # ZIP, TAR compression
+│   │   │   └── doc.go        # Package documentation
+│   │   ├── http/       # HTTP client (modular)
+│   │   │   ├── requests.go   # GET, POST, PUT, DELETE
+│   │   │   ├── config.go     # Headers, auth, timeout
+│   │   │   ├── downloads.go  # File downloads
+│   │   │   ├── uploads.go    # File uploads
+│   │   │   ├── parse.go      # JSON, XML parsing
+│   │   │   ├── url.go        # URL manipulation
+│   │   │   ├── resilience.go # Retry, rate limiting
+│   │   │   ├── connection.go # Proxy, SSL, cookies
+│   │   │   └── doc.go        # Package documentation
+│   │   ├── math/       # Math operations (modular)
+│   │   │   ├── arithmetic.go # Add, multiply, power
+│   │   │   ├── trig.go       # Sin, cos, tan
+│   │   │   ├── stats.go      # Mean, stdev, correlation
+│   │   │   ├── constants.go  # Pi, e, tau, phi
+│   │   │   ├── conversions.go # Temperature, distance
+│   │   │   ├── precision.go  # High-precision decimals
+│   │   │   ├── special.go    # Gamma, beta, erf
+│   │   │   └── doc.go        # Package documentation
+│   │   ├── scraper/    # Web scraping (modular)
+│   │   │   ├── content.go    # Text, links, images
+│   │   │   ├── xpath.go      # XPath queries
+│   │   │   ├── extract.go    # Article extraction
+│   │   │   ├── forms.go      # Form discovery
+│   │   │   ├── metadata.go   # Meta tags, Open Graph
+│   │   │   ├── patterns.go   # Email, phone, IP regex
+│   │   │   ├── structured.go # Tables, lists
+│   │   │   └── doc.go        # Package documentation
+│   │   ├── auth.go     # Authentication provider
+│   │   ├── storage.go  # Key-value storage provider
+│   │   ├── system.go   # System info provider
+│   │   └── doc.go      # Package documentation
+│   ├── registry/       # App package registry
+│   │   ├── manager.go  # Package CRUD with caching
+│   │   ├── seeder.go   # Load .bp files on startup
+│   │   └── doc.go      # Package documentation
+│   ├── server/         # Server initialization
+│   │   ├── server.go   # HTTP server setup
+│   │   └── doc.go      # Package documentation
+│   ├── service/        # Service provider registry
+│   │   ├── registry.go # Service discovery and execution
+│   │   └── doc.go      # Package documentation
+│   ├── session/        # Session persistence
+│   │   ├── manager.go  # Save and restore workspaces
+│   │   └── doc.go      # Package documentation
 │   ├── types/          # Shared types
+│   │   ├── app.go      # App, State, Stats
+│   │   ├── service.go  # Service, Tool, Context, Result
+│   │   ├── session.go  # Session, Workspace, AppSnapshot
+│   │   ├── registry.go # Package, PackageMetadata
+│   │   ├── request.go  # HTTP request types
+│   │   └── doc.go      # Package documentation
 │   ├── utils/          # Utility functions
+│   │   ├── hash.go        # Deterministic hashing
+│   │   ├── validation.go  # Input validation
+│   │   └── doc.go         # Package documentation
 │   └── ws/             # WebSocket handlers
+│       ├── handler.go  # Streaming chat and UI generation
+│       └── doc.go      # Package documentation
 ├── proto/              # Protocol buffer definitions
-└── Makefile           # Build commands
+│   ├── ai/            # AI service protos (generated)
+│   │   ├── ai.pb.go
+│   │   ├── ai_grpc.pb.go
+│   │   └── doc.go      # Package documentation
+│   └── kernel/        # Kernel service protos (generated)
+│       ├── kernel.pb.go
+│       ├── kernel_grpc.pb.go
+│       └── doc.go      # Package documentation
+├── tests/             # Test suite
+│   ├── unit/          # Unit tests
+│   ├── integration/   # Integration tests
+│   └── helpers/       # Test utilities
+├── Makefile          # Build commands
+└── README.md         # This file
+```
+
+### Import Organization
+
+All Go files follow a consistent import style:
+
+```go
+package example
+
+import (
+    // 1. Standard library (sorted alphabetically)
+    "context"
+    "fmt"
+    "time"
+
+    // 2. Third-party packages (sorted alphabetically)
+    "github.com/gin-gonic/gin"
+    "go.uber.org/zap"
+
+    // 3. Internal packages (sorted alphabetically)
+    "github.com/GriffinCanCode/AgentOS/backend/internal/app"
+    "github.com/GriffinCanCode/AgentOS/backend/internal/types"
+)
 ```
 
 ## Quick Start

@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
+
 	"github.com/GriffinCanCode/AgentOS/backend/internal/app"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/config"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/grpc"
@@ -11,12 +14,11 @@ import (
 	"github.com/GriffinCanCode/AgentOS/backend/internal/logging"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/middleware"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/providers"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/ipc"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/registry"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/service"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/session"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/ws"
-	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 )
 
 // Server wraps the HTTP server and dependencies
@@ -86,7 +88,7 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	if kernelClient != nil {
 		// In production, create a dedicated process for storage
 		ctx := context.Background()
-		pid, err := kernelClient.CreateProcess(ctx, "storage-manager", 10, "PRIVILEGED")
+		pid, _, err := kernelClient.CreateProcess(ctx, "storage-manager", 10, "PRIVILEGED", nil)
 		if err == nil && pid != nil {
 			storagePID = *pid
 		}
@@ -258,5 +260,13 @@ func registerProviders(registry *service.Registry, kernel *grpc.KernelClient) {
 	mathProvider := providers.NewMath()
 	if err := registry.Register(mathProvider); err != nil {
 		fmt.Printf("Warning: Failed to register math provider: %v\n", err)
+	}
+
+	// IPC provider (only if kernel is available)
+	if kernel != nil {
+		ipcProvider := ipc.NewProvider(kernel)
+		if err := registry.Register(ipcProvider); err != nil {
+			fmt.Printf("Warning: Failed to register IPC provider: %v\n", err)
+		}
 	}
 }

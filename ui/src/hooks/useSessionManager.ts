@@ -6,7 +6,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useAppStore } from "../store/appStore";
-import { useWindowStore } from "../store/windowStore";
+import { useActions } from "../windows";
 import type { ChatState, UIState } from "../types/session";
 import { logger } from "../utils/monitoring/logger";
 import {
@@ -30,6 +30,9 @@ export function useSessionManager(options: UseSessionManagerOptions = {}) {
   const saveDefaultMutation = useSaveDefaultSession();
   const restoreSessionMutation = useRestoreSession();
   const { data: sessionsData } = useSessions();
+
+  // Window actions
+  const { open: openWindow, updatePosition: updateWindowPosition, updateSize: updateWindowSize, clearAll: clearAllWindows } = useActions();
 
   const [lastSaveTime, setLastSaveTime] = useState<Date | null>(null);
 
@@ -120,7 +123,6 @@ export function useSessionManager(options: UseSessionManagerOptions = {}) {
   const restore = useCallback(
     async (sessionId: string) => {
       const store = useAppStore.getState();
-      const { openWindow, updateWindowPosition, updateWindowSize, clearAllWindows } = useWindowStore.getState();
 
       // Prevent restore during active generation to avoid interrupting streaming
       if (store.isStreaming || store.isLoading) {
@@ -174,12 +176,7 @@ export function useSessionManager(options: UseSessionManagerOptions = {}) {
       if (workspace.apps && workspace.apps.length > 0) {
         workspace.apps.forEach((app: any) => {
           // Open window with saved or default position/size
-          const windowId = openWindow(
-            app.id,
-            app.title,
-            app.ui_spec,
-            app.ui_spec?.icon || "📦"
-          );
+          const windowId = openWindow(app.id, app.title, app.ui_spec, app.ui_spec?.icon || "📦");
 
           // Restore window geometry if saved
           if (app.window_pos && app.window_size) {
@@ -208,7 +205,7 @@ export function useSessionManager(options: UseSessionManagerOptions = {}) {
 
       return result;
     },
-    [restoreSessionMutation]
+    [restoreSessionMutation, openWindow, updateWindowPosition, updateWindowSize, clearAllWindows]
   );
 
   /**

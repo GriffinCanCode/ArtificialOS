@@ -4,14 +4,16 @@ import (
 	"context"
 	"testing"
 
+	grpcClient "github.com/GriffinCanCode/AgentOS/backend/internal/grpc"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/types"
 )
 
 type mockKernel struct{}
 
-func (m *mockKernel) CreateProcess(ctx context.Context, name string, priority uint32, sandboxLevel string) (*uint32, error) {
+func (m *mockKernel) CreateProcess(ctx context.Context, name string, priority uint32, sandboxLevel string, opts *grpcClient.CreateProcessOptions) (*uint32, *uint32, error) {
 	pid := uint32(123)
-	return &pid, nil
+	osPid := uint32(456)
+	return &pid, &osPid, nil
 }
 
 func TestSpawn(t *testing.T) {

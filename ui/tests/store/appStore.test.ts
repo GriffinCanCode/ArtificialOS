@@ -126,10 +126,7 @@ describe("App Store", () => {
     it("clears UI spec", () => {
       const { setUISpec, clearUISpec } = useAppStore.getState();
 
-      setUISpec(
-        { type: "app", title: "Test", layout: "vertical", components: [] },
-        "app-123"
-      );
+      setUISpec({ type: "app", title: "Test", layout: "vertical", components: [] }, "app-123");
       clearUISpec();
 
       const { uiSpec, appId } = useAppStore.getState();
@@ -296,4 +293,3 @@ describe("App Store", () => {
     });
   });
 });
-

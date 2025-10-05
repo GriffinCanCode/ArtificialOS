@@ -199,6 +199,46 @@ func (p *Parser) expandComponent(comp interface{}) map[string]interface{} {
 
 	case map[string]interface{}:
 		// Component object
+		// Check if this is explicit format (has "type" key) or shorthand format
+		if explicitType, hasType := v["type"].(string); hasType {
+			// Explicit format: {"type": "button", "id": "...", "props": {...}, "on_event": {...}}
+			compType := explicitType
+			compID, _ := v["id"].(string)
+			propsMap, _ := v["props"].(map[string]interface{})
+			if propsMap == nil {
+				propsMap = make(map[string]interface{})
+			}
+			onEventMap, _ := v["on_event"].(map[string]interface{})
+			childrenList, _ := v["children"].([]interface{})
+
+			// Build result with explicit format
+			result := map[string]interface{}{
+				"type":  compType,
+				"props": propsMap,
+			}
+
+			// Ensure every component has an ID
+			if compID != "" {
+				result["id"] = compID
+			} else {
+				result["id"] = fmt.Sprintf("%s-%d", compType, p.idCounter)
+				p.idCounter++
+			}
+
+			// Add event handlers if present
+			if len(onEventMap) > 0 {
+				result["on_event"] = onEventMap
+			}
+
+			// Recursively expand children if present
+			if len(childrenList) > 0 {
+				result["children"] = p.expandComponents(childrenList)
+			}
+
+			return result
+		}
+
+		// Shorthand format: {"button#id": {...props}}
 		// Extract type and ID from the first key
 		for key, props := range v {
 			propsMap, ok := props.(map[string]interface{})

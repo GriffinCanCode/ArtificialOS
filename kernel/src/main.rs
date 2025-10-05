@@ -3,7 +3,7 @@
  *
  * Lightweight microkernel that provides:
  * - Process management
- * - Memory management  
+ * - Memory management
  * - IPC with AI service
  * - Hardware abstraction
  */
@@ -31,27 +31,25 @@ async fn main() -> Result<(), Box<dyn Error>> {
     info!("Initializing memory manager...");
     let memory_manager = MemoryManager::new();
 
-    info!("Initializing process manager with memory management...");
-    let process_manager = ProcessManager::with_memory_manager(memory_manager.clone());
-
     info!("Initializing IPC system...");
-    let _ipc_manager = IPCManager::new();
+    let ipc_manager = IPCManager::new();
+
+    info!("Initializing process manager with memory management and IPC cleanup...");
+    let process_manager = ProcessManager::with_memory_manager(memory_manager.clone())
+        .with_ipc_manager(ipc_manager.clone());
 
     info!("Initializing sandbox manager...");
     let sandbox_manager = SandboxManager::new();
 
-    info!("Initializing syscall executor...");
-    let syscall_executor = SyscallExecutor::new(sandbox_manager.clone());
+    info!("Initializing syscall executor with IPC support...");
+    let syscall_executor = SyscallExecutor::with_ipc(
+        sandbox_manager.clone(),
+        ipc_manager.pipes().clone(),
+        ipc_manager.shm().clone(),
+    );
 
     info!("✅ Kernel initialization complete");
     info!("================================================");
-
-    // Demo: Create a test process with sandboxing
-    demo_sandboxed_execution(&process_manager, &sandbox_manager, &syscall_executor);
-
-    // Demo: Memory management with OOM handling
-    demo_memory_management(&memory_manager);
-
     info!("Kernel entering main loop...");
     info!("Press Ctrl+C to exit");
 

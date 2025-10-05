@@ -1,0 +1,61 @@
+/**
+ * Sync Utilities
+ * Backend synchronization helpers
+ */
+
+import type { Position, Size } from "../core/types";
+
+export interface SyncPayload {
+  window_id: string;
+  position: Position;
+  size: Size;
+}
+
+/**
+ * Sync window state to backend
+ */
+export async function syncWindow(
+  appId: string,
+  windowId: string,
+  position: Position,
+  size: Size
+): Promise<void> {
+  const payload: SyncPayload = {
+    window_id: windowId,
+    position,
+    size,
+  };
+
+  try {
+    const response = await fetch(`http://localhost:8000/apps/${appId}/window`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      console.error(`Failed to sync window state: ${response.status} ${response.statusText}`);
+    }
+  } catch (error) {
+    // Fire-and-forget: log but don't throw
+    console.error("Failed to sync window state:", error);
+  }
+}
+
+/**
+ * Debounced sync helper
+ */
+export function createSyncDebouncer(delay: number = 500) {
+  let timeoutId: NodeJS.Timeout | null = null;
+
+  return (appId: string, windowId: string, position: Position, size: Size) => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+
+    timeoutId = setTimeout(() => {
+      syncWindow(appId, windowId, position, size);
+      timeoutId = null;
+    }, delay);
+  };
+}

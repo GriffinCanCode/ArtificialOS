@@ -3,8 +3,7 @@
  * OS-level resource limit enforcement (cgroups on Linux, job objects on Windows)
  */
 
-use log::{info, warn};
-use std::path::{Path, PathBuf};
+use log::info;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -78,11 +77,11 @@ impl LimitManager {
     pub fn new() -> Result<Self, LimitsError> {
         #[cfg(target_os = "linux")]
         {
-            let base_path = PathBuf::from("/sys/fs/cgroup/ai-os");
+            let base_path = std::path::PathBuf::from("/sys/fs/cgroup/ai-os");
 
             // Check if cgroups v2 is available
-            if !Path::new("/sys/fs/cgroup/cgroup.controllers").exists() {
-                warn!("cgroups v2 not available, resource limits will be simulated");
+            if !std::path::Path::new("/sys/fs/cgroup/cgroup.controllers").exists() {
+                log::warn!("cgroups v2 not available, resource limits will be simulated");
             }
 
             Ok(Self {
@@ -130,6 +129,7 @@ impl LimitManager {
 
         #[cfg(not(target_os = "linux"))]
         {
+            let _ = os_pid; // Silence unused warning
             info!("No resource limits to remove on this platform");
             Ok(())
         }
@@ -145,15 +145,15 @@ impl LimitManager {
         let cgroup_dir = self.cgroup_path.join(os_pid.to_string());
 
         // Check if cgroups v2 is actually available
-        if !Path::new("/sys/fs/cgroup/cgroup.controllers").exists() {
-            warn!("cgroups v2 not available, skipping resource limit enforcement");
+        if !std::path::Path::new("/sys/fs/cgroup/cgroup.controllers").exists() {
+            log::warn!("cgroups v2 not available, skipping resource limit enforcement");
             return Ok(());
         }
 
         // Create cgroup directory
         if !cgroup_dir.exists() {
             if let Err(e) = fs::create_dir_all(&cgroup_dir) {
-                warn!("Failed to create cgroup directory: {}. Skipping resource limits.", e);
+                log::warn!("Failed to create cgroup directory: {}. Skipping resource limits.", e);
                 return Ok(()); // Don't fail, just skip
             }
         }
@@ -162,7 +162,7 @@ impl LimitManager {
         if let Some(memory) = limits.memory_bytes {
             let memory_max = cgroup_dir.join("memory.max");
             if let Err(e) = fs::write(&memory_max, memory.to_string()) {
-                warn!("Failed to set memory limit: {}", e);
+                log::warn!("Failed to set memory limit: {}", e);
             } else {
                 info!("Set memory limit: {} bytes for PID {}", memory, os_pid);
             }
@@ -172,7 +172,7 @@ impl LimitManager {
         if let Some(shares) = limits.cpu_shares {
             let cpu_weight = cgroup_dir.join("cpu.weight");
             if let Err(e) = fs::write(&cpu_weight, shares.to_string()) {
-                warn!("Failed to set CPU weight: {}", e);
+                log::warn!("Failed to set CPU weight: {}", e);
             } else {
                 info!("Set CPU weight: {} for PID {}", shares, os_pid);
             }
@@ -182,7 +182,7 @@ impl LimitManager {
         if let Some(max_pids) = limits.max_pids {
             let pids_max = cgroup_dir.join("pids.max");
             if let Err(e) = fs::write(&pids_max, max_pids.to_string()) {
-                warn!("Failed to set PID limit: {}", e);
+                log::warn!("Failed to set PID limit: {}", e);
             } else {
                 info!("Set PID limit: {} for PID {}", max_pids, os_pid);
             }
@@ -191,7 +191,7 @@ impl LimitManager {
         // Add process to cgroup
         let procs_file = cgroup_dir.join("cgroup.procs");
         if let Err(e) = fs::write(&procs_file, os_pid.to_string()) {
-            warn!("Failed to add process to cgroup: {}", e);
+            log::warn!("Failed to add process to cgroup: {}", e);
         } else {
             info!("Added PID {} to cgroup", os_pid);
         }
@@ -209,7 +209,7 @@ impl LimitManager {
             // Note: Can only remove empty cgroups
             // Process must be terminated first
             if let Err(e) = fs::remove_dir(&cgroup_dir) {
-                warn!("Failed to remove cgroup for PID {}: {}", os_pid, e);
+                log::warn!("Failed to remove cgroup for PID {}: {}", os_pid, e);
             } else {
                 info!("Removed cgroup for PID {}", os_pid);
             }

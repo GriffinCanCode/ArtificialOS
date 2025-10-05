@@ -35,10 +35,7 @@ export interface CustomRenderOptions extends Omit<RenderOptions, "wrapper"> {
   // Add custom options here if needed
 }
 
-export function renderWithProviders(
-  ui: ReactElement,
-  options?: CustomRenderOptions
-) {
+export function renderWithProviders(ui: ReactElement, options?: CustomRenderOptions) {
   return render(ui, { wrapper: AllTheProviders, ...options });
 }
 
@@ -132,9 +129,7 @@ export function mockFetch(responses: Record<string, any>) {
   global.fetch = vi.fn((url: string) => {
     const response = responses[url];
     if (!response) {
-      return Promise.resolve(
-        createMockResponse({ error: "Not found" }, 404)
-      );
+      return Promise.resolve(createMockResponse({ error: "Not found" }, 404));
     }
     return Promise.resolve(createMockResponse(response));
   }) as any;
@@ -191,4 +186,3 @@ export function createMockWindow(overrides?: Partial<any>) {
  * Flush all promises
  */
 export const flushPromises = () => new Promise((resolve) => setImmediate(resolve));
-

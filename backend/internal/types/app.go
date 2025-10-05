@@ -37,6 +37,7 @@ type App struct {
 	Metadata   map[string]interface{} `json:"metadata"`
 	Services   []string               `json:"services"`
 	SandboxPID *uint32                `json:"sandbox_pid,omitempty"`
+	OSPID      *uint32                `json:"os_pid,omitempty"` // Actual OS process ID if spawned
 
 	// Window state (for session restoration)
 	WindowID   *string         `json:"window_id,omitempty"`

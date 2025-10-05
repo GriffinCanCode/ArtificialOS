@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/GriffinCanCode/AgentOS/backend/internal/app"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/grpc"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/registry"
@@ -12,7 +14,6 @@ import (
 	"github.com/GriffinCanCode/AgentOS/backend/internal/session"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/types"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/utils"
-	"github.com/gin-gonic/gin"
 )
 
 // Handlers contains all HTTP handlers

@@ -40,9 +40,7 @@ describe("useLogger", () => {
   });
 
   it("includes additional context", () => {
-    renderHook(() =>
-      useLogger("TestComponent", { userId: "123", action: "click" })
-    );
+    renderHook(() => useLogger("TestComponent", { userId: "123", action: "click" }));
 
     expect(logger.child).toHaveBeenCalledWith({
       component: "TestComponent",
@@ -62,9 +60,7 @@ describe("useLogger", () => {
   });
 
   it("uses the same logger instance across renders", () => {
-    const { result, rerender } = renderHook(() =>
-      useLogger("TestComponent")
-    );
+    const { result, rerender } = renderHook(() => useLogger("TestComponent"));
 
     const firstLogger = result.current;
     rerender();
@@ -74,10 +70,9 @@ describe("useLogger", () => {
   });
 
   it("creates new logger when component name changes", () => {
-    const { result, rerender } = renderHook(
-      ({ name }) => useLogger(name),
-      { initialProps: { name: "Component1" } }
-    );
+    const { result, rerender } = renderHook(({ name }) => useLogger(name), {
+      initialProps: { name: "Component1" },
+    });
 
     const firstLogger = result.current;
 
@@ -88,10 +83,9 @@ describe("useLogger", () => {
   });
 
   it("updates logger when additional context changes", () => {
-    const { result, rerender } = renderHook(
-      ({ context }) => useLogger("TestComponent", context),
-      { initialProps: { context: { userId: "123" } } }
-    );
+    const { result, rerender } = renderHook(({ context }) => useLogger("TestComponent", context), {
+      initialProps: { context: { userId: "123" } },
+    });
 
     const firstLogger = result.current;
 
@@ -101,4 +95,3 @@ describe("useLogger", () => {
     expect(firstLogger).not.toBe(secondLogger);
   });
 });
-

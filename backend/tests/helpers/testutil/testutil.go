@@ -93,13 +93,13 @@ func CreateTestApp(t *testing.T, overrides map[string]interface{}) *types.App {
 	t.Helper()
 
 	app := &types.App{
-		ID:       "test-app-id",
-		Hash:     "test-hash",
-		Title:    "Test App",
-		State:    types.StateActive,
-		UISpec:   map[string]interface{}{"title": "Test App"},
-		Metadata: map[string]interface{}{},
-		Services: []string{},
+		ID:        "test-app-id",
+		Hash:      "test-hash",
+		Title:     "Test App",
+		State:     types.StateActive,
+		Blueprint: map[string]interface{}{"title": "Test App"},
+		Metadata:  map[string]interface{}{},
+		Services:  []string{},
 	}
 
 	// Apply overrides
@@ -110,7 +110,7 @@ func CreateTestApp(t *testing.T, overrides map[string]interface{}) *types.App {
 		app.State = state
 	}
 	if uiSpec, ok := overrides["ui_spec"].(map[string]interface{}); ok {
-		app.UISpec = uiSpec
+		app.Blueprint = uiSpec
 	}
 
 	return app
@@ -150,7 +150,7 @@ func CreateTestPackage(t *testing.T, id string) *types.Package {
 		Category:    "general",
 		Version:     "1.0.0",
 		Author:      "test",
-		UISpec:      map[string]interface{}{"title": "Test App"},
+		Blueprint:   map[string]interface{}{"title": "Test App"},
 		Services:    []string{},
 		Permissions: []string{"STANDARD"},
 		Tags:        []string{"test"},

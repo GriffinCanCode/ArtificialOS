@@ -10,6 +10,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::executor::{ExecutionConfig, ProcessExecutor};
+use crate::ipc::IPCManager;
 use crate::limits::{LimitManager, Limits};
 use crate::memory::MemoryManager;
 
@@ -37,6 +38,9 @@ pub struct ProcessManager {
     memory_manager: Option<MemoryManager>,
     executor: Option<ProcessExecutor>,
     limit_manager: Option<LimitManager>,
+    ipc_manager: Option<IPCManager>,
+    // Track child processes per parent PID for limit enforcement
+    child_counts: Arc<RwLock<HashMap<u32, u32>>>,
 }
 
 impl ProcessManager {
@@ -48,6 +52,8 @@ impl ProcessManager {
             memory_manager: None,
             executor: None,
             limit_manager: None,
+            ipc_manager: None,
+            child_counts: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -60,6 +66,8 @@ impl ProcessManager {
             memory_manager: Some(memory_manager),
             executor: None,
             limit_manager: None,
+            ipc_manager: None,
+            child_counts: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -72,6 +80,8 @@ impl ProcessManager {
             memory_manager: None,
             executor: Some(ProcessExecutor::new()),
             limit_manager: LimitManager::new().ok(),
+            ipc_manager: None,
+            child_counts: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -84,7 +94,16 @@ impl ProcessManager {
             memory_manager: Some(memory_manager),
             executor: Some(ProcessExecutor::new()),
             limit_manager: LimitManager::new().ok(),
+            ipc_manager: None,
+            child_counts: Arc::new(RwLock::new(HashMap::new())),
         }
+    }
+
+    /// Set IPC manager for automatic cleanup on process termination
+    pub fn with_ipc_manager(mut self, ipc_manager: IPCManager) -> Self {
+        info!("Process manager configured with IPC cleanup");
+        self.ipc_manager = Some(ipc_manager);
+        self
     }
 
     /// Create a process (metadata only, no OS process)
@@ -100,18 +119,19 @@ impl ProcessManager {
         config: Option<ExecutionConfig>,
     ) -> u32 {
         // Allocate PID
-        let mut processes = self.processes.write();
+        let processes = self.processes.write();
         let mut next_pid = self.next_pid.write();
 
         let pid = *next_pid;
         *next_pid += 1;
 
+        // Drop locks early to avoid deadlock when reacquiring later
+        drop(processes);
+        drop(next_pid);
+
         // Spawn OS process if command provided and executor available
         let os_pid = if let Some(cfg) = config {
             if let Some(ref executor) = self.executor {
-                drop(processes);
-                drop(next_pid);
-
                 match executor.spawn(pid, name.clone(), cfg) {
                     Ok(os_pid) => {
                         info!("Spawned OS process {} for PID {}", os_pid, pid);
@@ -175,15 +195,43 @@ impl ProcessManager {
 
     pub fn terminate_process(&self, pid: u32) -> bool {
         let mut processes = self.processes.write();
-        if let Some(mut process) = processes.remove(&pid) {
-            process.state = ProcessState::Terminated;
-            info!("Terminated and removed process: PID {}", pid);
+        if let Some(process) = processes.remove(&pid) {
+            info!("Terminating process: PID {}", pid);
+
+            // Kill OS process if it exists
+            if let Some(os_pid) = process.os_pid {
+                if let Some(ref executor) = self.executor {
+                    drop(processes); // Release lock before potentially blocking operation
+
+                    if let Err(e) = executor.kill(pid) {
+                        log::warn!("Failed to kill OS process: {}", e);
+                    }
+
+                    // Remove resource limits
+                    if let Some(ref limit_mgr) = self.limit_manager {
+                        if let Err(e) = limit_mgr.remove(os_pid) {
+                            log::warn!("Failed to remove limits: {}", e);
+                        }
+                    }
+
+                    // Reacquire lock
+                    let _ = self.processes.write();
+                }
+            }
 
             // Clean up memory if memory manager is available
             if let Some(ref mem_mgr) = self.memory_manager {
                 let freed = mem_mgr.free_process_memory(pid);
                 if freed > 0 {
-                    info!("Freed {} bytes from terminated process PID {}", freed, pid);
+                    info!("Freed {} bytes from terminated PID {}", freed, pid);
+                }
+            }
+
+            // Clean up IPC resources if IPC manager is available
+            if let Some(ref ipc_mgr) = self.ipc_manager {
+                let cleaned = ipc_mgr.clear_process_queue(pid);
+                if cleaned > 0 {
+                    info!("Cleaned up {} IPC resources for terminated PID {}", cleaned, pid);
                 }
             }
 
@@ -201,6 +249,38 @@ impl ProcessManager {
     pub fn memory_manager(&self) -> Option<&MemoryManager> {
         self.memory_manager.as_ref()
     }
+
+    /// Get executor reference
+    pub fn executor(&self) -> Option<&ProcessExecutor> {
+        self.executor.as_ref()
+    }
+
+    /// Check if process has OS execution
+    pub fn has_os_process(&self, pid: u32) -> bool {
+        self.processes.read().get(&pid).and_then(|p| p.os_pid).is_some()
+    }
+
+    /// Get child process count for a PID
+    pub fn get_child_count(&self, pid: u32) -> u32 {
+        *self.child_counts.read().get(&pid).unwrap_or(&0)
+    }
+
+    /// Increment child count for a PID
+    fn increment_child_count(&self, pid: u32) {
+        let mut counts = self.child_counts.write();
+        *counts.entry(pid).or_insert(0) += 1;
+    }
+
+    /// Decrement child count for a PID
+    fn decrement_child_count(&self, pid: u32) {
+        let mut counts = self.child_counts.write();
+        if let Some(count) = counts.get_mut(&pid) {
+            *count = count.saturating_sub(1);
+            if *count == 0 {
+                counts.remove(&pid);
+            }
+        }
+    }
 }
 
 impl Clone for ProcessManager {
@@ -209,6 +289,10 @@ impl Clone for ProcessManager {
             processes: Arc::clone(&self.processes),
             next_pid: Arc::clone(&self.next_pid),
             memory_manager: self.memory_manager.clone(),
+            executor: self.executor.clone(),
+            limit_manager: None, // Limit manager is not Clone, create new if needed
+            ipc_manager: self.ipc_manager.clone(),
+            child_counts: Arc::clone(&self.child_counts),
         }
     }
 }

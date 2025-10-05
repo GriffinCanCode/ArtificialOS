@@ -28,30 +28,58 @@ After deep analysis including final validation, you're **65-75% done** with the 
 
 ---
 
-## **PHASE 1: MULTI-WINDOW INTEGRATION (2 weeks, not 3)**
+## **PHASE 1: MULTI-WINDOW INTEGRATION (✅ COMPLETED)**
 
-### **Current State - CORRECTED**
+### **Current State - PRODUCTION READY**
 
 **Frontend:**
-- ✅ `WindowStore` (Zustand): Full state management  
-- ✅ `Window.tsx`: **Uses react-rnd library** - drag/resize/focus FULLY IMPLEMENTED (120 lines)  
+- ✅ `WindowStore` (Zustand): Full state management with maximize/restore  
+- ✅ `Window.tsx`: **Uses react-rnd library** - drag/resize/focus/maximize/snap FULLY IMPLEMENTED  
 - ✅ `WindowManager.tsx`: Renders all windows (already in App.tsx)  
 - ✅ `Taskbar.tsx`: Shows minimized windows (already exists)  
 - ✅ **Dual-mode architecture already in place** (DynamicRenderer for fullscreen + WindowManager for windowed)  
-- ❌ **Default spawn behavior is fullscreen instead of windowed**  
-- ❌ No backend window state synchronization
+- ✅ **Snap-to-edge positioning with visual preview**
+- ✅ **Keyboard shortcuts (Alt+Tab, Cmd+W, Cmd+M)**
+- ✅ **Window animations (fade-in, minimize, restore)**
+- ✅ **Session restoration support**
+- ✅ Backend window state synchronization
+- ✅ **Production-ready type system and utilities**
+- ✅ **Comprehensive test coverage (30+ tests)**
+- ✅ **Modular input handling architecture** (`ui/src/input/`)
+  - Centralized keyboard, mouse, touch, and gesture handling
+  - Zod-based validation with React Hook Form integration
+  - Text, number, and date formatting utilities
+  - Strongly-typed event handlers and hooks
+  - Pure functions for testability
+  - Complete migration from scattered utils
+- ✅ **Centralized window management architecture** (`ui/src/windows/`)
+  - Pure functions for viewport, bounds, snap, and constraints (`windows/core/`)
+  - Zustand store with comprehensive actions (`windows/store/`)
+  - React hooks for snap, keyboard, drag, and manager (`windows/hooks/`)
+  - Animation and backend sync utilities (`windows/utils/`)
+  - Full TypeScript type safety with enums and interfaces
+  - One-word memorable file names for easy navigation
+  - Complete migration from scattered store/hooks/utils
+  - Follows exact patterns from input module
 
 **Backend:**
 - ✅ `app.Manager`: Tracks apps with focus/state  
 - ✅ **Already creates sandbox PIDs** via kernel gRPC for apps with services  
-- ❌ No window state fields in App struct  
-- ❌ No window sync endpoints
+- ✅ Window state fields in App struct (WindowPosition, WindowSize)  
+- ✅ Window sync endpoints (`/apps/:id/window`)
+- ✅ Session manager captures window state
 
-**What Phase 1 Actually Needs:**
-1. Change default app spawn to use WindowManager instead of fullscreen DynamicRenderer
-2. Add window state to backend App struct
-3. Add sync endpoints
-4. Update session restoration to recreate windows
+**Completed Features:**
+1. ✅ Apps launch in windows by default (already implemented)
+2. ✅ Window state in backend App struct
+3. ✅ Sync endpoints fully functional
+4. ✅ Session restoration supports windows
+5. ✅ Maximize/restore with smooth transitions
+6. ✅ Snap-to-edge positioning (left, right, corners, top)
+7. ✅ Keyboard shortcuts for window management
+8. ✅ Production-ready utilities and type system
+9. ✅ Comprehensive test suite
+10. ✅ Modular input handling system with validation and formatting
 
 ---
 
@@ -430,38 +458,34 @@ describe("Multi-Window Management", () => {
 
 ---
 
-## **PHASE 2: TRUE PROCESS ISOLATION (4 weeks)**
+## ✅ **PHASE 2: TRUE PROCESS ISOLATION (COMPLETED)**
 
-### **Current State - CORRECTED**
+### **Implementation Summary**
 
 **Kernel:**
-- ✅ `process.rs`: Tracks process metadata (PID, name, state)
-- ✅ `sandbox.rs`: Capability-based sandboxing
-- ✅ `memory.rs`: Per-process memory accounting
-- ❌ **Processes are HashMap entries, not OS processes**
+- ✅ `executor.rs`: NEW - OS process spawning with std::process::Command
+- ✅ `limits.rs`: NEW - Resource limit enforcement (cgroups v2 on Linux, cross-platform fallback)
+- ✅ `process.rs`: ENHANCED - Now supports OS execution with ExecutionConfig
+- ✅ `sandbox.rs`: ENHANCED - Process spawn tracking and limit enforcement
+- ✅ `syscall.rs`: ENHANCED - Proper process limit checking (max_processes enforcement)
 
 **Go Backend:**
-- ✅ **Already calls `kernelClient.CreateProcess()` for every app with services**
-- ✅ Stores sandbox PID in `App.SandboxPID`
-- ❌ Kernel doesn't spawn actual OS processes yet
+- ✅ `grpc/kernel.go`: UPDATED - CreateProcessOptions for command/args/env
+- ✅ `app/manager.go`: UPDATED - Supports new process creation signature
+- ✅ `server/server.go`: UPDATED - Uses new CreateProcess API
 
-**Kernel CreateProcess Flow (CURRENT):**
-```rust
-// kernel/src/grpc_server.rs - create_process()
-1. Receive CreateProcessRequest
-2. Create sandbox config (MINIMAL/STANDARD/PRIVILEGED)
-3. Call process_manager.create_process(name, priority)
-4. Call sandbox_manager.create_sandbox(config)
-5. Return PID
+**Protobuf:**
+- ✅ `kernel.proto`: UPDATED - Added command, args, env_vars, os_pid fields
+- ✅ Generated Go and Rust code regenerated
 
-// What's missing: Steps 3 doesn't spawn actual OS process
-```
-
-**What Phase 2 Actually Needs:**
-1. Modify kernel ProcessManager to spawn real OS processes
-2. Update protobuf to support command/args
-3. Optional: Add Docker/Podman support for containers
-4. Add resource limit enforcement (cgroups on Linux)
+**Features Implemented:**
+1. ✅ OS process spawning via ProcessExecutor
+2. ✅ Security validation (shell injection prevention)
+3. ✅ Resource limits (memory, CPU shares, max PIDs)
+4. ✅ cgroups v2 integration on Linux
+5. ✅ Cross-platform fallback for macOS/Windows
+6. ✅ Process spawn limit tracking per PID
+7. ✅ Comprehensive test coverage (executor, limits, integration tests)
 
 ---
 
@@ -1106,17 +1130,41 @@ async fn test_process_isolation() {
 
 ---
 
-## **PHASE 3: ADVANCED IPC (2 weeks)**
+## ✅ **PHASE 3: ADVANCED IPC (COMPLETED)**
 
-### **Current State**
+### **Implementation Summary**
 
 **Kernel:**
-- ✅ `ipc.rs`: Message queues per PID (max 1000 messages, 100MB global limit)
-- ❌ No pipes for streaming
-- ❌ No shared memory
-- ❌ No signals
+- ✅ `pipe.rs`: NEW - Unix-style pipes with 64KB default capacity, global 50MB limit
+- ✅ `shm.rs`: NEW - Shared memory with zero-copy transfer, max 100MB per segment, 500MB global
+- ✅ `ipc.rs`: ENHANCED - Integrated pipe and shm managers for unified IPC cleanup
+- ✅ `syscall.rs`: ENHANCED - Added 13 new IPC syscalls (pipes and shared memory)
+- ✅ `grpc_server.rs`: UPDATED - Handles all new IPC syscall types
+- ✅ `main.rs`: UPDATED - Initializes syscall executor with IPC support
 
-**Problem:** Apps can only send discrete messages. Can't stream data or share large buffers.
+**Go Backend:**
+- ✅ `grpc/ipc.go`: NEW - IPC client wrapper for kernel operations
+- ✅ `providers/ipc/provider.go`: NEW - IPC service provider with 7 tools
+- ✅ `server/server.go`: UPDATED - Registers IPC provider
+
+**Protobuf:**
+- ✅ `kernel.proto`: UPDATED - Added 13 IPC syscall messages (pipes + shm)
+- ✅ Generated Rust code regenerated
+
+**Features Implemented:**
+1. ✅ Unix-style pipes for streaming data
+2. ✅ Shared memory for zero-copy transfer
+3. ✅ Permission-based access control (read-only/read-write)
+4. ✅ Resource limits (per-process and global)
+5. ✅ Automatic cleanup on process termination
+6. ✅ Comprehensive test coverage (17 pipe tests, 21 shm tests)
+7. ✅ Backend service integration
+8. ✅ gRPC client methods for all operations
+
+**Problem SOLVED:** Apps now have multiple IPC mechanisms:
+- Message queues for discrete messages
+- Pipes for streaming data between processes
+- Shared memory for zero-copy bulk data transfer
 
 ---
 
@@ -1326,13 +1374,13 @@ The rest of the plan (Phases 4-6) remains the same as the original. Key points:
 | Phase | Duration | Key Deliverables | % Complete |
 |-------|----------|------------------|------------|
 | **Phase 1: Multi-Window** | **2 weeks** ⬇️ | Window integration, backend sync, session restore | **50% done** |
-| **Phase 2: Process Isolation** | **4 weeks** | OS processes, containers, resource limits | **30% done** |
-| **Phase 3: Advanced IPC** | **2 weeks** | Pipes, shared memory | **40% done** |
+| ✅ **Phase 2: Process Isolation** | **COMPLETED** | ✅ OS processes, ✅ resource limits, ✅ security validation | **100% done** |
+| ✅ **Phase 3: Advanced IPC** | **COMPLETED** | ✅ Pipes, ✅ shared memory, ✅ backend integration | **100% done** |
 | **Phase 4: Scheduler** | **3 weeks** | Round-robin, priority scheduling | **0% done** |
-| **Phase 5: Syscalls** | **2 weeks** | Expand to 50 syscalls | **32% done** (16/50) |
+| **Phase 5: Syscalls** | **2 weeks** | Expand to 50 syscalls | **58% done** (29/50) |
 | **Phase 6: VFS** | **4 weeks** | Virtual filesystem, backends | **0% done** |
 
-**Total: 17 weeks (4.25 months)**
+**Total: 17 weeks (4.25 months)** | **Completed: 8 weeks** (Phases 1, 2 & 3)
 
 ---
 

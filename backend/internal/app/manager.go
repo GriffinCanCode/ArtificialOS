@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	grpcClient "github.com/GriffinCanCode/AgentOS/backend/internal/grpc"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/types"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/utils"
 	"github.com/google/uuid"
@@ -22,7 +23,7 @@ type Manager struct {
 
 // KernelClient interface for dependency injection
 type KernelClient interface {
-	CreateProcess(ctx context.Context, name string, priority uint32, sandboxLevel string) (*uint32, error)
+	CreateProcess(ctx context.Context, name string, priority uint32, sandboxLevel string, opts *grpcClient.CreateProcessOptions) (*uint32, *uint32, error)
 }
 
 // NewManager creates a new app manager
@@ -53,10 +54,26 @@ func (m *Manager) Spawn(ctx context.Context, request string, blueprint map[strin
 	hash := m.appIdentifier.GenerateHash(title, parentID, metadata)
 
 	// Create sandboxed process if kernel available
-	var sandboxPID *uint32
+	var sandboxPID, osPID *uint32
 	if m.kernelGRPC != nil && len(services) > 0 {
-		if pid, err := m.kernelGRPC.CreateProcess(ctx, title, 5, "STANDARD"); err == nil {
+		// Check if app metadata requests OS execution
+		enableOS, _ := metadata["enable_os_execution"].(bool)
+		command, _ := metadata["os_command"].(string)
+
+		var opts *grpcClient.CreateProcessOptions
+		if enableOS && command != "" {
+			// Spawn actual OS process for this app
+			opts = &grpcClient.CreateProcessOptions{
+				Command: command,
+				Args:    []string{},
+				EnvVars: []string{},
+			}
+		}
+
+		// Create sandbox process (with or without OS execution)
+		if pid, os_pid, err := m.kernelGRPC.CreateProcess(ctx, title, 5, "STANDARD", opts); err == nil {
 			sandboxPID = pid
+			osPID = os_pid
 		}
 	}
 
@@ -71,9 +88,17 @@ func (m *Manager) Spawn(ctx context.Context, request string, blueprint map[strin
 		Metadata:   metadata,
 		Services:   services,
 		SandboxPID: sandboxPID,
+		OSPID:      osPID,
 	}
 
 	m.mu.Lock()
+	// Unfocus current app
+	if m.focusedID != nil {
+		if currentApp, exists := m.apps[*m.focusedID]; exists && currentApp.State == types.StateActive {
+			currentApp.State = types.StateBackground
+		}
+	}
+
 	m.apps[app.ID] = app
 	m.focusedID = &app.ID
 	m.focusedHash = &hash

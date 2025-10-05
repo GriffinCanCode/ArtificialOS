@@ -5,6 +5,7 @@
 
 use log::info;
 use std::path::PathBuf;
+use std::time::Duration;
 use tonic::{transport::Server, Request, Response, Status};
 
 use crate::process::ProcessManager;
@@ -22,7 +23,7 @@ use kernel_proto::*;
 /// gRPC service implementation
 pub struct KernelServiceImpl {
     syscall_executor: SyscallExecutor,
-    process_manager: parking_lot::RwLock<ProcessManager>,
+    process_manager: ProcessManager,
     sandbox_manager: SandboxManager,
 }
 
@@ -35,7 +36,7 @@ impl KernelServiceImpl {
         info!("gRPC service initialized");
         Self {
             syscall_executor,
-            process_manager: parking_lot::RwLock::new(process_manager),
+            process_manager,
             sandbox_manager,
         }
     }
@@ -104,6 +105,56 @@ impl KernelService for KernelServiceImpl {
             Some(syscall_request::Syscall::NetworkRequest(call)) => {
                 Syscall::NetworkRequest { url: call.url }
             }
+            // IPC - Pipes
+            Some(syscall_request::Syscall::CreatePipe(call)) => Syscall::CreatePipe {
+                reader_pid: call.reader_pid,
+                writer_pid: call.writer_pid,
+                capacity: call.capacity.map(|c| c as usize),
+            },
+            Some(syscall_request::Syscall::WritePipe(call)) => Syscall::WritePipe {
+                pipe_id: call.pipe_id,
+                data: call.data,
+            },
+            Some(syscall_request::Syscall::ReadPipe(call)) => Syscall::ReadPipe {
+                pipe_id: call.pipe_id,
+                size: call.size as usize,
+            },
+            Some(syscall_request::Syscall::ClosePipe(call)) => Syscall::ClosePipe {
+                pipe_id: call.pipe_id,
+            },
+            Some(syscall_request::Syscall::DestroyPipe(call)) => Syscall::DestroyPipe {
+                pipe_id: call.pipe_id,
+            },
+            Some(syscall_request::Syscall::PipeStats(call)) => Syscall::PipeStats {
+                pipe_id: call.pipe_id,
+            },
+            // IPC - Shared Memory
+            Some(syscall_request::Syscall::CreateShm(call)) => Syscall::CreateShm {
+                size: call.size as usize,
+            },
+            Some(syscall_request::Syscall::AttachShm(call)) => Syscall::AttachShm {
+                segment_id: call.segment_id,
+                read_only: call.read_only,
+            },
+            Some(syscall_request::Syscall::DetachShm(call)) => Syscall::DetachShm {
+                segment_id: call.segment_id,
+            },
+            Some(syscall_request::Syscall::WriteShm(call)) => Syscall::WriteShm {
+                segment_id: call.segment_id,
+                offset: call.offset as usize,
+                data: call.data,
+            },
+            Some(syscall_request::Syscall::ReadShm(call)) => Syscall::ReadShm {
+                segment_id: call.segment_id,
+                offset: call.offset as usize,
+                size: call.size as usize,
+            },
+            Some(syscall_request::Syscall::DestroyShm(call)) => Syscall::DestroyShm {
+                segment_id: call.segment_id,
+            },
+            Some(syscall_request::Syscall::ShmStats(call)) => Syscall::ShmStats {
+                segment_id: call.segment_id,
+            },
             None => {
                 return Err(Status::invalid_argument("No syscall provided"));
             }
@@ -140,9 +191,44 @@ impl KernelService for KernelServiceImpl {
 
         info!("gRPC: Creating process: {}", req.name);
 
-        // Create process
-        let pm = self.process_manager.read();
-        let pid = pm.create_process(req.name.clone(), req.priority as u8);
+        // Build execution config if command provided
+        let exec_config = if let Some(command) = req.command {
+            if !command.is_empty() {
+                let mut config = crate::executor::ExecutionConfig::new(command);
+                if !req.args.is_empty() {
+                    config = config.with_args(req.args);
+                }
+                if !req.env_vars.is_empty() {
+                    let env: Vec<(String, String)> = req
+                        .env_vars
+                        .iter()
+                        .filter_map(|e| {
+                            let parts: Vec<&str> = e.splitn(2, '=').collect();
+                            if parts.len() == 2 {
+                                Some((parts[0].to_string(), parts[1].to_string()))
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+                    config = config.with_env(env);
+                }
+                Some(config)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        // Create process (with or without OS execution)
+        info!("About to call create_process_with_command");
+        let pid = self.process_manager.create_process_with_command(req.name.clone(), req.priority as u8, exec_config);
+        info!("Created process, PID: {}", pid);
+
+        // Get OS PID if available
+        let os_pid = self.process_manager.get_process(pid).and_then(|p| p.os_pid);
+        info!("Got OS PID: {:?}", os_pid);
 
         // Create sandbox based on level
         let sandbox_config = match SandboxLevel::try_from(req.sandbox_level) {
@@ -157,7 +243,13 @@ impl KernelService for KernelServiceImpl {
             pid,
             success: true,
             error: String::new(),
+            os_pid,
         };
+
+        info!(
+            "gRPC: Created process {} (PID: {}, OS PID: {:?})",
+            req.name, pid, os_pid
+        );
 
         Ok(Response::new(response))
     }
@@ -256,7 +348,15 @@ pub async fn start_grpc_server(
 
     info!("🌐 gRPC server starting on {}", addr);
 
+    // Configure server with very lenient keepalive settings to prevent "too_many_pings" errors
     Server::builder()
+        .timeout(Duration::from_secs(120))
+        // Server-side keepalive pings
+        .http2_keepalive_interval(Some(Duration::from_secs(60)))
+        .http2_keepalive_timeout(Some(Duration::from_secs(20)))
+        // Don't enforce minimum time between client pings
+        .http2_adaptive_window(Some(true))
+        .tcp_nodelay(true)
         .add_service(KernelServiceServer::new(service))
         .serve(addr)
         .await?;

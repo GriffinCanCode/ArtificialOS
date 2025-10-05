@@ -24,11 +24,11 @@ func NewKernelClient(addr string) (*KernelClient, error) {
 	// Configure connection options for production use
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		// Configure keepalive to detect broken connections
+		// Configure keepalive to detect broken connections (reduced frequency to avoid "too_many_pings")
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{
-			Time:                10 * time.Second, // Send pings every 10 seconds
-			Timeout:             3 * time.Second,  // Wait 3 seconds for ping ack
-			PermitWithoutStream: true,             // Allow pings without active streams
+			Time:                60 * time.Second, // Send pings every 60 seconds
+			Timeout:             20 * time.Second, // Wait 20 seconds for ping ack
+			PermitWithoutStream: false,            // Only send pings when streams are active
 		}),
 		// Set reasonable message size limits
 		grpc.WithDefaultCallOptions(
@@ -58,8 +58,21 @@ func (k *KernelClient) Close() error {
 	return nil
 }
 
+// CreateProcessOptions optional parameters for process creation
+type CreateProcessOptions struct {
+	Command string
+	Args    []string
+	EnvVars []string
+}
+
 // CreateProcess creates a new sandboxed process
-func (k *KernelClient) CreateProcess(ctx context.Context, name string, priority uint32, sandboxLevel string) (*uint32, error) {
+func (k *KernelClient) CreateProcess(
+	ctx context.Context,
+	name string,
+	priority uint32,
+	sandboxLevel string,
+	opts *CreateProcessOptions,
+) (*uint32, *uint32, error) {
 	levelMap := map[string]pb.SandboxLevel{
 		"MINIMAL":    pb.SandboxLevel_MINIMAL,
 		"STANDARD":   pb.SandboxLevel_STANDARD,
@@ -71,17 +84,29 @@ func (k *KernelClient) CreateProcess(ctx context.Context, name string, priority 
 		level = pb.SandboxLevel_STANDARD
 	}
 
+	// Build request
+	req := &pb.CreateProcessRequest{
+		Name:         name,
+		Priority:     priority,
+		SandboxLevel: level,
+	}
+
+	// Add optional execution parameters
+	if opts != nil {
+		if opts.Command != "" {
+			req.Command = &opts.Command
+			req.Args = opts.Args
+			req.EnvVars = opts.EnvVars
+		}
+	}
+
 	// Use provided context with timeout
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	resp, err := k.client.CreateProcess(ctx, &pb.CreateProcessRequest{
-		Name:         name,
-		Priority:     priority,
-		SandboxLevel: level,
-	})
+	resp, err := k.client.CreateProcess(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("create process failed: %w", err)
+		return nil, nil, fmt.Errorf("create process failed: %w", err)
 	}
 
 	if !resp.Success {
@@ -89,16 +114,16 @@ func (k *KernelClient) CreateProcess(ctx context.Context, name string, priority 
 		if resp.Error != "" {
 			errMsg = resp.Error
 		}
-		return nil, fmt.Errorf("create process failed: %s", errMsg)
+		return nil, nil, fmt.Errorf("create process failed: %s", errMsg)
 	}
 
-	return &resp.Pid, nil
+	return &resp.Pid, resp.OsPid, nil
 }
 
 // ExecuteSyscall executes a system call
 func (k *KernelClient) ExecuteSyscall(ctx context.Context, pid uint32, syscallType string, params map[string]interface{}) ([]byte, error) {
 	// Use provided context with timeout
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	req := &pb.SyscallRequest{Pid: pid}

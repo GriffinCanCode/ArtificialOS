@@ -6,10 +6,11 @@ import (
 	"os/signal"
 	"syscall"
 
+	"go.uber.org/zap"
+
 	"github.com/GriffinCanCode/AgentOS/backend/internal/config"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/logging"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/server"
-	"go.uber.org/zap"
 )
 
 func main() {

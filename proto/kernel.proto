@@ -8,13 +8,13 @@ option go_package = "github.com/GriffinCanCode/AgentOS/backend/proto/kernel";
 service KernelService {
   // Execute a system call
   rpc ExecuteSyscall(SyscallRequest) returns (SyscallResponse);
-  
+
   // Create a sandboxed process
   rpc CreateProcess(CreateProcessRequest) returns (CreateProcessResponse);
-  
+
   // Manage sandbox permissions
   rpc UpdateSandbox(UpdateSandboxRequest) returns (UpdateSandboxResponse);
-  
+
   // Stream kernel events (optional, for future)
   rpc StreamEvents(EventStreamRequest) returns (stream KernelEvent);
 }
@@ -42,6 +42,21 @@ message SyscallRequest {
     GetCurrentTimeCall get_current_time = 31;
     GetEnvVarCall get_env_var = 32;
     NetworkRequestCall network_request = 40;
+    // IPC - Pipes
+    CreatePipeCall create_pipe = 50;
+    WritePipeCall write_pipe = 51;
+    ReadPipeCall read_pipe = 52;
+    ClosePipeCall close_pipe = 53;
+    DestroyPipeCall destroy_pipe = 54;
+    PipeStatsCall pipe_stats = 55;
+    // IPC - Shared Memory
+    CreateShmCall create_shm = 60;
+    AttachShmCall attach_shm = 61;
+    DetachShmCall detach_shm = 62;
+    WriteShmCall write_shm = 63;
+    ReadShmCall read_shm = 64;
+    DestroyShmCall destroy_shm = 65;
+    ShmStatsCall shm_stats = 66;
   }
 }
 
@@ -146,6 +161,75 @@ message NetworkRequestCall {
 }
 
 // ============================================================================
+// IPC Calls - Pipes
+// ============================================================================
+
+message CreatePipeCall {
+  uint32 reader_pid = 1;
+  uint32 writer_pid = 2;
+  optional uint32 capacity = 3;
+}
+
+message WritePipeCall {
+  uint32 pipe_id = 1;
+  bytes data = 2;
+}
+
+message ReadPipeCall {
+  uint32 pipe_id = 1;
+  uint32 size = 2;
+}
+
+message ClosePipeCall {
+  uint32 pipe_id = 1;
+}
+
+message DestroyPipeCall {
+  uint32 pipe_id = 1;
+}
+
+message PipeStatsCall {
+  uint32 pipe_id = 1;
+}
+
+// ============================================================================
+// IPC Calls - Shared Memory
+// ============================================================================
+
+message CreateShmCall {
+  uint32 size = 1;
+}
+
+message AttachShmCall {
+  uint32 segment_id = 1;
+  bool read_only = 2;
+}
+
+message DetachShmCall {
+  uint32 segment_id = 1;
+}
+
+message WriteShmCall {
+  uint32 segment_id = 1;
+  uint32 offset = 2;
+  bytes data = 3;
+}
+
+message ReadShmCall {
+  uint32 segment_id = 1;
+  uint32 offset = 2;
+  uint32 size = 3;
+}
+
+message DestroyShmCall {
+  uint32 segment_id = 1;
+}
+
+message ShmStatsCall {
+  uint32 segment_id = 1;
+}
+
+// ============================================================================
 // Process Management
 // ============================================================================
 
@@ -153,12 +237,16 @@ message CreateProcessRequest {
   string name = 1;
   uint32 priority = 2;
   SandboxLevel sandbox_level = 3;
+  optional string command = 4;
+  repeated string args = 5;
+  repeated string env_vars = 6;
 }
 
 message CreateProcessResponse {
   uint32 pid = 1;
   bool success = 2;
   string error = 3;
+  optional uint32 os_pid = 4;
 }
 
 enum SandboxLevel {

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "description": "Dynamic UI renderer for AI-Powered OS",
-  "main": "src/main.cjs",
+  "main": "src/app/main.cjs",
   "scripts": {
     "dev": "concurrently \"npm run dev:react\" \"npm run dev:electron\"",
     "dev:react": "vite",

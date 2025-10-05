@@ -102,18 +102,89 @@ pub enum Syscall {
     NetworkRequest {
         url: String,
     },
+
+    // IPC - Pipes
+    CreatePipe {
+        reader_pid: u32,
+        writer_pid: u32,
+        capacity: Option<usize>,
+    },
+    WritePipe {
+        pipe_id: u32,
+        data: Vec<u8>,
+    },
+    ReadPipe {
+        pipe_id: u32,
+        size: usize,
+    },
+    ClosePipe {
+        pipe_id: u32,
+    },
+    DestroyPipe {
+        pipe_id: u32,
+    },
+    PipeStats {
+        pipe_id: u32,
+    },
+
+    // IPC - Shared Memory
+    CreateShm {
+        size: usize,
+    },
+    AttachShm {
+        segment_id: u32,
+        read_only: bool,
+    },
+    DetachShm {
+        segment_id: u32,
+    },
+    WriteShm {
+        segment_id: u32,
+        offset: usize,
+        data: Vec<u8>,
+    },
+    ReadShm {
+        segment_id: u32,
+        offset: usize,
+        size: usize,
+    },
+    DestroyShm {
+        segment_id: u32,
+    },
+    ShmStats {
+        segment_id: u32,
+    },
 }
 
 /// System call executor
 #[derive(Clone)]
 pub struct SyscallExecutor {
     sandbox_manager: SandboxManager,
+    pipe_manager: Option<crate::pipe::PipeManager>,
+    shm_manager: Option<crate::shm::ShmManager>,
 }
 
 impl SyscallExecutor {
     pub fn new(sandbox_manager: SandboxManager) -> Self {
         info!("Syscall executor initialized");
-        Self { sandbox_manager }
+        Self {
+            sandbox_manager,
+            pipe_manager: None,
+            shm_manager: None,
+        }
+    }
+
+    pub fn with_ipc(
+        sandbox_manager: SandboxManager,
+        pipe_manager: crate::pipe::PipeManager,
+        shm_manager: crate::shm::ShmManager,
+    ) -> Self {
+        info!("Syscall executor initialized with IPC support");
+        Self {
+            sandbox_manager,
+            pipe_manager: Some(pipe_manager),
+            shm_manager: Some(shm_manager),
+        }
     }
 
     /// Execute a system call with sandboxing
@@ -153,6 +224,38 @@ impl SyscallExecutor {
 
             // Network
             Syscall::NetworkRequest { ref url } => self.network_request(pid, url),
+
+            // IPC - Pipes
+            Syscall::CreatePipe {
+                reader_pid,
+                writer_pid,
+                capacity,
+            } => self.create_pipe(pid, reader_pid, writer_pid, capacity),
+            Syscall::WritePipe { pipe_id, ref data } => self.write_pipe(pid, pipe_id, data),
+            Syscall::ReadPipe { pipe_id, size } => self.read_pipe(pid, pipe_id, size),
+            Syscall::ClosePipe { pipe_id } => self.close_pipe(pid, pipe_id),
+            Syscall::DestroyPipe { pipe_id } => self.destroy_pipe(pid, pipe_id),
+            Syscall::PipeStats { pipe_id } => self.pipe_stats(pid, pipe_id),
+
+            // IPC - Shared Memory
+            Syscall::CreateShm { size } => self.create_shm(pid, size),
+            Syscall::AttachShm {
+                segment_id,
+                read_only,
+            } => self.attach_shm(pid, segment_id, read_only),
+            Syscall::DetachShm { segment_id } => self.detach_shm(pid, segment_id),
+            Syscall::WriteShm {
+                segment_id,
+                offset,
+                ref data,
+            } => self.write_shm(pid, segment_id, offset, data),
+            Syscall::ReadShm {
+                segment_id,
+                offset,
+                size,
+            } => self.read_shm(pid, segment_id, offset, size),
+            Syscall::DestroyShm { segment_id } => self.destroy_shm(pid, segment_id),
+            Syscall::ShmStats { segment_id } => self.shm_stats(pid, segment_id),
         }
     }
 
@@ -529,24 +632,36 @@ impl SyscallExecutor {
             }
         }
 
-        // Get resource limits
+        // Check resource limits - enforce max_processes
         if let Some(limits) = self.sandbox_manager.get_limits(pid) {
-            // TODO: Check if we're within process limits
-            info!(
-                "Spawning process within limits: max_processes={}",
-                limits.max_processes
-            );
+            if !self.sandbox_manager.can_spawn_process(pid) {
+                let current = self.sandbox_manager.get_spawn_count(pid);
+                error!(
+                    "PID {} exceeded process limit: {}/{} processes",
+                    pid, current, limits.max_processes
+                );
+                return SyscallResult::permission_denied(format!(
+                    "Process limit exceeded: {}/{} processes spawned",
+                    current, limits.max_processes
+                ));
+            }
         }
 
         // Spawn process (sandboxed)
         match Command::new(command).args(args).output() {
             Ok(output) => {
+                // Record successful spawn
+                self.sandbox_manager.record_spawn(pid);
+
                 info!("PID {} spawned process: {} {:?}", pid, command, args);
                 let process_output = ProcessOutput {
                     stdout: String::from_utf8_lossy(&output.stdout).to_string(),
                     stderr: String::from_utf8_lossy(&output.stderr).to_string(),
                     exit_code: output.status.code().unwrap_or(-1),
                 };
+
+                // Process completed, decrement count
+                self.sandbox_manager.record_termination(pid);
 
                 match serde_json::to_vec(&process_output) {
                     Ok(result) => SyscallResult::success_with_data(result),
@@ -663,6 +778,333 @@ impl SyscallExecutor {
         // Placeholder for network operations
         warn!("Network operations not yet implemented");
         SyscallResult::error("Network operations not implemented")
+    }
+
+    // ========================================================================
+    // IPC Operations - Pipes
+    // ========================================================================
+
+    fn create_pipe(
+        &self,
+        pid: u32,
+        reader_pid: u32,
+        writer_pid: u32,
+        capacity: Option<usize>,
+    ) -> SyscallResult {
+        if !self
+            .sandbox_manager
+            .check_permission(pid, &Capability::SendMessage)
+        {
+            return SyscallResult::permission_denied("Missing SendMessage capability");
+        }
+
+        let pipe_manager = match &self.pipe_manager {
+            Some(pm) => pm,
+            None => return SyscallResult::error("Pipe manager not available"),
+        };
+
+        match pipe_manager.create(reader_pid, writer_pid, capacity) {
+            Ok(pipe_id) => {
+                info!("PID {} created pipe {}", pid, pipe_id);
+                match serde_json::to_vec(&pipe_id) {
+                    Ok(data) => SyscallResult::success_with_data(data),
+                    Err(e) => {
+                        error!("Failed to serialize pipe ID: {}", e);
+                        SyscallResult::error("Serialization failed")
+                    }
+                }
+            }
+            Err(e) => {
+                error!("Failed to create pipe: {}", e);
+                SyscallResult::error(format!("Pipe creation failed: {}", e))
+            }
+        }
+    }
+
+    fn write_pipe(&self, pid: u32, pipe_id: u32, data: &[u8]) -> SyscallResult {
+        if !self
+            .sandbox_manager
+            .check_permission(pid, &Capability::SendMessage)
+        {
+            return SyscallResult::permission_denied("Missing SendMessage capability");
+        }
+
+        let pipe_manager = match &self.pipe_manager {
+            Some(pm) => pm,
+            None => return SyscallResult::error("Pipe manager not available"),
+        };
+
+        match pipe_manager.write(pipe_id, pid, data) {
+            Ok(written) => {
+                info!("PID {} wrote {} bytes to pipe {}", pid, written, pipe_id);
+                match serde_json::to_vec(&written) {
+                    Ok(data) => SyscallResult::success_with_data(data),
+                    Err(e) => {
+                        error!("Failed to serialize write result: {}", e);
+                        SyscallResult::error("Serialization failed")
+                    }
+                }
+            }
+            Err(e) => {
+                error!("Pipe write failed: {}", e);
+                SyscallResult::error(format!("Pipe write failed: {}", e))
+            }
+        }
+    }
+
+    fn read_pipe(&self, pid: u32, pipe_id: u32, size: usize) -> SyscallResult {
+        if !self
+            .sandbox_manager
+            .check_permission(pid, &Capability::ReceiveMessage)
+        {
+            return SyscallResult::permission_denied("Missing ReceiveMessage capability");
+        }
+
+        let pipe_manager = match &self.pipe_manager {
+            Some(pm) => pm,
+            None => return SyscallResult::error("Pipe manager not available"),
+        };
+
+        match pipe_manager.read(pipe_id, pid, size) {
+            Ok(data) => {
+                info!("PID {} read {} bytes from pipe {}", pid, data.len(), pipe_id);
+                SyscallResult::success_with_data(data)
+            }
+            Err(e) => {
+                error!("Pipe read failed: {}", e);
+                SyscallResult::error(format!("Pipe read failed: {}", e))
+            }
+        }
+    }
+
+    fn close_pipe(&self, pid: u32, pipe_id: u32) -> SyscallResult {
+        let pipe_manager = match &self.pipe_manager {
+            Some(pm) => pm,
+            None => return SyscallResult::error("Pipe manager not available"),
+        };
+
+        match pipe_manager.close(pipe_id, pid) {
+            Ok(_) => {
+                info!("PID {} closed pipe {}", pid, pipe_id);
+                SyscallResult::success()
+            }
+            Err(e) => {
+                error!("Pipe close failed: {}", e);
+                SyscallResult::error(format!("Pipe close failed: {}", e))
+            }
+        }
+    }
+
+    fn destroy_pipe(&self, pid: u32, pipe_id: u32) -> SyscallResult {
+        let pipe_manager = match &self.pipe_manager {
+            Some(pm) => pm,
+            None => return SyscallResult::error("Pipe manager not available"),
+        };
+
+        match pipe_manager.destroy(pipe_id) {
+            Ok(_) => {
+                info!("PID {} destroyed pipe {}", pid, pipe_id);
+                SyscallResult::success()
+            }
+            Err(e) => {
+                error!("Pipe destroy failed: {}", e);
+                SyscallResult::error(format!("Pipe destroy failed: {}", e))
+            }
+        }
+    }
+
+    fn pipe_stats(&self, pid: u32, pipe_id: u32) -> SyscallResult {
+        let pipe_manager = match &self.pipe_manager {
+            Some(pm) => pm,
+            None => return SyscallResult::error("Pipe manager not available"),
+        };
+
+        match pipe_manager.stats(pipe_id) {
+            Ok(stats) => match serde_json::to_vec(&stats) {
+                Ok(data) => {
+                    info!("PID {} retrieved stats for pipe {}", pid, pipe_id);
+                    SyscallResult::success_with_data(data)
+                }
+                Err(e) => {
+                    error!("Failed to serialize pipe stats: {}", e);
+                    SyscallResult::error("Serialization failed")
+                }
+            },
+            Err(e) => {
+                error!("Pipe stats failed: {}", e);
+                SyscallResult::error(format!("Pipe stats failed: {}", e))
+            }
+        }
+    }
+
+    // ========================================================================
+    // IPC Operations - Shared Memory
+    // ========================================================================
+
+    fn create_shm(&self, pid: u32, size: usize) -> SyscallResult {
+        if !self
+            .sandbox_manager
+            .check_permission(pid, &Capability::SendMessage)
+        {
+            return SyscallResult::permission_denied("Missing SendMessage capability");
+        }
+
+        let shm_manager = match &self.shm_manager {
+            Some(sm) => sm,
+            None => return SyscallResult::error("Shared memory manager not available"),
+        };
+
+        match shm_manager.create(size, pid) {
+            Ok(segment_id) => {
+                info!("PID {} created shared memory segment {} ({} bytes)", pid, segment_id, size);
+                match serde_json::to_vec(&segment_id) {
+                    Ok(data) => SyscallResult::success_with_data(data),
+                    Err(e) => {
+                        error!("Failed to serialize segment ID: {}", e);
+                        SyscallResult::error("Serialization failed")
+                    }
+                }
+            }
+            Err(e) => {
+                error!("Failed to create shared memory: {}", e);
+                SyscallResult::error(format!("Shared memory creation failed: {}", e))
+            }
+        }
+    }
+
+    fn attach_shm(&self, pid: u32, segment_id: u32, read_only: bool) -> SyscallResult {
+        if !self
+            .sandbox_manager
+            .check_permission(pid, &Capability::ReceiveMessage)
+        {
+            return SyscallResult::permission_denied("Missing ReceiveMessage capability");
+        }
+
+        let shm_manager = match &self.shm_manager {
+            Some(sm) => sm,
+            None => return SyscallResult::error("Shared memory manager not available"),
+        };
+
+        match shm_manager.attach(segment_id, pid, read_only) {
+            Ok(_) => {
+                info!("PID {} attached to segment {} (read_only: {})", pid, segment_id, read_only);
+                SyscallResult::success()
+            }
+            Err(e) => {
+                error!("Shared memory attach failed: {}", e);
+                SyscallResult::error(format!("Attach failed: {}", e))
+            }
+        }
+    }
+
+    fn detach_shm(&self, pid: u32, segment_id: u32) -> SyscallResult {
+        let shm_manager = match &self.shm_manager {
+            Some(sm) => sm,
+            None => return SyscallResult::error("Shared memory manager not available"),
+        };
+
+        match shm_manager.detach(segment_id, pid) {
+            Ok(_) => {
+                info!("PID {} detached from segment {}", pid, segment_id);
+                SyscallResult::success()
+            }
+            Err(e) => {
+                error!("Shared memory detach failed: {}", e);
+                SyscallResult::error(format!("Detach failed: {}", e))
+            }
+        }
+    }
+
+    fn write_shm(&self, pid: u32, segment_id: u32, offset: usize, data: &[u8]) -> SyscallResult {
+        if !self
+            .sandbox_manager
+            .check_permission(pid, &Capability::SendMessage)
+        {
+            return SyscallResult::permission_denied("Missing SendMessage capability");
+        }
+
+        let shm_manager = match &self.shm_manager {
+            Some(sm) => sm,
+            None => return SyscallResult::error("Shared memory manager not available"),
+        };
+
+        match shm_manager.write(segment_id, pid, offset, data) {
+            Ok(_) => {
+                info!("PID {} wrote {} bytes to segment {} at offset {}", pid, data.len(), segment_id, offset);
+                SyscallResult::success()
+            }
+            Err(e) => {
+                error!("Shared memory write failed: {}", e);
+                SyscallResult::error(format!("Write failed: {}", e))
+            }
+        }
+    }
+
+    fn read_shm(&self, pid: u32, segment_id: u32, offset: usize, size: usize) -> SyscallResult {
+        if !self
+            .sandbox_manager
+            .check_permission(pid, &Capability::ReceiveMessage)
+        {
+            return SyscallResult::permission_denied("Missing ReceiveMessage capability");
+        }
+
+        let shm_manager = match &self.shm_manager {
+            Some(sm) => sm,
+            None => return SyscallResult::error("Shared memory manager not available"),
+        };
+
+        match shm_manager.read(segment_id, pid, offset, size) {
+            Ok(data) => {
+                info!("PID {} read {} bytes from segment {} at offset {}", pid, data.len(), segment_id, offset);
+                SyscallResult::success_with_data(data)
+            }
+            Err(e) => {
+                error!("Shared memory read failed: {}", e);
+                SyscallResult::error(format!("Read failed: {}", e))
+            }
+        }
+    }
+
+    fn destroy_shm(&self, pid: u32, segment_id: u32) -> SyscallResult {
+        let shm_manager = match &self.shm_manager {
+            Some(sm) => sm,
+            None => return SyscallResult::error("Shared memory manager not available"),
+        };
+
+        match shm_manager.destroy(segment_id, pid) {
+            Ok(_) => {
+                info!("PID {} destroyed segment {}", pid, segment_id);
+                SyscallResult::success()
+            }
+            Err(e) => {
+                error!("Shared memory destroy failed: {}", e);
+                SyscallResult::error(format!("Destroy failed: {}", e))
+            }
+        }
+    }
+
+    fn shm_stats(&self, pid: u32, segment_id: u32) -> SyscallResult {
+        let shm_manager = match &self.shm_manager {
+            Some(sm) => sm,
+            None => return SyscallResult::error("Shared memory manager not available"),
+        };
+
+        match shm_manager.stats(segment_id) {
+            Ok(stats) => match serde_json::to_vec(&stats) {
+                Ok(data) => {
+                    info!("PID {} retrieved stats for segment {}", pid, segment_id);
+                    SyscallResult::success_with_data(data)
+                }
+                Err(e) => {
+                    error!("Failed to serialize segment stats: {}", e);
+                    SyscallResult::error("Serialization failed")
+                }
+            },
+            Err(e) => {
+                error!("Shared memory stats failed: {}", e);
+                SyscallResult::error(format!("Stats failed: {}", e))
+            }
+        }
     }
 }
 

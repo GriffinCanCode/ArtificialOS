@@ -211,4 +211,3 @@ describe("ChatInterface", () => {
     expect(mockSendChat).toHaveBeenCalledWith("Test message", {});
   });
 });
-
