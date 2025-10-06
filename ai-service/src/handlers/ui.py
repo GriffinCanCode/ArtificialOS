@@ -5,7 +5,7 @@ from typing import Iterator
 
 import ai_pb2
 
-from core import get_logger, UIRequest, ValidationError
+from core import get_logger, UIGenerationRequest, ValidationError
 from agents.ui_generator import UIGenerator
 from monitoring import metrics_collector, trace_operation
 
@@ -24,7 +24,7 @@ class UIHandler:
         start_time = time.time()
 
         try:
-            validated = UIRequest(
+            validated = UIGenerationRequest(
                 message=request.message,
                 context=dict(request.context) if request.context else {},
             )
@@ -63,7 +63,7 @@ class UIHandler:
         start_time = time.time()
 
         try:
-            validated = UIRequest(
+            validated = UIGenerationRequest(
                 message=request.message,
                 context=dict(request.context) if request.context else {},
             )

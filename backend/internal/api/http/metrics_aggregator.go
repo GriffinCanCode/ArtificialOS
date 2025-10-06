@@ -59,6 +59,11 @@ func (ma *MetricsAggregator) GetAggregatedMetrics(c *gin.Context) {
 		}
 	}
 
+	// Try to get AI service metrics if available
+	if aiMetrics := ma.getAIMetrics(); aiMetrics != nil {
+		snapshot.AIService = aiMetrics
+	}
+
 	c.JSON(http.StatusOK, snapshot)
 }
 
@@ -273,10 +278,16 @@ func (ma *MetricsAggregator) GetMetricsDashboard(c *gin.Context) {
 
 // getBackendMetrics collects backend-specific metrics
 func (ma *MetricsAggregator) getBackendMetrics() map[string]interface{} {
-	// This would be enhanced with actual metric extraction from Prometheus
+	snapshot := ma.metrics.GetSnapshot()
+	uptime := ma.metrics.GetUptimeSeconds()
+
 	return map[string]interface{}{
-		"status": "operational",
-		// Add more backend-specific metrics here
+		"status":             "operational",
+		"total_requests":     snapshot.TotalRequests,
+		"total_errors":       snapshot.TotalErrors,
+		"active_apps":        snapshot.ActiveApps,
+		"active_connections": snapshot.ActiveConnections,
+		"uptime_seconds":     uptime,
 	}
 }
 
@@ -289,15 +300,57 @@ func (ma *MetricsAggregator) getKernelMetrics() map[string]interface{} {
 	}
 }
 
+// getAIMetrics fetches metrics from AI service
+func (ma *MetricsAggregator) getAIMetrics() map[string]interface{} {
+	client := &http.Client{Timeout: 2 * time.Second}
+	// AI service HTTP metrics server runs on port 50053
+	resp, err := client.Get("http://localhost:50053/metrics/json")
+	if err != nil {
+		// AI service not available
+		return nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil
+	}
+
+	var metrics map[string]interface{}
+	if err := json.Unmarshal(body, &metrics); err != nil {
+		return nil
+	}
+
+	return metrics
+}
+
 // calculateSummary computes high-level summary metrics
 func (ma *MetricsAggregator) calculateSummary() MetricsSummary {
-	// This would compute actual values from Prometheus metrics
+	snapshot := ma.metrics.GetSnapshot()
+	uptime := ma.metrics.GetUptimeSeconds()
+
+	// Calculate average latency
+	var avgLatency float64
+	if snapshot.RequestCount > 0 {
+		avgLatency = (snapshot.TotalDuration / float64(snapshot.RequestCount)) * 1000 // Convert to ms
+	}
+
+	// Calculate error rate
+	var errorRate float64
+	if snapshot.TotalRequests > 0 {
+		errorRate = float64(snapshot.TotalErrors) / float64(snapshot.TotalRequests)
+	}
+
 	return MetricsSummary{
-		TotalRequests:     0,
-		AverageLatencyMs:  0,
-		ErrorRate:         0,
-		ActiveConnections: 0,
-		UptimeSeconds:     time.Since(time.Now()).Seconds(),
+		TotalRequests:     snapshot.TotalRequests,
+		AverageLatencyMs:  avgLatency,
+		ErrorRate:         errorRate,
+		ActiveConnections: int(snapshot.ActiveConnections),
+		UptimeSeconds:     uptime,
 	}
 }
 

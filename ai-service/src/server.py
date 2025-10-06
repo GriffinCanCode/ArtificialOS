@@ -16,6 +16,7 @@ from core import configure_logging, get_logger, get_settings, create_container
 from handlers import UIHandler, ChatHandler
 from models.loader import ModelLoader
 from agents.ui_generator import UIGenerator
+from monitoring.http_server import start_metrics_server
 
 
 logger = get_logger(__name__)
@@ -65,6 +66,9 @@ async def serve_async():
     configure_logging(settings.log_level, settings.json_logs)
 
     logger.info("starting", port=settings.grpc_port)
+
+    # Start metrics HTTP server
+    start_metrics_server(port=50053)
 
     # Resolve dependencies
     container = create_container(settings.backend_url)

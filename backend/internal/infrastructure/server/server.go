@@ -24,6 +24,7 @@ import (
 	httpProvider "github.com/GriffinCanCode/AgentOS/backend/internal/providers/http"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/ipc"
 	mathProvider "github.com/GriffinCanCode/AgentOS/backend/internal/providers/math"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/pipeline"
 	scraperProvider "github.com/GriffinCanCode/AgentOS/backend/internal/providers/scraper"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/storage"
 	systemProvider "github.com/GriffinCanCode/AgentOS/backend/internal/providers/system"
@@ -302,6 +303,12 @@ func registerProviders(registry *service.Registry, kernel *kernel.KernelClient) 
 		ipcProvider := ipc.NewProvider(kernel)
 		if err := registry.Register(ipcProvider); err != nil {
 			fmt.Printf("Warning: Failed to register IPC provider: %v\n", err)
+		}
+
+		// Pipeline provider (demonstrates IPC with multi-process ETL)
+		pipelineProvider := pipeline.NewProvider(kernel)
+		if err := registry.Register(pipelineProvider); err != nil {
+			fmt.Printf("Warning: Failed to register pipeline provider: %v\n", err)
 		}
 	}
 }

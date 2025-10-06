@@ -136,22 +136,24 @@ export class AnalysisExecutor implements AsyncExecutor {
    * Update summary cards with high-level metrics
    */
   private updateSummaryCards(metrics: any): void {
-    const summary = metrics.backend?.summary || {};
+    // Get backend metrics for details, summary is at root level
+    const backend = metrics.backend || {};
+    const summary = metrics.summary || {};
 
-    // Uptime
-    const uptimeSeconds = summary.uptime_seconds || metrics.ui.uptime_seconds || 0;
+    // Uptime - prefer backend uptime, fallback to UI uptime
+    const uptimeSeconds = backend.uptime_seconds || summary.uptime_seconds || metrics.ui?.uptime_seconds || 0;
     this.context.componentState.set("uptime-value", this.formatUptime(uptimeSeconds));
 
-    // Total requests
+    // Total requests - from summary
     const totalRequests = summary.total_requests || 0;
     this.context.componentState.set("requests-value", this.formatNumber(totalRequests));
 
-    // Average latency
+    // Average latency - from summary
     const avgLatency = summary.average_latency_ms || 0;
     this.context.componentState.set("latency-value", `${avgLatency.toFixed(1)}ms`);
 
-    // Active apps/connections
-    const activeApps = summary.active_connections || 0;
+    // Active apps/connections - from summary
+    const activeApps = summary.active_connections || backend.active_connections || 0;
     this.context.componentState.set("apps-value", activeApps.toString());
   }
 

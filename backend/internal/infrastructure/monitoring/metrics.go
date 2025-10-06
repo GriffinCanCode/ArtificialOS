@@ -46,7 +46,20 @@ type Metrics struct {
 	Uptime    prometheus.Gauge
 	startTime time.Time
 
+	// Snapshot for JSON API - track current values
+	snapshot MetricsSnapshot
+
 	mu sync.RWMutex
+}
+
+// MetricsSnapshot holds current metric values for JSON API
+type MetricsSnapshot struct {
+	TotalRequests     int64
+	TotalErrors       int64
+	ActiveApps        int64
+	ActiveConnections int64
+	TotalDuration     float64 // sum of all request durations
+	RequestCount      int64   // count for averaging
 }
 
 // NewMetrics creates a new metrics collector
@@ -223,6 +236,16 @@ func (m *Metrics) RecordHTTPRequest(method, path, status string, duration time.D
 	m.RequestDuration.WithLabelValues(method, path).Observe(duration.Seconds())
 	m.RequestSize.WithLabelValues(method, path).Observe(float64(reqSize))
 	m.ResponseSize.WithLabelValues(method, path).Observe(float64(respSize))
+
+	// Update snapshot
+	m.mu.Lock()
+	m.snapshot.TotalRequests++
+	m.snapshot.TotalDuration += duration.Seconds()
+	m.snapshot.RequestCount++
+	if status[0] == '4' || status[0] == '5' {
+		m.snapshot.TotalErrors++
+	}
+	m.mu.Unlock()
 }
 
 // RecordServiceCall records a service call
@@ -255,6 +278,9 @@ func (m *Metrics) RecordWSMessage(direction, msgType string) {
 // SetAppsActive sets the number of active applications
 func (m *Metrics) SetAppsActive(count int) {
 	m.AppsActive.Set(float64(count))
+	m.mu.Lock()
+	m.snapshot.ActiveApps = int64(count)
+	m.mu.Unlock()
 }
 
 // IncAppsTotal increments the total applications counter

@@ -487,10 +487,12 @@ impl Clone for QueueManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::memory::MemoryManager;
 
     #[tokio::test]
     async fn test_fifo_queue() {
-        let manager = QueueManager::new();
+        let memory_manager = MemoryManager::new();
+        let manager = QueueManager::new(memory_manager);
         let queue_id = manager.create(1, QueueType::Fifo, Some(100)).unwrap();
 
         manager
@@ -509,7 +511,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_priority_queue() {
-        let manager = QueueManager::new();
+        let memory_manager = MemoryManager::new();
+        let manager = QueueManager::new(memory_manager);
         let queue_id = manager.create(1, QueueType::Priority, Some(100)).unwrap();
 
         manager
@@ -533,7 +536,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_pubsub_queue() {
-        let manager = QueueManager::new();
+        let memory_manager = MemoryManager::new();
+        let manager = QueueManager::new(memory_manager);
         let queue_id = manager.create(1, QueueType::PubSub, Some(100)).unwrap();
 
         manager.subscribe(queue_id, 2).unwrap();
@@ -550,7 +554,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_async_poll() {
-        let manager = QueueManager::new();
+        let memory_manager = MemoryManager::new();
+        let manager = QueueManager::new(memory_manager);
         let queue_id = manager.create(1, QueueType::Fifo, Some(100)).unwrap();
 
         let manager_clone = manager.clone();
@@ -567,7 +572,8 @@ mod tests {
 
     #[test]
     fn test_cleanup() {
-        let manager = QueueManager::new();
+        let memory_manager = MemoryManager::new();
+        let manager = QueueManager::new(memory_manager);
         let q1 = manager.create(1, QueueType::Fifo, Some(10)).unwrap();
         let q2 = manager.create(1, QueueType::Priority, Some(10)).unwrap();
 

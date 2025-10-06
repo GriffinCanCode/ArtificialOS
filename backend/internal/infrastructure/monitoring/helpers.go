@@ -1,6 +1,9 @@
 package monitoring
 
-import "strings"
+import (
+	"strings"
+	"time"
+)
 
 // GetMetricsPrometheus returns metrics in Prometheus format
 func (m *Metrics) GetMetricsPrometheus() string {
@@ -13,4 +16,24 @@ func (m *Metrics) GetMetricsPrometheus() string {
 	sb.WriteString("# Access via /metrics endpoint\n")
 
 	return sb.String()
+}
+
+// GetSnapshot returns the current metrics snapshot for JSON API
+func (m *Metrics) GetSnapshot() MetricsSnapshot {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.snapshot
+}
+
+// GetUptimeSeconds returns the uptime in seconds
+func (m *Metrics) GetUptimeSeconds() float64 {
+	return time.Since(m.startTime).Seconds()
+}
+
+// SetWSConnections sets the number of active WebSocket connections
+func (m *Metrics) SetWSConnections(count int) {
+	m.WSConnections.Set(float64(count))
+	m.mu.Lock()
+	m.snapshot.ActiveConnections = int64(count)
+	m.mu.Unlock()
 }
