@@ -5,56 +5,14 @@
 
 use thiserror::Error;
 
-#[derive(Error, Debug)]
-pub enum MemoryError {
-    #[error("Out of memory: requested {requested} bytes, available {available} bytes ({used} used / {total} total)")]
-    OutOfMemory {
-        requested: usize,
-        available: usize,
-        used: usize,
-        total: usize,
-    },
+// Re-export MemoryError from memory module
+pub use crate::memory::types::MemoryError;
 
-    #[error("Process memory limit exceeded: requested {requested} bytes, limit {limit} bytes, current {current} bytes")]
-    ProcessLimitExceeded {
-        requested: usize,
-        limit: usize,
-        current: usize,
-    },
+// Re-export SandboxError from security module
+pub use crate::security::types::SandboxError;
 
-    #[error("Invalid memory address: 0x{0:x}")]
-    InvalidAddress(usize),
-}
-
-#[derive(Error, Debug)]
-pub enum SyscallError {
-    #[error("Permission denied: {0}")]
-    PermissionDenied(String),
-
-    #[error("Invalid operation: {0}")]
-    InvalidOperation(String),
-
-    #[error("File system error: {0}")]
-    FileSystem(#[from] std::io::Error),
-
-    #[error("Path error: {0}")]
-    PathError(String),
-
-    #[error("Process error: {0}")]
-    ProcessError(String),
-}
-
-#[derive(Error, Debug)]
-pub enum SandboxError {
-    #[error("Sandbox not found for PID {0}")]
-    NotFound(u32),
-
-    #[error("Capability {0:?} not granted")]
-    MissingCapability(String),
-
-    #[error("Path {0:?} not accessible")]
-    PathBlocked(String),
-}
+// Re-export SyscallError from syscalls module
+pub use crate::syscalls::types::SyscallError;
 
 #[derive(Error, Debug)]
 pub enum ProcessError {

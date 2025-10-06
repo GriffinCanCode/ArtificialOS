@@ -3,46 +3,31 @@
  * Handles process creation, scheduling, and lifecycle
  */
 
+use super::types::{ExecutionConfig, ProcessInfo, ProcessState, SchedulingPolicy};
+use crate::core::types::{Pid, Priority};
+use crate::ipc::IPCManager;
+use crate::memory::MemoryManager;
+use crate::process::executor::ProcessExecutor;
+use crate::process::scheduler::Scheduler;
+use crate::security::{LimitManager, Limits};
 use log::info;
 use parking_lot::RwLock;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::process::executor::{ExecutionConfig, ProcessExecutor};
-use crate::process::scheduler::{Policy, Scheduler};
-use crate::ipc::IPCManager;
-use crate::security::{LimitManager, Limits};
-use crate::memory::MemoryManager;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Process {
-    pub pid: u32,
-    pub name: String,
-    pub state: ProcessState,
-    pub priority: u8,
-    #[serde(skip)]
-    pub os_pid: Option<u32>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ProcessState {
-    Ready,
-    Running,
-    Waiting,
-    Terminated,
-}
+// Type alias for backwards compatibility
+pub type Process = ProcessInfo;
 
 pub struct ProcessManager {
-    processes: Arc<RwLock<HashMap<u32, Process>>>,
-    next_pid: Arc<RwLock<u32>>,
+    processes: Arc<RwLock<HashMap<Pid, ProcessInfo>>>,
+    next_pid: Arc<RwLock<Pid>>,
     memory_manager: Option<MemoryManager>,
     executor: Option<ProcessExecutor>,
     limit_manager: Option<LimitManager>,
     ipc_manager: Option<IPCManager>,
     scheduler: Option<Arc<RwLock<Scheduler>>>,
     // Track child processes per parent PID for limit enforcement
-    child_counts: Arc<RwLock<HashMap<u32, u32>>>,
+    child_counts: Arc<RwLock<HashMap<Pid, u32>>>,
 }
 
 /// Builder for ProcessManager
@@ -51,7 +36,7 @@ pub struct ProcessManagerBuilder {
     enable_executor: bool,
     enable_limits: bool,
     ipc_manager: Option<IPCManager>,
-    scheduler_policy: Option<Policy>,
+    scheduler_policy: Option<SchedulingPolicy>,
 }
 
 impl ProcessManagerBuilder {
@@ -91,7 +76,7 @@ impl ProcessManagerBuilder {
     }
 
     /// Add scheduler with specified policy
-    pub fn with_scheduler(mut self, policy: Policy) -> Self {
+    pub fn with_scheduler(mut self, policy: SchedulingPolicy) -> Self {
         self.scheduler_policy = Some(policy);
         self
     }
@@ -174,7 +159,7 @@ impl ProcessManager {
     }
 
     /// Create a process (metadata only, no OS process)
-    pub fn create_process(&self, name: String, priority: u8) -> u32 {
+    pub fn create_process(&self, name: String, priority: Priority) -> u32 {
         self.create_process_with_command(name, priority, None)
     }
 
@@ -182,7 +167,7 @@ impl ProcessManager {
     pub fn create_process_with_command(
         &self,
         name: String,
-        priority: u8,
+        priority: Priority,
         config: Option<ExecutionConfig>,
     ) -> u32 {
         // Allocate PID
@@ -228,7 +213,7 @@ impl ProcessManager {
         // Reacquire locks if needed
         let mut processes = self.processes.write();
 
-        let process = Process {
+        let process = ProcessInfo {
             pid,
             name: name.clone(),
             state: ProcessState::Ready,
@@ -248,7 +233,7 @@ impl ProcessManager {
     }
 
     /// Convert priority to resource limits
-    fn priority_to_limits(&self, priority: u8) -> Limits {
+    fn priority_to_limits(&self, priority: Priority) -> Limits {
         match priority {
             0..=3 => Limits::new()
                 .with_memory(128 * 1024 * 1024) // 128 MB
@@ -262,11 +247,11 @@ impl ProcessManager {
         }
     }
 
-    pub fn get_process(&self, pid: u32) -> Option<Process> {
+    pub fn get_process(&self, pid: Pid) -> Option<ProcessInfo> {
         self.processes.read().get(&pid).cloned()
     }
 
-    pub fn terminate_process(&self, pid: u32) -> bool {
+    pub fn terminate_process(&self, pid: Pid) -> bool {
         let mut processes = self.processes.write();
         if let Some(process) = processes.remove(&pid) {
             info!("Terminating process: PID {}", pid);
@@ -319,7 +304,7 @@ impl ProcessManager {
         }
     }
 
-    pub fn list_processes(&self) -> Vec<Process> {
+    pub fn list_processes(&self) -> Vec<ProcessInfo> {
         self.processes.read().values().cloned().collect()
     }
 
@@ -334,23 +319,23 @@ impl ProcessManager {
     }
 
     /// Check if process has OS execution
-    pub fn has_os_process(&self, pid: u32) -> bool {
+    pub fn has_os_process(&self, pid: Pid) -> bool {
         self.processes.read().get(&pid).and_then(|p| p.os_pid).is_some()
     }
 
     /// Get child process count for a PID
-    pub fn get_child_count(&self, pid: u32) -> u32 {
+    pub fn get_child_count(&self, pid: Pid) -> u32 {
         *self.child_counts.read().get(&pid).unwrap_or(&0)
     }
 
     /// Increment child count for a PID
-    fn increment_child_count(&self, pid: u32) {
+    fn increment_child_count(&self, pid: Pid) {
         let mut counts = self.child_counts.write();
         *counts.entry(pid).or_insert(0) += 1;
     }
 
     /// Decrement child count for a PID
-    fn decrement_child_count(&self, pid: u32) {
+    fn decrement_child_count(&self, pid: Pid) {
         let mut counts = self.child_counts.write();
         if let Some(count) = counts.get_mut(&pid) {
             *count = count.saturating_sub(1);
@@ -361,17 +346,17 @@ impl ProcessManager {
     }
 
     /// Get scheduler statistics
-    pub fn get_scheduler_stats(&self) -> Option<crate::process::scheduler::Stats> {
+    pub fn get_scheduler_stats(&self) -> Option<super::types::SchedulerStats> {
         self.scheduler.as_ref().map(|s| s.read().stats())
     }
 
     /// Get current scheduling policy
-    pub fn get_scheduling_policy(&self) -> Option<crate::process::scheduler::Policy> {
+    pub fn get_scheduling_policy(&self) -> Option<SchedulingPolicy> {
         self.scheduler.as_ref().map(|s| s.read().policy())
     }
 
     /// Change scheduling policy (requires scheduler)
-    pub fn set_scheduling_policy(&self, policy: crate::process::scheduler::Policy) -> bool {
+    pub fn set_scheduling_policy(&self, policy: SchedulingPolicy) -> bool {
         if let Some(ref scheduler) = self.scheduler {
             let scheduler = scheduler.read();
             scheduler.set_policy(policy);
@@ -383,12 +368,12 @@ impl ProcessManager {
     }
 
     /// Get per-process CPU statistics (requires scheduler)
-    pub fn get_process_stats(&self, pid: u32) -> Option<crate::process::scheduler::ProcessStats> {
+    pub fn get_process_stats(&self, pid: Pid) -> Option<super::types::ProcessStats> {
         self.scheduler.as_ref().and_then(|s| s.read().process_stats(pid))
     }
 
     /// Get all process CPU statistics (requires scheduler)
-    pub fn get_all_process_stats(&self) -> Vec<crate::process::scheduler::ProcessStats> {
+    pub fn get_all_process_stats(&self) -> Vec<super::types::ProcessStats> {
         self.scheduler.as_ref().map(|s| s.read().all_process_stats()).unwrap_or_default()
     }
 

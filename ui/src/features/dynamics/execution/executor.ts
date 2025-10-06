@@ -87,7 +87,7 @@ export class ToolExecutor {
     this.hubExecutor = new HubExecutor(this.context);
     this.filesystemExecutor = new FilesystemExecutor(this.context, this.serviceExecutor);
     this.calcExecutor = new CalcExecutor(this.context);
-    this.notesExecutor = new NotesExecutor(this.context);
+    this.notesExecutor = new NotesExecutor(this.context, this.serviceExecutor);
 
     this.setupStateManagement();
   }

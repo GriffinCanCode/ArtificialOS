@@ -1,7 +1,10 @@
 /*!
+
  * System Info Syscalls
  * System information and environment operations
  */
+
+use crate::core::types::Pid;
 
 use log::{error, info};
 
@@ -11,7 +14,7 @@ use super::executor::SyscallExecutor;
 use super::types::{SyscallResult, SystemInfo};
 
 impl SyscallExecutor {
-    pub(super) fn get_system_info(&self, pid: u32) -> SyscallResult {
+    pub(super) fn get_system_info(&self, pid: Pid) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::SystemInfo)
@@ -35,7 +38,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn get_current_time(&self, pid: u32) -> SyscallResult {
+    pub(super) fn get_current_time(&self, pid: Pid) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::TimeAccess)
@@ -57,7 +60,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn get_env_var(&self, pid: u32, key: &str) -> SyscallResult {
+    pub(super) fn get_env_var(&self, pid: Pid, key: &str) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::SystemInfo)
@@ -74,7 +77,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn set_env_var(&self, pid: u32, key: &str, value: &str) -> SyscallResult {
+    pub(super) fn set_env_var(&self, pid: Pid, key: &str, value: &str) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::SystemInfo)
@@ -87,7 +90,7 @@ impl SyscallExecutor {
         SyscallResult::success()
     }
 
-    pub(super) fn network_request(&self, pid: u32, _url: &str) -> SyscallResult {
+    pub(super) fn network_request(&self, pid: Pid, _url: &str) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::NetworkAccess)

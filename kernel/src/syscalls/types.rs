@@ -3,10 +3,43 @@
  * Defines syscall enum and result types
  */
 
+use crate::core::types::{Fd, Pid, Priority, Size, SockFd};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use thiserror::Error;
 
-/// System call result
+/// Syscall operation errors
+#[derive(Error, Debug, Clone, Serialize, Deserialize)]
+pub enum SyscallError {
+    #[error("Permission denied: {0}")]
+    PermissionDenied(String),
+
+    #[error("Operation failed: {0}")]
+    OperationFailed(String),
+
+    #[error("Invalid argument: {0}")]
+    InvalidArgument(String),
+
+    #[error("Resource not found: {0}")]
+    NotFound(String),
+
+    #[error("Resource unavailable: {0}")]
+    Unavailable(String),
+
+    #[error("I/O error: {0}")]
+    IoError(String),
+
+    #[error("Not implemented: {0}")]
+    NotImplemented(String),
+
+    #[error("Manager not available: {0}")]
+    ManagerNotAvailable(String),
+
+    #[error("Serialization error: {0}")]
+    SerializationError(String),
+}
+
+/// System call result (keeping for backward compatibility)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SyscallResult {
     Success { data: Option<Vec<u8>> },
@@ -32,6 +65,41 @@ impl SyscallResult {
     pub fn permission_denied(reason: impl Into<String>) -> Self {
         Self::PermissionDenied {
             reason: reason.into(),
+        }
+    }
+
+    /// Check if result is successful
+    pub fn is_success(&self) -> bool {
+        matches!(self, Self::Success { .. })
+    }
+
+    /// Check if result is error
+    pub fn is_error(&self) -> bool {
+        matches!(self, Self::Error { .. })
+    }
+
+    /// Check if result is permission denied
+    pub fn is_permission_denied(&self) -> bool {
+        matches!(self, Self::PermissionDenied { .. })
+    }
+
+    /// Extract data if successful
+    pub fn data(&self) -> Option<&Vec<u8>> {
+        match self {
+            Self::Success { data } => data.as_ref(),
+            _ => None,
+        }
+    }
+}
+
+/// Convert from SyscallError to SyscallResult
+impl From<SyscallError> for SyscallResult {
+    fn from(err: SyscallError) -> Self {
+        match err {
+            SyscallError::PermissionDenied(msg) => Self::PermissionDenied { reason: msg },
+            other => Self::Error {
+                message: other.to_string(),
+            },
         }
     }
 }
@@ -91,24 +159,24 @@ pub enum Syscall {
         args: Vec<String>,
     },
     KillProcess {
-        target_pid: u32,
+        target_pid: Pid,
     },
     GetProcessInfo {
-        target_pid: u32,
+        target_pid: Pid,
     },
     GetProcessList,
     SetProcessPriority {
-        target_pid: u32,
-        priority: u8,
+        target_pid: Pid,
+        priority: Priority,
     },
     GetProcessState {
-        target_pid: u32,
+        target_pid: Pid,
     },
     GetProcessStats {
-        target_pid: u32,
+        target_pid: Pid,
     },
     WaitProcess {
-        target_pid: u32,
+        target_pid: Pid,
         timeout_ms: Option<u64>,
     },
 
@@ -130,54 +198,54 @@ pub enum Syscall {
 
     // IPC - Pipes
     CreatePipe {
-        reader_pid: u32,
-        writer_pid: u32,
-        capacity: Option<usize>,
+        reader_pid: Pid,
+        writer_pid: Pid,
+        capacity: Option<Size>,
     },
     WritePipe {
-        pipe_id: u32,
+        pipe_id: Pid,
         data: Vec<u8>,
     },
     ReadPipe {
-        pipe_id: u32,
-        size: usize,
+        pipe_id: Pid,
+        size: Size,
     },
     ClosePipe {
-        pipe_id: u32,
+        pipe_id: Pid,
     },
     DestroyPipe {
-        pipe_id: u32,
+        pipe_id: Pid,
     },
     PipeStats {
-        pipe_id: u32,
+        pipe_id: Pid,
     },
 
     // IPC - Shared Memory
     CreateShm {
-        size: usize,
+        size: Size,
     },
     AttachShm {
-        segment_id: u32,
+        segment_id: Pid,
         read_only: bool,
     },
     DetachShm {
-        segment_id: u32,
+        segment_id: Pid,
     },
     WriteShm {
-        segment_id: u32,
+        segment_id: Pid,
         offset: usize,
         data: Vec<u8>,
     },
     ReadShm {
-        segment_id: u32,
+        segment_id: Pid,
         offset: usize,
-        size: usize,
+        size: Size,
     },
     DestroyShm {
-        segment_id: u32,
+        segment_id: Pid,
     },
     ShmStats {
-        segment_id: u32,
+        segment_id: Pid,
     },
 
     // Scheduler operations
@@ -195,7 +263,7 @@ pub enum Syscall {
     // Memory operations
     GetMemoryStats,
     GetProcessMemoryStats {
-        target_pid: u32,
+        target_pid: Pid,
     },
     TriggerGC {
         target_pid: Option<u32>,
@@ -203,7 +271,7 @@ pub enum Syscall {
 
     // Signal operations
     SendSignal {
-        target_pid: u32,
+        target_pid: Pid,
         signal: u32,
     },
 
@@ -214,52 +282,52 @@ pub enum Syscall {
         protocol: u32,  // IPPROTO_TCP, IPPROTO_UDP, etc.
     },
     Bind {
-        sockfd: u32,
+        sockfd: SockFd,
         address: String,  // IP:port format
     },
     Listen {
-        sockfd: u32,
+        sockfd: SockFd,
         backlog: u32,
     },
     Accept {
-        sockfd: u32,
+        sockfd: SockFd,
     },
     Connect {
-        sockfd: u32,
+        sockfd: SockFd,
         address: String,  // IP:port format
     },
     Send {
-        sockfd: u32,
+        sockfd: SockFd,
         data: Vec<u8>,
         flags: u32,
     },
     Recv {
-        sockfd: u32,
-        size: usize,
+        sockfd: SockFd,
+        size: Size,
         flags: u32,
     },
     SendTo {
-        sockfd: u32,
+        sockfd: SockFd,
         data: Vec<u8>,
         address: String,
         flags: u32,
     },
     RecvFrom {
-        sockfd: u32,
-        size: usize,
+        sockfd: SockFd,
+        size: Size,
         flags: u32,
     },
     CloseSocket {
-        sockfd: u32,
+        sockfd: SockFd,
     },
     SetSockOpt {
-        sockfd: u32,
+        sockfd: SockFd,
         level: u32,
         optname: u32,
         optval: Vec<u8>,
     },
     GetSockOpt {
-        sockfd: u32,
+        sockfd: SockFd,
         level: u32,
         optname: u32,
     },
@@ -271,22 +339,22 @@ pub enum Syscall {
         mode: u32,   // File permissions (0644, etc.)
     },
     Close {
-        fd: u32,
+        fd: Fd,
     },
     Dup {
-        fd: u32,
+        fd: Fd,
     },
     Dup2 {
-        oldfd: u32,
-        newfd: u32,
+        oldfd: Fd,
+        newfd: Fd,
     },
     Lseek {
-        fd: u32,
+        fd: Fd,
         offset: i64,
         whence: u32,  // SEEK_SET, SEEK_CUR, SEEK_END
     },
     Fcntl {
-        fd: u32,
+        fd: Fd,
         cmd: u32,
         arg: u32,
     },
@@ -307,8 +375,3 @@ pub struct SystemInfo {
     pub family: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ProcessMemoryStats {
-    pub pid: u32,
-    pub bytes_allocated: usize,
-}

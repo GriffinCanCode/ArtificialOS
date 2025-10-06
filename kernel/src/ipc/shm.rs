@@ -3,6 +3,9 @@
  * Zero-copy data sharing between processes
  */
 
+use super::traits::SharedMemory;
+use super::types::{IpcError, IpcResult, ShmId};
+use crate::core::types::{Pid, Size};
 use log::{info, warn};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
@@ -47,13 +50,44 @@ pub enum ShmError {
     GlobalMemoryExceeded(usize, usize),
 }
 
+// Convert ShmError to IpcError
+impl From<ShmError> for IpcError {
+    fn from(err: ShmError) -> Self {
+        match err {
+            ShmError::NotFound(id) => IpcError::NotFound(format!("Shared memory segment {}", id)),
+            ShmError::PermissionDenied(msg) => IpcError::PermissionDenied(msg),
+            ShmError::InvalidSize(msg) => IpcError::InvalidOperation(msg),
+            ShmError::InvalidRange {
+                offset,
+                size,
+                segment_size,
+            } => IpcError::InvalidOperation(format!(
+                "Invalid range: offset {}, size {}, segment size {}",
+                offset, size, segment_size
+            )),
+            ShmError::SizeExceeded { requested, max } => IpcError::LimitExceeded(format!(
+                "Segment size exceeds limit: requested {}, max {}",
+                requested, max
+            )),
+            ShmError::ProcessLimitExceeded(current, max) => IpcError::LimitExceeded(format!(
+                "Process segment limit exceeded: {}/{}",
+                current, max
+            )),
+            ShmError::GlobalMemoryExceeded(current, max) => IpcError::LimitExceeded(format!(
+                "Global shared memory limit exceeded: {}/{} bytes",
+                current, max
+            )),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShmStats {
-    pub id: u32,
-    pub size: usize,
-    pub owner_pid: u32,
-    pub attached_pids: Vec<u32>,
-    pub read_only_pids: Vec<u32>,
+    pub id: ShmId,
+    pub size: Size,
+    pub owner_pid: Pid,
+    pub attached_pids: Vec<Pid>,
+    pub read_only_pids: Vec<Pid>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -63,16 +97,16 @@ pub enum ShmPermission {
 }
 
 struct SharedSegment {
-    id: u32,
-    size: usize,
+    id: ShmId,
+    size: Size,
     data: Arc<RwLock<Vec<u8>>>,
-    owner_pid: u32,
-    attached_pids: HashSet<u32>,
-    permissions: HashMap<u32, ShmPermission>,
+    owner_pid: Pid,
+    attached_pids: HashSet<Pid>,
+    permissions: HashMap<Pid, ShmPermission>,
 }
 
 impl SharedSegment {
-    fn new(id: u32, size: usize, owner_pid: u32) -> Self {
+    fn new(id: ShmId, size: Size, owner_pid: Pid) -> Self {
         let mut attached_pids = HashSet::new();
         attached_pids.insert(owner_pid);
 
@@ -89,7 +123,7 @@ impl SharedSegment {
         }
     }
 
-    fn has_permission(&self, pid: u32, perm: ShmPermission) -> bool {
+    fn has_permission(&self, pid: Pid, perm: ShmPermission) -> bool {
         match self.permissions.get(&pid) {
             Some(ShmPermission::ReadWrite) => true,
             Some(ShmPermission::ReadOnly) => perm == ShmPermission::ReadOnly,
@@ -97,17 +131,17 @@ impl SharedSegment {
         }
     }
 
-    fn attach(&mut self, pid: u32, perm: ShmPermission) {
+    fn attach(&mut self, pid: Pid, perm: ShmPermission) {
         self.attached_pids.insert(pid);
         self.permissions.insert(pid, perm);
     }
 
-    fn detach(&mut self, pid: u32) {
+    fn detach(&mut self, pid: Pid) {
         self.attached_pids.remove(&pid);
         self.permissions.remove(&pid);
     }
 
-    fn write(&self, offset: usize, data: &[u8]) -> Result<(), ShmError> {
+    fn write(&self, offset: Size, data: &[u8]) -> Result<(), ShmError> {
         if offset + data.len() > self.size {
             return Err(ShmError::InvalidRange {
                 offset,
@@ -122,7 +156,7 @@ impl SharedSegment {
         Ok(())
     }
 
-    fn read(&self, offset: usize, size: usize) -> Result<Vec<u8>, ShmError> {
+    fn read(&self, offset: Size, size: Size) -> Result<Vec<u8>, ShmError> {
         if offset + size > self.size {
             return Err(ShmError::InvalidRange {
                 offset,
@@ -137,10 +171,10 @@ impl SharedSegment {
 }
 
 pub struct ShmManager {
-    segments: Arc<RwLock<HashMap<u32, SharedSegment>>>,
-    next_id: Arc<RwLock<u32>>,
+    segments: Arc<RwLock<HashMap<ShmId, SharedSegment>>>,
+    next_id: Arc<RwLock<ShmId>>,
     // Track segment count per process
-    process_segments: Arc<RwLock<HashMap<u32, usize>>>,
+    process_segments: Arc<RwLock<HashMap<Pid, Size>>>,
 }
 
 impl ShmManager {
@@ -157,7 +191,7 @@ impl ShmManager {
         }
     }
 
-    pub fn create(&self, size: usize, owner_pid: u32) -> Result<u32, ShmError> {
+    pub fn create(&self, size: Size, owner_pid: Pid) -> Result<ShmId, ShmError> {
         if size == 0 {
             return Err(ShmError::InvalidSize("Size cannot be zero".to_string()));
         }
@@ -221,8 +255,8 @@ impl ShmManager {
 
     pub fn attach(
         &self,
-        segment_id: u32,
-        pid: u32,
+        segment_id: ShmId,
+        pid: Pid,
         read_only: bool,
     ) -> Result<(), ShmError> {
         let mut segments = self.segments.write();
@@ -246,7 +280,7 @@ impl ShmManager {
         Ok(())
     }
 
-    pub fn detach(&self, segment_id: u32, pid: u32) -> Result<(), ShmError> {
+    pub fn detach(&self, segment_id: ShmId, pid: Pid) -> Result<(), ShmError> {
         let mut segments = self.segments.write();
         let segment = segments
             .get_mut(&segment_id)
@@ -261,9 +295,9 @@ impl ShmManager {
 
     pub fn write(
         &self,
-        segment_id: u32,
-        pid: u32,
-        offset: usize,
+        segment_id: ShmId,
+        pid: Pid,
+        offset: Size,
         data: &[u8],
     ) -> Result<(), ShmError> {
         let segments = self.segments.read();
@@ -292,10 +326,10 @@ impl ShmManager {
 
     pub fn read(
         &self,
-        segment_id: u32,
-        pid: u32,
-        offset: usize,
-        size: usize,
+        segment_id: ShmId,
+        pid: Pid,
+        offset: Size,
+        size: Size,
     ) -> Result<Vec<u8>, ShmError> {
         let segments = self.segments.read();
         let segment = segments
@@ -321,7 +355,7 @@ impl ShmManager {
         Ok(data)
     }
 
-    pub fn destroy(&self, segment_id: u32, pid: u32) -> Result<(), ShmError> {
+    pub fn destroy(&self, segment_id: ShmId, pid: Pid) -> Result<(), ShmError> {
         let mut segments = self.segments.write();
         let segment = segments
             .get(&segment_id)
@@ -363,7 +397,7 @@ impl ShmManager {
         Ok(())
     }
 
-    pub fn stats(&self, segment_id: u32) -> Result<ShmStats, ShmError> {
+    pub fn stats(&self, segment_id: ShmId) -> Result<ShmStats, ShmError> {
         let segments = self.segments.read();
         let segment = segments
             .get(&segment_id)
@@ -386,7 +420,7 @@ impl ShmManager {
         })
     }
 
-    pub fn cleanup_process(&self, pid: u32) -> usize {
+    pub fn cleanup_process(&self, pid: Pid) -> Size {
         let segments = self.segments.read();
         let segment_ids: Vec<u32> = segments
             .values()
@@ -423,7 +457,7 @@ impl ShmManager {
         count
     }
 
-    pub fn get_global_memory_usage(&self) -> usize {
+    pub fn get_global_memory_usage(&self) -> Size {
         GLOBAL_SHM_MEMORY.load(Ordering::Relaxed)
     }
 }
@@ -441,5 +475,39 @@ impl Clone for ShmManager {
 impl Default for ShmManager {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+// Implement SharedMemory trait
+impl SharedMemory for ShmManager {
+    fn create(&self, size: Size, owner_pid: Pid) -> IpcResult<ShmId> {
+        self.create(size, owner_pid).map_err(|e| e.into())
+    }
+
+    fn attach(&self, segment_id: ShmId, pid: Pid, read_only: bool) -> IpcResult<()> {
+        self.attach(segment_id, pid, read_only)
+            .map_err(|e| e.into())
+    }
+
+    fn detach(&self, segment_id: ShmId, pid: Pid) -> IpcResult<()> {
+        self.detach(segment_id, pid).map_err(|e| e.into())
+    }
+
+    fn write(&self, segment_id: ShmId, pid: Pid, offset: Size, data: &[u8]) -> IpcResult<()> {
+        self.write(segment_id, pid, offset, data)
+            .map_err(|e| e.into())
+    }
+
+    fn read(&self, segment_id: ShmId, pid: Pid, offset: Size, size: Size) -> IpcResult<Vec<u8>> {
+        self.read(segment_id, pid, offset, size)
+            .map_err(|e| e.into())
+    }
+
+    fn destroy(&self, segment_id: ShmId, pid: Pid) -> IpcResult<()> {
+        self.destroy(segment_id, pid).map_err(|e| e.into())
+    }
+
+    fn stats(&self, segment_id: ShmId) -> IpcResult<ShmStats> {
+        self.stats(segment_id).map_err(|e| e.into())
     }
 }

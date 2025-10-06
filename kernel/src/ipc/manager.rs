@@ -3,22 +3,16 @@
  * Unified IPC system: messages, pipes, and shared memory
  */
 
+use super::traits::{IpcCleanup, IpcManager as IpcManagerTrait, MessageQueue, PipeChannel, SharedMemory};
+use super::types::{IpcError, IpcResult, Message};
+use crate::core::types::{Pid, Size};
 use crate::ipc::pipe::PipeManager;
 use crate::ipc::shm::ShmManager;
 use log::{info, warn};
 use parking_lot::RwLock;
-use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Message {
-    pub from: u32,
-    pub to: u32,
-    pub data: Vec<u8>,
-    pub timestamp: u64,
-}
 
 // Queue limits to prevent DoS
 const MAX_QUEUE_SIZE: usize = 1000;
@@ -30,7 +24,7 @@ static GLOBAL_IPC_MEMORY: AtomicUsize = AtomicUsize::new(0);
 
 #[derive(Clone)]
 pub struct IPCManager {
-    message_queues: Arc<RwLock<HashMap<u32, VecDeque<Message>>>>,
+    message_queues: Arc<RwLock<HashMap<Pid, VecDeque<Message>>>>,
     pipe_manager: PipeManager,
     shm_manager: ShmManager,
 }
@@ -59,14 +53,14 @@ impl IPCManager {
         &self.shm_manager
     }
 
-    pub fn send_message(&self, from: u32, to: u32, data: Vec<u8>) -> Result<(), String> {
+    pub fn send_message(&self, from: Pid, to: Pid, data: Vec<u8>) -> IpcResult<()> {
         // Validate message size
         if data.len() > MAX_MESSAGE_SIZE {
-            return Err(format!(
+            return Err(IpcError::LimitExceeded(format!(
                 "Message size {} exceeds limit {}",
                 data.len(),
                 MAX_MESSAGE_SIZE
-            ));
+            )));
         }
 
         // Check global IPC memory budget (prevents system-wide DoS)
@@ -78,10 +72,10 @@ impl IPCManager {
                 "Global IPC memory limit reached: {} bytes used, {} bytes requested",
                 current_global, message_size
             );
-            return Err(format!(
+            return Err(IpcError::LimitExceeded(format!(
                 "Global IPC memory limit exceeded: {} / {} bytes used",
                 current_global, GLOBAL_IPC_MEMORY_LIMIT
-            ));
+            )));
         }
 
         let mut message_queues = self.message_queues.write();
@@ -89,24 +83,17 @@ impl IPCManager {
 
         // Check per-process queue bounds
         if queue.len() >= MAX_QUEUE_SIZE {
-            return Err(format!(
+            return Err(IpcError::LimitExceeded(format!(
                 "Queue for PID {} is full ({} messages)",
                 to, MAX_QUEUE_SIZE
-            ));
+            )));
         }
 
-        let message = Message {
-            from,
-            to,
-            data,
-            timestamp: std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| d.as_secs())
-                .unwrap_or(0),
-        };
+        let message = Message::new(from, to, data);
 
         // Atomically increment global memory counter
-        GLOBAL_IPC_MEMORY.fetch_add(message_size, Ordering::Release);
+        let message_actual_size = message.size();
+        GLOBAL_IPC_MEMORY.fetch_add(message_actual_size, Ordering::Release);
 
         queue.push_back(message);
         info!(
@@ -119,12 +106,12 @@ impl IPCManager {
         Ok(())
     }
 
-    pub fn receive_message(&self, pid: u32) -> Option<Message> {
+    pub fn receive_message(&self, pid: Pid) -> Option<Message> {
         let mut message_queues = self.message_queues.write();
         if let Some(queue) = message_queues.get_mut(&pid) {
             if let Some(message) = queue.pop_front() {
                 // Atomically decrement global memory counter
-                let message_size = std::mem::size_of::<Message>() + message.data.len();
+                let message_size = message.size();
                 GLOBAL_IPC_MEMORY.fetch_sub(message_size, Ordering::Release);
 
                 info!(
@@ -138,7 +125,7 @@ impl IPCManager {
         None
     }
 
-    pub fn has_messages(&self, pid: u32) -> bool {
+    pub fn has_messages(&self, pid: Pid) -> bool {
         self.message_queues
             .read()
             .get(&pid)
@@ -147,17 +134,14 @@ impl IPCManager {
     }
 
     /// Clear all IPC resources for a process (called on process termination)
-    pub fn clear_process_queue(&self, pid: u32) -> usize {
+    pub fn clear_process_queue(&self, pid: Pid) -> Size {
         let mut total_cleaned = 0;
 
         // Clean up message queues
         let mut message_queues = self.message_queues.write();
         if let Some(queue) = message_queues.remove(&pid) {
             // Reclaim global memory for all messages in queue
-            let freed_bytes: usize = queue
-                .iter()
-                .map(|msg| std::mem::size_of::<Message>() + msg.data.len())
-                .sum();
+            let freed_bytes: usize = queue.iter().map(|msg| msg.size()).sum();
 
             GLOBAL_IPC_MEMORY.fetch_sub(freed_bytes, Ordering::Release);
 
@@ -191,7 +175,7 @@ impl IPCManager {
     }
 
     /// Get current global IPC memory usage
-    pub fn get_global_memory_usage(&self) -> usize {
+    pub fn get_global_memory_usage(&self) -> Size {
         GLOBAL_IPC_MEMORY.load(Ordering::Relaxed)
     }
 }
@@ -199,5 +183,51 @@ impl IPCManager {
 impl Default for IPCManager {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+// Implement MessageQueue trait
+impl MessageQueue for IPCManager {
+    fn send(&self, from: Pid, to: Pid, data: Vec<u8>) -> IpcResult<()> {
+        self.send_message(from, to, data)
+    }
+
+    fn receive(&self, pid: Pid) -> IpcResult<Message> {
+        self.receive_message(pid)
+            .ok_or_else(|| IpcError::WouldBlock("No messages available".to_string()))
+    }
+
+    fn try_receive(&self, pid: Pid) -> IpcResult<Option<Message>> {
+        Ok(self.receive_message(pid))
+    }
+
+    fn has_messages(&self, pid: Pid) -> bool {
+        self.has_messages(pid)
+    }
+
+    fn clear(&self, pid: Pid) -> Size {
+        self.clear_process_queue(pid)
+    }
+}
+
+// Implement IpcCleanup trait
+impl IpcCleanup for IPCManager {
+    fn cleanup_process(&self, pid: Pid) -> Size {
+        self.clear_process_queue(pid)
+    }
+
+    fn global_memory_usage(&self) -> Size {
+        self.get_global_memory_usage()
+    }
+}
+
+// Implement IpcManager trait
+impl IpcManagerTrait for IPCManager {
+    fn pipes(&self) -> &dyn PipeChannel {
+        &self.pipe_manager
+    }
+
+    fn shm(&self) -> &dyn SharedMemory {
+        &self.shm_manager
     }
 }

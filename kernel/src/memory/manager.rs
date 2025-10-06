@@ -3,79 +3,25 @@
  * Handles memory allocation and deallocation with graceful OOM handling
  */
 
+use super::types::{MemoryBlock, MemoryError, MemoryPressure, MemoryResult, MemoryStats};
+use super::traits::{Allocator, GarbageCollector, MemoryInfo, ProcessMemoryCleanup};
+use crate::core::types::{Address, Pid, Size};
 use log::{error, info, warn};
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-pub struct MemoryBlock {
-    pub address: usize,
-    pub size: usize,
-    pub allocated: bool,
-    pub owner_pid: Option<u32>,
-}
-
-/// Memory allocation result
-#[derive(Debug)]
-pub enum MemoryError {
-    OutOfMemory {
-        requested: usize,
-        available: usize,
-        used: usize,
-        total: usize,
-    },
-    ExceedsProcessLimit {
-        requested: usize,
-        process_limit: usize,
-        process_current: usize,
-    },
-    InvalidAddress,
-}
-
-impl std::fmt::Display for MemoryError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            MemoryError::OutOfMemory {
-                requested,
-                available,
-                used,
-                total,
-            } => {
-                write!(
-                    f,
-                    "Out of memory: requested {} bytes, available {} bytes ({} used / {} total)",
-                    requested, available, used, total
-                )
-            }
-            MemoryError::ExceedsProcessLimit {
-                requested,
-                process_limit,
-                process_current,
-            } => {
-                write!(
-                    f,
-                    "Process memory limit exceeded: requested {} bytes, limit {} bytes, current {} bytes",
-                    requested, process_limit, process_current
-                )
-            }
-            MemoryError::InvalidAddress => write!(f, "Invalid memory address"),
-        }
-    }
-}
-
-impl std::error::Error for MemoryError {}
-
 pub struct MemoryManager {
-    blocks: Arc<RwLock<HashMap<usize, MemoryBlock>>>,
-    next_address: Arc<RwLock<usize>>,
-    total_memory: usize,
-    used_memory: Arc<RwLock<usize>>,
+    blocks: Arc<RwLock<HashMap<Address, MemoryBlock>>>,
+    next_address: Arc<RwLock<Address>>,
+    total_memory: Size,
+    used_memory: Arc<RwLock<Size>>,
     // Memory pressure thresholds (percentage)
     warning_threshold: f64,  // 80%
     critical_threshold: f64, // 95%
     // Garbage collection threshold - run GC when this many deallocated blocks accumulate
-    gc_threshold: usize, // 1000 blocks
-    deallocated_count: Arc<RwLock<usize>>,
+    gc_threshold: Size, // 1000 blocks
+    deallocated_count: Arc<RwLock<Size>>,
 }
 
 impl MemoryManager {
@@ -95,20 +41,22 @@ impl MemoryManager {
     }
 
     /// Check memory pressure level
-    fn check_memory_pressure(&self, used: usize) -> Option<&str> {
+    fn check_memory_pressure(&self, used: Size) -> Option<MemoryPressure> {
         let usage_ratio = used as f64 / self.total_memory as f64;
 
         if usage_ratio >= self.critical_threshold {
-            Some("CRITICAL")
+            Some(MemoryPressure::Critical)
         } else if usage_ratio >= self.warning_threshold {
-            Some("WARNING")
+            Some(MemoryPressure::High)
+        } else if usage_ratio >= 0.60 {
+            Some(MemoryPressure::Medium)
         } else {
             None
         }
     }
 
     /// Allocate memory with graceful OOM handling
-    pub fn allocate(&self, size: usize, pid: u32) -> Result<usize, MemoryError> {
+    pub fn allocate(&self, size: Size, pid: Pid) -> MemoryResult<Address> {
         // Single atomic transaction - acquire all locks at once to prevent races
         let mut blocks = self.blocks.write();
         let mut next_addr = self.next_address.write();
@@ -168,7 +116,7 @@ impl MemoryManager {
     }
 
     /// Deallocate memory
-    pub fn deallocate(&self, address: usize) -> Result<(), MemoryError> {
+    pub fn deallocate(&self, address: Address) -> MemoryResult<()> {
         let mut blocks = self.blocks.write();
 
         if let Some(block) = blocks.get_mut(&address) {
@@ -201,7 +149,7 @@ impl MemoryManager {
                     info!(
                         "GC threshold reached, running garbage collection..."
                     );
-                    self.garbage_collect();
+                    self.collect();
                 }
 
                 return Ok(());
@@ -212,11 +160,11 @@ impl MemoryManager {
             "Attempted to deallocate invalid or already freed address: 0x{:x}",
             address
         );
-        Err(MemoryError::InvalidAddress)
+        Err(MemoryError::InvalidAddress(address))
     }
 
     /// Free all memory allocated to a specific process (called on process termination)
-    pub fn free_process_memory(&self, pid: u32) -> usize {
+    pub fn free_process_memory(&self, pid: Pid) -> Size {
         let mut blocks = self.blocks.write();
         let mut freed_bytes = 0;
         let mut freed_count = 0;
@@ -256,7 +204,7 @@ impl MemoryManager {
                 info!(
                     "GC threshold reached after process cleanup, running garbage collection..."
                 );
-                self.garbage_collect();
+                self.collect();
             }
         } else {
             drop(blocks);
@@ -266,7 +214,7 @@ impl MemoryManager {
     }
 
     /// Get memory statistics for a specific process
-    pub fn get_process_memory(&self, pid: u32) -> usize {
+    pub fn process_memory(&self, pid: Pid) -> Size {
         let blocks = self.blocks.read();
         blocks
             .values()
@@ -276,13 +224,13 @@ impl MemoryManager {
     }
 
     /// Get overall memory info: (total, used, available)
-    pub fn get_memory_info(&self) -> (usize, usize, usize) {
+    pub fn info(&self) -> (Size, Size, Size) {
         let used = *self.used_memory.read();
         (self.total_memory, used, self.total_memory - used)
     }
 
     /// Get detailed memory statistics
-    pub fn get_detailed_stats(&self) -> MemoryStats {
+    pub fn stats(&self) -> MemoryStats {
         let blocks = self.blocks.read();
         let used = *self.used_memory.read();
 
@@ -301,7 +249,7 @@ impl MemoryManager {
 
     /// Garbage collect deallocated memory blocks
     /// Removes deallocated blocks from the HashMap to prevent unbounded growth
-    pub fn garbage_collect(&self) -> usize {
+    pub fn collect(&self) -> Size {
         let mut blocks = self.blocks.write();
         let initial_count = blocks.len();
 
@@ -326,20 +274,104 @@ impl MemoryManager {
     }
 
     /// Force garbage collection (for testing or manual cleanup)
-    pub fn force_gc(&self) -> usize {
+    pub fn force_collect(&self) -> Size {
         info!("Forcing garbage collection...");
-        self.garbage_collect()
+        self.collect()
+    }
+
+    /// Check if GC should run
+    pub fn should_collect(&self) -> bool {
+        let dealloc_count = *self.deallocated_count.read();
+        dealloc_count >= self.gc_threshold
+    }
+
+    /// Set GC threshold
+    pub fn set_threshold(&mut self, _threshold: Size) {
+        // Note: MemoryManager uses Arc internally, so this would need refactoring
+        // to support mutable threshold changes. For now, threshold is set at construction.
+    }
+
+    /// Get list of allocations for a process
+    pub fn process_allocations(&self, pid: Pid) -> Vec<MemoryBlock> {
+        let blocks = self.blocks.read();
+        blocks
+            .values()
+            .filter(|b| b.allocated && b.owner_pid == Some(pid))
+            .cloned()
+            .collect()
+    }
+    /// Check if an address is valid and allocated
+    pub fn is_valid(&self, address: Address) -> bool {
+        let blocks = self.blocks.read();
+        blocks.get(&address).map(|b| b.allocated).unwrap_or(false)
+    }
+
+    /// Get the size of an allocated block
+    pub fn block_size(&self, address: Address) -> Option<Size> {
+        let blocks = self.blocks.read();
+        blocks.get(&address).filter(|b| b.allocated).map(|b| b.size)
     }
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct MemoryStats {
-    pub total_memory: usize,
-    pub used_memory: usize,
-    pub available_memory: usize,
-    pub usage_percentage: f64,
-    pub allocated_blocks: usize,
-    pub fragmented_blocks: usize,
+// Implement trait interfaces
+impl Allocator for MemoryManager {
+    fn allocate(&self, size: Size, pid: Pid) -> MemoryResult<Address> {
+        MemoryManager::allocate(self, size, pid)
+    }
+
+    fn deallocate(&self, address: Address) -> MemoryResult<()> {
+        MemoryManager::deallocate(self, address)
+    }
+
+    fn is_valid(&self, address: Address) -> bool {
+        MemoryManager::is_valid(self, address)
+    }
+
+    fn block_size(&self, address: Address) -> Option<Size> {
+        MemoryManager::block_size(self, address)
+    }
+}
+
+impl MemoryInfo for MemoryManager {
+    fn stats(&self) -> MemoryStats {
+        MemoryManager::stats(self)
+    }
+
+    fn info(&self) -> (Size, Size, Size) {
+        MemoryManager::info(self)
+    }
+
+    fn process_memory(&self, pid: Pid) -> Size {
+        MemoryManager::process_memory(self, pid)
+    }
+}
+
+impl GarbageCollector for MemoryManager {
+    fn collect(&self) -> Size {
+        MemoryManager::collect(self)
+    }
+
+    fn force_collect(&self) -> Size {
+        MemoryManager::force_collect(self)
+    }
+
+    fn should_collect(&self) -> bool {
+        MemoryManager::should_collect(self)
+    }
+
+    fn set_threshold(&mut self, threshold: Size) {
+        MemoryManager::set_threshold(self, threshold)
+    }
+}
+
+impl ProcessMemoryCleanup for MemoryManager {
+    fn free_process_memory(&self, pid: Pid) -> Size {
+        MemoryManager::free_process_memory(self, pid)
+    }
+
+    fn process_allocations(&self, pid: Pid) -> Vec<MemoryBlock> {
+        MemoryManager::process_allocations(self, pid)
+    }
 }
 
 impl Clone for MemoryManager {

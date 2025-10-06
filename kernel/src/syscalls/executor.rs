@@ -3,11 +3,11 @@
  * Central executor for all syscalls with sandboxing
  */
 
+use crate::core::types::Pid;
+use crate::security::SandboxManager;
 use log::info;
 use std::sync::OnceLock;
 use std::time::Instant;
-
-use crate::security::SandboxManager;
 
 use super::types::{Syscall, SyscallResult};
 
@@ -20,8 +20,9 @@ pub struct SyscallExecutor {
     pub(super) sandbox_manager: SandboxManager,
     pub(super) pipe_manager: Option<crate::ipc::PipeManager>,
     pub(super) shm_manager: Option<crate::ipc::ShmManager>,
-    pub(super) process_manager: Option<crate::process::ProcessManager>,
+    pub(super) process_manager: Option<crate::process::ProcessManagerImpl>,
     pub(super) memory_manager: Option<crate::memory::MemoryManager>,
+    pub(super) vfs: Option<crate::vfs::MountManager>,
 }
 
 impl SyscallExecutor {
@@ -36,6 +37,7 @@ impl SyscallExecutor {
             shm_manager: None,
             process_manager: None,
             memory_manager: None,
+            vfs: None,
         }
     }
 
@@ -54,6 +56,7 @@ impl SyscallExecutor {
             shm_manager: Some(shm_manager),
             process_manager: None,
             memory_manager: None,
+            vfs: None,
         }
     }
 
@@ -61,7 +64,7 @@ impl SyscallExecutor {
         sandbox_manager: SandboxManager,
         pipe_manager: crate::ipc::PipeManager,
         shm_manager: crate::ipc::ShmManager,
-        process_manager: crate::process::ProcessManager,
+        process_manager: crate::process::ProcessManagerImpl,
         memory_manager: crate::memory::MemoryManager,
     ) -> Self {
         // Initialize system start time
@@ -74,11 +77,19 @@ impl SyscallExecutor {
             shm_manager: Some(shm_manager),
             process_manager: Some(process_manager),
             memory_manager: Some(memory_manager),
+            vfs: None,
         }
     }
 
+    /// Set VFS mount manager
+    pub fn with_vfs(mut self, vfs: crate::vfs::MountManager) -> Self {
+        self.vfs = Some(vfs);
+        info!("VFS enabled for syscall executor");
+        self
+    }
+
     /// Execute a system call with sandboxing
-    pub fn execute(&self, pid: u32, syscall: Syscall) -> SyscallResult {
+    pub fn execute(&self, pid: Pid, syscall: Syscall) -> SyscallResult {
         info!("Executing syscall for PID {}: {:?}", pid, syscall);
 
         match syscall {

@@ -1,7 +1,10 @@
 /*!
+
  * File System Syscalls
  * File and directory operations
  */
+
+use crate::core::types::Pid;
 
 use log::{error, info, warn};
 use std::fs;
@@ -16,187 +19,31 @@ use super::executor::SyscallExecutor;
 use super::types::SyscallResult;
 
 impl SyscallExecutor {
-    pub(super) fn read_file(&self, pid: u32, path: &PathBuf) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::ReadFile)
-        {
-            return SyscallResult::permission_denied("Missing ReadFile capability");
-        }
-
-        let canonical_path = match path.canonicalize() {
-            Ok(p) => p,
-            Err(e) => {
-                warn!("Failed to canonicalize path {:?}: {}", path, e);
-                return SyscallResult::error(format!("Invalid path: {}", e));
-            }
-        };
-
-        if !self.sandbox_manager.check_path_access(pid, &canonical_path) {
-            return SyscallResult::permission_denied(format!(
-                "Path not accessible: {:?}",
-                canonical_path
-            ));
-        }
-
-        match fs::read(&canonical_path) {
-            Ok(data) => {
-                info!("PID {} read file: {:?} ({} bytes)", pid, path, data.len());
-                SyscallResult::success_with_data(data)
-            }
-            Err(e) => {
-                error!("Failed to read file {:?}: {}", path, e);
-                SyscallResult::error(format!("Read failed: {}", e))
-            }
-        }
+    pub(super) fn read_file(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
+        self.vfs_read(pid, path)
     }
 
-    pub(super) fn write_file(&self, pid: u32, path: &PathBuf, data: &[u8]) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::WriteFile)
-        {
-            return SyscallResult::permission_denied("Missing WriteFile capability");
-        }
-
-        let check_path = if path.exists() {
-            match path.canonicalize() {
-                Ok(p) => p,
-                Err(e) => {
-                    warn!("Failed to canonicalize path {:?}: {}", path, e);
-                    return SyscallResult::error(format!("Invalid path: {}", e));
-                }
-            }
-        } else {
-            path.clone()
-        };
-
-        if !self.sandbox_manager.check_path_access(pid, &check_path) {
-            return SyscallResult::permission_denied(format!(
-                "Path not accessible: {:?}",
-                check_path
-            ));
-        }
-
-        match fs::write(path, data) {
-            Ok(_) => {
-                info!("PID {} wrote file: {:?} ({} bytes)", pid, path, data.len());
-                SyscallResult::success()
-            }
-            Err(e) => {
-                error!("Failed to write file {:?}: {}", path, e);
-                SyscallResult::error(format!("Write failed: {}", e))
-            }
-        }
+    pub(super) fn write_file(&self, pid: Pid, path: &PathBuf, data: &[u8]) -> SyscallResult {
+        self.vfs_write(pid, path, data)
     }
 
-    pub(super) fn create_file(&self, pid: u32, path: &PathBuf) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::CreateFile)
-        {
-            return SyscallResult::permission_denied("Missing CreateFile capability");
-        }
-
-        if !self.sandbox_manager.check_path_access(pid, path) {
-            return SyscallResult::permission_denied(format!("Path not accessible: {:?}", path));
-        }
-
-        match fs::File::create(path) {
-            Ok(_) => {
-                info!("PID {} created file: {:?}", pid, path);
-                SyscallResult::success()
-            }
-            Err(e) => {
-                error!("Failed to create file {:?}: {}", path, e);
-                SyscallResult::error(format!("Create failed: {}", e))
-            }
-        }
+    pub(super) fn create_file(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
+        self.vfs_write(pid, path, &[])
     }
 
-    pub(super) fn delete_file(&self, pid: u32, path: &PathBuf) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::DeleteFile)
-        {
-            return SyscallResult::permission_denied("Missing DeleteFile capability");
-        }
-
-        if !self.sandbox_manager.check_path_access(pid, path) {
-            return SyscallResult::permission_denied(format!("Path not accessible: {:?}", path));
-        }
-
-        match fs::remove_file(path) {
-            Ok(_) => {
-                info!("PID {} deleted file: {:?}", pid, path);
-                SyscallResult::success()
-            }
-            Err(e) => {
-                error!("Failed to delete file {:?}: {}", path, e);
-                SyscallResult::error(format!("Delete failed: {}", e))
-            }
-        }
+    pub(super) fn delete_file(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
+        self.vfs_delete(pid, path)
     }
 
-    pub(super) fn list_directory(&self, pid: u32, path: &PathBuf) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::ListDirectory)
-        {
-            return SyscallResult::permission_denied("Missing ListDirectory capability");
-        }
-
-        if !self.sandbox_manager.check_path_access(pid, path) {
-            return SyscallResult::permission_denied(format!("Path not accessible: {:?}", path));
-        }
-
-        match fs::read_dir(path) {
-            Ok(entries) => {
-                let files: Vec<String> = entries
-                    .filter_map(|e| e.ok())
-                    .filter_map(|e| e.file_name().into_string().ok())
-                    .collect();
-
-                info!(
-                    "PID {} listed directory: {:?} ({} entries)",
-                    pid,
-                    path,
-                    files.len()
-                );
-                match serde_json::to_vec(&files) {
-                    Ok(json) => SyscallResult::success_with_data(json),
-                    Err(e) => {
-                        error!("Failed to serialize directory listing: {}", e);
-                        SyscallResult::error("Failed to serialize directory listing")
-                    }
-                }
-            }
-            Err(e) => {
-                error!("Failed to list directory {:?}: {}", path, e);
-                SyscallResult::error(format!("List failed: {}", e))
-            }
-        }
+    pub(super) fn list_directory(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
+        self.vfs_list_dir(pid, path)
     }
 
-    pub(super) fn file_exists(&self, pid: u32, path: &PathBuf) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::ReadFile)
-        {
-            return SyscallResult::permission_denied("Missing ReadFile capability");
-        }
-
-        if !self.sandbox_manager.check_path_access(pid, path) {
-            return SyscallResult::permission_denied(format!("Path not accessible: {:?}", path));
-        }
-
-        let exists = path.exists();
-        info!("PID {} checked file exists: {:?} = {}", pid, path, exists);
-        let data = vec![if exists { 1 } else { 0 }];
-        SyscallResult::success_with_data(data)
+    pub(super) fn file_exists(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
+        self.vfs_exists(pid, path)
     }
 
-    pub(super) fn file_stat(&self, pid: u32, path: &PathBuf) -> SyscallResult {
+    pub(super) fn file_stat(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::ReadFile)
@@ -245,7 +92,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn move_file(&self, pid: u32, source: &PathBuf, destination: &PathBuf) -> SyscallResult {
+    pub(super) fn move_file(&self, pid: Pid, source: &PathBuf, destination: &PathBuf) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::WriteFile)
@@ -282,7 +129,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn copy_file(&self, pid: u32, source: &PathBuf, destination: &PathBuf) -> SyscallResult {
+    pub(super) fn copy_file(&self, pid: Pid, source: &PathBuf, destination: &PathBuf) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::ReadFile)
@@ -329,55 +176,15 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn create_directory(&self, pid: u32, path: &PathBuf) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::CreateFile)
-        {
-            return SyscallResult::permission_denied("Missing CreateFile capability");
-        }
-
-        if !self.sandbox_manager.check_path_access(pid, path) {
-            return SyscallResult::permission_denied(format!("Path not accessible: {:?}", path));
-        }
-
-        match fs::create_dir_all(path) {
-            Ok(_) => {
-                info!("PID {} created directory: {:?}", pid, path);
-                SyscallResult::success()
-            }
-            Err(e) => {
-                error!("Failed to create directory {:?}: {}", path, e);
-                SyscallResult::error(format!("Mkdir failed: {}", e))
-            }
-        }
+    pub(super) fn create_directory(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
+        self.vfs_create_dir(pid, path)
     }
 
-    pub(super) fn remove_directory(&self, pid: u32, path: &PathBuf) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::DeleteFile)
-        {
-            return SyscallResult::permission_denied("Missing DeleteFile capability");
-        }
-
-        if !self.sandbox_manager.check_path_access(pid, path) {
-            return SyscallResult::permission_denied(format!("Path not accessible: {:?}", path));
-        }
-
-        match fs::remove_dir_all(path) {
-            Ok(_) => {
-                info!("PID {} removed directory: {:?}", pid, path);
-                SyscallResult::success()
-            }
-            Err(e) => {
-                error!("Failed to remove directory {:?}: {}", path, e);
-                SyscallResult::error(format!("Remove directory failed: {}", e))
-            }
-        }
+    pub(super) fn remove_directory(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
+        self.vfs_remove_dir(pid, path)
     }
 
-    pub(super) fn get_working_directory(&self, pid: u32) -> SyscallResult {
+    pub(super) fn get_working_directory(&self, pid: Pid) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::SystemInfo)
@@ -400,7 +207,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn set_working_directory(&self, pid: u32, path: &PathBuf) -> SyscallResult {
+    pub(super) fn set_working_directory(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::SystemInfo)
@@ -424,7 +231,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn truncate_file(&self, pid: u32, path: &PathBuf, size: u64) -> SyscallResult {
+    pub(super) fn truncate_file(&self, pid: Pid, path: &PathBuf, size: u64) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::WriteFile)

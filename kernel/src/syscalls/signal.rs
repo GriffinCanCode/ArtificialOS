@@ -1,7 +1,10 @@
 /*!
+
  * Signal Syscalls
  * Process signaling operations
  */
+
+use crate::core::types::Pid;
 
 use log::{info, warn};
 
@@ -11,7 +14,7 @@ use super::executor::SyscallExecutor;
 use super::types::SyscallResult;
 
 impl SyscallExecutor {
-    pub(super) fn send_signal(&self, pid: u32, target_pid: u32, signal: u32) -> SyscallResult {
+    pub(super) fn send_signal(&self, pid: Pid, target_pid: Pid, signal: u32) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::KillProcess)

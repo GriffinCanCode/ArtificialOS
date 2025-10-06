@@ -14,8 +14,14 @@ mod scheduler;
 mod signal;
 mod system;
 mod time;
-mod types;
+pub mod traits;
+pub mod types;
+mod vfs_adapter;
 
 // Re-export public API
 pub use executor::SyscallExecutor;
-pub use types::{ProcessMemoryStats, ProcessOutput, Syscall, SyscallResult, SystemInfo};
+pub use traits::*;
+pub use types::{ProcessOutput, Syscall, SyscallError, SyscallResult, SystemInfo};
+
+// Re-export ProcessMemoryStats from memory module
+pub use crate::memory::ProcessMemoryStats;

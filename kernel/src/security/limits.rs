@@ -3,69 +3,12 @@
  * OS-level resource limit enforcement (cgroups on Linux, job objects on Windows)
  */
 
+use super::traits::*;
+use super::types::*;
 use log::info;
-use thiserror::Error;
 
-#[derive(Debug, Error)]
-pub enum LimitsError {
-    #[error("IO error: {0}")]
-    IoError(#[from] std::io::Error),
-
-    #[error("Platform not supported: {0}")]
-    PlatformNotSupported(String),
-
-    #[error("Permission denied: {0}")]
-    PermissionDenied(String),
-
-    #[error("Invalid limit: {0}")]
-    InvalidLimit(String),
-}
-
-/// Resource limits to enforce
-#[derive(Debug, Clone)]
-pub struct Limits {
-    pub memory_bytes: Option<u64>,
-    pub cpu_shares: Option<u32>,      // Linux: 1-10000, higher = more CPU
-    pub max_pids: Option<u32>,
-    pub max_open_files: Option<u32>,
-}
-
-impl Limits {
-    pub fn new() -> Self {
-        Self {
-            memory_bytes: None,
-            cpu_shares: None,
-            max_pids: None,
-            max_open_files: None,
-        }
-    }
-
-    pub fn with_memory(mut self, bytes: u64) -> Self {
-        self.memory_bytes = Some(bytes);
-        self
-    }
-
-    pub fn with_cpu_shares(mut self, shares: u32) -> Self {
-        self.cpu_shares = Some(shares);
-        self
-    }
-
-    pub fn with_max_pids(mut self, pids: u32) -> Self {
-        self.max_pids = Some(pids);
-        self
-    }
-}
-
-impl Default for Limits {
-    fn default() -> Self {
-        Self {
-            memory_bytes: Some(512 * 1024 * 1024), // 512 MB
-            cpu_shares: Some(100),                  // Standard priority
-            max_pids: Some(10),
-            max_open_files: Some(1024),
-        }
-    }
-}
+#[cfg(target_os = "linux")]
+use std::path::PathBuf;
 
 /// Platform-agnostic resource limit manager
 pub struct LimitManager {
@@ -263,6 +206,59 @@ impl LimitManager {
 impl Default for LimitManager {
     fn default() -> Self {
         Self::new().expect("Failed to create limit manager")
+    }
+}
+
+// Trait implementations for LimitManager
+
+impl OsLimitEnforcer for LimitManager {
+    fn apply(&self, os_pid: u32, limits: &Limits) -> LimitsResult<()> {
+        #[cfg(target_os = "linux")]
+        {
+            self.apply_linux(os_pid, limits)
+        }
+
+        #[cfg(target_os = "macos")]
+        {
+            self.apply_macos(os_pid, limits)
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            self.apply_windows(os_pid, limits)
+        }
+
+        #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+        {
+            log::warn!("Resource limits not implemented for this platform");
+            Ok(())
+        }
+    }
+
+    fn remove(&self, os_pid: u32) -> LimitsResult<()> {
+        #[cfg(target_os = "linux")]
+        {
+            self.remove_linux(os_pid)
+        }
+
+        #[cfg(not(target_os = "linux"))]
+        {
+            let _ = os_pid; // Silence unused warning
+            info!("No resource limits to remove on this platform");
+            Ok(())
+        }
+    }
+
+    fn is_supported(&self) -> bool {
+        #[cfg(target_os = "linux")]
+        {
+            std::path::Path::new("/sys/fs/cgroup/cgroup.controllers").exists()
+        }
+
+        #[cfg(not(target_os = "linux"))]
+        {
+            false
+        }
     }
 }
 

@@ -1,7 +1,10 @@
 /*!
+
  * Time Syscalls
  * Time and sleep operations
  */
+
+use crate::core::types::Pid;
 
 use log::info;
 use std::time::Duration;
@@ -12,7 +15,7 @@ use super::executor::{SyscallExecutor, SYSTEM_START};
 use super::types::SyscallResult;
 
 impl SyscallExecutor {
-    pub(super) fn sleep(&self, pid: u32, duration_ms: u64) -> SyscallResult {
+    pub(super) fn sleep(&self, pid: Pid, duration_ms: u64) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::TimeAccess)
@@ -34,7 +37,7 @@ impl SyscallExecutor {
         SyscallResult::success()
     }
 
-    pub(super) fn get_uptime(&self, pid: u32) -> SyscallResult {
+    pub(super) fn get_uptime(&self, pid: Pid) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::TimeAccess)

@@ -72,6 +72,7 @@ export function useComponent(
 
       // Extract params from event and component
       const params = {
+        ...component.props, // Include all component props (e.g., noteId, data attributes)
         ...eventData,
         componentId: component.id,
         id: component.id,

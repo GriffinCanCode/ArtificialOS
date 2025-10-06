@@ -1,0 +1,316 @@
+/*!
+ * Security Types
+ * Common types for security and sandboxing
+ */
+
+use crate::core::types::{Pid, ResourceLimits};
+use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
+use std::path::PathBuf;
+use thiserror::Error;
+
+/// Security operation result
+pub type SecurityResult<T> = Result<T, SecurityError>;
+
+/// Sandbox operation result
+pub type SandboxResult<T> = Result<T, SandboxError>;
+
+/// Limits operation result
+pub type LimitsResult<T> = Result<T, LimitsError>;
+
+/// Unified security error type
+#[derive(Error, Debug, Clone, Serialize, Deserialize)]
+pub enum SecurityError {
+    #[error("Permission denied: {0}")]
+    PermissionDenied(String),
+
+    #[error("Capability missing: {0}")]
+    CapabilityMissing(String),
+
+    #[error("Sandbox not found for PID {0}")]
+    SandboxNotFound(Pid),
+
+    #[error("Path access denied: {0}")]
+    PathAccessDenied(String),
+
+    #[error("Resource limit exceeded: {0}")]
+    LimitExceeded(String),
+
+    #[error("Invalid configuration: {0}")]
+    InvalidConfig(String),
+
+    #[error("Sandbox error: {0}")]
+    Sandbox(#[from] SandboxError),
+
+    #[error("Limits error: {0}")]
+    Limits(#[from] LimitsError),
+}
+
+/// Sandbox-specific errors
+#[derive(Error, Debug, Clone, Serialize, Deserialize)]
+pub enum SandboxError {
+    #[error("Permission denied: {0}")]
+    PermissionDenied(String),
+
+    #[error("Sandbox not found for PID {0}")]
+    NotFound(Pid),
+
+    #[error("Invalid configuration: {0}")]
+    InvalidConfig(String),
+
+    #[error("Capability {0:?} not granted")]
+    MissingCapability(String),
+
+    #[error("Path {0:?} not accessible")]
+    PathBlocked(String),
+}
+
+/// Resource limits errors
+#[derive(Error, Debug, Clone, Serialize, Deserialize)]
+pub enum LimitsError {
+    #[error("IO error: {0}")]
+    IoError(String),
+
+    #[error("Platform not supported: {0}")]
+    PlatformNotSupported(String),
+
+    #[error("Permission denied: {0}")]
+    PermissionDenied(String),
+
+    #[error("Invalid limit: {0}")]
+    InvalidLimit(String),
+}
+
+// Allow conversion from std::io::Error
+impl From<std::io::Error> for LimitsError {
+    fn from(err: std::io::Error) -> Self {
+        LimitsError::IoError(err.to_string())
+    }
+}
+
+/// Capabilities that can be granted to sandboxed processes
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum Capability {
+    // File system
+    ReadFile,
+    WriteFile,
+    CreateFile,
+    DeleteFile,
+    ListDirectory,
+
+    // Process
+    SpawnProcess,
+    KillProcess,
+
+    // Network
+    NetworkAccess,
+    BindPort,
+
+    // System
+    SystemInfo,
+    TimeAccess,
+
+    // IPC
+    SendMessage,
+    ReceiveMessage,
+}
+
+impl std::fmt::Display for Capability {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Capability::ReadFile => write!(f, "ReadFile"),
+            Capability::WriteFile => write!(f, "WriteFile"),
+            Capability::CreateFile => write!(f, "CreateFile"),
+            Capability::DeleteFile => write!(f, "DeleteFile"),
+            Capability::ListDirectory => write!(f, "ListDirectory"),
+            Capability::SpawnProcess => write!(f, "SpawnProcess"),
+            Capability::KillProcess => write!(f, "KillProcess"),
+            Capability::NetworkAccess => write!(f, "NetworkAccess"),
+            Capability::BindPort => write!(f, "BindPort"),
+            Capability::SystemInfo => write!(f, "SystemInfo"),
+            Capability::TimeAccess => write!(f, "TimeAccess"),
+            Capability::SendMessage => write!(f, "SendMessage"),
+            Capability::ReceiveMessage => write!(f, "ReceiveMessage"),
+        }
+    }
+}
+
+/// Sandbox configuration for a process
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SandboxConfig {
+    pub pid: Pid,
+    pub capabilities: HashSet<Capability>,
+    pub resource_limits: ResourceLimits,
+    pub allowed_paths: Vec<PathBuf>,
+    pub blocked_paths: Vec<PathBuf>,
+    pub allow_network: bool,
+    pub environment_vars: Vec<(String, String)>,
+}
+
+impl SandboxConfig {
+    /// Create a minimal sandbox (most restrictive)
+    pub fn minimal(pid: Pid) -> Self {
+        Self {
+            pid,
+            capabilities: HashSet::new(),
+            resource_limits: ResourceLimits::minimal(),
+            allowed_paths: vec![],
+            blocked_paths: vec![
+                PathBuf::from("/etc"),
+                PathBuf::from("/bin"),
+                PathBuf::from("/sbin"),
+                PathBuf::from("/usr/bin"),
+                PathBuf::from("/usr/sbin"),
+            ],
+            allow_network: false,
+            environment_vars: vec![],
+        }
+    }
+
+    /// Create a standard sandbox (balanced)
+    pub fn standard(pid: Pid) -> Self {
+        let mut capabilities = HashSet::new();
+        capabilities.insert(Capability::ReadFile);
+        capabilities.insert(Capability::WriteFile);
+        capabilities.insert(Capability::SystemInfo);
+        capabilities.insert(Capability::TimeAccess);
+
+        Self {
+            pid,
+            capabilities,
+            resource_limits: ResourceLimits::default(),
+            allowed_paths: vec![PathBuf::from("/tmp"), PathBuf::from("/var/tmp")],
+            blocked_paths: vec![PathBuf::from("/etc/passwd"), PathBuf::from("/etc/shadow")],
+            allow_network: false,
+            environment_vars: vec![],
+        }
+    }
+
+    /// Create a privileged sandbox (for trusted apps)
+    pub fn privileged(pid: Pid) -> Self {
+        let mut capabilities = HashSet::new();
+        capabilities.insert(Capability::ReadFile);
+        capabilities.insert(Capability::WriteFile);
+        capabilities.insert(Capability::CreateFile);
+        capabilities.insert(Capability::DeleteFile);
+        capabilities.insert(Capability::ListDirectory);
+        capabilities.insert(Capability::SpawnProcess);
+        capabilities.insert(Capability::KillProcess);
+        capabilities.insert(Capability::NetworkAccess);
+        capabilities.insert(Capability::SystemInfo);
+        capabilities.insert(Capability::TimeAccess);
+        capabilities.insert(Capability::SendMessage);
+        capabilities.insert(Capability::ReceiveMessage);
+
+        Self {
+            pid,
+            capabilities,
+            resource_limits: ResourceLimits {
+                max_memory_bytes: 2 * 1024 * 1024 * 1024, // 2GB
+                max_cpu_time_ms: 300_000,                 // 5 minutes
+                max_file_descriptors: 500,
+                max_processes: 50,
+                max_network_connections: 100,
+            },
+            allowed_paths: vec![PathBuf::from("/")], // Full access
+            blocked_paths: vec![],
+            allow_network: true,
+            environment_vars: vec![],
+        }
+    }
+}
+
+/// Resource limits to enforce at OS level
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Limits {
+    pub memory_bytes: Option<u64>,
+    pub cpu_shares: Option<u32>, // Linux: 1-10000, higher = more CPU
+    pub max_pids: Option<u32>,
+    pub max_open_files: Option<u32>,
+}
+
+impl Limits {
+    pub fn new() -> Self {
+        Self {
+            memory_bytes: None,
+            cpu_shares: None,
+            max_pids: None,
+            max_open_files: None,
+        }
+    }
+
+    pub fn with_memory(mut self, bytes: u64) -> Self {
+        self.memory_bytes = Some(bytes);
+        self
+    }
+
+    pub fn with_cpu_shares(mut self, shares: u32) -> Self {
+        self.cpu_shares = Some(shares);
+        self
+    }
+
+    pub fn with_max_pids(mut self, pids: u32) -> Self {
+        self.max_pids = Some(pids);
+        self
+    }
+
+    pub fn with_max_open_files(mut self, files: u32) -> Self {
+        self.max_open_files = Some(files);
+        self
+    }
+}
+
+impl Default for Limits {
+    fn default() -> Self {
+        Self {
+            memory_bytes: Some(512 * 1024 * 1024), // 512 MB
+            cpu_shares: Some(100),                  // Standard priority
+            max_pids: Some(10),
+            max_open_files: Some(1024),
+        }
+    }
+}
+
+/// Sandbox statistics
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SandboxStats {
+    pub total_sandboxes: usize,
+    pub active_processes: usize,
+    pub permission_denials: u64,
+    pub capability_checks: u64,
+}
+
+/// Security audit event
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum SecurityEvent {
+    PermissionDenied {
+        pid: Pid,
+        capability: String,
+        reason: String,
+    },
+    PathAccessDenied {
+        pid: Pid,
+        path: String,
+        reason: String,
+    },
+    LimitExceeded {
+        pid: Pid,
+        limit_type: String,
+        value: u64,
+    },
+    CapabilityGranted {
+        pid: Pid,
+        capability: String,
+    },
+    CapabilityRevoked {
+        pid: Pid,
+        capability: String,
+    },
+    SandboxCreated {
+        pid: Pid,
+        config_type: String,
+    },
+    SandboxDestroyed {
+        pid: Pid,
+    },
+}

@@ -1,17 +1,21 @@
 /*!
+
  * Memory Syscalls
  * Memory management and garbage collection
  */
 
+use crate::core::types::Pid;
+
 use log::{error, info};
 
+use crate::memory::types::ProcessMemoryStats;
 use crate::security::Capability;
 
 use super::executor::SyscallExecutor;
-use super::types::{ProcessMemoryStats, SyscallResult};
+use super::types::SyscallResult;
 
 impl SyscallExecutor {
-    pub(super) fn get_memory_stats(&self, pid: u32) -> SyscallResult {
+    pub(super) fn get_memory_stats(&self, pid: Pid) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::SystemInfo)
@@ -24,7 +28,7 @@ impl SyscallExecutor {
             None => return SyscallResult::error("Memory manager not available"),
         };
 
-        let stats = memory_manager.get_detailed_stats();
+        let stats = memory_manager.stats();
         match serde_json::to_vec(&stats) {
             Ok(data) => {
                 info!("PID {} retrieved global memory stats", pid);
@@ -37,7 +41,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn get_process_memory_stats(&self, pid: u32, target_pid: u32) -> SyscallResult {
+    pub(super) fn get_process_memory_stats(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::SystemInfo)
@@ -50,10 +54,12 @@ impl SyscallExecutor {
             None => return SyscallResult::error("Memory manager not available"),
         };
 
-        let memory_used = memory_manager.get_process_memory(target_pid);
+        let memory_used = memory_manager.process_memory(target_pid);
         let stats = ProcessMemoryStats {
             pid: target_pid,
-            bytes_allocated: memory_used,
+            allocated_bytes: memory_used,
+            peak_bytes: memory_used, // TODO: Track peak memory in the future
+            allocation_count: 0, // TODO: Track allocation count in the future
         };
 
         match serde_json::to_vec(&stats) {
@@ -68,7 +74,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn trigger_gc(&self, pid: u32, target_pid: Option<u32>) -> SyscallResult {
+    pub(super) fn trigger_gc(&self, pid: Pid, target_pid: Option<u32>) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::SystemInfo)

@@ -1,7 +1,10 @@
 /*!
+
  * File Descriptor Syscalls
  * Low-level file descriptor operations
  */
+
+use crate::core::types::Pid;
 
 use log::{error, info, warn};
 use std::collections::HashMap;
@@ -47,7 +50,7 @@ impl Clone for FdManager {
 }
 
 impl SyscallExecutor {
-    pub(super) fn open(&self, pid: u32, path: &PathBuf, flags: u32, mode: u32) -> SyscallResult {
+    pub(super) fn open(&self, pid: Pid, path: &PathBuf, flags: u32, mode: u32) -> SyscallResult {
         // Check permissions based on flags
         let read_flag = flags & 0x0001; // O_RDONLY or O_RDWR
         let write_flag = flags & 0x0002; // O_WRONLY or O_RDWR
@@ -129,7 +132,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn close_fd(&self, pid: u32, fd: u32) -> SyscallResult {
+    pub(super) fn close_fd(&self, pid: Pid, fd: u32) -> SyscallResult {
         // No capability check - closing is always allowed
 
         warn!("Close FD syscall not fully implemented: fd={}", fd);
@@ -137,7 +140,7 @@ impl SyscallExecutor {
         SyscallResult::success()
     }
 
-    pub(super) fn dup(&self, pid: u32, fd: u32) -> SyscallResult {
+    pub(super) fn dup(&self, pid: Pid, fd: u32) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::ReadFile)
@@ -158,7 +161,7 @@ impl SyscallExecutor {
         SyscallResult::success_with_data(data)
     }
 
-    pub(super) fn dup2(&self, pid: u32, oldfd: u32, newfd: u32) -> SyscallResult {
+    pub(super) fn dup2(&self, pid: Pid, oldfd: u32, newfd: u32) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::ReadFile)
@@ -171,7 +174,7 @@ impl SyscallExecutor {
         SyscallResult::success()
     }
 
-    pub(super) fn lseek(&self, pid: u32, fd: u32, offset: i64, whence: u32) -> SyscallResult {
+    pub(super) fn lseek(&self, pid: Pid, fd: u32, offset: i64, whence: u32) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::ReadFile)
@@ -197,7 +200,7 @@ impl SyscallExecutor {
         SyscallResult::success_with_data(data)
     }
 
-    pub(super) fn fcntl(&self, pid: u32, fd: u32, cmd: u32, arg: u32) -> SyscallResult {
+    pub(super) fn fcntl(&self, pid: Pid, fd: u32, cmd: u32, arg: u32) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::ReadFile)

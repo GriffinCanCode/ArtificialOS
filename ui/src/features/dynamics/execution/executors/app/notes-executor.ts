@@ -17,9 +17,11 @@ interface Note {
 
 export class NotesExecutor implements AsyncExecutor {
   private context: ExecutorContext;
+  private serviceExecutor: any; // Will be injected
 
-  constructor(context: ExecutorContext) {
+  constructor(context: ExecutorContext, serviceExecutor?: any) {
     this.context = context;
+    this.serviceExecutor = serviceExecutor;
   }
 
   async execute(action: string, params: Record<string, any>): Promise<any> {
@@ -77,14 +79,16 @@ export class NotesExecutor implements AsyncExecutor {
   private async saveNote(params: Record<string, any>): Promise<boolean> {
     try {
       // Get current note data from component state
-      const noteId =
+      let noteId =
         params.noteId || this.context.componentState.get<string>("current-note-id");
       const title = this.context.componentState.get<string>("note-title", "");
       const content = this.context.componentState.get<string>("note-content", "");
 
+      // Auto-create note ID if none exists (user typed without clicking +)
       if (!noteId) {
-        logger.warn("No note ID to save", { component: "NotesExecutor" });
-        return false;
+        noteId = generatePrefixedId("note");
+        this.context.componentState.set("current-note-id", noteId);
+        logger.info("Auto-created note ID for new note", { component: "NotesExecutor", noteId });
       }
 
       const now = Date.now();
@@ -98,28 +102,55 @@ export class NotesExecutor implements AsyncExecutor {
         updatedAt: now,
       };
 
-      // Save to storage via service executor
-      const response = await fetch("http://localhost:8000/services/execute", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tool_id: "storage.set",
-          params: {
-            key: `note_${noteId}`,
-            value: note,
-          },
-          app_id: this.context.appId,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to save note: ${response.statusText}`);
+      // Check if appId is available
+      if (!this.context.appId) {
+        logger.error("Cannot save note: app ID not set", { component: "NotesExecutor" });
+        throw new Error("App ID not available - cannot save to storage");
       }
 
-      const result = await response.json();
+      logger.info("Saving note to storage", {
+        component: "NotesExecutor",
+        noteId,
+        appId: this.context.appId,
+        keyName: `note_${noteId}`,
+      });
 
-      if (!result.success) {
-        throw new Error(result.error || "Storage save failed");
+      // Save to storage via service executor
+      if (this.serviceExecutor) {
+        await this.serviceExecutor.execute("storage.set", {
+          key: `note_${noteId}`,
+          value: note,
+        });
+      } else {
+        // Fallback to direct API call
+        const response = await fetch("http://localhost:8000/services/execute", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tool_id: "storage.set",
+            params: {
+              key: `note_${noteId}`,
+              value: note,
+            },
+            app_id: this.context.appId,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          logger.error("Storage API returned error", new Error(errorText), {
+            component: "NotesExecutor",
+            status: response.status,
+            responseBody: errorText,
+          });
+          throw new Error(`Failed to save note: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+
+        if (!result.success) {
+          throw new Error(result.error || "Storage save failed");
+        }
       }
 
       // Update notes list
@@ -160,26 +191,32 @@ export class NotesExecutor implements AsyncExecutor {
     if (!noteId) return false;
 
     try {
-      const response = await fetch("http://localhost:8000/services/execute", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tool_id: "storage.remove",
-          params: {
-            key: `note_${noteId}`,
-          },
-          app_id: this.context.appId,
-        }),
-      });
+      if (this.serviceExecutor) {
+        await this.serviceExecutor.execute("storage.remove", {
+          key: `note_${noteId}`,
+        });
+      } else {
+        const response = await fetch("http://localhost:8000/services/execute", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tool_id: "storage.remove",
+            params: {
+              key: `note_${noteId}`,
+            },
+            app_id: this.context.appId,
+          }),
+        });
 
-      if (!response.ok) {
-        throw new Error(`Failed to delete note: ${response.statusText}`);
-      }
+        if (!response.ok) {
+          throw new Error(`Failed to delete note: ${response.statusText}`);
+        }
 
-      const result = await response.json();
+        const result = await response.json();
 
-      if (!result.success) {
-        throw new Error(result.error || "Storage delete failed");
+        if (!result.success) {
+          throw new Error(result.error || "Storage delete failed");
+        }
       }
 
       // Clear current note if it was deleted
@@ -209,27 +246,34 @@ export class NotesExecutor implements AsyncExecutor {
   private async listNotes(): Promise<Note[]> {
     try {
       // Get all keys from storage
-      const response = await fetch("http://localhost:8000/services/execute", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tool_id: "storage.list",
-          params: {},
-          app_id: this.context.appId,
-        }),
-      });
+      let keys: string[] = [];
 
-      if (!response.ok) {
-        throw new Error(`Failed to list notes: ${response.statusText}`);
+      if (this.serviceExecutor) {
+        const result = await this.serviceExecutor.execute("storage.list", {});
+        keys = (result?.keys || []) as string[];
+      } else {
+        const response = await fetch("http://localhost:8000/services/execute", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tool_id: "storage.list",
+            params: {},
+            app_id: this.context.appId,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to list notes: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+
+        if (!result.success) {
+          throw new Error(result.error || "Storage list failed");
+        }
+
+        keys = (result.data?.keys || []) as string[];
       }
-
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error || "Storage list failed");
-      }
-
-      const keys = (result.data?.keys || []) as string[];
       const noteKeys = keys.filter((key) => key.startsWith("note_"));
 
       // Load all notes
@@ -260,29 +304,36 @@ export class NotesExecutor implements AsyncExecutor {
    */
   private async loadNoteFromStorage(noteId: string): Promise<Note | null> {
     try {
-      const response = await fetch("http://localhost:8000/services/execute", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tool_id: "storage.get",
-          params: {
-            key: `note_${noteId}`,
-          },
-          app_id: this.context.appId,
-        }),
-      });
+      if (this.serviceExecutor) {
+        const result = await this.serviceExecutor.execute("storage.get", {
+          key: `note_${noteId}`,
+        });
+        return (result?.value || null) as Note | null;
+      } else {
+        const response = await fetch("http://localhost:8000/services/execute", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tool_id: "storage.get",
+            params: {
+              key: `note_${noteId}`,
+            },
+            app_id: this.context.appId,
+          }),
+        });
 
-      if (!response.ok) {
-        return null;
+        if (!response.ok) {
+          return null;
+        }
+
+        const result = await response.json();
+
+        if (!result.success || !result.data?.value) {
+          return null;
+        }
+
+        return result.data.value as Note;
       }
-
-      const result = await response.json();
-
-      if (!result.success || !result.data?.value) {
-        return null;
-      }
-
-      return result.data.value as Note;
     } catch (error) {
       logger.error("Failed to load note from storage", error as Error, {
         component: "NotesExecutor",
@@ -312,6 +363,7 @@ export class NotesExecutor implements AsyncExecutor {
         layout: "vertical",
         spacing: "none",
         padding: "small",
+        noteId: note.id, // Store noteId in props for click handler
         style: {
           cursor: "pointer",
           padding: "0.75rem",

@@ -5,12 +5,16 @@
 
 use log::info;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Duration;
 use tonic::{transport::Server, Request, Response, Status};
 
-use crate::process::ProcessManager;
+use crate::process::ProcessManagerImpl as ProcessManager;
 use crate::security::{Capability as SandboxCapability, SandboxConfig, SandboxManager};
 use crate::syscalls::{Syscall, SyscallExecutor, SyscallResult};
+
+use super::types::{ApiError, ApiResult, ServerConfig};
+use super::traits::ServerLifecycle;
 
 // Include generated protobuf code
 pub mod kernel_proto {
@@ -338,7 +342,7 @@ impl KernelService for KernelServiceImpl {
         // Build execution config if command provided
         let exec_config = if let Some(command) = req.command {
             if !command.is_empty() {
-                let mut config = crate::process::executor::ExecutionConfig::new(command);
+                let mut config = crate::process::ExecutionConfig::new(command);
                 if !req.args.is_empty() {
                     config = config.with_args(req.args);
                 }
@@ -489,9 +493,9 @@ impl KernelService for KernelServiceImpl {
 
         if let Some(stats) = self.process_manager.get_scheduler_stats() {
             let policy_str = match stats.policy {
-                crate::process::scheduler::Policy::RoundRobin => "RoundRobin",
-                crate::process::scheduler::Policy::Priority => "Priority",
-                crate::process::scheduler::Policy::Fair => "Fair",
+                crate::process::SchedulingPolicy::RoundRobin => "RoundRobin",
+                crate::process::SchedulingPolicy::Priority => "Priority",
+                crate::process::SchedulingPolicy::Fair => "Fair",
             };
 
             Ok(Response::new(GetSchedulerStatsResponse {
@@ -524,9 +528,9 @@ impl KernelService for KernelServiceImpl {
 
         // Convert string policy to enum
         let policy = match req.policy.to_lowercase().as_str() {
-            "roundrobin" | "round_robin" => crate::process::scheduler::Policy::RoundRobin,
-            "priority" => crate::process::scheduler::Policy::Priority,
-            "fair" => crate::process::scheduler::Policy::Fair,
+            "roundrobin" | "round_robin" => crate::process::SchedulingPolicy::RoundRobin,
+            "priority" => crate::process::SchedulingPolicy::Priority,
+            "fair" => crate::process::SchedulingPolicy::Fair,
             _ => {
                 return Ok(Response::new(SetSchedulingPolicyResponse {
                     success: false,
@@ -570,29 +574,91 @@ fn proto_to_sandbox_capability(cap: Capability) -> SandboxCapability {
     }
 }
 
-/// Start the gRPC server
+/// gRPC Server wrapper that implements ServerLifecycle trait
+pub struct GrpcServer {
+    config: ServerConfig,
+    syscall_executor: SyscallExecutor,
+    process_manager: ProcessManager,
+    sandbox_manager: SandboxManager,
+    running: Arc<std::sync::atomic::AtomicBool>,
+}
+
+impl GrpcServer {
+    pub fn new(
+        config: ServerConfig,
+        syscall_executor: SyscallExecutor,
+        process_manager: ProcessManager,
+        sandbox_manager: SandboxManager,
+    ) -> Self {
+        Self {
+            config,
+            syscall_executor,
+            process_manager,
+            sandbox_manager,
+            running: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        }
+    }
+}
+
+impl ServerLifecycle for GrpcServer {
+    fn start(&self) -> std::pin::Pin<Box<dyn std::future::Future<Output = ApiResult<()>> + Send + '_>> {
+        Box::pin(async move {
+            let service = KernelServiceImpl::new(
+                self.syscall_executor.clone(),
+                self.process_manager.clone(),
+                self.sandbox_manager.clone(),
+            );
+
+            info!("gRPC server starting on {}", self.config.address);
+
+            self.running.store(true, std::sync::atomic::Ordering::SeqCst);
+
+            // Configure server with settings from ServerConfig
+            Server::builder()
+                .timeout(Duration::from_secs(self.config.timeout_secs))
+                .http2_keepalive_interval(Some(Duration::from_secs(self.config.keepalive_interval_secs)))
+                .http2_keepalive_timeout(Some(Duration::from_secs(self.config.keepalive_timeout_secs)))
+                .http2_adaptive_window(Some(true))
+                .tcp_nodelay(true)
+                .add_service(KernelServiceServer::new(service))
+                .serve(self.config.address)
+                .await
+                .map_err(|e| ApiError::InternalError(format!("Server error: {}", e)))?;
+
+            self.running.store(false, std::sync::atomic::Ordering::SeqCst);
+
+            Ok(())
+        })
+    }
+
+    fn stop(&self) -> std::pin::Pin<Box<dyn std::future::Future<Output = ApiResult<()>> + Send + '_>> {
+        Box::pin(async move {
+            // Note: Graceful shutdown would require holding a server handle
+            // For now, we just mark as not running
+            self.running.store(false, std::sync::atomic::Ordering::SeqCst);
+            info!("gRPC server stopped");
+            Ok(())
+        })
+    }
+
+    fn is_running(&self) -> bool {
+        self.running.load(std::sync::atomic::Ordering::SeqCst)
+    }
+
+    fn config(&self) -> &ServerConfig {
+        &self.config
+    }
+}
+
+/// Start the gRPC server (legacy function for backward compatibility)
 pub async fn start_grpc_server(
     addr: std::net::SocketAddr,
     syscall_executor: SyscallExecutor,
     process_manager: ProcessManager,
     sandbox_manager: SandboxManager,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let service = KernelServiceImpl::new(syscall_executor, process_manager, sandbox_manager);
+    let config = ServerConfig::new(addr);
+    let server = GrpcServer::new(config, syscall_executor, process_manager, sandbox_manager);
 
-    info!("gRPC server starting on {}", addr);
-
-    // Configure server with very lenient keepalive settings to prevent "too_many_pings" errors
-    Server::builder()
-        .timeout(Duration::from_secs(120))
-        // Server-side keepalive pings
-        .http2_keepalive_interval(Some(Duration::from_secs(60)))
-        .http2_keepalive_timeout(Some(Duration::from_secs(20)))
-        // Don't enforce minimum time between client pings
-        .http2_adaptive_window(Some(true))
-        .tcp_nodelay(true)
-        .add_service(KernelServiceServer::new(service))
-        .serve(addr)
-        .await?;
-
-    Ok(())
+    server.start().await.map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
 }

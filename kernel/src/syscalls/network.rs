@@ -1,7 +1,10 @@
 /*!
+
  * Network Syscalls
  * Socket operations for TCP/UDP networking
  */
+
+use crate::core::types::Pid;
 
 use log::{info, warn};
 use std::collections::HashMap;
@@ -51,7 +54,7 @@ impl Clone for SocketManager {
 }
 
 impl SyscallExecutor {
-    pub(super) fn socket(&self, pid: u32, domain: u32, socket_type: u32, protocol: u32) -> SyscallResult {
+    pub(super) fn socket(&self, pid: Pid, domain: u32, socket_type: u32, protocol: u32) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::NetworkAccess)
@@ -76,7 +79,7 @@ impl SyscallExecutor {
         SyscallResult::success_with_data(data)
     }
 
-    pub(super) fn bind(&self, pid: u32, sockfd: u32, address: &str) -> SyscallResult {
+    pub(super) fn bind(&self, pid: Pid, sockfd: u32, address: &str) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::BindPort)
@@ -89,7 +92,7 @@ impl SyscallExecutor {
         SyscallResult::success()
     }
 
-    pub(super) fn listen(&self, pid: u32, sockfd: u32, backlog: u32) -> SyscallResult {
+    pub(super) fn listen(&self, pid: Pid, sockfd: u32, backlog: u32) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::BindPort)
@@ -102,7 +105,7 @@ impl SyscallExecutor {
         SyscallResult::success()
     }
 
-    pub(super) fn accept(&self, pid: u32, sockfd: u32) -> SyscallResult {
+    pub(super) fn accept(&self, pid: Pid, sockfd: u32) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::NetworkAccess)
@@ -124,7 +127,7 @@ impl SyscallExecutor {
         SyscallResult::success_with_data(data)
     }
 
-    pub(super) fn connect(&self, pid: u32, sockfd: u32, address: &str) -> SyscallResult {
+    pub(super) fn connect(&self, pid: Pid, sockfd: u32, address: &str) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::NetworkAccess)
@@ -137,7 +140,7 @@ impl SyscallExecutor {
         SyscallResult::success()
     }
 
-    pub(super) fn send(&self, pid: u32, sockfd: u32, data: &[u8], flags: u32) -> SyscallResult {
+    pub(super) fn send(&self, pid: Pid, sockfd: u32, data: &[u8], flags: u32) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::NetworkAccess)
@@ -155,7 +158,7 @@ impl SyscallExecutor {
         SyscallResult::success_with_data(result)
     }
 
-    pub(super) fn recv(&self, pid: u32, sockfd: u32, size: usize, flags: u32) -> SyscallResult {
+    pub(super) fn recv(&self, pid: Pid, sockfd: u32, size: usize, flags: u32) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::NetworkAccess)
@@ -170,7 +173,7 @@ impl SyscallExecutor {
         SyscallResult::success_with_data(vec![])
     }
 
-    pub(super) fn sendto(&self, pid: u32, sockfd: u32, data: &[u8], address: &str, flags: u32) -> SyscallResult {
+    pub(super) fn sendto(&self, pid: Pid, sockfd: u32, data: &[u8], address: &str, flags: u32) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::NetworkAccess)
@@ -188,7 +191,7 @@ impl SyscallExecutor {
         SyscallResult::success_with_data(result)
     }
 
-    pub(super) fn recvfrom(&self, pid: u32, sockfd: u32, size: usize, flags: u32) -> SyscallResult {
+    pub(super) fn recvfrom(&self, pid: Pid, sockfd: u32, size: usize, flags: u32) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::NetworkAccess)
@@ -207,7 +210,7 @@ impl SyscallExecutor {
         SyscallResult::success_with_data(result)
     }
 
-    pub(super) fn close_socket(&self, pid: u32, sockfd: u32) -> SyscallResult {
+    pub(super) fn close_socket(&self, pid: Pid, sockfd: u32) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::NetworkAccess)
@@ -220,7 +223,7 @@ impl SyscallExecutor {
         SyscallResult::success()
     }
 
-    pub(super) fn setsockopt(&self, pid: u32, sockfd: u32, level: u32, optname: u32, optval: &[u8]) -> SyscallResult {
+    pub(super) fn setsockopt(&self, pid: Pid, sockfd: u32, level: u32, optname: u32, optval: &[u8]) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::NetworkAccess)
@@ -233,7 +236,7 @@ impl SyscallExecutor {
         SyscallResult::success()
     }
 
-    pub(super) fn getsockopt(&self, pid: u32, sockfd: u32, level: u32, optname: u32) -> SyscallResult {
+    pub(super) fn getsockopt(&self, pid: Pid, sockfd: u32, level: u32, optname: u32) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::NetworkAccess)

@@ -3,29 +3,19 @@
  * Manages process scheduling with multiple policies and preemption
  */
 
+use super::types::{ProcessStats, SchedulerStats, SchedulingPolicy};
+use crate::core::types::{Pid, Priority};
 use log::info;
 use parking_lot::RwLock;
-use serde::{Deserialize, Serialize};
 use std::collections::{BinaryHeap, VecDeque};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-/// Scheduling policy
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Policy {
-    /// Round-robin with fixed time quantum
-    RoundRobin,
-    /// Priority-based preemptive scheduling
-    Priority,
-    /// Fair scheduling (CFS-inspired with virtual runtime)
-    Fair,
-}
-
 /// Process scheduling entry
 #[derive(Debug, Clone)]
 struct Entry {
-    pid: u32,
-    priority: u8,
+    pid: Pid,
+    priority: Priority,
     vruntime: u64, // Virtual runtime for fair scheduling (microseconds)
     last_scheduled: Option<Instant>,
     time_slice_remaining: Duration,
@@ -33,7 +23,7 @@ struct Entry {
 }
 
 impl Entry {
-    fn new(pid: u32, priority: u8, quantum: Duration) -> Self {
+    fn new(pid: Pid, priority: Priority, quantum: Duration) -> Self {
         Self {
             pid,
             priority,
@@ -53,7 +43,7 @@ impl Entry {
     }
 
     /// Convert priority to weight (higher priority = higher weight)
-    fn priority_to_weight(priority: u8) -> u64 {
+    fn priority_to_weight(priority: Priority) -> u64 {
         match priority {
             0..=3 => 50,   // Low priority
             4..=7 => 100,  // Normal priority
@@ -84,30 +74,9 @@ impl PartialOrd for Entry {
     }
 }
 
-/// Scheduler statistics
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Stats {
-    pub total_scheduled: u64,
-    pub context_switches: u64,
-    pub preemptions: u64,
-    pub active_processes: usize,
-    pub policy: Policy,
-    pub quantum_micros: u64,
-}
-
-/// Per-process CPU usage statistics
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProcessStats {
-    pub pid: u32,
-    pub priority: u8,
-    pub cpu_time_micros: u64,
-    pub vruntime: u64,
-    pub is_current: bool,
-}
-
 /// CPU Scheduler
 pub struct Scheduler {
-    policy: Arc<RwLock<Policy>>,
+    policy: Arc<RwLock<SchedulingPolicy>>,
     quantum: Arc<RwLock<Duration>>,
 
     // Round-robin queue
@@ -120,17 +89,17 @@ pub struct Scheduler {
     current: Arc<RwLock<Option<Entry>>>,
 
     // Statistics
-    stats: Arc<RwLock<Stats>>,
+    stats: Arc<RwLock<SchedulerStats>>,
 }
 
 impl Scheduler {
     /// Create new scheduler with policy
-    pub fn new(policy: Policy) -> Self {
+    pub fn new(policy: SchedulingPolicy) -> Self {
         Self::with_quantum(policy, Duration::from_millis(10))
     }
 
     /// Create scheduler with custom quantum
-    pub fn with_quantum(policy: Policy, quantum: Duration) -> Self {
+    pub fn with_quantum(policy: SchedulingPolicy, quantum: Duration) -> Self {
         info!("Scheduler initialized: policy={:?}, quantum={:?}", policy, quantum);
 
         Self {
@@ -139,7 +108,7 @@ impl Scheduler {
             rr_queue: Arc::new(RwLock::new(VecDeque::new())),
             priority_queue: Arc::new(RwLock::new(BinaryHeap::new())),
             current: Arc::new(RwLock::new(None)),
-            stats: Arc::new(RwLock::new(Stats {
+            stats: Arc::new(RwLock::new(SchedulerStats {
                 total_scheduled: 0,
                 context_switches: 0,
                 preemptions: 0,
@@ -151,16 +120,16 @@ impl Scheduler {
     }
 
     /// Add process to scheduler
-    pub fn add(&self, pid: u32, priority: u8) {
+    pub fn add(&self, pid: Pid, priority: Priority) {
         let quantum = *self.quantum.read();
         let policy = *self.policy.read();
         let entry = Entry::new(pid, priority, quantum);
 
         match policy {
-            Policy::RoundRobin => {
+            SchedulingPolicy::RoundRobin => {
                 self.rr_queue.write().push_back(entry);
             }
-            Policy::Priority | Policy::Fair => {
+            SchedulingPolicy::Priority | SchedulingPolicy::Fair => {
                 self.priority_queue.write().push(entry);
             }
         }
@@ -170,19 +139,19 @@ impl Scheduler {
     }
 
     /// Remove process from scheduler
-    pub fn remove(&self, pid: u32) -> bool {
+    pub fn remove(&self, pid: Pid) -> bool {
         let mut removed = false;
 
         let policy = *self.policy.read();
         match policy {
-            Policy::RoundRobin => {
+            SchedulingPolicy::RoundRobin => {
                 let mut queue = self.rr_queue.write();
                 if let Some(pos) = queue.iter().position(|e| e.pid == pid) {
                     queue.remove(pos);
                     removed = true;
                 }
             }
-            Policy::Priority | Policy::Fair => {
+            SchedulingPolicy::Priority | SchedulingPolicy::Fair => {
                 let mut queue = self.priority_queue.write();
                 let entries: Vec<Entry> = queue.drain().filter(|e| e.pid != pid).collect();
                 removed = entries.len() < queue.len() + 1;
@@ -221,7 +190,7 @@ impl Scheduler {
 
             // Update virtual runtime for fair scheduling
             let policy = *self.policy.read();
-            if policy == Policy::Fair {
+            if policy == SchedulingPolicy::Fair {
                 entry.update_vruntime(elapsed);
             }
 
@@ -237,10 +206,10 @@ impl Scheduler {
                 new_entry.last_scheduled = None;
 
                 match policy {
-                    Policy::RoundRobin => {
+                    SchedulingPolicy::RoundRobin => {
                         self.rr_queue.write().push_back(new_entry);
                     }
-                    Policy::Priority | Policy::Fair => {
+                    SchedulingPolicy::Priority | SchedulingPolicy::Fair => {
                         self.priority_queue.write().push(new_entry);
                     }
                 }
@@ -259,9 +228,9 @@ impl Scheduler {
         // Select next process
         let policy = *self.policy.read();
         let next = match policy {
-            Policy::RoundRobin => self.rr_queue.write().pop_front(),
-            Policy::Priority => self.priority_queue.write().pop(),
-            Policy::Fair => {
+            SchedulingPolicy::RoundRobin => self.rr_queue.write().pop_front(),
+            SchedulingPolicy::Priority => self.priority_queue.write().pop(),
+            SchedulingPolicy::Fair => {
                 // For Fair scheduling, select process with minimum vruntime
                 let mut queue = self.priority_queue.write();
                 if queue.is_empty() {
@@ -316,10 +285,10 @@ impl Scheduler {
 
             let policy = *self.policy.read();
             match policy {
-                Policy::RoundRobin => {
+                SchedulingPolicy::RoundRobin => {
                     self.rr_queue.write().push_back(new_entry);
                 }
-                Policy::Priority | Policy::Fair => {
+                SchedulingPolicy::Priority | SchedulingPolicy::Fair => {
                     self.priority_queue.write().push(new_entry);
                 }
             }
@@ -337,7 +306,7 @@ impl Scheduler {
     }
 
     /// Change scheduling policy (preserves processes but requeues them)
-    pub fn set_policy(&self, new_policy: Policy) {
+    pub fn set_policy(&self, new_policy: SchedulingPolicy) {
         let current_policy = *self.policy.read();
         if new_policy == current_policy {
             return;
@@ -372,10 +341,10 @@ impl Scheduler {
         // Requeue all processes under new policy
         for entry in all_entries {
             match new_policy {
-                Policy::RoundRobin => {
+                SchedulingPolicy::RoundRobin => {
                     self.rr_queue.write().push_back(entry);
                 }
-                Policy::Priority | Policy::Fair => {
+                SchedulingPolicy::Priority | SchedulingPolicy::Fair => {
                     self.priority_queue.write().push(entry);
                 }
             }
@@ -385,12 +354,12 @@ impl Scheduler {
     }
 
     /// Get scheduler statistics
-    pub fn stats(&self) -> Stats {
+    pub fn stats(&self) -> SchedulerStats {
         self.stats.read().clone()
     }
 
     /// Get per-process CPU usage statistics
-    pub fn process_stats(&self, pid: u32) -> Option<ProcessStats> {
+    pub fn process_stats(&self, pid: Pid) -> Option<ProcessStats> {
         // Check current process
         let current = self.current.read();
         if let Some(ref entry) = *current {
@@ -409,7 +378,7 @@ impl Scheduler {
         // Search in queues
         let policy = *self.policy.read();
         match policy {
-            Policy::RoundRobin => {
+            SchedulingPolicy::RoundRobin => {
                 let queue = self.rr_queue.read();
                 queue.iter().find(|e| e.pid == pid).map(|entry| ProcessStats {
                     pid: entry.pid,
@@ -419,7 +388,7 @@ impl Scheduler {
                     is_current: false,
                 })
             }
-            Policy::Priority | Policy::Fair => {
+            SchedulingPolicy::Priority | SchedulingPolicy::Fair => {
                 let queue = self.priority_queue.read();
                 queue.iter().find(|e| e.pid == pid).map(|entry| ProcessStats {
                     pid: entry.pid,
@@ -452,7 +421,7 @@ impl Scheduler {
         // Get queued processes
         let policy = *self.policy.read();
         match policy {
-            Policy::RoundRobin => {
+            SchedulingPolicy::RoundRobin => {
                 let queue = self.rr_queue.read();
                 stats.extend(queue.iter().map(|entry| ProcessStats {
                     pid: entry.pid,
@@ -462,7 +431,7 @@ impl Scheduler {
                     is_current: false,
                 }));
             }
-            Policy::Priority | Policy::Fair => {
+            SchedulingPolicy::Priority | SchedulingPolicy::Fair => {
                 let queue = self.priority_queue.read();
                 stats.extend(queue.iter().map(|entry| ProcessStats {
                     pid: entry.pid,
@@ -478,7 +447,7 @@ impl Scheduler {
     }
 
     /// Get current scheduling policy
-    pub fn policy(&self) -> Policy {
+    pub fn policy(&self) -> SchedulingPolicy {
         *self.policy.read()
     }
 
@@ -486,8 +455,8 @@ impl Scheduler {
     pub fn len(&self) -> usize {
         let policy = *self.policy.read();
         let queue_len = match policy {
-            Policy::RoundRobin => self.rr_queue.read().len(),
-            Policy::Priority | Policy::Fair => self.priority_queue.read().len(),
+            SchedulingPolicy::RoundRobin => self.rr_queue.read().len(),
+            SchedulingPolicy::Priority | SchedulingPolicy::Fair => self.priority_queue.read().len(),
         };
         queue_len + if self.current.read().is_some() { 1 } else { 0 }
     }
@@ -513,7 +482,7 @@ impl Clone for Scheduler {
 
 impl Default for Scheduler {
     fn default() -> Self {
-        Self::new(Policy::Fair)
+        Self::new(SchedulingPolicy::Fair)
     }
 }
 
@@ -525,7 +494,7 @@ mod tests {
 
     #[test]
     fn test_round_robin_basic() {
-        let scheduler = Scheduler::new(Policy::RoundRobin);
+        let scheduler = Scheduler::new(SchedulingPolicy::RoundRobin);
 
         scheduler.add(1, 5);
         scheduler.add(2, 5);
@@ -540,7 +509,7 @@ mod tests {
 
     #[test]
     fn test_priority_scheduling() {
-        let scheduler = Scheduler::new(Policy::Priority);
+        let scheduler = Scheduler::new(SchedulingPolicy::Priority);
 
         scheduler.add(1, 3);  // Low priority
         scheduler.add(2, 8);  // High priority
@@ -552,7 +521,7 @@ mod tests {
 
     #[test]
     fn test_remove_process() {
-        let scheduler = Scheduler::new(Policy::RoundRobin);
+        let scheduler = Scheduler::new(SchedulingPolicy::RoundRobin);
 
         scheduler.add(1, 5);
         scheduler.add(2, 5);
@@ -566,7 +535,7 @@ mod tests {
 
     #[test]
     fn test_yield_process() {
-        let scheduler = Scheduler::new(Policy::RoundRobin);
+        let scheduler = Scheduler::new(SchedulingPolicy::RoundRobin);
 
         scheduler.add(1, 5);
         scheduler.add(2, 5);
@@ -578,14 +547,14 @@ mod tests {
 
     #[test]
     fn test_empty_scheduler() {
-        let scheduler = Scheduler::new(Policy::RoundRobin);
+        let scheduler = Scheduler::new(SchedulingPolicy::RoundRobin);
         assert!(scheduler.is_empty());
         assert_eq!(scheduler.schedule(), None);
     }
 
     #[test]
     fn test_statistics() {
-        let scheduler = Scheduler::new(Policy::Priority);
+        let scheduler = Scheduler::new(SchedulingPolicy::Priority);
 
         scheduler.add(1, 5);
         scheduler.add(2, 3);
@@ -595,23 +564,23 @@ mod tests {
 
         let stats = scheduler.stats();
         assert!(stats.total_scheduled > 0);
-        assert_eq!(stats.policy, Policy::Priority);
+        assert_eq!(stats.policy, SchedulingPolicy::Priority);
     }
 
     #[test]
     fn test_policy_change() {
-        let scheduler = Scheduler::new(Policy::RoundRobin);
+        let scheduler = Scheduler::new(SchedulingPolicy::RoundRobin);
 
         scheduler.add(1, 5);
         scheduler.add(2, 5);
 
-        scheduler.set_policy(Policy::Priority);
+        scheduler.set_policy(SchedulingPolicy::Priority);
         assert_eq!(scheduler.len(), 2); // Processes should be requeued
     }
 
     #[test]
     fn test_preemption_with_quantum() {
-        let scheduler = Scheduler::with_quantum(Policy::RoundRobin, Duration::from_millis(10));
+        let scheduler = Scheduler::with_quantum(SchedulingPolicy::RoundRobin, Duration::from_millis(10));
 
         scheduler.add(1, 5);
         scheduler.add(2, 5);

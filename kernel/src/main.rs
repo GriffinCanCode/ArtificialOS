@@ -12,9 +12,10 @@ use log::info;
 use std::error::Error;
 
 use ai_os_kernel::{
-    start_grpc_server, IPCManager, MemoryManager, Policy, ProcessManager, SandboxManager,
-    SyscallExecutor,
+    start_grpc_server, IPCManager, LocalFS, MemFS, MemoryManager, MountManager, Policy,
+    ProcessManager, SandboxManager, SyscallExecutor,
 };
+use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -43,12 +44,36 @@ async fn main() -> Result<(), Box<dyn Error>> {
     info!("Initializing sandbox manager...");
     let sandbox_manager = SandboxManager::new();
 
-    info!("Initializing syscall executor with IPC support...");
+    info!("Initializing VFS with default mount points...");
+    let vfs = MountManager::new();
+
+    // Mount local filesystem at /storage for persistent data
+    let storage_path = std::env::var("KERNEL_STORAGE_PATH")
+        .unwrap_or_else(|_| "/tmp/ai-os-storage".to_string());
+    info!("Mounting local filesystem at /storage -> {}", storage_path);
+    if let Err(e) = std::fs::create_dir_all(&storage_path) {
+        log::warn!("Could not create storage directory: {}", e);
+    }
+    vfs.mount("/storage", Arc::new(LocalFS::new(&storage_path)))
+        .expect("Failed to mount /storage");
+
+    // Mount in-memory filesystem at /tmp (100MB limit)
+    info!("Mounting in-memory filesystem at /tmp (100MB limit)");
+    vfs.mount("/tmp", Arc::new(MemFS::with_capacity(100 * 1024 * 1024)))
+        .expect("Failed to mount /tmp");
+
+    // Mount in-memory filesystem at /cache (50MB limit)
+    info!("Mounting in-memory filesystem at /cache (50MB limit)");
+    vfs.mount("/cache", Arc::new(MemFS::with_capacity(50 * 1024 * 1024)))
+        .expect("Failed to mount /cache");
+
+    info!("Initializing syscall executor with IPC and VFS support...");
     let syscall_executor = SyscallExecutor::with_ipc(
         sandbox_manager.clone(),
         ipc_manager.pipes().clone(),
         ipc_manager.shm().clone(),
-    );
+    )
+    .with_vfs(vfs);
 
     info!("Kernel initialization complete");
     info!("================================================");
@@ -91,15 +116,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // Kernel main loop with memory monitoring
     loop {
-        // Log memory statistics periodically
-        let stats = monitor_mem_mgr.get_detailed_stats();
-        info!(
-            "Memory: {:.1}% used ({} MB / {} MB), {} blocks allocated",
-            stats.usage_percentage,
-            stats.used_memory / (1024 * 1024),
-            stats.total_memory / (1024 * 1024),
-            stats.allocated_blocks
-        );
+        // Log kernel statistics periodically
+        info!("Kernel running - press Ctrl+C to exit");
 
         tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
     }

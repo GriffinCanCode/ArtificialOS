@@ -1,7 +1,10 @@
 /*!
+
  * IPC Syscalls
  * Inter-process communication (pipes and shared memory)
  */
+
+use crate::core::types::Pid;
 
 use log::{error, info};
 
@@ -14,9 +17,9 @@ impl SyscallExecutor {
     // Pipe operations
     pub(super) fn create_pipe(
         &self,
-        pid: u32,
-        reader_pid: u32,
-        writer_pid: u32,
+        pid: Pid,
+        reader_pid: Pid,
+        writer_pid: Pid,
         capacity: Option<usize>,
     ) -> SyscallResult {
         if !self
@@ -49,7 +52,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn write_pipe(&self, pid: u32, pipe_id: u32, data: &[u8]) -> SyscallResult {
+    pub(super) fn write_pipe(&self, pid: Pid, pipe_id: u32, data: &[u8]) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::SendMessage)
@@ -80,7 +83,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn read_pipe(&self, pid: u32, pipe_id: u32, size: usize) -> SyscallResult {
+    pub(super) fn read_pipe(&self, pid: Pid, pipe_id: u32, size: usize) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::ReceiveMessage)
@@ -105,7 +108,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn close_pipe(&self, pid: u32, pipe_id: u32) -> SyscallResult {
+    pub(super) fn close_pipe(&self, pid: Pid, pipe_id: u32) -> SyscallResult {
         let pipe_manager = match &self.pipe_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Pipe manager not available"),
@@ -123,7 +126,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn destroy_pipe(&self, pid: u32, pipe_id: u32) -> SyscallResult {
+    pub(super) fn destroy_pipe(&self, pid: Pid, pipe_id: u32) -> SyscallResult {
         let pipe_manager = match &self.pipe_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Pipe manager not available"),
@@ -141,7 +144,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn pipe_stats(&self, pid: u32, pipe_id: u32) -> SyscallResult {
+    pub(super) fn pipe_stats(&self, pid: Pid, pipe_id: u32) -> SyscallResult {
         let pipe_manager = match &self.pipe_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Pipe manager not available"),
@@ -166,7 +169,7 @@ impl SyscallExecutor {
     }
 
     // Shared memory operations
-    pub(super) fn create_shm(&self, pid: u32, size: usize) -> SyscallResult {
+    pub(super) fn create_shm(&self, pid: Pid, size: usize) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::SendMessage)
@@ -197,7 +200,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn attach_shm(&self, pid: u32, segment_id: u32, read_only: bool) -> SyscallResult {
+    pub(super) fn attach_shm(&self, pid: Pid, segment_id: u32, read_only: bool) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::ReceiveMessage)
@@ -222,7 +225,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn detach_shm(&self, pid: u32, segment_id: u32) -> SyscallResult {
+    pub(super) fn detach_shm(&self, pid: Pid, segment_id: u32) -> SyscallResult {
         let shm_manager = match &self.shm_manager {
             Some(sm) => sm,
             None => return SyscallResult::error("Shared memory manager not available"),
@@ -240,7 +243,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn write_shm(&self, pid: u32, segment_id: u32, offset: usize, data: &[u8]) -> SyscallResult {
+    pub(super) fn write_shm(&self, pid: Pid, segment_id: u32, offset: usize, data: &[u8]) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::SendMessage)
@@ -265,7 +268,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn read_shm(&self, pid: u32, segment_id: u32, offset: usize, size: usize) -> SyscallResult {
+    pub(super) fn read_shm(&self, pid: Pid, segment_id: u32, offset: usize, size: usize) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::ReceiveMessage)
@@ -290,7 +293,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn destroy_shm(&self, pid: u32, segment_id: u32) -> SyscallResult {
+    pub(super) fn destroy_shm(&self, pid: Pid, segment_id: u32) -> SyscallResult {
         let shm_manager = match &self.shm_manager {
             Some(sm) => sm,
             None => return SyscallResult::error("Shared memory manager not available"),
@@ -308,7 +311,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn shm_stats(&self, pid: u32, segment_id: u32) -> SyscallResult {
+    pub(super) fn shm_stats(&self, pid: Pid, segment_id: u32) -> SyscallResult {
         let shm_manager = match &self.shm_manager {
             Some(sm) => sm,
             None => return SyscallResult::error("Shared memory manager not available"),

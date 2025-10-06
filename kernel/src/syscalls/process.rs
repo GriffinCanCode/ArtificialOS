@@ -1,8 +1,10 @@
 /*!
+
  * Process Syscalls
  * Process management and control
  */
 
+use crate::core::types::{Pid, Priority};
 use log::{error, info, warn};
 use std::process::Command;
 
@@ -12,7 +14,7 @@ use super::executor::SyscallExecutor;
 use super::types::{ProcessOutput, SyscallResult};
 
 impl SyscallExecutor {
-    pub(super) fn spawn_process(&self, pid: u32, command: &str, args: &[String]) -> SyscallResult {
+    pub(super) fn spawn_process(&self, pid: Pid, command: &str, args: &[String]) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::SpawnProcess)
@@ -74,7 +76,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn kill_process(&self, pid: u32, target_pid: u32) -> SyscallResult {
+    pub(super) fn kill_process(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::KillProcess)
@@ -91,7 +93,7 @@ impl SyscallExecutor {
         SyscallResult::success()
     }
 
-    pub(super) fn get_process_info(&self, pid: u32, target_pid: u32) -> SyscallResult {
+    pub(super) fn get_process_info(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::SystemInfo)
@@ -119,7 +121,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn get_process_list(&self, pid: u32) -> SyscallResult {
+    pub(super) fn get_process_list(&self, pid: Pid) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::SystemInfo)
@@ -145,7 +147,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn set_process_priority(&self, pid: u32, target_pid: u32, priority: u8) -> SyscallResult {
+    pub(super) fn set_process_priority(&self, pid: Pid, target_pid: Pid, priority: Priority) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::SpawnProcess)
@@ -171,7 +173,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn get_process_state(&self, pid: u32, target_pid: u32) -> SyscallResult {
+    pub(super) fn get_process_state(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::SystemInfo)
@@ -199,7 +201,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn get_process_stats_call(&self, pid: u32, target_pid: u32) -> SyscallResult {
+    pub(super) fn get_process_stats_call(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::SystemInfo)
@@ -227,7 +229,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn wait_process(&self, pid: u32, target_pid: u32, _timeout_ms: Option<u64>) -> SyscallResult {
+    pub(super) fn wait_process(&self, pid: Pid, target_pid: Pid, _timeout_ms: Option<u64>) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::SpawnProcess)

@@ -3,152 +3,16 @@
  * Provides secure, isolated execution environment for processes
  */
 
+use super::traits::*;
+use super::types::*;
+use crate::core::types::{Pid, ResourceLimits};
 use log::{info, warn};
 use parking_lot::RwLock;
-use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-/// Capabilities that can be granted to sandboxed processes
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum Capability {
-    // File system
-    ReadFile,
-    WriteFile,
-    CreateFile,
-    DeleteFile,
-    ListDirectory,
-
-    // Process
-    SpawnProcess,
-    KillProcess,
-
-    // Network
-    NetworkAccess,
-    BindPort,
-
-    // System
-    SystemInfo,
-    TimeAccess,
-
-    // IPC
-    SendMessage,
-    ReceiveMessage,
-}
-
-/// Resource limits for sandboxed processes
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ResourceLimits {
-    pub max_memory_bytes: usize,
-    pub max_cpu_time_ms: u64,
-    pub max_file_descriptors: u32,
-    pub max_processes: u32,
-    pub max_network_connections: u32,
-}
-
-impl Default for ResourceLimits {
-    fn default() -> Self {
-        Self {
-            max_memory_bytes: 512 * 1024 * 1024, // 512MB
-            max_cpu_time_ms: 60_000,             // 60 seconds
-            max_file_descriptors: 100,
-            max_processes: 10,
-            max_network_connections: 20,
-        }
-    }
-}
-
-/// Sandbox configuration for a process
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SandboxConfig {
-    pub pid: u32,
-    pub capabilities: HashSet<Capability>,
-    pub resource_limits: ResourceLimits,
-    pub allowed_paths: Vec<PathBuf>,
-    pub blocked_paths: Vec<PathBuf>,
-    pub allow_network: bool,
-    pub environment_vars: Vec<(String, String)>,
-}
-
 impl SandboxConfig {
-    /// Create a minimal sandbox (most restrictive)
-    pub fn minimal(pid: u32) -> Self {
-        Self {
-            pid,
-            capabilities: HashSet::new(),
-            resource_limits: ResourceLimits {
-                max_memory_bytes: 128 * 1024 * 1024, // 128MB
-                max_cpu_time_ms: 30_000,             // 30 seconds
-                max_file_descriptors: 20,
-                max_processes: 1,
-                max_network_connections: 0,
-            },
-            allowed_paths: vec![],
-            blocked_paths: vec![
-                PathBuf::from("/etc"),
-                PathBuf::from("/bin"),
-                PathBuf::from("/sbin"),
-                PathBuf::from("/usr/bin"),
-                PathBuf::from("/usr/sbin"),
-            ],
-            allow_network: false,
-            environment_vars: vec![],
-        }
-    }
-
-    /// Create a standard sandbox (balanced)
-    pub fn standard(pid: u32) -> Self {
-        let mut capabilities = HashSet::new();
-        capabilities.insert(Capability::ReadFile);
-        capabilities.insert(Capability::WriteFile);
-        capabilities.insert(Capability::SystemInfo);
-        capabilities.insert(Capability::TimeAccess);
-
-        Self {
-            pid,
-            capabilities,
-            resource_limits: ResourceLimits::default(),
-            allowed_paths: vec![PathBuf::from("/tmp"), PathBuf::from("/var/tmp")],
-            blocked_paths: vec![PathBuf::from("/etc/passwd"), PathBuf::from("/etc/shadow")],
-            allow_network: false,
-            environment_vars: vec![],
-        }
-    }
-
-    /// Create a privileged sandbox (for trusted apps)
-    pub fn privileged(pid: u32) -> Self {
-        let mut capabilities = HashSet::new();
-        capabilities.insert(Capability::ReadFile);
-        capabilities.insert(Capability::WriteFile);
-        capabilities.insert(Capability::CreateFile);
-        capabilities.insert(Capability::DeleteFile);
-        capabilities.insert(Capability::ListDirectory);
-        capabilities.insert(Capability::SpawnProcess);
-        capabilities.insert(Capability::KillProcess);
-        capabilities.insert(Capability::NetworkAccess);
-        capabilities.insert(Capability::SystemInfo);
-        capabilities.insert(Capability::TimeAccess);
-        capabilities.insert(Capability::SendMessage);
-        capabilities.insert(Capability::ReceiveMessage);
-
-        Self {
-            pid,
-            capabilities,
-            resource_limits: ResourceLimits {
-                max_memory_bytes: 2 * 1024 * 1024 * 1024, // 2GB
-                max_cpu_time_ms: 300_000,                 // 5 minutes
-                max_file_descriptors: 500,
-                max_processes: 50,
-                max_network_connections: 100,
-            },
-            allowed_paths: vec![PathBuf::from("/")], // Full access
-            blocked_paths: vec![],
-            allow_network: true,
-            environment_vars: vec![],
-        }
-    }
-
     /// Check if a capability is granted
     pub fn has_capability(&self, cap: &Capability) -> bool {
         self.capabilities.contains(cap)
@@ -214,9 +78,9 @@ impl SandboxConfig {
 /// Sandbox manager that enforces security policies
 #[derive(Clone)]
 pub struct SandboxManager {
-    sandboxes: Arc<RwLock<std::collections::HashMap<u32, SandboxConfig>>>,
+    sandboxes: Arc<RwLock<HashMap<Pid, SandboxConfig>>>,
     // Track spawned processes per PID for limit enforcement
-    spawned_counts: Arc<RwLock<std::collections::HashMap<u32, u32>>>,
+    spawned_counts: Arc<RwLock<HashMap<Pid, u32>>>,
 }
 
 impl SandboxManager {
@@ -236,7 +100,7 @@ impl SandboxManager {
     }
 
     /// Remove a sandbox
-    pub fn remove_sandbox(&self, pid: u32) -> bool {
+    pub fn remove_sandbox(&self, pid: Pid) -> bool {
         if self.sandboxes.write().remove(&pid).is_some() {
             info!("Removed sandbox for PID {}", pid);
             true
@@ -246,7 +110,7 @@ impl SandboxManager {
     }
 
     /// Check if an operation is allowed
-    pub fn check_permission(&self, pid: u32, cap: &Capability) -> bool {
+    pub fn check_permission(&self, pid: Pid, cap: &Capability) -> bool {
         let sandboxes = self.sandboxes.read();
         if let Some(sandbox) = sandboxes.get(&pid) {
             let allowed = sandbox.has_capability(cap);
@@ -261,7 +125,7 @@ impl SandboxManager {
     }
 
     /// Check if a path access is allowed
-    pub fn check_path_access(&self, pid: u32, path: &PathBuf) -> bool {
+    pub fn check_path_access(&self, pid: Pid, path: &PathBuf) -> bool {
         let sandboxes = self.sandboxes.read();
         if let Some(sandbox) = sandboxes.get(&pid) {
             let allowed = sandbox.can_access_path(path);
@@ -276,7 +140,7 @@ impl SandboxManager {
     }
 
     /// Get resource limits for a process
-    pub fn get_limits(&self, pid: u32) -> Option<ResourceLimits> {
+    pub fn get_limits(&self, pid: Pid) -> Option<ResourceLimits> {
         self.sandboxes
             .read()
             .get(&pid)
@@ -284,17 +148,17 @@ impl SandboxManager {
     }
 
     /// Get sandbox config for a process (clones entire config - use sparingly)
-    pub fn get_sandbox(&self, pid: u32) -> Option<SandboxConfig> {
+    pub fn get_sandbox(&self, pid: Pid) -> Option<SandboxConfig> {
         self.sandboxes.read().get(&pid).cloned()
     }
 
     /// Check if sandbox exists without cloning
-    pub fn has_sandbox(&self, pid: u32) -> bool {
+    pub fn has_sandbox(&self, pid: Pid) -> bool {
         self.sandboxes.read().contains_key(&pid)
     }
 
     /// Update sandbox config
-    pub fn update_sandbox(&self, pid: u32, config: SandboxConfig) -> bool {
+    pub fn update_sandbox(&self, pid: Pid, config: SandboxConfig) -> bool {
         use std::collections::hash_map::Entry;
         let mut sandboxes = self.sandboxes.write();
         if let Entry::Occupied(mut e) = sandboxes.entry(pid) {
@@ -307,7 +171,7 @@ impl SandboxManager {
     }
 
     /// Check if process can spawn another process (within limits)
-    pub fn can_spawn_process(&self, pid: u32) -> bool {
+    pub fn can_spawn_process(&self, pid: Pid) -> bool {
         let sandboxes = self.sandboxes.read();
         if let Some(sandbox) = sandboxes.get(&pid) {
             let current_count = *self.spawned_counts.read().get(&pid).unwrap_or(&0);
@@ -318,13 +182,13 @@ impl SandboxManager {
     }
 
     /// Record a spawned process for a PID
-    pub fn record_spawn(&self, pid: u32) {
+    pub fn record_spawn(&self, pid: Pid) {
         let mut counts = self.spawned_counts.write();
         *counts.entry(pid).or_insert(0) += 1;
     }
 
     /// Record a terminated spawned process for a PID
-    pub fn record_termination(&self, pid: u32) {
+    pub fn record_termination(&self, pid: Pid) {
         let mut counts = self.spawned_counts.write();
         if let Some(count) = counts.get_mut(&pid) {
             *count = count.saturating_sub(1);
@@ -332,7 +196,7 @@ impl SandboxManager {
     }
 
     /// Get spawned process count for a PID
-    pub fn get_spawn_count(&self, pid: u32) -> u32 {
+    pub fn get_spawn_count(&self, pid: Pid) -> u32 {
         *self.spawned_counts.read().get(&pid).unwrap_or(&0)
     }
 }
@@ -340,6 +204,198 @@ impl SandboxManager {
 impl Default for SandboxManager {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+// Trait implementations for SandboxManager
+
+impl SandboxProvider for SandboxManager {
+    fn create_sandbox(&self, config: SandboxConfig) {
+        let pid = config.pid;
+        self.sandboxes.write().insert(pid, config);
+        info!("Created sandbox for PID {}", pid);
+    }
+
+    fn remove_sandbox(&self, pid: Pid) -> bool {
+        if self.sandboxes.write().remove(&pid).is_some() {
+            info!("Removed sandbox for PID {}", pid);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn has_sandbox(&self, pid: Pid) -> bool {
+        self.sandboxes.read().contains_key(&pid)
+    }
+
+    fn get_sandbox(&self, pid: Pid) -> Option<SandboxConfig> {
+        self.sandboxes.read().get(&pid).cloned()
+    }
+
+    fn update_sandbox(&self, pid: Pid, config: SandboxConfig) -> bool {
+        use std::collections::hash_map::Entry;
+        let mut sandboxes = self.sandboxes.write();
+        if let Entry::Occupied(mut e) = sandboxes.entry(pid) {
+            e.insert(config);
+            info!("Updated sandbox for PID {}", pid);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn stats(&self) -> SandboxStats {
+        let sandboxes = self.sandboxes.read();
+        SandboxStats {
+            total_sandboxes: sandboxes.len(),
+            active_processes: sandboxes.len(),
+            permission_denials: 0, // Could track this with an atomic counter
+            capability_checks: 0,   // Could track this with an atomic counter
+        }
+    }
+}
+
+impl CapabilityChecker for SandboxManager {
+    fn check_permission(&self, pid: Pid, cap: &Capability) -> bool {
+        let sandboxes = self.sandboxes.read();
+        if let Some(sandbox) = sandboxes.get(&pid) {
+            let allowed = sandbox.has_capability(cap);
+            if !allowed {
+                warn!("PID {} denied capability {:?}", pid, cap);
+            }
+            allowed
+        } else {
+            warn!("No sandbox found for PID {}", pid);
+            false
+        }
+    }
+
+    fn check_path_access(&self, pid: Pid, path: &PathBuf) -> bool {
+        let sandboxes = self.sandboxes.read();
+        if let Some(sandbox) = sandboxes.get(&pid) {
+            let allowed = sandbox.can_access_path(path);
+            if !allowed {
+                warn!("PID {} denied path access: {:?}", pid, path);
+            }
+            allowed
+        } else {
+            warn!("No sandbox found for PID {}", pid);
+            false
+        }
+    }
+
+    fn check_network_access(&self, pid: Pid) -> bool {
+        let sandboxes = self.sandboxes.read();
+        if let Some(sandbox) = sandboxes.get(&pid) {
+            sandbox.allow_network
+        } else {
+            false
+        }
+    }
+}
+
+impl CapabilityManager for SandboxManager {
+    fn grant_capability(&self, pid: Pid, cap: Capability) -> SecurityResult<()> {
+        let mut sandboxes = self.sandboxes.write();
+        if let Some(sandbox) = sandboxes.get_mut(&pid) {
+            sandbox.grant_capability(cap);
+            Ok(())
+        } else {
+            Err(SecurityError::SandboxNotFound(pid))
+        }
+    }
+
+    fn revoke_capability(&self, pid: Pid, cap: &Capability) -> SecurityResult<()> {
+        let mut sandboxes = self.sandboxes.write();
+        if let Some(sandbox) = sandboxes.get_mut(&pid) {
+            sandbox.revoke_capability(cap);
+            Ok(())
+        } else {
+            Err(SecurityError::SandboxNotFound(pid))
+        }
+    }
+
+    fn get_capabilities(&self, pid: Pid) -> Option<Vec<Capability>> {
+        self.sandboxes
+            .read()
+            .get(&pid)
+            .map(|s| s.capabilities.iter().cloned().collect())
+    }
+}
+
+impl ResourceLimitProvider for SandboxManager {
+    fn get_limits(&self, pid: Pid) -> Option<ResourceLimits> {
+        self.sandboxes
+            .read()
+            .get(&pid)
+            .map(|s| s.resource_limits.clone())
+    }
+
+    fn can_spawn_process(&self, pid: Pid) -> bool {
+        let sandboxes = self.sandboxes.read();
+        if let Some(sandbox) = sandboxes.get(&pid) {
+            let current_count = *self.spawned_counts.read().get(&pid).unwrap_or(&0);
+            current_count < sandbox.resource_limits.max_processes
+        } else {
+            false
+        }
+    }
+
+    fn record_spawn(&self, pid: Pid) {
+        let mut counts = self.spawned_counts.write();
+        *counts.entry(pid).or_insert(0) += 1;
+    }
+
+    fn record_termination(&self, pid: Pid) {
+        let mut counts = self.spawned_counts.write();
+        if let Some(count) = counts.get_mut(&pid) {
+            *count = count.saturating_sub(1);
+        }
+    }
+
+    fn get_spawn_count(&self, pid: Pid) -> u32 {
+        *self.spawned_counts.read().get(&pid).unwrap_or(&0)
+    }
+}
+
+impl PathAccessControl for SandboxManager {
+    fn can_access(&self, pid: Pid, path: &Path) -> bool {
+        self.check_path_access(pid, &path.to_path_buf())
+    }
+
+    fn allow_path(&self, pid: Pid, path: PathBuf) -> SecurityResult<()> {
+        let mut sandboxes = self.sandboxes.write();
+        if let Some(sandbox) = sandboxes.get_mut(&pid) {
+            sandbox.allow_path(path);
+            Ok(())
+        } else {
+            Err(SecurityError::SandboxNotFound(pid))
+        }
+    }
+
+    fn block_path(&self, pid: Pid, path: PathBuf) -> SecurityResult<()> {
+        let mut sandboxes = self.sandboxes.write();
+        if let Some(sandbox) = sandboxes.get_mut(&pid) {
+            sandbox.block_path(path);
+            Ok(())
+        } else {
+            Err(SecurityError::SandboxNotFound(pid))
+        }
+    }
+
+    fn get_allowed_paths(&self, pid: Pid) -> Option<Vec<PathBuf>> {
+        self.sandboxes
+            .read()
+            .get(&pid)
+            .map(|s| s.allowed_paths.clone())
+    }
+
+    fn get_blocked_paths(&self, pid: Pid) -> Option<Vec<PathBuf>> {
+        self.sandboxes
+            .read()
+            .get(&pid)
+            .map(|s| s.blocked_paths.clone())
     }
 }
 
