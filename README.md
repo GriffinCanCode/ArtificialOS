@@ -383,35 +383,6 @@ AgentOS implements a generate-once-execute-many pattern that fundamentally separ
 - Deterministic tool execution
 - No network latency for interactions
 
-### UISpec Format
-
-The AI service generates structured JSON specifications that define the entire application:
-
-```json
-{
-  "type": "app",
-  "title": "Calculator",
-  "layout": "vertical",
-  "components": [
-    {
-      "type": "input",
-      "id": "display",
-      "props": {"value": "0", "readonly": true}
-    },
-    {
-      "type": "button",
-      "id": "btn-7",
-      "props": {"text": "7"},
-      "on_event": {"click": "calc.append_digit"}
-    }
-  ],
-  "services": ["calc"],
-  "service_bindings": {
-    "calc": ["append_digit", "add", "subtract", "multiply", "divide"]
-  }
-}
-```
-
 ### Component System
 
 The frontend provides 23 registered components across 6 categories, all with Zod validation:
