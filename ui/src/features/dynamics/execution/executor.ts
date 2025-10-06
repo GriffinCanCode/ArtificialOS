@@ -42,13 +42,9 @@ export class ToolExecutor {
         }
       }
 
-      // Sanitize string inputs
-      if (typeof event.newValue === "string") {
-        return {
-          ...event,
-          newValue: event.newValue.trim(),
-        };
-      }
+      // DON'T trim string inputs during typing - it strips spaces!
+      // Trimming should happen on blur/submit, not on every keystroke
+      // Users need to be able to type spaces naturally
 
       return event;
     });

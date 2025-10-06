@@ -29,7 +29,7 @@
             "type": "button",
             "id": "new-note",
             "props": {"text": "+ New Note", "variant": "primary", "fullWidth": true},
-            "on_event": {"click": "ui.set"}
+            "on_event": {"click": "storage.set"}
           },
           {
             "type": "list",
@@ -56,13 +56,19 @@
               "type": "text",
               "style": {"fontSize": "24px", "fontWeight": "bold"}
             },
-            "on_event": {"change": "storage.set"}
+            "on_event": {"change": "ui.set"}
           },
           {
             "type": "textarea",
             "id": "note-content",
             "props": {"placeholder": "Start typing...", "rows": 20, "resize": "vertical"},
-            "on_event": {"change": "storage.set"}
+            "on_event": {"change": "ui.set"}
+          },
+          {
+            "type": "button",
+            "id": "save-note",
+            "props": {"text": "💾 Save", "variant": "primary"},
+            "on_event": {"click": "storage.set"}
           }
         ]
       }

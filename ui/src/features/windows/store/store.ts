@@ -10,6 +10,7 @@ import type { Window, Position, Size, Bounds, State } from "../core/types";
 import { DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, State as WinState } from "../core/types";
 import { getMaximizedBounds, getCascadePosition } from "../core/bounds";
 import type { Blueprint } from "../../../core/store/appStore";
+import { filterValidComponents } from "../../../core/utils/blueprintParser";
 
 // ============================================================================
 // Store Interface
@@ -55,12 +56,19 @@ export const useStore = create<Store>()(
         const existingWindows = state.windows.filter((w) => !w.isMinimized);
         const position = getCascadePosition(existingWindows.length);
 
+        // Filter and convert components (row -> container, etc.)
+        const filteredComponents = filterValidComponents(uiSpec.components || []);
+        const filteredSpec = {
+          ...uiSpec,
+          components: filteredComponents,
+        };
+
         const newWindow: Window = {
           id: windowId,
           appId,
           title,
           icon,
-          uiSpec,
+          uiSpec: filteredSpec,
           position,
           size: { width: DEFAULT_WINDOW_WIDTH, height: DEFAULT_WINDOW_HEIGHT },
           isMinimized: false,

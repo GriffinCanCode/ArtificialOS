@@ -1,17 +1,17 @@
 /**
  * Input Component Renderer
- * Renders dynamic input components with variants
+ * Renders dynamic input components with high-performance state handling
  */
 
 import React from "react";
 import type { BaseComponentProps } from "../../core/types";
-import { useComponent } from "../../hooks/useComponent";
+import { useInputState } from "../../hooks/useInputState";
 import { inputVariants, cn } from "../../../../core/utils/animation/componentVariants";
 
 export const Input: React.FC<BaseComponentProps> = ({ component, state, executor }) => {
-  const { localState, handleDebouncedEvent } = useComponent(component, state, executor);
-
-  const value = localState ?? component.props?.value ?? "";
+  const { value, onChange, onBlur } = useInputState(component, state, executor, {
+    eventDebounce: 300, // Reduced from 500ms for better responsiveness
+  });
 
   return (
     <input
@@ -28,15 +28,8 @@ export const Input: React.FC<BaseComponentProps> = ({ component, state, executor
       value={value}
       readOnly={component.props?.readonly}
       disabled={component.props?.disabled}
-      onChange={(e) => {
-        const newValue = e.target.value;
-        // Update local state immediately for responsive typing
-        state.set(component.id, newValue);
-        // If there's a change event handler, debounce it
-        if (component.on_event?.change) {
-          handleDebouncedEvent("change", { value: newValue }, 500);
-        }
-      }}
+      onChange={(e) => onChange(e.target.value)}
+      onBlur={onBlur}
       style={component.props?.style}
     />
   );

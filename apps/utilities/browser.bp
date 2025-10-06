@@ -1,0 +1,115 @@
+{
+  "app": {
+    "id": "browser",
+    "name": "Web Browser",
+    "description": "Browse the web with search and navigation",
+    "icon": "🌐",
+    "category": "utilities",
+    "version": "1.0.0",
+    "author": "system",
+    "tags": ["browser", "web", "internet", "search"],
+    "permissions": ["STANDARD"]
+  },
+  "services": [],
+  "ui": {
+    "title": "Browser",
+    "layout": "vertical",
+    "components": [
+      {
+        "type": "row",
+        "id": "toolbar",
+        "props": {
+          "gap": 8,
+          "padding": "medium",
+          "align": "center",
+          "style": {
+            "borderBottom": "1px solid rgba(255,255,255,0.1)",
+            "backgroundColor": "rgba(0,0,0,0.2)"
+          }
+        },
+        "children": [
+          {
+            "type": "button",
+            "id": "back-btn",
+            "props": {
+              "text": "←",
+              "variant": "ghost",
+              "title": "Back"
+            },
+            "on_event": {"click": "browser.back"}
+          },
+          {
+            "type": "button",
+            "id": "forward-btn",
+            "props": {
+              "text": "→",
+              "variant": "ghost",
+              "title": "Forward"
+            },
+            "on_event": {"click": "browser.forward"}
+          },
+          {
+            "type": "button",
+            "id": "refresh-btn",
+            "props": {
+              "text": "↻",
+              "variant": "ghost",
+              "title": "Refresh"
+            },
+            "on_event": {"click": "browser.refresh"}
+          },
+          {
+            "type": "input",
+            "id": "url-input",
+            "props": {
+              "placeholder": "Enter URL or search query...",
+              "type": "text",
+              "style": {
+                "flex": 1,
+                "padding": "8px 12px",
+                "borderRadius": "6px"
+              }
+            }
+          },
+          {
+            "type": "button",
+            "id": "go-btn",
+            "props": {
+              "text": "Go",
+              "variant": "primary"
+            },
+            "on_event": {"click": "browser.navigate"}
+          }
+        ]
+      },
+      {
+        "type": "iframe",
+        "id": "webpage",
+        "props": {
+          "src": "about:blank",
+          "style": {
+            "width": "100%",
+            "height": "calc(100vh - 120px)",
+            "border": "none",
+            "borderRadius": "8px",
+            "margin": "8px",
+            "backgroundColor": "#1a1a2e"
+          }
+        }
+      },
+      {
+        "type": "text",
+        "id": "hint",
+        "props": {
+          "content": "💡 Tip: Enter a URL like 'github.com' or search query like 'python tutorial'",
+          "variant": "caption",
+          "style": {
+            "textAlign": "center",
+            "padding": "8px",
+            "color": "rgba(255,255,255,0.6)"
+          }
+        }
+      }
+    ]
+  }
+}

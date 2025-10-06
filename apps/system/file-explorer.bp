@@ -49,42 +49,42 @@
                 "children": [
                   {
                     "button#home-btn": {
-                      "text": "Home",
+                      "text": "🏠 Home",
                       "variant": "ghost",
                       "fullWidth": true,
-                      "@click": "ui.set"
+                      "@click": "filesystem.list"
                     }
                   },
                   {
                     "button#applications-btn": {
-                      "text": "Applications",
+                      "text": "📦 Applications",
                       "variant": "ghost",
                       "fullWidth": true,
-                      "@click": "ui.set"
+                      "@click": "filesystem.list"
                     }
                   },
                   {
                     "button#documents-btn": {
-                      "text": "Documents",
+                      "text": "📄 Documents",
                       "variant": "ghost",
                       "fullWidth": true,
-                      "@click": "ui.set"
+                      "@click": "filesystem.list"
                     }
                   },
                   {
                     "button#data-btn": {
-                      "text": "Data",
+                      "text": "💾 Data",
                       "variant": "ghost",
                       "fullWidth": true,
-                      "@click": "ui.set"
+                      "@click": "filesystem.list"
                     }
                   },
                   {
                     "button#system-btn": {
-                      "text": "System",
+                      "text": "⚙️ System",
                       "variant": "ghost",
                       "fullWidth": true,
-                      "@click": "ui.set"
+                      "@click": "filesystem.list"
                     }
                   }
                 ]

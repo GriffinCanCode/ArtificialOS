@@ -22,8 +22,8 @@ export type {
 export { ToolExecutor } from "./execution/executor";
 
 // Hooks
-export { useComponent, useRegistry } from "./hooks";
-export type { UseComponentReturn } from "./hooks";
+export { useComponent, useRegistry, useSyncState, useInputState } from "./hooks";
+export type { UseComponentReturn, InputStateOptions, InputStateReturn } from "./hooks";
 
 // Rendering (includes auto-registration)
 export { ComponentRenderer, BuilderView, VirtualizedList } from "./rendering";

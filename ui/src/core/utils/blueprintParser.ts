@@ -10,11 +10,14 @@ interface BlueprintDSLObject {
 }
 
 // Valid component types that can be rendered
+// Includes layout shortcuts (row, col) that may not have been converted yet
 const VALID_COMPONENT_TYPES = new Set([
   "button", "input", "text", "container", "grid", "select", "checkbox",
   "radio", "textarea", "image", "video", "audio", "canvas", "iframe",
   "slider", "progress", "badge", "divider", "tabs", "modal", "list",
-  "card", "app-shortcut"
+  "card", "app-shortcut",
+  // Layout shortcuts (converted to container by backend, but may arrive unconverted during streaming)
+  "row", "col", "sidebar", "main", "editor", "header", "footer", "content", "section"
 ]);
 
 /**
@@ -51,9 +54,22 @@ export function parseBlueprintComponent(
       return null;
     }
 
-    const compType = comp.type;
+    // Handle layout shortcuts: row -> container (horizontal), col -> container (vertical)
+    let compType = comp.type;
+    let props = comp.props || {};
+
+    if (compType === "row") {
+      compType = "container";
+      props = { ...props, layout: props.layout || "horizontal" };
+    } else if (compType === "col") {
+      compType = "container";
+      props = { ...props, layout: props.layout || "vertical" };
+    } else if (["sidebar", "main", "editor", "header", "footer", "content", "section"].includes(compType)) {
+      props = { ...props, role: compType, layout: props.layout || "vertical" };
+      compType = "container";
+    }
+
     const compId = comp.id || `${compType}-${idCounter.value++}`;
-    const props = comp.props || {};
     const onEvent = comp.on_event;
     let children: BlueprintComponent[] | undefined;
 
@@ -231,6 +247,7 @@ export function parsePartialBlueprint(jsonStr: string): {
 /**
  * Filter out invalid components from a blueprint
  * Used to clean up blueprints that bypass the parser (e.g., from backend)
+ * Also converts layout shortcuts (row/col) to proper container types
  */
 export function filterValidComponents(components: any[]): BlueprintComponent[] {
   console.log(`[FILTER] Starting filter with ${components?.length || 0} components`);
@@ -250,7 +267,7 @@ export function filterValidComponents(components: any[]): BlueprintComponent[] {
         return false;
       }
 
-      // Must be a valid component type
+      // Must be a valid component type (including layout shortcuts)
       if (!VALID_COMPONENT_TYPES.has(comp.type)) {
         console.log(`[FILTER] ❌ Removing invalid component type: "${comp.type}"`);
         return false;
@@ -260,11 +277,29 @@ export function filterValidComponents(components: any[]): BlueprintComponent[] {
       return true;
     })
     .map((comp) => {
-      // Recursively filter children
+      // Apply layout shortcut conversions: row -> container (horizontal), col -> container (vertical)
+      let compType = comp.type;
+      let props = comp.props || {};
+
+      if (compType === "row") {
+        console.log(`[FILTER] Converting row -> container (horizontal):`, comp.id);
+        compType = "container";
+        props = { ...props, layout: props.layout || "horizontal" };
+      } else if (compType === "col") {
+        console.log(`[FILTER] Converting col -> container (vertical):`, comp.id);
+        compType = "container";
+        props = { ...props, layout: props.layout || "vertical" };
+      } else if (["sidebar", "main", "editor", "header", "footer", "content", "section"].includes(compType)) {
+        console.log(`[FILTER] Converting ${compType} -> container (with role):`, comp.id);
+        props = { ...props, role: compType, layout: props.layout || "vertical" };
+        compType = "container";
+      }
+
+      // Build filtered component with converted type
       const filtered: BlueprintComponent = {
-        type: comp.type,
+        type: compType,
         id: comp.id,
-        props: comp.props || {},
+        props,
       };
 
       if (comp.on_event && typeof comp.on_event === "object") {

@@ -36,7 +36,7 @@ Optional fields:
 
 Layout shortcuts (use as type):
 - "row" → horizontal container
-- "col" → vertical container  
+- "col" → vertical container
 - "grid" → grid layout
 
 Services:
@@ -51,7 +51,7 @@ LAYOUT:
 - container: Flexbox layout
 - row: Horizontal container (shortcut)
 - col: Vertical container (shortcut)
-- grid: Grid layout with responsive columns  
+- grid: Grid layout with responsive columns
 - sidebar, main, editor, header, footer, content, section: Semantic containers (better readability)
 - card: Card container with header/body
 - list: Styled list (default, bordered, striped)
@@ -86,7 +86,7 @@ ADVANCED:
 Tools: set, get, remove, list, clear
 Use for: App settings, user preferences, saved data
 
-**filesystem**: File operations  
+**filesystem**: File operations
 Tools: list, stat, read, write, create, mkdir, delete, move, copy, exists
 Use for: File managers, text editors, data import/export
 
@@ -100,25 +100,39 @@ Use for: User accounts, permissions
 
 === AVAILABLE TOOLS ===
 
+CRITICAL: Every button MUST have a functional on_event handler! Never create a button without an action!
+
 UI State Management (works for ALL apps):
-- ui.set: Set any state value
-- ui.get: Get state value
-- ui.append: Append to string (calculator digits, text)
-- ui.compute: Evaluate math expression
-- ui.clear: Reset value to default
-- ui.toggle: Toggle boolean
-- ui.backspace: Remove last character
+- ui.set: Set any state value (params: key, value)
+- ui.get: Get state value (params: key)
+- ui.append: Append to string - for calculator digits, search queries (params: key [defaults to "display"], value/text/digit)
+- ui.compute: Evaluate math expression - for calculator = button (params: key [defaults to "display"])
+- ui.clear: Reset value to default - for calculator C button (params: key [defaults to "display"])
+- ui.toggle: Toggle boolean - for checkboxes, dark mode (params: key)
+- ui.backspace: Remove last character - for backspace buttons (params: key [defaults to "display"])
 
 App Management:
-- app.spawn: Launch new app
+- app.spawn: Launch new app (params: app_id)
 - app.close: Close current app
 - app.list: List running apps
 
+Hub Tools (for app launcher):
+- hub.load_apps: Fetch all apps from registry
+- hub.launch_app: Launch app by ID (params: app_id)
+
 HTTP/Network (for web browser, API apps):
-- http.get: Fetch data from URL
-- http.post: Send POST request
-- http.request: Generic HTTP request
+- http.get: Fetch data from URL (params: url)
+- http.post: Send POST request (params: url, data)
+- http.request: Generic HTTP request (params: method, url, body)
 Use for: Web browsers, API clients, data fetching
+
+Browser Tools (for web browser apps):
+- browser.navigate: Navigate to URL or search query (auto-detects search vs URL, adds https://)
+  Example: Button with id="go-btn" triggers browser.navigate which reads from url-input/search-input/address-bar
+- browser.back: Go back
+- browser.forward: Go forward
+- browser.refresh: Refresh page
+Use for: Web browsers, embedded web content
 
 Canvas (for drawing/game apps):
 - canvas.draw: Draw on canvas
@@ -144,6 +158,18 @@ Clipboard:
 
 Notifications:
 - notification.show: Show notification
+
+BUTTON HANDLER EXAMPLES:
+✅ Calculator digit button: {"type": "button", "id": "7", "props": {"text": "7"}, "on_event": {"click": "ui.append"}}
+✅ Calculator equals: {"type": "button", "id": "equals", "props": {"text": "="}, "on_event": {"click": "ui.compute"}}
+✅ Calculator clear: {"type": "button", "id": "clear", "props": {"text": "C"}, "on_event": {"click": "ui.clear"}}
+✅ Browser go button: {"type": "button", "id": "go", "props": {"text": "Go"}, "on_event": {"click": "browser.navigate"}}
+✅ Save button: {"type": "button", "id": "save", "props": {"text": "Save"}, "on_event": {"click": "storage.set"}}
+✅ Launch app: {"type": "button", "id": "launch", "props": {"text": "Open"}, "on_event": {"click": "app.spawn"}}
+✅ Refresh hub: {"type": "button", "id": "refresh", "props": {"text": "Refresh"}, "on_event": {"click": "hub.load_apps"}}
+
+❌ BAD - no handler: {"type": "button", "id": "btn", "props": {"text": "Click me"}}
+❌ BAD - vague handler: {"type": "button", "id": "btn", "props": {"text": "Save"}, "on_event": {"click": "ui.set"}}
 
 Note: Most UI interactions use ui.* tools. Backend services (storage, filesystem, system, auth) are called directly as service.tool (e.g., storage.get, filesystem.read)
 """
@@ -349,45 +375,170 @@ The explicit format enables real-time component rendering as you generate them!
   }
 }
 
+4. WEB BROWSER (Utility App)
+{
+  "app": {
+    "id": "browser",
+    "name": "Web Browser",
+    "icon": "🌐",
+    "category": "utilities",
+    "tags": ["browser", "web", "internet"],
+    "permissions": ["STANDARD"]
+  },
+  "services": [],
+  "ui": {
+    "title": "Browser",
+    "layout": "vertical",
+    "components": [
+      {
+        "type": "row",
+        "id": "toolbar",
+        "props": {
+          "gap": 8,
+          "padding": "medium",
+          "align": "center",
+          "style": {"borderBottom": "1px solid rgba(255,255,255,0.1)"}
+        },
+        "children": [
+          {
+            "type": "button",
+            "id": "back-btn",
+            "props": {"text": "←", "variant": "ghost"},
+            "on_event": {"click": "browser.back"}
+          },
+          {
+            "type": "button",
+            "id": "forward-btn",
+            "props": {"text": "→", "variant": "ghost"},
+            "on_event": {"click": "browser.forward"}
+          },
+          {
+            "type": "button",
+            "id": "refresh-btn",
+            "props": {"text": "↻", "variant": "ghost"},
+            "on_event": {"click": "browser.refresh"}
+          },
+          {
+            "type": "input",
+            "id": "url-input",
+            "props": {
+              "placeholder": "Enter URL or search...",
+              "type": "text",
+              "style": {"flex": 1}
+            }
+          },
+          {
+            "type": "button",
+            "id": "go-btn",
+            "props": {"text": "Go", "variant": "primary"},
+            "on_event": {"click": "browser.navigate"}
+          }
+        ]
+      },
+      {
+        "type": "iframe",
+        "id": "webpage",
+        "props": {
+          "src": "about:blank",
+          "style": {"width": "100%", "height": "600px", "border": "none"}
+        }
+      },
+      {
+        "type": "text",
+        "id": "hint",
+        "props": {
+          "content": "Enter a URL or search query above",
+          "variant": "caption",
+          "style": {"textAlign": "center", "padding": "8px", "opacity": 0.6}
+        }
+      }
+    ]
+  }
+}
+
 === PATTERNS TO FOLLOW ===
+
+CRITICAL RULE: Every interactive element (button, input with actions) MUST have a functional event handler!
 
 1. **Productivity Apps** (Task Manager, Notes, Calendar):
    - Services: {"storage": ["get", "set", "list"]}
    - Layout: Use "sidebar" + "main" for better readability (horizontal parent)
    - Tools: ui.set for interactions, storage.* for persistence
    - Pattern: List views with add/edit/delete actions
+   - Example buttons:
+     * Add button: "on_event": {"click": "storage.set"}
+     * Delete button: "on_event": {"click": "storage.remove"}
+     * Save button: "on_event": {"click": "storage.set"}
 
 2. **Data/Analytics Apps** (Dashboard, Reports):
    - Services: {"storage": ["get", "list"]}, {"system": ["time", "log"]}
    - Layout: Grid for cards/metrics
    - Tools: system.time for timestamps, storage.get for data
    - Pattern: Cards with metrics, visual hierarchy
+   - Example buttons:
+     * Refresh button: "on_event": {"click": "storage.get"}
+     * Export button: "on_event": {"click": "filesystem.write"}
 
 3. **Utility Apps** (Calculator, Timer, Converter):
    - Services: [] (or {"storage": ["get", "set"]} for preferences)
    - Layout: Compact, focused interface
    - Tools: ui.append, ui.compute, ui.clear
    - Pattern: Input display + action buttons
+   - Example buttons:
+     * Number buttons: "on_event": {"click": "ui.append"}
+     * Operator buttons: "on_event": {"click": "ui.append"}
+     * Equals button: "on_event": {"click": "ui.compute"}
+     * Clear button: "on_event": {"click": "ui.clear"}
 
 4. **File Management Apps** (File Explorer, Text Editor):
    - Services: {"filesystem": ["list", "read", "write", "create", "delete"]}, {"storage": ["get", "set"]}
    - Layout: Use "sidebar" + "main" or "editor" for semantic meaning
    - Tools: filesystem.* for file ops, ui.set for navigation
    - Pattern: Tree/list views, breadcrumbs, CRUD operations
+   - Example buttons:
+     * Open button: "on_event": {"click": "filesystem.read"}
+     * Save button: "on_event": {"click": "filesystem.write"}
+     * Delete button: "on_event": {"click": "filesystem.delete"}
+     * Refresh button: "on_event": {"click": "filesystem.list"}
 
 5. **Form-Heavy Apps** (Settings, Registration, Surveys):
    - Services: {"storage": ["set", "get"]}, {"auth": ["register", "login"]}
    - Layout: Vertical with sections
    - Tools: ui.set for validation, storage.set to save, auth.* for accounts
    - Pattern: Input fields + validation + submit button
+   - Example buttons:
+     * Submit button: "on_event": {"click": "storage.set"}
+     * Login button: "on_event": {"click": "auth.login"}
+     * Register button: "on_event": {"click": "auth.register"}
+
+6. **Browser/Web Apps** (Web Browser, API Client):
+   - Services: [] (uses http tools or iframe component)
+   - Layout: Address bar + iframe for content
+   - Tools: browser.navigate, http.get
+   - Pattern: URL input + go button + iframe
+   - Example buttons:
+     * Go/Search button: "on_event": {"click": "browser.navigate"}
+     * Back button: "on_event": {"click": "browser.back"}
+     * Refresh button: "on_event": {"click": "browser.refresh"}
+   - IMPORTANT: Browser navigate auto-reads from url-input/search-input/address-bar fields
+
+7. **Hub/Launcher Apps**:
+   - Services: []
+   - Tools: hub.load_apps, hub.launch_app
+   - Pattern: Grid of app cards with launch buttons
+   - Example buttons:
+     * Refresh button: "on_event": {"click": "hub.load_apps"}
+     * App cards: "on_event": {"click": "hub.launch_app"}
 
 IMPORTANT SERVICE USAGE:
 - storage.get/set/list: For app data (tasks, notes, settings)
 - filesystem.read/write/list: For file operations (editors, file managers)
 - system.log/time: For debugging and timestamps
 - auth.login/register: For user accounts
+- browser.navigate: For web browsing (reads from input fields automatically)
+- hub.load_apps/launch_app: For app launcher functionality
 - Use ui.* tools for ALL UI state management (no custom tools needed)
-- iframe component for web content (not http service)
+- iframe component for web content display
 """
 
 # ============================================================================
@@ -397,15 +548,15 @@ IMPORTANT SERVICE USAGE:
 def get_ui_generation_prompt(tools_description: str, context: str = "") -> str:
     """
     Generate comprehensive UI generation prompt for Blueprint DSL.
-    
+
     Args:
         tools_description: Description of available tools
         context: Additional context (optional)
-    
+
     Returns:
         Complete system prompt for Blueprint generation
     """
-    return f"""You are an expert AI that generates Blueprint (.bp) files - a JSON-based DSL for building applications.
+    return f"""You are an expert AI that generates Blueprint (.bp) files - a JSON-based DSL for building FULLY FUNCTIONAL applications.
 
 CRITICAL RULES FOR VALID JSON OUTPUT:
 1. Output ONLY raw JSON - start with {{ and end with }}
@@ -414,6 +565,10 @@ CRITICAL RULES FOR VALID JSON OUTPUT:
 4. All strings must use double quotes (not single quotes)
 5. All keys must be quoted strings
 6. Booleans: true/false (lowercase, not quoted)
+
+CRITICAL RULE FOR FUNCTIONAL APPS:
+⚠️ EVERY BUTTON MUST HAVE A WORKING on_event HANDLER! ⚠️
+Never create a button without an action. Users expect buttons to DO something!
 
 BLUEPRINT DSL SYNTAX (EXPLICIT FORMAT FOR STREAMING):
 1. Components: {{"type": "button", "id": "save", "props": {{"text": "Save"}}, "on_event": {{"click": "storage.save"}}}}
@@ -438,13 +593,23 @@ Available Backend Services and Tools:
 
 === YOUR TASK ===
 
-Generate a complete Blueprint (.bp) file for the user's request.
+Generate a complete, FULLY FUNCTIONAL Blueprint (.bp) file for the user's request.
 
 Design considerations:
-1. App type? (productivity, utility, business, creative, system)
+1. App type? (productivity, utility, business, creative, system, browser)
 2. Services needed? (storage for persistence, filesystem for files)
 3. Layout? (vertical stack, horizontal split, grid, tabs)
-4. Tools? (ui.* for state, service.tool for backend)
+4. Tools? (ui.* for state, service.tool for backend, browser.* for web)
+5. ⚠️ EVERY BUTTON NEEDS A WORKING EVENT HANDLER! ⚠️
+
+MANDATORY RULES:
+✅ DO: Add specific event handlers to all buttons (calculator digits → ui.append, equals → ui.compute, save → storage.set)
+✅ DO: Use browser.navigate for browser go/search buttons (auto-reads from url-input)
+✅ DO: Use hub.load_apps for refresh buttons in launcher apps
+✅ DO: Use filesystem.list/read/write for file manager buttons
+❌ DON'T: Create buttons without on_event
+❌ DON'T: Use vague handlers like just "ui.set" without context
+❌ DON'T: Leave buttons non-functional
 
 OUTPUT FORMAT - EXPLICIT COMPONENTS (valid JSON only, no markdown):
 {{

@@ -97,6 +97,9 @@ export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpen
           <button className="dock-item" onClick={() => onLaunchApp("file-explorer")} title="Files">
             <span className="dock-icon">📁</span>
           </button>
+          <button className="dock-item" onClick={() => onLaunchApp("browser")} title="Browser">
+            <span className="dock-icon">🌐</span>
+          </button>
           <button
             className="dock-item"
             onClick={() => onLaunchApp("calculator")}

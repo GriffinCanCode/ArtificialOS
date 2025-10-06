@@ -1,15 +1,17 @@
 /**
  * Select Component Renderer
- * Renders dynamic select/dropdown components
+ * Renders dynamic select/dropdown components with efficient state handling
  */
 
 import React from "react";
 import type { BaseComponentProps } from "../../core/types";
+import { useSyncState } from "../../hooks/useSyncState";
 import { useComponent } from "../../hooks/useComponent";
 import { selectVariants, cn } from "../../../../core/utils/animation/componentVariants";
 
 export const Select: React.FC<BaseComponentProps> = ({ component, state, executor }) => {
-  const { localState, handleEvent } = useComponent(component, state, executor);
+  const value = useSyncState(state, component.id, component.props?.value ?? "");
+  const { handleEvent } = useComponent(component, state, executor);
 
   return (
     <select
@@ -21,7 +23,7 @@ export const Select: React.FC<BaseComponentProps> = ({ component, state, executo
           disabled: component.props?.disabled,
         })
       )}
-      value={localState ?? component.props?.value ?? ""}
+      value={value}
       disabled={component.props?.disabled}
       onChange={(e) => {
         const newValue = e.target.value;
