@@ -9,11 +9,11 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::executor::{ExecutionConfig, ProcessExecutor};
+use crate::process::executor::{ExecutionConfig, ProcessExecutor};
+use crate::process::scheduler::{Policy, Scheduler};
 use crate::ipc::IPCManager;
-use crate::limits::{LimitManager, Limits};
+use crate::security::{LimitManager, Limits};
 use crate::memory::MemoryManager;
-use crate::scheduler::{Policy, Scheduler};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Process {
@@ -361,17 +361,17 @@ impl ProcessManager {
     }
 
     /// Get scheduler statistics
-    pub fn get_scheduler_stats(&self) -> Option<crate::scheduler::Stats> {
+    pub fn get_scheduler_stats(&self) -> Option<crate::process::scheduler::Stats> {
         self.scheduler.as_ref().map(|s| s.read().stats())
     }
 
     /// Get current scheduling policy
-    pub fn get_scheduling_policy(&self) -> Option<crate::scheduler::Policy> {
+    pub fn get_scheduling_policy(&self) -> Option<crate::process::scheduler::Policy> {
         self.scheduler.as_ref().map(|s| s.read().policy())
     }
 
     /// Change scheduling policy (requires scheduler)
-    pub fn set_scheduling_policy(&self, policy: crate::scheduler::Policy) -> bool {
+    pub fn set_scheduling_policy(&self, policy: crate::process::scheduler::Policy) -> bool {
         if let Some(ref scheduler) = self.scheduler {
             let scheduler = scheduler.read();
             scheduler.set_policy(policy);
@@ -383,12 +383,12 @@ impl ProcessManager {
     }
 
     /// Get per-process CPU statistics (requires scheduler)
-    pub fn get_process_stats(&self, pid: u32) -> Option<crate::scheduler::ProcessStats> {
+    pub fn get_process_stats(&self, pid: u32) -> Option<crate::process::scheduler::ProcessStats> {
         self.scheduler.as_ref().and_then(|s| s.read().process_stats(pid))
     }
 
     /// Get all process CPU statistics (requires scheduler)
-    pub fn get_all_process_stats(&self) -> Vec<crate::scheduler::ProcessStats> {
+    pub fn get_all_process_stats(&self) -> Vec<crate::process::scheduler::ProcessStats> {
         self.scheduler.as_ref().map(|s| s.read().all_process_stats()).unwrap_or_default()
     }
 

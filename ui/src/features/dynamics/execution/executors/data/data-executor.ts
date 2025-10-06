@@ -1,0 +1,72 @@
+/**
+ * Data Tool Executor
+ * Handles data manipulation (filter, sort, search)
+ */
+
+import { logger } from "../../../../../core/utils/monitoring/logger";
+import { ExecutorContext, BaseExecutor } from "../core/types";
+
+export class DataExecutor implements BaseExecutor {
+  private context: ExecutorContext;
+
+  constructor(context: ExecutorContext) {
+    this.context = context;
+  }
+
+  execute(action: string, params: Record<string, any>): any {
+    switch (action) {
+      case "filter":
+        const data = params.data || [];
+        const filter = params.filter || "";
+        const filtered = data.filter((item: any) =>
+          JSON.stringify(item).toLowerCase().includes(filter.toLowerCase())
+        );
+        logger.debug("Data filtered", {
+          component: "DataExecutor",
+          originalCount: data.length,
+          filteredCount: filtered.length,
+        });
+        return filtered;
+
+      case "sort":
+        const dataToSort = params.data || [];
+        const field = params.field || "id";
+        const order = params.order || "asc";
+
+        const sorted = [...dataToSort].sort((a, b) => {
+          const aVal = a[field];
+          const bVal = b[field];
+
+          if (order === "asc") {
+            return aVal > bVal ? 1 : -1;
+          } else {
+            return aVal < bVal ? 1 : -1;
+          }
+        });
+
+        logger.debug("Data sorted", {
+          component: "DataExecutor",
+          field,
+          order,
+          count: sorted.length,
+        });
+        return sorted;
+
+      case "search":
+        const searchData = params.data || [];
+        const query = params.query || "";
+        const results = searchData.filter((item: any) =>
+          JSON.stringify(item).toLowerCase().includes(query.toLowerCase())
+        );
+        logger.debug("Data searched", {
+          component: "DataExecutor",
+          query,
+          resultCount: results.length,
+        });
+        return results;
+
+      default:
+        return null;
+    }
+  }
+}

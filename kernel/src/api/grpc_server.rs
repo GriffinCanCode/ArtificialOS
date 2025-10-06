@@ -9,8 +9,8 @@ use std::time::Duration;
 use tonic::{transport::Server, Request, Response, Status};
 
 use crate::process::ProcessManager;
-use crate::sandbox::{Capability as SandboxCapability, SandboxConfig, SandboxManager};
-use crate::syscall::{Syscall, SyscallExecutor, SyscallResult};
+use crate::security::{Capability as SandboxCapability, SandboxConfig, SandboxManager};
+use crate::syscalls::{Syscall, SyscallExecutor, SyscallResult};
 
 // Include generated protobuf code
 pub mod kernel_proto {
@@ -199,7 +199,7 @@ impl KernelService for KernelServiceImpl {
         // Build execution config if command provided
         let exec_config = if let Some(command) = req.command {
             if !command.is_empty() {
-                let mut config = crate::executor::ExecutionConfig::new(command);
+                let mut config = crate::process::executor::ExecutionConfig::new(command);
                 if !req.args.is_empty() {
                     config = config.with_args(req.args);
                 }
@@ -350,9 +350,9 @@ impl KernelService for KernelServiceImpl {
 
         if let Some(stats) = self.process_manager.get_scheduler_stats() {
             let policy_str = match stats.policy {
-                crate::scheduler::Policy::RoundRobin => "RoundRobin",
-                crate::scheduler::Policy::Priority => "Priority",
-                crate::scheduler::Policy::Fair => "Fair",
+                crate::process::scheduler::Policy::RoundRobin => "RoundRobin",
+                crate::process::scheduler::Policy::Priority => "Priority",
+                crate::process::scheduler::Policy::Fair => "Fair",
             };
 
             Ok(Response::new(GetSchedulerStatsResponse {
@@ -385,9 +385,9 @@ impl KernelService for KernelServiceImpl {
 
         // Convert string policy to enum
         let policy = match req.policy.to_lowercase().as_str() {
-            "roundrobin" | "round_robin" => crate::scheduler::Policy::RoundRobin,
-            "priority" => crate::scheduler::Policy::Priority,
-            "fair" => crate::scheduler::Policy::Fair,
+            "roundrobin" | "round_robin" => crate::process::scheduler::Policy::RoundRobin,
+            "priority" => crate::process::scheduler::Policy::Priority,
+            "fair" => crate::process::scheduler::Policy::Fair,
             _ => {
                 return Ok(Response::new(SetSchedulingPolicyResponse {
                     success: false,

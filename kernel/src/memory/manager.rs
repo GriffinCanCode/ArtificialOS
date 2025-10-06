@@ -332,7 +332,7 @@ impl MemoryManager {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct MemoryStats {
     pub total_memory: usize,
     pub used_memory: usize,

@@ -3,8 +3,8 @@
  * Unified IPC system: messages, pipes, and shared memory
  */
 
-use crate::pipe::PipeManager;
-use crate::shm::ShmManager;
+use crate::ipc::pipe::PipeManager;
+use crate::ipc::shm::ShmManager;
 use log::{info, warn};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};

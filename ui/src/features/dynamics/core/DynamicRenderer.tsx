@@ -495,7 +495,7 @@ const DynamicRenderer: React.FC = () => {
               };
             }
             // Check children recursively
-            if (component.children && depth < 3) {
+            if (component.children && depth < 5) {
               return {
                 ...component,
                 children: updateComponentChildren(component.children, depth + 1),

@@ -1,0 +1,191 @@
+/*!
+ * Syscall Executor
+ * Central executor for all syscalls with sandboxing
+ */
+
+use log::info;
+use std::sync::OnceLock;
+use std::time::Instant;
+
+use crate::security::SandboxManager;
+
+use super::types::{Syscall, SyscallResult};
+
+/// Global system start time for uptime tracking
+pub static SYSTEM_START: OnceLock<Instant> = OnceLock::new();
+
+/// System call executor
+#[derive(Clone)]
+pub struct SyscallExecutor {
+    pub(super) sandbox_manager: SandboxManager,
+    pub(super) pipe_manager: Option<crate::ipc::PipeManager>,
+    pub(super) shm_manager: Option<crate::ipc::ShmManager>,
+    pub(super) process_manager: Option<crate::process::ProcessManager>,
+    pub(super) memory_manager: Option<crate::memory::MemoryManager>,
+}
+
+impl SyscallExecutor {
+    pub fn new(sandbox_manager: SandboxManager) -> Self {
+        // Initialize system start time
+        SYSTEM_START.get_or_init(Instant::now);
+
+        info!("Syscall executor initialized");
+        Self {
+            sandbox_manager,
+            pipe_manager: None,
+            shm_manager: None,
+            process_manager: None,
+            memory_manager: None,
+        }
+    }
+
+    pub fn with_ipc(
+        sandbox_manager: SandboxManager,
+        pipe_manager: crate::ipc::PipeManager,
+        shm_manager: crate::ipc::ShmManager,
+    ) -> Self {
+        // Initialize system start time
+        SYSTEM_START.get_or_init(Instant::now);
+
+        info!("Syscall executor initialized with IPC support");
+        Self {
+            sandbox_manager,
+            pipe_manager: Some(pipe_manager),
+            shm_manager: Some(shm_manager),
+            process_manager: None,
+            memory_manager: None,
+        }
+    }
+
+    pub fn with_full_features(
+        sandbox_manager: SandboxManager,
+        pipe_manager: crate::ipc::PipeManager,
+        shm_manager: crate::ipc::ShmManager,
+        process_manager: crate::process::ProcessManager,
+        memory_manager: crate::memory::MemoryManager,
+    ) -> Self {
+        // Initialize system start time
+        SYSTEM_START.get_or_init(Instant::now);
+
+        info!("Syscall executor initialized with full features");
+        Self {
+            sandbox_manager,
+            pipe_manager: Some(pipe_manager),
+            shm_manager: Some(shm_manager),
+            process_manager: Some(process_manager),
+            memory_manager: Some(memory_manager),
+        }
+    }
+
+    /// Execute a system call with sandboxing
+    pub fn execute(&self, pid: u32, syscall: Syscall) -> SyscallResult {
+        info!("Executing syscall for PID {}: {:?}", pid, syscall);
+
+        match syscall {
+            // File operations
+            Syscall::ReadFile { ref path } => self.read_file(pid, path),
+            Syscall::WriteFile { ref path, ref data } => self.write_file(pid, path, data),
+            Syscall::CreateFile { ref path } => self.create_file(pid, path),
+            Syscall::DeleteFile { ref path } => self.delete_file(pid, path),
+            Syscall::ListDirectory { ref path } => self.list_directory(pid, path),
+            Syscall::FileExists { ref path } => self.file_exists(pid, path),
+            Syscall::FileStat { ref path } => self.file_stat(pid, path),
+            Syscall::MoveFile {
+                ref source,
+                ref destination,
+            } => self.move_file(pid, source, destination),
+            Syscall::CopyFile {
+                ref source,
+                ref destination,
+            } => self.copy_file(pid, source, destination),
+            Syscall::CreateDirectory { ref path } => self.create_directory(pid, path),
+            Syscall::RemoveDirectory { ref path } => self.remove_directory(pid, path),
+            Syscall::GetWorkingDirectory => self.get_working_directory(pid),
+            Syscall::SetWorkingDirectory { ref path } => self.set_working_directory(pid, path),
+            Syscall::TruncateFile { ref path, size } => self.truncate_file(pid, path, size),
+
+            // Process operations
+            Syscall::SpawnProcess {
+                ref command,
+                ref args,
+            } => self.spawn_process(pid, command, args),
+            Syscall::KillProcess { target_pid } => self.kill_process(pid, target_pid),
+            Syscall::GetProcessInfo { target_pid } => self.get_process_info(pid, target_pid),
+            Syscall::GetProcessList => self.get_process_list(pid),
+            Syscall::SetProcessPriority {
+                target_pid,
+                priority,
+            } => self.set_process_priority(pid, target_pid, priority),
+            Syscall::GetProcessState { target_pid } => self.get_process_state(pid, target_pid),
+            Syscall::GetProcessStats { target_pid } => self.get_process_stats_call(pid, target_pid),
+            Syscall::WaitProcess {
+                target_pid,
+                timeout_ms,
+            } => self.wait_process(pid, target_pid, timeout_ms),
+
+            // System info
+            Syscall::GetSystemInfo => self.get_system_info(pid),
+            Syscall::GetCurrentTime => self.get_current_time(pid),
+            Syscall::GetEnvironmentVar { ref key } => self.get_env_var(pid, key),
+            Syscall::SetEnvironmentVar { ref key, ref value } => self.set_env_var(pid, key, value),
+
+            // Network
+            Syscall::NetworkRequest { ref url } => self.network_request(pid, url),
+
+            // IPC - Pipes
+            Syscall::CreatePipe {
+                reader_pid,
+                writer_pid,
+                capacity,
+            } => self.create_pipe(pid, reader_pid, writer_pid, capacity),
+            Syscall::WritePipe { pipe_id, ref data } => self.write_pipe(pid, pipe_id, data),
+            Syscall::ReadPipe { pipe_id, size } => self.read_pipe(pid, pipe_id, size),
+            Syscall::ClosePipe { pipe_id } => self.close_pipe(pid, pipe_id),
+            Syscall::DestroyPipe { pipe_id } => self.destroy_pipe(pid, pipe_id),
+            Syscall::PipeStats { pipe_id } => self.pipe_stats(pid, pipe_id),
+
+            // IPC - Shared Memory
+            Syscall::CreateShm { size } => self.create_shm(pid, size),
+            Syscall::AttachShm {
+                segment_id,
+                read_only,
+            } => self.attach_shm(pid, segment_id, read_only),
+            Syscall::DetachShm { segment_id } => self.detach_shm(pid, segment_id),
+            Syscall::WriteShm {
+                segment_id,
+                offset,
+                ref data,
+            } => self.write_shm(pid, segment_id, offset, data),
+            Syscall::ReadShm {
+                segment_id,
+                offset,
+                size,
+            } => self.read_shm(pid, segment_id, offset, size),
+            Syscall::DestroyShm { segment_id } => self.destroy_shm(pid, segment_id),
+            Syscall::ShmStats { segment_id } => self.shm_stats(pid, segment_id),
+
+            // Scheduler operations
+            Syscall::ScheduleNext => self.schedule_next(pid),
+            Syscall::YieldProcess => self.yield_process(pid),
+            Syscall::GetCurrentScheduled => self.get_current_scheduled(pid),
+            Syscall::GetSchedulerStats => self.get_scheduler_stats(pid),
+
+            // Time operations
+            Syscall::Sleep { duration_ms } => self.sleep(pid, duration_ms),
+            Syscall::GetUptime => self.get_uptime(pid),
+
+            // Memory operations
+            Syscall::GetMemoryStats => self.get_memory_stats(pid),
+            Syscall::GetProcessMemoryStats { target_pid } => {
+                self.get_process_memory_stats(pid, target_pid)
+            }
+            Syscall::TriggerGC { target_pid } => self.trigger_gc(pid, target_pid),
+
+            // Signal operations
+            Syscall::SendSignal {
+                target_pid,
+                signal,
+            } => self.send_signal(pid, target_pid, signal),
+        }
+    }
+}
