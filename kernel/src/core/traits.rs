@@ -3,8 +3,8 @@
  * Fundamental kernel abstractions
  */
 
-use super::types::*;
 use super::errors::*;
+use super::types::*;
 
 /// Process lifecycle management
 pub trait ProcessLifecycle: Send + Sync {
@@ -48,7 +48,12 @@ pub trait SecurityPolicy: Send + Sync {
     fn revoke_capability(&self, pid: Pid, capability: &str) -> KernelResult<()>;
 
     /// Check if a path is accessible
-    fn check_path_access(&self, pid: Pid, path: &str, write: bool) -> std::result::Result<(), SandboxError>;
+    fn check_path_access(
+        &self,
+        pid: Pid,
+        path: &str,
+        write: bool,
+    ) -> std::result::Result<(), SandboxError>;
 }
 
 /// Scheduler interface

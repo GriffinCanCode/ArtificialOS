@@ -53,11 +53,7 @@ impl MountManager {
     }
 
     /// Mount a filesystem at specified path
-    pub fn mount<P: Into<PathBuf>>(
-        &self,
-        mount_path: P,
-        fs: Arc<dyn FileSystem>,
-    ) -> VfsResult<()> {
+    pub fn mount<P: Into<PathBuf>>(&self, mount_path: P, fs: Arc<dyn FileSystem>) -> VfsResult<()> {
         let mount_path = self.normalize_path(&mount_path.into());
 
         let mut mounts = self.mounts.write();
@@ -360,11 +356,15 @@ mod tests {
         mgr.mount("/data/special", fs2).unwrap();
 
         // Write to nested mount
-        mgr.write(Path::new("/data/special/file.txt"), b"special").unwrap();
+        mgr.write(Path::new("/data/special/file.txt"), b"special")
+            .unwrap();
         mgr.write(Path::new("/data/normal.txt"), b"normal").unwrap();
 
         // Verify resolution
-        assert_eq!(mgr.read(Path::new("/data/special/file.txt")).unwrap(), b"special");
+        assert_eq!(
+            mgr.read(Path::new("/data/special/file.txt")).unwrap(),
+            b"special"
+        );
         assert_eq!(mgr.read(Path::new("/data/normal.txt")).unwrap(), b"normal");
     }
 

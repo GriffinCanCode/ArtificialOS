@@ -9,7 +9,6 @@ import { listVariants, cn } from "../../../../core/utils/animation/componentVari
 import { ComponentRenderer } from "../../rendering/renderer";
 
 export const List: React.FC<BaseComponentProps> = ({ component, state, executor }) => {
-
   return (
     <div
       className={cn(

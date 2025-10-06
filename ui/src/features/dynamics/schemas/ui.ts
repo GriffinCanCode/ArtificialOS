@@ -12,9 +12,7 @@ import { z } from "zod";
 export const badgeSchema = z.object({
   text: z.string().optional(),
   content: z.string().optional(),
-  variant: z
-    .enum(["default", "primary", "secondary", "success", "error", "warning"])
-    .optional(),
+  variant: z.enum(["default", "primary", "secondary", "success", "error", "warning"]).optional(),
   size: z.enum(["small", "medium", "large"]).optional(),
   style: z.record(z.string(), z.any()).optional(),
 });

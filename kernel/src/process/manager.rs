@@ -95,9 +95,9 @@ impl ProcessManagerBuilder {
             None
         };
 
-        let scheduler = self.scheduler_policy.map(|policy| {
-            Arc::new(RwLock::new(Scheduler::new(policy)))
-        });
+        let scheduler = self
+            .scheduler_policy
+            .map(|policy| Arc::new(RwLock::new(Scheduler::new(policy))));
 
         let mut features = Vec::new();
         if self.memory_manager.is_some() {
@@ -222,7 +222,10 @@ impl ProcessManager {
         };
 
         processes.insert(pid, process);
-        info!("Created process: {} (PID: {}, OS PID: {:?})", name, pid, os_pid);
+        info!(
+            "Created process: {} (PID: {}, OS PID: {:?})",
+            name, pid, os_pid
+        );
 
         // Add to scheduler if available
         if let Some(ref scheduler) = self.scheduler {
@@ -289,7 +292,10 @@ impl ProcessManager {
             if let Some(ref ipc_mgr) = self.ipc_manager {
                 let cleaned = ipc_mgr.clear_process_queue(pid);
                 if cleaned > 0 {
-                    info!("Cleaned up {} IPC resources for terminated PID {}", cleaned, pid);
+                    info!(
+                        "Cleaned up {} IPC resources for terminated PID {}",
+                        cleaned, pid
+                    );
                 }
             }
 
@@ -320,7 +326,11 @@ impl ProcessManager {
 
     /// Check if process has OS execution
     pub fn has_os_process(&self, pid: Pid) -> bool {
-        self.processes.read().get(&pid).and_then(|p| p.os_pid).is_some()
+        self.processes
+            .read()
+            .get(&pid)
+            .and_then(|p| p.os_pid)
+            .is_some()
     }
 
     /// Get child process count for a PID
@@ -369,12 +379,17 @@ impl ProcessManager {
 
     /// Get per-process CPU statistics (requires scheduler)
     pub fn get_process_stats(&self, pid: Pid) -> Option<super::types::ProcessStats> {
-        self.scheduler.as_ref().and_then(|s| s.read().process_stats(pid))
+        self.scheduler
+            .as_ref()
+            .and_then(|s| s.read().process_stats(pid))
     }
 
     /// Get all process CPU statistics (requires scheduler)
     pub fn get_all_process_stats(&self) -> Vec<super::types::ProcessStats> {
-        self.scheduler.as_ref().map(|s| s.read().all_process_stats()).unwrap_or_default()
+        self.scheduler
+            .as_ref()
+            .map(|s| s.read().all_process_stats())
+            .unwrap_or_default()
     }
 
     /// Schedule next process (requires scheduler)
@@ -384,7 +399,9 @@ impl ProcessManager {
 
     /// Yield current process (requires scheduler)
     pub fn yield_current(&self) -> Option<u32> {
-        self.scheduler.as_ref().and_then(|s| s.read().yield_process())
+        self.scheduler
+            .as_ref()
+            .and_then(|s| s.read().yield_process())
     }
 
     /// Get currently scheduled process (requires scheduler)

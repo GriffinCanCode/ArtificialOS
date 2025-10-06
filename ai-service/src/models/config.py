@@ -13,9 +13,9 @@ class GeminiModel(str, Enum):
     """Available Gemini model variants."""
 
     FLASH_EXP = "gemini-2.0-flash-exp"  # Latest experimental Flash (recommended)
-    FLASH = "gemini-1.5-flash"          # Stable Flash version
-    PRO = "gemini-1.5-pro"              # Pro version (more capable, higher cost)
-    FLASH_8B = "gemini-1.5-flash-8b"    # Ultra-fast, lowest cost
+    FLASH = "gemini-1.5-flash"  # Stable Flash version
+    PRO = "gemini-1.5-pro"  # Pro version (more capable, higher cost)
+    FLASH_8B = "gemini-1.5-flash-8b"  # Ultra-fast, lowest cost
 
 
 class GeminiConfig(BaseModel):
@@ -40,24 +40,25 @@ class GeminiConfig(BaseModel):
 
     class Config:
         """Pydantic config."""
+
         frozen = True  # Immutable for thread safety
         use_enum_values = True
 
     def __init__(self, **data):
         """Initialize config with API key from environment if not provided."""
-        if 'api_key' not in data or data['api_key'] is None:
-            data['api_key'] = os.getenv('GOOGLE_API_KEY')
+        if "api_key" not in data or data["api_key"] is None:
+            data["api_key"] = os.getenv("GOOGLE_API_KEY")
         super().__init__(**data)
 
     @property
     def is_flash_model(self) -> bool:
         """Check if using a Flash model variant."""
-        return 'flash' in self.model_name.lower()
+        return "flash" in self.model_name.lower()
 
     @property
     def is_experimental(self) -> bool:
         """Check if using experimental model."""
-        return 'exp' in self.model_name.lower()
+        return "exp" in self.model_name.lower()
 
     def model_copy_with_updates(self, **updates) -> "GeminiConfig":
         """Create updated config (immutable pattern)."""
@@ -70,15 +71,17 @@ class GeminiConfig(BaseModel):
 # (will be removed in future versions)
 class ModelSize(str, Enum):
     """Deprecated: Use GeminiModel instead."""
+
     SMALL = "gemini-2.0-flash-exp"
     LARGE = "gemini-1.5-pro"
 
 
 class ModelBackend(str, Enum):
     """Deprecated: All models now use Gemini API."""
+
     GEMINI = "gemini"
     TRANSFORMERS = "gemini"  # Redirect to Gemini
-    LLAMA_CPP = "gemini"     # Redirect to Gemini
+    LLAMA_CPP = "gemini"  # Redirect to Gemini
 
 
 class ModelConfig(BaseModel):
@@ -103,5 +106,5 @@ class ModelConfig(BaseModel):
             model_name=self.size if isinstance(self.size, str) else self.size.value,
             temperature=self.temperature,
             max_tokens=self.max_tokens,
-            streaming=self.streaming
+            streaming=self.streaming,
         )

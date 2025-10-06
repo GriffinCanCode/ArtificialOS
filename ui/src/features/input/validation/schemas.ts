@@ -15,20 +15,13 @@ export const emailSchema = z.string().email("Invalid email address");
 
 export const urlSchema = z.string().url("Invalid URL");
 
-export const phoneSchema = z.string().regex(
-  /^\+?[\d\s\-()]+$/,
-  "Invalid phone number"
-);
+export const phoneSchema = z.string().regex(/^\+?[\d\s\-()]+$/, "Invalid phone number");
 
-export const alphanumericSchema = z.string().regex(
-  /^[a-zA-Z0-9]+$/,
-  "Only letters and numbers allowed"
-);
+export const alphanumericSchema = z
+  .string()
+  .regex(/^[a-zA-Z0-9]+$/, "Only letters and numbers allowed");
 
-export const slugSchema = z.string().regex(
-  /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
-  "Invalid slug format"
-);
+export const slugSchema = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Invalid slug format");
 
 // ============================================================================
 // Number Validation
@@ -48,15 +41,11 @@ export const integerSchema = z.number().int("Must be an integer");
 
 export const dateSchema = z.date();
 
-export const futureDateSchema = z.date().refine(
-  (date) => date > new Date(),
-  "Must be a future date"
-);
+export const futureDateSchema = z
+  .date()
+  .refine((date) => date > new Date(), "Must be a future date");
 
-export const pastDateSchema = z.date().refine(
-  (date) => date < new Date(),
-  "Must be a past date"
-);
+export const pastDateSchema = z.date().refine((date) => date < new Date(), "Must be a past date");
 
 // ============================================================================
 // Form Validation
@@ -95,9 +84,7 @@ export const appDescriptionSchema = z
   .min(10, "Description must be at least 10 characters")
   .max(200, "Description must be less than 200 characters");
 
-export const tagsSchema = z
-  .array(z.string())
-  .max(5, "Maximum 5 tags allowed");
+export const tagsSchema = z.array(z.string()).max(5, "Maximum 5 tags allowed");
 
 // ============================================================================
 // File Validation
@@ -130,7 +117,11 @@ export function createEnumSchema<T extends readonly [string, ...string[]]>(value
   return z.enum(values);
 }
 
-export function createArraySchema<T>(itemSchema: z.ZodType<T>, minLength?: number, maxLength?: number) {
+export function createArraySchema<T>(
+  itemSchema: z.ZodType<T>,
+  minLength?: number,
+  maxLength?: number
+) {
   let schema = z.array(itemSchema);
   if (minLength !== undefined) schema = schema.min(minLength);
   if (maxLength !== undefined) schema = schema.max(maxLength);

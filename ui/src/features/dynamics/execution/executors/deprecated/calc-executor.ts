@@ -65,7 +65,9 @@ export class CalcExecutor implements BaseExecutor {
           return result;
         } catch (error) {
           this.context.componentState.set("display", "Error");
-          logger.error("Calculator evaluation error", error as Error, { component: "CalcExecutor" });
+          logger.error("Calculator evaluation error", error as Error, {
+            component: "CalcExecutor",
+          });
           return "Error";
         }
 

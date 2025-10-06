@@ -227,9 +227,12 @@ fn test_global_memory_tracking() {
     let after_receive = ipc.get_global_memory_usage();
     // Memory should be significantly reduced after receiving
     // Just verify it's less than after sending
-    assert!(after_receive < after_send, 
-        "Memory after receive ({}) should be less than after send ({})", 
-        after_receive, after_send);
+    assert!(
+        after_receive < after_send,
+        "Memory after receive ({}) should be less than after send ({})",
+        after_receive,
+        after_send
+    );
 }
 
 #[test]
@@ -252,7 +255,7 @@ fn test_global_memory_limit() {
             // Should fail due to global limit or queue limit
             let err = result.unwrap_err();
             assert!(
-                err.contains("Global IPC memory limit") 
+                err.contains("Global IPC memory limit")
                     || err.contains("Queue for PID")
                     || err.contains("exceeds limit"),
                 "Unexpected error: {}",
@@ -267,7 +270,7 @@ fn test_global_memory_limit() {
     assert!(sent_count > 0);
     assert!(sent_count < 150);
     assert!(hit_limit);
-    
+
     // Clean up messages
     for i in 0..sent_count {
         while ipc.has_messages(200 + i) {
@@ -299,9 +302,12 @@ fn test_memory_cleanup_on_clear() {
     let after_clear = ipc.get_global_memory_usage();
     // Should be close to initial state (may have differences due to concurrent tests)
     // Just verify it's significantly less than before clear
-    assert!(after_clear < before_clear / 2, 
-        "Memory after clear ({}) should be much less than before ({})", 
-        after_clear, before_clear);
+    assert!(
+        after_clear < before_clear / 2,
+        "Memory after clear ({}) should be much less than before ({})",
+        after_clear,
+        before_clear
+    );
 }
 
 #[test]

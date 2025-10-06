@@ -3,8 +3,8 @@
  * Handles memory allocation and deallocation with graceful OOM handling
  */
 
-use super::types::{MemoryBlock, MemoryError, MemoryPressure, MemoryResult, MemoryStats};
 use super::traits::{Allocator, GarbageCollector, MemoryInfo, ProcessMemoryCleanup};
+use super::types::{MemoryBlock, MemoryError, MemoryPressure, MemoryResult, MemoryStats};
 use crate::core::types::{Address, Pid, Size};
 use log::{error, info, warn};
 use parking_lot::RwLock;
@@ -146,9 +146,7 @@ impl MemoryManager {
                 drop(blocks);
 
                 if should_gc {
-                    info!(
-                        "GC threshold reached, running garbage collection..."
-                    );
+                    info!("GC threshold reached, running garbage collection...");
                     self.collect();
                 }
 
@@ -201,9 +199,7 @@ impl MemoryManager {
             drop(blocks);
 
             if should_gc {
-                info!(
-                    "GC threshold reached after process cleanup, running garbage collection..."
-                );
+                info!("GC threshold reached after process cleanup, running garbage collection...");
                 self.collect();
             }
         } else {

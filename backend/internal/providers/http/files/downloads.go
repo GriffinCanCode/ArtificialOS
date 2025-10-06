@@ -1,9 +1,9 @@
 package files
 
 import (
-	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/http/client"
 	"context"
 	"fmt"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/http/client"
 	"os"
 	"path/filepath"
 

@@ -13,6 +13,7 @@ logger = get_logger(__name__)
 
 class ModelLoadError(Exception):
     """Model loading failed."""
+
     pass
 
 

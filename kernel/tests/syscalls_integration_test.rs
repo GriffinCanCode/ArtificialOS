@@ -69,7 +69,9 @@ fn test_read_write_file() {
     // Read file
     let result = executor.execute(1000, Syscall::ReadFile { path: test_file });
     match result {
-        SyscallResult::Success { data: Some(read_data) } => {
+        SyscallResult::Success {
+            data: Some(read_data),
+        } => {
             assert_eq!(read_data, data);
         }
         _ => panic!("Expected success with data"),
@@ -148,7 +150,9 @@ fn test_move_copy_file() {
     // Verify copy
     let result = executor.execute(1000, Syscall::ReadFile { path: dest.clone() });
     match result {
-        SyscallResult::Success { data: Some(read_data) } => {
+        SyscallResult::Success {
+            data: Some(read_data),
+        } => {
             assert_eq!(read_data, data);
         }
         _ => panic!("Expected success with data"),
@@ -239,7 +243,9 @@ fn test_truncate_file() {
     // Verify truncation
     let result = executor.execute(1000, Syscall::ReadFile { path: test_file });
     match result {
-        SyscallResult::Success { data: Some(read_data) } => {
+        SyscallResult::Success {
+            data: Some(read_data),
+        } => {
             assert_eq!(read_data.len(), 5);
         }
         _ => panic!("Expected success with data"),
@@ -278,10 +284,7 @@ fn test_get_process_info() {
     let (executor, _, _) = create_test_executor();
 
     // Try to get info for our test process
-    let result = executor.execute(
-        1000,
-        Syscall::GetProcessInfo { target_pid: 1000 },
-    );
+    let result = executor.execute(1000, Syscall::GetProcessInfo { target_pid: 1000 });
 
     // May succeed or error depending on process existence
     assert!(matches!(
@@ -342,12 +345,7 @@ fn test_environment_variables() {
 fn test_sleep() {
     let (executor, _, _) = create_test_executor();
 
-    let result = executor.execute(
-        1000,
-        Syscall::Sleep {
-            duration_ms: 10,
-        },
-    );
+    let result = executor.execute(1000, Syscall::Sleep { duration_ms: 10 });
     assert!(matches!(result, SyscallResult::Success { .. }));
 }
 
@@ -375,10 +373,7 @@ fn test_get_memory_stats() {
 fn test_get_process_memory_stats() {
     let (executor, _, _) = create_test_executor();
 
-    let result = executor.execute(
-        1000,
-        Syscall::GetProcessMemoryStats { target_pid: 1000 },
-    );
+    let result = executor.execute(1000, Syscall::GetProcessMemoryStats { target_pid: 1000 });
     assert!(matches!(result, SyscallResult::Success { .. }));
 }
 
@@ -396,10 +391,7 @@ fn test_trigger_gc() {
     assert!(matches!(result, SyscallResult::Success { .. }));
 
     // Trigger global GC
-    let result = executor.execute(
-        1000,
-        Syscall::TriggerGC { target_pid: None },
-    );
+    let result = executor.execute(1000, Syscall::TriggerGC { target_pid: None });
     assert!(matches!(result, SyscallResult::Success { .. }));
 }
 

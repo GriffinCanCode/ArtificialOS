@@ -16,7 +16,9 @@ use tempfile::TempDir;
 #[serial]
 fn test_full_process_lifecycle() {
     let mem_mgr = MemoryManager::new();
-    let pm = ProcessManager::builder().with_memory_manager(mem_mgr.clone()).build();
+    let pm = ProcessManager::builder()
+        .with_memory_manager(mem_mgr.clone())
+        .build();
     let sandbox_mgr = SandboxManager::new();
 
     // Create process
@@ -111,7 +113,9 @@ fn test_sandbox_permission_enforcement() {
 #[test]
 fn test_process_memory_limits() {
     let mem_mgr = MemoryManager::new();
-    let pm = ProcessManager::builder().with_memory_manager(mem_mgr.clone()).build();
+    let pm = ProcessManager::builder()
+        .with_memory_manager(mem_mgr.clone())
+        .build();
 
     let pid1 = pm.create_process("app1".to_string(), 5);
     let pid2 = pm.create_process("app2".to_string(), 5);
@@ -226,7 +230,11 @@ fn test_concurrent_process_operations() {
     use std::thread;
 
     let mem_mgr = Arc::new(MemoryManager::new());
-    let pm = Arc::new(ProcessManager::builder().with_memory_manager((*mem_mgr).clone()).build());
+    let pm = Arc::new(
+        ProcessManager::builder()
+            .with_memory_manager((*mem_mgr).clone())
+            .build(),
+    );
 
     let mut handles = vec![];
 
@@ -244,10 +252,7 @@ fn test_concurrent_process_operations() {
         handles.push(handle);
     }
 
-    let pids: Vec<u32> = handles
-        .into_iter()
-        .map(|h| h.join().unwrap())
-        .collect();
+    let pids: Vec<u32> = handles.into_iter().map(|h| h.join().unwrap()).collect();
 
     // Verify all processes were created
     assert_eq!(pids.len(), 5);
@@ -281,7 +286,9 @@ fn test_sandbox_capability_update() {
 #[test]
 fn test_memory_recovery_after_oom() {
     let mem_mgr = MemoryManager::new();
-    let pm = ProcessManager::builder().with_memory_manager(mem_mgr.clone()).build();
+    let pm = ProcessManager::builder()
+        .with_memory_manager(mem_mgr.clone())
+        .build();
 
     let pid = pm.create_process("memory-hog".to_string(), 5);
 
@@ -351,7 +358,9 @@ fn test_file_operations_with_symlink_protection() {
 #[serial]
 fn test_garbage_collection_on_process_cleanup() {
     let mem_mgr = MemoryManager::new();
-    let pm = ProcessManager::builder().with_memory_manager(mem_mgr.clone()).build();
+    let pm = ProcessManager::builder()
+        .with_memory_manager(mem_mgr.clone())
+        .build();
 
     // Create and destroy many processes
     for i in 0..10 {
@@ -367,4 +376,3 @@ fn test_garbage_collection_on_process_cleanup() {
     let stats = mem_mgr.get_detailed_stats();
     assert_eq!(stats.allocated_blocks, 0);
 }
-

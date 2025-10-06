@@ -1,8 +1,8 @@
 /*!
 
- * Memory Syscalls
- * Memory management and garbage collection
- */
+* Memory Syscalls
+* Memory management and garbage collection
+*/
 
 use crate::core::types::Pid;
 
@@ -59,7 +59,7 @@ impl SyscallExecutor {
             pid: target_pid,
             allocated_bytes: memory_used,
             peak_bytes: memory_used, // TODO: Track peak memory in the future
-            allocation_count: 0, // TODO: Track allocation count in the future
+            allocation_count: 0,     // TODO: Track allocation count in the future
         };
 
         match serde_json::to_vec(&stats) {
@@ -90,7 +90,10 @@ impl SyscallExecutor {
         match target_pid {
             Some(target) => {
                 let freed = memory_manager.free_process_memory(target);
-                info!("PID {} triggered GC for PID {}, freed {} bytes", pid, target, freed);
+                info!(
+                    "PID {} triggered GC for PID {}, freed {} bytes",
+                    pid, target, freed
+                );
                 let data = freed.to_le_bytes().to_vec();
                 SyscallResult::success_with_data(data)
             }

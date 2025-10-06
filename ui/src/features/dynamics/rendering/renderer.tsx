@@ -46,7 +46,10 @@ export const ComponentRenderer: React.FC<BaseComponentProps> = React.memo(
     // Validate props if schema is present
     let validatedComponent = component;
     if (rendererEntry.schema) {
-      const validatedProps = safeParseProps(component.props, rendererEntry.schema) as Record<string, any>;
+      const validatedProps = safeParseProps(component.props, rendererEntry.schema) as Record<
+        string,
+        any
+      >;
       validatedComponent = { ...component, props: validatedProps };
     }
 
@@ -59,8 +62,7 @@ export const ComponentRenderer: React.FC<BaseComponentProps> = React.memo(
     // Return true if props are equal (skip re-render)
     if (prevProps.component.id !== nextProps.component.id) return false;
     if (prevProps.component.type !== nextProps.component.type) return false;
-    if (prevProps.component.children?.length !== nextProps.component.children?.length)
-      return false;
+    if (prevProps.component.children?.length !== nextProps.component.children?.length) return false;
 
     // Deep compare props - but only if they're different objects
     if (prevProps.component.props === nextProps.component.props) return true;

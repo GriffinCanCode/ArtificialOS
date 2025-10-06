@@ -210,7 +210,7 @@ fn test_shm_stats() {
 
     // Attach processes
     sm.attach(segment_id, pid2, false).unwrap(); // read-write
-    sm.attach(segment_id, pid3, true).unwrap();  // read-only
+    sm.attach(segment_id, pid3, true).unwrap(); // read-only
 
     // Get stats
     let stats = sm.stats(segment_id).unwrap();
@@ -405,7 +405,9 @@ fn test_shm_concurrent_access() {
             let pid = 200 + i;
             let offset = (i * 1000) as usize;
             let data = format!("Thread {} data", i);
-            sm_clone.write(segment_id, pid, offset, data.as_bytes()).unwrap();
+            sm_clone
+                .write(segment_id, pid, offset, data.as_bytes())
+                .unwrap();
         });
         handles.push(handle);
     }

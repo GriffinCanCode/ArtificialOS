@@ -45,9 +45,9 @@ impl Entry {
     /// Convert priority to weight (higher priority = higher weight)
     fn priority_to_weight(priority: Priority) -> u64 {
         match priority {
-            0..=3 => 50,   // Low priority
-            4..=7 => 100,  // Normal priority
-            _ => 200,      // High priority
+            0..=3 => 50,  // Low priority
+            4..=7 => 100, // Normal priority
+            _ => 200,     // High priority
         }
     }
 }
@@ -63,7 +63,8 @@ impl Eq for Entry {}
 impl Ord for Entry {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         // BinaryHeap is a max-heap, so higher priority values are scheduled first
-        self.priority.cmp(&other.priority)
+        self.priority
+            .cmp(&other.priority)
             .then_with(|| other.vruntime.cmp(&self.vruntime)) // Lower vruntime first for fairness
     }
 }
@@ -100,7 +101,10 @@ impl Scheduler {
 
     /// Create scheduler with custom quantum
     pub fn with_quantum(policy: SchedulingPolicy, quantum: Duration) -> Self {
-        info!("Scheduler initialized: policy={:?}, quantum={:?}", policy, quantum);
+        info!(
+            "Scheduler initialized: policy={:?}, quantum={:?}",
+            policy, quantum
+        );
 
         Self {
             policy: Arc::new(RwLock::new(policy)),
@@ -135,7 +139,10 @@ impl Scheduler {
         }
 
         self.stats.write().active_processes += 1;
-        info!("Process {} added to scheduler (priority: {})", pid, priority);
+        info!(
+            "Process {} added to scheduler (priority: {})",
+            pid, priority
+        );
     }
 
     /// Remove process from scheduler
@@ -169,7 +176,8 @@ impl Scheduler {
         }
 
         if removed {
-            self.stats.write().active_processes = self.stats.read().active_processes.saturating_sub(1);
+            self.stats.write().active_processes =
+                self.stats.read().active_processes.saturating_sub(1);
             info!("Process {} removed from scheduler", pid);
         }
 
@@ -183,7 +191,10 @@ impl Scheduler {
 
         // Handle current process
         if let Some(ref mut entry) = *current {
-            let elapsed = entry.last_scheduled.map(|t| now.duration_since(t)).unwrap_or_default();
+            let elapsed = entry
+                .last_scheduled
+                .map(|t| now.duration_since(t))
+                .unwrap_or_default();
 
             // Track CPU usage
             entry.cpu_time_micros += elapsed.as_micros() as u64;
@@ -239,7 +250,8 @@ impl Scheduler {
                     // Drain all entries, find minimum vruntime, and rebuild heap
                     let mut entries: Vec<Entry> = queue.drain().collect();
                     entries.sort_by(|a, b| {
-                        a.vruntime.cmp(&b.vruntime)
+                        a.vruntime
+                            .cmp(&b.vruntime)
                             .then_with(|| b.priority.cmp(&a.priority)) // Higher priority as tiebreaker
                     });
                     let selected = entries.remove(0);
@@ -312,7 +324,10 @@ impl Scheduler {
             return;
         }
 
-        info!("Changing scheduler policy from {:?} to {:?} (requeuing all processes)", current_policy, new_policy);
+        info!(
+            "Changing scheduler policy from {:?} to {:?} (requeuing all processes)",
+            current_policy, new_policy
+        );
 
         // Collect all processes from current queues
         let mut all_entries = Vec::new();
@@ -380,23 +395,29 @@ impl Scheduler {
         match policy {
             SchedulingPolicy::RoundRobin => {
                 let queue = self.rr_queue.read();
-                queue.iter().find(|e| e.pid == pid).map(|entry| ProcessStats {
-                    pid: entry.pid,
-                    priority: entry.priority,
-                    cpu_time_micros: entry.cpu_time_micros,
-                    vruntime: entry.vruntime,
-                    is_current: false,
-                })
+                queue
+                    .iter()
+                    .find(|e| e.pid == pid)
+                    .map(|entry| ProcessStats {
+                        pid: entry.pid,
+                        priority: entry.priority,
+                        cpu_time_micros: entry.cpu_time_micros,
+                        vruntime: entry.vruntime,
+                        is_current: false,
+                    })
             }
             SchedulingPolicy::Priority | SchedulingPolicy::Fair => {
                 let queue = self.priority_queue.read();
-                queue.iter().find(|e| e.pid == pid).map(|entry| ProcessStats {
-                    pid: entry.pid,
-                    priority: entry.priority,
-                    cpu_time_micros: entry.cpu_time_micros,
-                    vruntime: entry.vruntime,
-                    is_current: false,
-                })
+                queue
+                    .iter()
+                    .find(|e| e.pid == pid)
+                    .map(|entry| ProcessStats {
+                        pid: entry.pid,
+                        priority: entry.priority,
+                        cpu_time_micros: entry.cpu_time_micros,
+                        vruntime: entry.vruntime,
+                        is_current: false,
+                    })
             }
         }
     }
@@ -511,9 +532,9 @@ mod tests {
     fn test_priority_scheduling() {
         let scheduler = Scheduler::new(SchedulingPolicy::Priority);
 
-        scheduler.add(1, 3);  // Low priority
-        scheduler.add(2, 8);  // High priority
-        scheduler.add(3, 5);  // Medium priority
+        scheduler.add(1, 3); // Low priority
+        scheduler.add(2, 8); // High priority
+        scheduler.add(3, 5); // Medium priority
 
         // Should schedule highest priority first
         assert_eq!(scheduler.schedule(), Some(2));
@@ -580,7 +601,8 @@ mod tests {
 
     #[test]
     fn test_preemption_with_quantum() {
-        let scheduler = Scheduler::with_quantum(SchedulingPolicy::RoundRobin, Duration::from_millis(10));
+        let scheduler =
+            Scheduler::with_quantum(SchedulingPolicy::RoundRobin, Duration::from_millis(10));
 
         scheduler.add(1, 5);
         scheduler.add(2, 5);

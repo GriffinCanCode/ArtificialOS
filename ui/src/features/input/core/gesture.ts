@@ -14,36 +14,22 @@ export function detectSwipeDirection(
   threshold: number = 0.5
 ): SwipeDirection {
   return {
-    x: Math.abs(velocityX) > threshold
-      ? velocityX > 0
-        ? "right"
-        : "left"
-      : "none",
-    y: Math.abs(velocityY) > threshold
-      ? velocityY > 0
-        ? "down"
-        : "up"
-      : "none",
+    x: Math.abs(velocityX) > threshold ? (velocityX > 0 ? "right" : "left") : "none",
+    y: Math.abs(velocityY) > threshold ? (velocityY > 0 ? "down" : "up") : "none",
   };
 }
 
 /**
  * Calculate gesture velocity
  */
-export function calculateVelocity(
-  distance: number,
-  time: number
-): number {
+export function calculateVelocity(distance: number, time: number): number {
   return time > 0 ? distance / time : 0;
 }
 
 /**
  * Normalize direction vector
  */
-export function normalizeDirection(
-  x: number,
-  y: number
-): [number, number] {
+export function normalizeDirection(x: number, y: number): [number, number] {
   const length = Math.sqrt(x * x + y * y);
   return length > 0 ? [x / length, y / length] : [0, 0];
 }
@@ -74,32 +60,21 @@ export function isTapGesture(
 /**
  * Check if gesture is long press
  */
-export function isLongPress(
-  duration: number,
-  threshold: number = 500
-): boolean {
+export function isLongPress(duration: number, threshold: number = 500): boolean {
   return duration >= threshold;
 }
 
 /**
  * Calculate pinch scale
  */
-export function calculatePinchScale(
-  initialDistance: number,
-  currentDistance: number
-): number {
+export function calculatePinchScale(initialDistance: number, currentDistance: number): number {
   return initialDistance > 0 ? currentDistance / initialDistance : 1;
 }
 
 /**
  * Calculate rotation angle from two touch points
  */
-export function calculateRotation(
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number
-): number {
+export function calculateRotation(x1: number, y1: number, x2: number, y2: number): number {
   return Math.atan2(y2 - y1, x2 - x1) * (180 / Math.PI);
 }
 
@@ -131,19 +106,13 @@ export function rubberBand(
 /**
  * Apply momentum decay
  */
-export function applyMomentum(
-  velocity: number,
-  decay: number = 0.95
-): number {
+export function applyMomentum(velocity: number, decay: number = 0.95): number {
   return velocity * decay;
 }
 
 /**
  * Check if momentum is negligible
  */
-export function isNegligibleMomentum(
-  velocity: number,
-  threshold: number = 0.01
-): boolean {
+export function isNegligibleMomentum(velocity: number, threshold: number = 0.01): boolean {
   return Math.abs(velocity) < threshold;
 }

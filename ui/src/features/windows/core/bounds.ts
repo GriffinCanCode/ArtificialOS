@@ -18,18 +18,12 @@ export function constrainBounds(bounds: Bounds): Bounds {
       x: Math.max(0, Math.min(bounds.position.x, viewport.width - bounds.size.width)),
       y: Math.max(
         MENUBAR_HEIGHT,
-        Math.min(
-          bounds.position.y,
-          viewport.height - TASKBAR_HEIGHT - bounds.size.height
-        )
+        Math.min(bounds.position.y, viewport.height - TASKBAR_HEIGHT - bounds.size.height)
       ),
     },
     size: {
       width: Math.min(bounds.size.width, viewport.width),
-      height: Math.min(
-        bounds.size.height,
-        viewport.height - MENUBAR_HEIGHT - TASKBAR_HEIGHT
-      ),
+      height: Math.min(bounds.size.height, viewport.height - MENUBAR_HEIGHT - TASKBAR_HEIGHT),
     },
   };
 }

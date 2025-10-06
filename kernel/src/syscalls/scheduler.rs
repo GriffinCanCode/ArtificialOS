@@ -1,8 +1,8 @@
 /*!
 
- * Scheduler Syscalls
- * CPU scheduling operations
- */
+* Scheduler Syscalls
+* CPU scheduling operations
+*/
 
 use crate::core::types::Pid;
 

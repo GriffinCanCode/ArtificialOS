@@ -11,6 +11,7 @@ logger = get_logger(__name__)
 @dataclass
 class ToolParameter:
     """Tool parameter definition"""
+
     name: str
     type: str
     description: str
@@ -20,6 +21,7 @@ class ToolParameter:
 @dataclass
 class ToolDefinition:
     """Backend service tool definition"""
+
     id: str
     name: str
     description: str
@@ -30,6 +32,7 @@ class ToolDefinition:
 @dataclass
 class ServiceDefinition:
     """Backend service provider definition"""
+
     id: str
     name: str
     description: str
@@ -91,29 +94,35 @@ class BackendClient:
                 for tool_data in svc.get("tools", []):
                     params_list = []
                     for param in tool_data.get("parameters", []):
-                        params_list.append(ToolParameter(
-                            name=param["name"],
-                            type=param["type"],
-                            description=param["description"],
-                            required=param["required"]
-                        ))
+                        params_list.append(
+                            ToolParameter(
+                                name=param["name"],
+                                type=param["type"],
+                                description=param["description"],
+                                required=param["required"],
+                            )
+                        )
 
-                    tools.append(ToolDefinition(
-                        id=tool_data["id"],
-                        name=tool_data["name"],
-                        description=tool_data["description"],
-                        parameters=params_list,
-                        returns=tool_data["returns"]
-                    ))
+                    tools.append(
+                        ToolDefinition(
+                            id=tool_data["id"],
+                            name=tool_data["name"],
+                            description=tool_data["description"],
+                            parameters=params_list,
+                            returns=tool_data["returns"],
+                        )
+                    )
 
-                result.append(ServiceDefinition(
-                    id=svc["id"],
-                    name=svc["name"],
-                    description=svc["description"],
-                    category=svc["category"],
-                    capabilities=svc.get("capabilities", []),
-                    tools=tools
-                ))
+                result.append(
+                    ServiceDefinition(
+                        id=svc["id"],
+                        name=svc["name"],
+                        description=svc["description"],
+                        category=svc["category"],
+                        capabilities=svc.get("capabilities", []),
+                        tools=tools,
+                    )
+                )
 
             total_tools = sum(len(s.tools) for s in result)
             logger.info("discovered", services=len(result), tools=total_tools)
@@ -286,4 +295,3 @@ class BackendClient:
 
     def __exit__(self, *args: object) -> None:
         self.close()
-

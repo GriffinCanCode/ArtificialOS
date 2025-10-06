@@ -27,8 +27,7 @@ export function useRegistry() {
       getRenderer: (type: string): ComponentRenderer | undefined => registry.get(type),
       hasRenderer: (type: string): boolean => registry.has(type),
       getTypes: (): string[] => registry.getTypes(),
-      getByCategory: (category: ComponentRenderer["category"]) =>
-        registry.getByCategory(category),
+      getByCategory: (category: ComponentRenderer["category"]) => registry.getByCategory(category),
       getStats: () => registry.getStats(),
     }),
     []

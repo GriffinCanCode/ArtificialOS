@@ -1,9 +1,9 @@
 package utils
 
 import (
-	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/http/client"
 	"context"
 	"fmt"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/http/client"
 	"net/url"
 	"strings"
 

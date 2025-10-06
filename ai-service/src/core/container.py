@@ -42,17 +42,14 @@ class CoreModule(Module):
             streaming=True,
             temperature=0.1,
             max_tokens=4096,
-            json_mode=False
+            json_mode=False,
         )
         return ModelLoader.load(config)
 
     @singleton
     @provider
     def provide_ui_generator(
-        self,
-        tool_registry: ToolRegistry,
-        model: GeminiModel,
-        backend: BackendClient | None
+        self, tool_registry: ToolRegistry, model: GeminiModel, backend: BackendClient | None
     ) -> UIGenerator:
         """Provide UI generator with all dependencies."""
         backend_services = []
@@ -63,7 +60,7 @@ class CoreModule(Module):
             tool_registry=tool_registry,
             llm=model,
             backend_services=backend_services,
-            enable_cache=True
+            enable_cache=True,
         )
 
 

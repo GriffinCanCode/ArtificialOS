@@ -18,13 +18,17 @@ logger = get_logger(__name__)
 # Tool Registry Schema
 # ============================================================================
 
+
 class ToolDefinition(BaseModel):
     """Definition of a callable tool."""
+
     id: str = Field(..., description="Unique tool identifier")
     name: str = Field(..., description="Human-readable name")
     description: str = Field(..., description="What the tool does")
     parameters: dict[str, Any] = Field(default_factory=dict, description="Parameter schema")
-    category: str = Field(default="general", description="Tool category (compute, ui, system, etc.)")
+    category: str = Field(
+        default="general", description="Tool category (compute, ui, system, etc.)"
+    )
 
 
 class ToolRegistry:
@@ -47,7 +51,9 @@ class ToolRegistry:
         register_system_tools(self, ToolDefinition)
         register_math_tools(self, ToolDefinition)
 
-        logger.info(f"Registered {len(self.tools)} tools across {len(self.get_categories())} categories")
+        logger.info(
+            f"Registered {len(self.tools)} tools across {len(self.get_categories())} categories"
+        )
 
     def register_tool(self, tool: ToolDefinition) -> None:
         """Register a new tool."""
@@ -75,8 +81,16 @@ class ToolRegistry:
 
         # Define category order (generic first, specialized later)
         categories = [
-            "ui", "app", "browser", "system", "math", "storage",
-            "network", "timer", "clipboard", "notification"
+            "ui",
+            "app",
+            "browser",
+            "system",
+            "math",
+            "storage",
+            "network",
+            "timer",
+            "clipboard",
+            "notification",
         ]
 
         for category in categories:
@@ -99,4 +113,3 @@ __all__ = [
     "ToolDefinition",
     "ToolRegistry",
 ]
-

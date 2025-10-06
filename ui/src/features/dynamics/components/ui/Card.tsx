@@ -8,7 +8,6 @@ import type { BaseComponentProps } from "../../core/types";
 import { ComponentRenderer } from "../../rendering/renderer";
 
 export const Card: React.FC<BaseComponentProps> = ({ component, state, executor }) => {
-
   return (
     <div className="dynamic-card" style={component.props?.style}>
       {component.props?.title && (

@@ -211,11 +211,7 @@ export const Window: React.FC<WindowProps> = ({ window, children }) => {
               >
                 {isMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
               </button>
-              <button
-                className="window-control-btn close"
-                onClick={handleClose}
-                title="Close (⌘W)"
-              >
+              <button className="window-control-btn close" onClick={handleClose} title="Close (⌘W)">
                 <X size={14} />
               </button>
             </div>

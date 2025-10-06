@@ -1,9 +1,9 @@
 package config
 
 import (
-	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/http/client"
 	"context"
 	"fmt"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/http/client"
 	"time"
 
 	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/types"

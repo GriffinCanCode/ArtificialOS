@@ -3,14 +3,13 @@ Prompt Builder
 Centralized prompt construction with deduplication.
 """
 
+
 class PromptBuilder:
     """Builds prompts from message history."""
 
     @staticmethod
     def build_conversation(
-        system_prompt: str,
-        messages: list[tuple[str, str]],
-        user_input: str
+        system_prompt: str, messages: list[tuple[str, str]], user_input: str
     ) -> str:
         """
         Build conversation prompt.
@@ -34,12 +33,7 @@ class PromptBuilder:
         return "\n\n".join(parts)
 
     @staticmethod
-    def build_structured(
-        system: str,
-        context: str,
-        tools: str,
-        request: str
-    ) -> str:
+    def build_structured(system: str, context: str, tools: str, request: str) -> str:
         """
         Build structured prompt for UI generation.
 
@@ -63,4 +57,3 @@ class PromptBuilder:
         parts.append(f"\n=== REQUEST ===\n{request}")
 
         return "\n".join(parts)
-

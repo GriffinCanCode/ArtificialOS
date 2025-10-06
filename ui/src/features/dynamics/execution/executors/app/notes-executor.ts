@@ -79,8 +79,7 @@ export class NotesExecutor implements AsyncExecutor {
   private async saveNote(params: Record<string, any>): Promise<boolean> {
     try {
       // Get current note data from component state
-      let noteId =
-        params.noteId || this.context.componentState.get<string>("current-note-id");
+      let noteId = params.noteId || this.context.componentState.get<string>("current-note-id");
       const title = this.context.componentState.get<string>("note-title", "");
       const content = this.context.componentState.get<string>("note-content", "");
 

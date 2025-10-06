@@ -134,12 +134,7 @@ pub trait ProcessStateManager: Send + Sync {
 
 /// Combined process manager trait
 pub trait ProcessManager:
-    ProcessLifecycle
-    + ProcessStatistics
-    + ProcessStateManager
-    + Clone
-    + Send
-    + Sync
+    ProcessLifecycle + ProcessStatistics + ProcessStateManager + Clone + Send + Sync
 {
     /// Get child process count for a PID
     fn get_child_count(&self, pid: Pid) -> u32;

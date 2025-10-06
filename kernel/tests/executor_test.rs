@@ -30,8 +30,7 @@ async fn test_spawn_multiple_processes() {
 
     // Spawn 3 processes
     for i in 1..=3 {
-        let config =
-            ExecutionConfig::new("sleep".to_string()).with_args(vec!["0.1".to_string()]);
+        let config = ExecutionConfig::new("sleep".to_string()).with_args(vec!["0.1".to_string()]);
         let result = executor.spawn(i, format!("test-sleep-{}", i), config);
         assert!(result.is_ok());
     }

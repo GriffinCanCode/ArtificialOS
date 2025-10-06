@@ -5,11 +5,7 @@
 
 import React, { useEffect } from "react";
 import { useWebSocket } from "../../../ui/contexts/WebSocketContext";
-import {
-  useBlueprint,
-  useAppActions,
-  useAppStore,
-} from "../../../core/store/appStore";
+import { useBlueprint, useAppActions, useAppStore } from "../../../core/store/appStore";
 import { useActions, useStore as useWindowStore } from "../../windows";
 import { logger } from "../../../core/utils/monitoring/logger";
 
@@ -18,11 +14,7 @@ import { logger } from "../../../core/utils/monitoring/logger";
 import "../rendering/register";
 
 // Import split modules
-import {
-  PARSE_DEBOUNCE_MS,
-  validateJSONSize,
-  validateJSONDepth,
-} from "./constants";
+import { PARSE_DEBOUNCE_MS, validateJSONSize, validateJSONDepth } from "./constants";
 import { ComponentState } from "../state/state";
 import { ToolExecutor } from "../execution/executor";
 import { parsePartialBlueprint, filterValidComponents } from "../../../core/utils/blueprintParser";
@@ -185,7 +177,7 @@ const DynamicRenderer: React.FC = () => {
                 const builderId = (window as any).__builderWindowId;
                 if (builderId) {
                   const windowStore = useWindowStore.getState();
-                  const builderWindow = windowStore.windows.find(w => w.appId === builderId);
+                  const builderWindow = windowStore.windows.find((w) => w.appId === builderId);
                   if (builderWindow) {
                     // Update window with latest partial blueprint using proper Zustand update
                     updateWindow(builderWindow.id, {
@@ -198,8 +190,8 @@ const DynamicRenderer: React.FC = () => {
                         style: {},
                         services: [],
                         service_bindings: {},
-                        lifecycle_hooks: {}
-                      }
+                        lifecycle_hooks: {},
+                      },
                     });
                   }
                 }
@@ -267,7 +259,7 @@ const DynamicRenderer: React.FC = () => {
             const builderId = (window as any).__builderWindowId;
             if (builderId) {
               const windowStore = useWindowStore.getState();
-              const builderWindow = windowStore.windows.find(w => w.appId === builderId);
+              const builderWindow = windowStore.windows.find((w) => w.appId === builderId);
               if (builderWindow) {
                 // Update the SAME window with final app data using proper Zustand update
                 updateWindow(builderWindow.id, {
@@ -283,7 +275,7 @@ const DynamicRenderer: React.FC = () => {
                   component: "DynamicRenderer",
                   windowId: builderWindow.id,
                   appId: message.app_id,
-                  title: filteredSpec.title
+                  title: filteredSpec.title,
                 });
               } else {
                 // Builder window not found, fallback to opening new window
@@ -376,7 +368,7 @@ const DynamicRenderer: React.FC = () => {
           const builderId = (window as any).__builderWindowId;
           if (builderId) {
             const windowStore = useWindowStore.getState();
-            const builderWindow = windowStore.windows.find(w => w.appId === builderId);
+            const builderWindow = windowStore.windows.find((w) => w.appId === builderId);
             if (builderWindow) {
               closeWindow(builderWindow.id);
               delete (window as any).__builderWindowId;

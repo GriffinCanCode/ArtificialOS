@@ -1,11 +1,11 @@
 package utils
 
 import (
-	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/http/client"
 	"context"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/http/client"
 	"strings"
 
 	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/types"

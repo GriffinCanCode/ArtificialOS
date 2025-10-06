@@ -13,8 +13,8 @@ use crate::process::ProcessManagerImpl as ProcessManager;
 use crate::security::{Capability as SandboxCapability, SandboxConfig, SandboxManager};
 use crate::syscalls::{Syscall, SyscallExecutor, SyscallResult};
 
-use super::types::{ApiError, ApiResult, ServerConfig};
 use super::traits::ServerLifecycle;
+use super::types::{ApiError, ApiResult, ServerConfig};
 
 // Include generated protobuf code
 pub mod kernel_proto {
@@ -228,12 +228,8 @@ impl KernelService for KernelServiceImpl {
                 flags: call.flags,
                 mode: call.mode,
             },
-            Some(syscall_request::Syscall::Close(call)) => Syscall::Close {
-                fd: call.fd,
-            },
-            Some(syscall_request::Syscall::Dup(call)) => Syscall::Dup {
-                fd: call.fd,
-            },
+            Some(syscall_request::Syscall::Close(call)) => Syscall::Close { fd: call.fd },
+            Some(syscall_request::Syscall::Dup(call)) => Syscall::Dup { fd: call.fd },
             Some(syscall_request::Syscall::Dup2(call)) => Syscall::Dup2 {
                 oldfd: call.oldfd,
                 newfd: call.newfd,
@@ -371,7 +367,11 @@ impl KernelService for KernelServiceImpl {
 
         // Create process (with or without OS execution)
         info!("About to call create_process_with_command");
-        let pid = self.process_manager.create_process_with_command(req.name.clone(), req.priority as u8, exec_config);
+        let pid = self.process_manager.create_process_with_command(
+            req.name.clone(),
+            req.priority as u8,
+            exec_config,
+        );
         info!("Created process, PID: {}", pid);
 
         // Get OS PID if available
@@ -534,7 +534,10 @@ impl KernelService for KernelServiceImpl {
             _ => {
                 return Ok(Response::new(SetSchedulingPolicyResponse {
                     success: false,
-                    error: format!("Unknown policy: {}. Use RoundRobin, Priority, or Fair", req.policy),
+                    error: format!(
+                        "Unknown policy: {}. Use RoundRobin, Priority, or Fair",
+                        req.policy
+                    ),
                 }));
             }
         };
@@ -601,7 +604,9 @@ impl GrpcServer {
 }
 
 impl ServerLifecycle for GrpcServer {
-    fn start(&self) -> std::pin::Pin<Box<dyn std::future::Future<Output = ApiResult<()>> + Send + '_>> {
+    fn start(
+        &self,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ApiResult<()>> + Send + '_>> {
         Box::pin(async move {
             let service = KernelServiceImpl::new(
                 self.syscall_executor.clone(),
@@ -611,13 +616,18 @@ impl ServerLifecycle for GrpcServer {
 
             info!("gRPC server starting on {}", self.config.address);
 
-            self.running.store(true, std::sync::atomic::Ordering::SeqCst);
+            self.running
+                .store(true, std::sync::atomic::Ordering::SeqCst);
 
             // Configure server with settings from ServerConfig
             Server::builder()
                 .timeout(Duration::from_secs(self.config.timeout_secs))
-                .http2_keepalive_interval(Some(Duration::from_secs(self.config.keepalive_interval_secs)))
-                .http2_keepalive_timeout(Some(Duration::from_secs(self.config.keepalive_timeout_secs)))
+                .http2_keepalive_interval(Some(Duration::from_secs(
+                    self.config.keepalive_interval_secs,
+                )))
+                .http2_keepalive_timeout(Some(Duration::from_secs(
+                    self.config.keepalive_timeout_secs,
+                )))
                 .http2_adaptive_window(Some(true))
                 .tcp_nodelay(true)
                 .add_service(KernelServiceServer::new(service))
@@ -625,17 +635,21 @@ impl ServerLifecycle for GrpcServer {
                 .await
                 .map_err(|e| ApiError::InternalError(format!("Server error: {}", e)))?;
 
-            self.running.store(false, std::sync::atomic::Ordering::SeqCst);
+            self.running
+                .store(false, std::sync::atomic::Ordering::SeqCst);
 
             Ok(())
         })
     }
 
-    fn stop(&self) -> std::pin::Pin<Box<dyn std::future::Future<Output = ApiResult<()>> + Send + '_>> {
+    fn stop(
+        &self,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ApiResult<()>> + Send + '_>> {
         Box::pin(async move {
             // Note: Graceful shutdown would require holding a server handle
             // For now, we just mark as not running
-            self.running.store(false, std::sync::atomic::Ordering::SeqCst);
+            self.running
+                .store(false, std::sync::atomic::Ordering::SeqCst);
             info!("gRPC server stopped");
             Ok(())
         })
@@ -660,5 +674,8 @@ pub async fn start_grpc_server(
     let config = ServerConfig::new(addr);
     let server = GrpcServer::new(config, syscall_executor, process_manager, sandbox_manager);
 
-    server.start().await.map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
+    server
+        .start()
+        .await
+        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
 }

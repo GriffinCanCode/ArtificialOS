@@ -1,8 +1,8 @@
 /*!
 
- * File System Syscalls
- * File and directory operations
- */
+* File System Syscalls
+* File and directory operations
+*/
 
 use crate::core::types::Pid;
 
@@ -92,7 +92,12 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn move_file(&self, pid: Pid, source: &PathBuf, destination: &PathBuf) -> SyscallResult {
+    pub(super) fn move_file(
+        &self,
+        pid: Pid,
+        source: &PathBuf,
+        destination: &PathBuf,
+    ) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::WriteFile)
@@ -129,7 +134,12 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn copy_file(&self, pid: Pid, source: &PathBuf, destination: &PathBuf) -> SyscallResult {
+    pub(super) fn copy_file(
+        &self,
+        pid: Pid,
+        source: &PathBuf,
+        destination: &PathBuf,
+    ) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::ReadFile)

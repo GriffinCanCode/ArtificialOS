@@ -3,7 +3,9 @@
  * Unified IPC system: messages, pipes, and shared memory
  */
 
-use super::traits::{IpcCleanup, IpcManager as IpcManagerTrait, MessageQueue, PipeChannel, SharedMemory};
+use super::traits::{
+    IpcCleanup, IpcManager as IpcManagerTrait, MessageQueue, PipeChannel, SharedMemory,
+};
 use super::types::{IpcError, IpcResult, Message};
 use crate::core::types::{Pid, Size};
 use crate::ipc::pipe::PipeManager;

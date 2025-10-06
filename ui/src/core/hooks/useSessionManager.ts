@@ -32,7 +32,12 @@ export function useSessionManager(options: UseSessionManagerOptions = {}) {
   const { data: sessionsData } = useSessions();
 
   // Window actions
-  const { open: openWindow, updatePosition: updateWindowPosition, updateSize: updateWindowSize, clearAll: clearAllWindows } = useActions();
+  const {
+    open: openWindow,
+    updatePosition: updateWindowPosition,
+    updateSize: updateWindowSize,
+    clearAll: clearAllWindows,
+  } = useActions();
 
   const [lastSaveTime, setLastSaveTime] = useState<Date | null>(null);
 

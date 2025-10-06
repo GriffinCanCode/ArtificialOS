@@ -1,10 +1,10 @@
 package config
 
 import (
-	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/http/client"
 	"context"
 	"crypto/tls"
 	"fmt"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/http/client"
 	"net/http"
 	"net/url"
 

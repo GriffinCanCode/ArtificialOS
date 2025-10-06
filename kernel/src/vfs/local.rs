@@ -105,8 +105,7 @@ impl LocalFS {
 impl FileSystem for LocalFS {
     fn read(&self, path: &Path) -> VfsResult<Vec<u8>> {
         let full_path = self.resolve(path);
-        fs::read(&full_path)
-            .map_err(|e| Self::io_error(e, format!("read {}", path.display())))
+        fs::read(&full_path).map_err(|e| Self::io_error(e, format!("read {}", path.display())))
     }
 
     fn write(&self, path: &Path, data: &[u8]) -> VfsResult<()> {
@@ -115,8 +114,9 @@ impl FileSystem for LocalFS {
 
         // Create parent directories if needed
         if let Some(parent) = full_path.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|e| Self::io_error(e, format!("create parent dirs for {}", path.display())))?;
+            fs::create_dir_all(parent).map_err(|e| {
+                Self::io_error(e, format!("create parent dirs for {}", path.display()))
+            })?;
         }
 
         fs::write(&full_path, data)
@@ -143,8 +143,9 @@ impl FileSystem for LocalFS {
         let full_path = self.resolve(path);
 
         if let Some(parent) = full_path.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|e| Self::io_error(e, format!("create parent dirs for {}", path.display())))?;
+            fs::create_dir_all(parent).map_err(|e| {
+                Self::io_error(e, format!("create parent dirs for {}", path.display()))
+            })?;
         }
 
         fs::File::create(&full_path)
@@ -177,10 +178,14 @@ impl FileSystem for LocalFS {
 
         let mut result = Vec::new();
         for entry in entries {
-            let entry = entry.map_err(|e| Self::io_error(e, format!("read dir entry in {}", path.display())))?;
-            let name = entry.file_name().into_string()
+            let entry = entry
+                .map_err(|e| Self::io_error(e, format!("read dir entry in {}", path.display())))?;
+            let name = entry
+                .file_name()
+                .into_string()
                 .map_err(|_| VfsError::InvalidPath(format!("invalid UTF-8 in filename")))?;
-            let file_type = entry.file_type()
+            let file_type = entry
+                .file_type()
                 .map_err(|e| Self::io_error(e, format!("get file type for {}", name)))?;
 
             result.push(Entry::new(name, Self::convert_file_type(file_type)));
@@ -216,12 +221,14 @@ impl FileSystem for LocalFS {
         let to_full = self.resolve(to);
 
         if let Some(parent) = to_full.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|e| Self::io_error(e, format!("create parent dirs for {}", to.display())))?;
+            fs::create_dir_all(parent).map_err(|e| {
+                Self::io_error(e, format!("create parent dirs for {}", to.display()))
+            })?;
         }
 
-        fs::copy(&from_full, &to_full)
-            .map_err(|e| Self::io_error(e, format!("copy {} to {}", from.display(), to.display())))?;
+        fs::copy(&from_full, &to_full).map_err(|e| {
+            Self::io_error(e, format!("copy {} to {}", from.display(), to.display()))
+        })?;
         Ok(())
     }
 
@@ -231,12 +238,14 @@ impl FileSystem for LocalFS {
         let to_full = self.resolve(to);
 
         if let Some(parent) = to_full.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|e| Self::io_error(e, format!("create parent dirs for {}", to.display())))?;
+            fs::create_dir_all(parent).map_err(|e| {
+                Self::io_error(e, format!("create parent dirs for {}", to.display()))
+            })?;
         }
 
-        fs::rename(&from_full, &to_full)
-            .map_err(|e| Self::io_error(e, format!("rename {} to {}", from.display(), to.display())))
+        fs::rename(&from_full, &to_full).map_err(|e| {
+            Self::io_error(e, format!("rename {} to {}", from.display(), to.display()))
+        })
     }
 
     fn symlink(&self, src: &Path, dst: &Path) -> VfsResult<()> {
@@ -245,8 +254,9 @@ impl FileSystem for LocalFS {
 
         #[cfg(unix)]
         {
-            std::os::unix::fs::symlink(src, &dst_full)
-                .map_err(|e| Self::io_error(e, format!("symlink {} to {}", src.display(), dst.display())))
+            std::os::unix::fs::symlink(src, &dst_full).map_err(|e| {
+                Self::io_error(e, format!("symlink {} to {}", src.display(), dst.display()))
+            })
         }
 
         #[cfg(windows)]
@@ -258,12 +268,16 @@ impl FileSystem for LocalFS {
             } else {
                 std::os::windows::fs::symlink_file(src, &dst_full)
             }
-            .map_err(|e| Self::io_error(e, format!("symlink {} to {}", src.display(), dst.display())))
+            .map_err(|e| {
+                Self::io_error(e, format!("symlink {} to {}", src.display(), dst.display()))
+            })
         }
 
         #[cfg(not(any(unix, windows)))]
         {
-            Err(VfsError::NotSupported("symlinks not supported on this platform".to_string()))
+            Err(VfsError::NotSupported(
+                "symlinks not supported on this platform".to_string(),
+            ))
         }
     }
 
@@ -323,7 +337,8 @@ impl FileSystem for LocalFS {
         options.create(flags.create);
         options.create_new(flags.create_new);
 
-        let file = options.open(&full_path)
+        let file = options
+            .open(&full_path)
             .map_err(|e| Self::io_error(e, format!("open {}", path.display())))?;
 
         Ok(Box::new(LocalFile { file }))
@@ -367,18 +382,22 @@ impl Seek for LocalFile {
 
 impl OpenFile for LocalFile {
     fn sync(&mut self) -> VfsResult<()> {
-        self.file.sync_all()
+        self.file
+            .sync_all()
             .map_err(|e| VfsError::IoError(format!("sync: {}", e)))
     }
 
     fn metadata(&self) -> VfsResult<Metadata> {
-        let md = self.file.metadata()
+        let md = self
+            .file
+            .metadata()
             .map_err(|e| VfsError::IoError(format!("metadata: {}", e)))?;
         Ok(LocalFS::convert_metadata(md))
     }
 
     fn set_len(&mut self, size: u64) -> VfsResult<()> {
-        self.file.set_len(size)
+        self.file
+            .set_len(size)
             .map_err(|e| VfsError::IoError(format!("set_len: {}", e)))
     }
 }

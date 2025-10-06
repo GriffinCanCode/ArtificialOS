@@ -38,12 +38,7 @@ export function getMouseButton(button: number): MouseButton {
 /**
  * Calculate distance between two points
  */
-export function calculateDistance(
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number
-): number {
+export function calculateDistance(x1: number, y1: number, x2: number, y2: number): number {
   const dx = x2 - x1;
   const dy = y2 - y1;
   return Math.sqrt(dx * dx + dy * dy);
@@ -52,12 +47,7 @@ export function calculateDistance(
 /**
  * Calculate angle between two points in degrees
  */
-export function calculateAngle(
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number
-): number {
+export function calculateAngle(x1: number, y1: number, x2: number, y2: number): number {
   const dx = x2 - x1;
   const dy = y2 - y1;
   return (Math.atan2(dy, dx) * 180) / Math.PI;
@@ -94,43 +84,23 @@ export function updateDragState(state: DragState, x: number, y: number): DragSta
 /**
  * Check if drag exceeds threshold
  */
-export function exceedsDragThreshold(
-  state: DragState,
-  threshold: number = 5
-): boolean {
-  const distance = calculateDistance(
-    state.startX,
-    state.startY,
-    state.currentX,
-    state.currentY
-  );
+export function exceedsDragThreshold(state: DragState, threshold: number = 5): boolean {
+  const distance = calculateDistance(state.startX, state.startY, state.currentX, state.currentY);
   return distance > threshold;
 }
 
 /**
  * Check if element is under cursor
  */
-export function isElementUnderCursor(
-  element: HTMLElement,
-  x: number,
-  y: number
-): boolean {
+export function isElementUnderCursor(element: HTMLElement, x: number, y: number): boolean {
   const rect = element.getBoundingClientRect();
-  return (
-    x >= rect.left &&
-    x <= rect.right &&
-    y >= rect.top &&
-    y <= rect.bottom
-  );
+  return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
 }
 
 /**
  * Get element at position
  */
-export function getElementAtPosition(
-  x: number,
-  y: number
-): HTMLElement | null {
+export function getElementAtPosition(x: number, y: number): HTMLElement | null {
   return document.elementFromPoint(x, y) as HTMLElement | null;
 }
 

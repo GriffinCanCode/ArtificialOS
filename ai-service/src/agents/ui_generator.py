@@ -20,42 +20,46 @@ class Templates:
     """Component templates."""
 
     @staticmethod
-    def button(id: str, text: str, on_click: str | None = None, variant: str = "default") -> BlueprintComponent:
+    def button(
+        id: str, text: str, on_click: str | None = None, variant: str = "default"
+    ) -> BlueprintComponent:
         return BlueprintComponent(
             type="button",
             id=id,
             props={"text": text, "variant": variant},
-            on_event={"click": on_click} if on_click else None
+            on_event={"click": on_click} if on_click else None,
         )
 
     @staticmethod
-    def input(id: str, placeholder: str = "", value: str = "", readonly: bool = False) -> BlueprintComponent:
+    def input(
+        id: str, placeholder: str = "", value: str = "", readonly: bool = False
+    ) -> BlueprintComponent:
         return BlueprintComponent(
             type="input",
             id=id,
-            props={"placeholder": placeholder, "value": value, "readonly": readonly}
+            props={"placeholder": placeholder, "value": value, "readonly": readonly},
         )
 
     @staticmethod
     def text(id: str, content: str, variant: str = "body") -> BlueprintComponent:
-        return BlueprintComponent(type="text", id=id, props={"content": content, "variant": variant})
-
-    @staticmethod
-    def container(id: str, children: list[BlueprintComponent], layout: str = "vertical", gap: int = 0) -> BlueprintComponent:
         return BlueprintComponent(
-            type="container",
-            id=id,
-            props={"layout": layout, "gap": gap},
-            children=children
+            type="text", id=id, props={"content": content, "variant": variant}
         )
 
     @staticmethod
-    def grid(id: str, children: list[BlueprintComponent], columns: int = 3, gap: int = 0) -> BlueprintComponent:
+    def container(
+        id: str, children: list[BlueprintComponent], layout: str = "vertical", gap: int = 0
+    ) -> BlueprintComponent:
         return BlueprintComponent(
-            type="grid",
-            id=id,
-            props={"columns": columns, "gap": gap},
-            children=children
+            type="container", id=id, props={"layout": layout, "gap": gap}, children=children
+        )
+
+    @staticmethod
+    def grid(
+        id: str, children: list[BlueprintComponent], columns: int = 3, gap: int = 0
+    ) -> BlueprintComponent:
+        return BlueprintComponent(
+            type="grid", id=id, props={"columns": columns, "gap": gap}, children=children
         )
 
 
@@ -67,7 +71,7 @@ class UIGenerator:
         tool_registry: ToolRegistry,
         llm: BaseLLM | None = None,
         backend_services: list[Any] | None = None,
-        enable_cache: bool = True
+        enable_cache: bool = True,
     ) -> None:
         self.tool_registry = tool_registry
         self.templates = Templates()
@@ -94,7 +98,7 @@ class UIGenerator:
                 logger.info("cache_hit")
                 json_str = safe_json_dumps(cached.model_dump(), indent=2)
                 for i in range(0, len(json_str), 100):
-                    yield json_str[i:i+100]
+                    yield json_str[i : i + 100]
                 yield cached
                 return
 
@@ -131,7 +135,7 @@ class UIGenerator:
         CHUNK_SIZE = 50  # Send ~50 chars at a time for smooth component rendering
 
         for token in self.llm.stream(prompt):
-            token_str = token.content if hasattr(token, 'content') else str(token)
+            token_str = token.content if hasattr(token, "content") else str(token)
             content += token_str
 
             # Start streaming once we see the opening brace
@@ -163,7 +167,7 @@ class UIGenerator:
             # Find the end of the first line (could be ```json or just ```)
             first_newline = json_content.find("\n")
             if first_newline != -1:
-                json_content = json_content[first_newline + 1:]
+                json_content = json_content[first_newline + 1 :]
             # Remove the closing ```
             if json_content.endswith("```"):
                 json_content = json_content[:-3].strip()
@@ -219,7 +223,7 @@ class UIGenerator:
 
         # Stream Blueprint JSON
         for i in range(0, len(blueprint_json), 50):
-            yield blueprint_json[i:i+50]
+            yield blueprint_json[i : i + 50]
 
         # Parse to Blueprint for caching
         try:
@@ -345,24 +349,36 @@ class UIGenerator:
     def _build_placeholder_blueprint(self, request: str) -> str:
         """Generate placeholder Blueprint JSON - explicit format for streaming."""
         import json
-        return json.dumps({
-            "app": {
-                "id": "generated-app",
-                "name": "Generated App",
-                "version": "1.0.0",
-                "author": "system",
-                "permissions": ["STANDARD"]
+
+        return json.dumps(
+            {
+                "app": {
+                    "id": "generated-app",
+                    "name": "Generated App",
+                    "version": "1.0.0",
+                    "author": "system",
+                    "permissions": ["STANDARD"],
+                },
+                "services": [],
+                "ui": {
+                    "title": "Generated App",
+                    "layout": "vertical",
+                    "components": [
+                        {
+                            "type": "text",
+                            "id": "header",
+                            "props": {"content": "Generated App", "variant": "h2"},
+                        },
+                        {
+                            "type": "text",
+                            "id": "msg",
+                            "props": {"content": f"Request: {request}", "variant": "body"},
+                        },
+                    ],
+                },
             },
-            "services": [],
-            "ui": {
-                "title": "Generated App",
-                "layout": "vertical",
-                "components": [
-                    {"type": "text", "id": "header", "props": {"content": "Generated App", "variant": "h2"}},
-                    {"type": "text", "id": "msg", "props": {"content": f"Request: {request}", "variant": "body"}}
-                ]
-            }
-        }, indent=2)
+            indent=2,
+        )
 
     # Legacy methods kept for compatibility
     def _build_calculator(self) -> Blueprint:
@@ -396,7 +412,9 @@ class UIGenerator:
         dec = self.templates.button("dec", "-1", "ui.append")
         compute = self.templates.button("compute", "=", "ui.compute")
         reset = self.templates.button("reset", "Clear", "ui.clear")
-        buttons = self.templates.container("controls", [inc, dec, compute, reset], layout="horizontal", gap=12)
+        buttons = self.templates.container(
+            "controls", [inc, dec, compute, reset], layout="horizontal", gap=12
+        )
         return Blueprint(title="Counter", components=[display, buttons])
 
     def _build_todo(self) -> Blueprint:
@@ -404,7 +422,9 @@ class UIGenerator:
         header = self.templates.text("header", "Todo List", variant="h2")
         task_input = self.templates.input("task-input", placeholder="New task...")
         add_btn = self.templates.button("add", "Add", "ui.add_todo")
-        input_row = self.templates.container("input", [task_input, add_btn], layout="horizontal", gap=8)
+        input_row = self.templates.container(
+            "input", [task_input, add_btn], layout="horizontal", gap=8
+        )
         todo_list = self.templates.container("list", [], layout="vertical", gap=8)
         return Blueprint(title="Todo App", components=[header, input_row, todo_list])
 

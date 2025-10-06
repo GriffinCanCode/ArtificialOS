@@ -22,8 +22,7 @@ class PromptCache:
             max_size: Maximum number of cached prompts
         """
         self._cache: LRUCache[str] = LRUCache(
-            max_size=max_size,
-            ttl_seconds=None  # Prompts don't expire
+            max_size=max_size, ttl_seconds=None  # Prompts don't expire
         )
         logger.info("cache_init", max_size=max_size)
 
@@ -85,4 +84,3 @@ def get_system_prompt_template(prompt_type: str = "ui_generation") -> str:
 
 
 __all__ = ["PromptCache", "get_system_prompt_template"]
-

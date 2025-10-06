@@ -241,9 +241,7 @@ export const useStore = create<Store>()(
         set(
           (state) => ({
             windows: state.windows.map((w) =>
-              w.id === windowId
-                ? { ...w, position: bounds.position, size: bounds.size }
-                : w
+              w.id === windowId ? { ...w, position: bounds.position, size: bounds.size } : w
             ),
           }),
           false,
@@ -265,9 +263,7 @@ export const useStore = create<Store>()(
         set(
           (state) => ({
             windows: state.windows.map((w) =>
-              w.id === windowId
-                ? { ...w, metadata: { ...w.metadata, isAnimating } }
-                : w
+              w.id === windowId ? { ...w, metadata: { ...w.metadata, isAnimating } } : w
             ),
           }),
           false,
@@ -327,9 +323,7 @@ export function useActions() {
 }
 
 export function useVisibleWindows() {
-  return useStore(
-    useShallow((state) => state.windows.filter((w) => !w.isMinimized))
-  );
+  return useStore(useShallow((state) => state.windows.filter((w) => !w.isMinimized)));
 }
 
 export function useFocusedWindow() {

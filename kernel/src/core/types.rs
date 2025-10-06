@@ -58,7 +58,7 @@ impl Default for ResourceLimits {
     fn default() -> Self {
         Self {
             max_memory_bytes: 100 * 1024 * 1024, // 100MB
-            max_cpu_time_ms: 60_000,              // 1 minute
+            max_cpu_time_ms: 60_000,             // 1 minute
             max_file_descriptors: 1024,
             max_processes: 10,
             max_network_connections: 100,
@@ -71,7 +71,7 @@ impl ResourceLimits {
     pub fn minimal() -> Self {
         Self {
             max_memory_bytes: 10 * 1024 * 1024, // 10MB
-            max_cpu_time_ms: 5_000,              // 5 seconds
+            max_cpu_time_ms: 5_000,             // 5 seconds
             max_file_descriptors: 10,
             max_processes: 1,
             max_network_connections: 0,
@@ -82,7 +82,7 @@ impl ResourceLimits {
     pub fn privileged() -> Self {
         Self {
             max_memory_bytes: 500 * 1024 * 1024, // 500MB
-            max_cpu_time_ms: 0,                   // Unlimited
+            max_cpu_time_ms: 0,                  // Unlimited
             max_file_descriptors: 10000,
             max_processes: 100,
             max_network_connections: 1000,

@@ -4,7 +4,7 @@ from typing import TypeVar
 from collections.abc import AsyncIterator, Iterator, AsyncGenerator, Generator
 from dataclasses import dataclass, field
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 @dataclass
@@ -52,7 +52,9 @@ class StreamCounter:
         return result
 
 
-async def batch_tokens(stream: AsyncIterator[str], batch_size: int = 20) -> AsyncGenerator[str, None]:
+async def batch_tokens(
+    stream: AsyncIterator[str], batch_size: int = 20
+) -> AsyncGenerator[str, None]:
     """
     Batch tokens from async stream.
 
@@ -94,4 +96,3 @@ def batch_tokens_sync(stream: Iterator[str], batch_size: int = 20) -> Generator[
     # Flush remaining
     if final := batcher.flush():
         yield final
-

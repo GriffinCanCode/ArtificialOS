@@ -21,11 +21,7 @@ import type { ComponentState } from "../state/state";
  * const value = useSyncState(state, component.id, "");
  * ```
  */
-export function useSyncState<T = any>(
-  state: ComponentState,
-  key: string,
-  defaultValue?: T
-): T {
+export function useSyncState<T = any>(state: ComponentState, key: string, defaultValue?: T): T {
   // Subscribe callback - called by React when component mounts/updates
   const subscribe = useCallback(
     (callback: () => void) => {

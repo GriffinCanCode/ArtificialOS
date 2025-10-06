@@ -31,9 +31,7 @@ export const Radio: React.FC<BaseComponentProps> = ({ component, state, executor
           handleEvent("change", { value: newValue });
         }}
       />
-      {component.props?.label && (
-        <span className="radio-label">{component.props.label}</span>
-      )}
+      {component.props?.label && <span className="radio-label">{component.props.label}</span>}
     </label>
   );
 };

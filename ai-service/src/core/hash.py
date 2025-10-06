@@ -10,6 +10,7 @@ import hashlib
 
 try:
     import xxhash
+
     HAS_XXHASH = True
 except ImportError:
     HAS_XXHASH = False
@@ -17,14 +18,14 @@ except ImportError:
 
 class Algorithm(str, Enum):
     """Supported hash algorithms."""
-    
+
     XXHASH64 = "xxhash64"  # Fast, non-cryptographic (cache keys)
-    SHA256 = "sha256"      # Secure, compatible with Go backend
+    SHA256 = "sha256"  # Secure, compatible with Go backend
 
 
 class Hasher(Protocol):
     """Protocol for hash implementations."""
-    
+
     def digest(self, data: bytes) -> str:
         """Compute hex digest of data."""
         ...
@@ -32,7 +33,7 @@ class Hasher(Protocol):
 
 class XXHasher:
     """Ultra-fast non-cryptographic hasher."""
-    
+
     def digest(self, data: bytes) -> str:
         """Compute xxhash64 hex digest."""
         return xxhash.xxh64(data).hexdigest()
@@ -40,7 +41,7 @@ class XXHasher:
 
 class SHA256Hasher:
     """Secure cryptographic hasher."""
-    
+
     def digest(self, data: bytes) -> str:
         """Compute SHA256 hex digest."""
         return hashlib.sha256(data).hexdigest()
@@ -49,13 +50,13 @@ class SHA256Hasher:
 def create_hasher(algorithm: Algorithm = Algorithm.XXHASH64) -> Hasher:
     """
     Create hasher instance.
-    
+
     Args:
         algorithm: Hash algorithm to use
-        
+
     Returns:
         Hasher instance
-        
+
     Raises:
         ValueError: If xxhash not available when requested
     """
@@ -70,21 +71,19 @@ def create_hasher(algorithm: Algorithm = Algorithm.XXHASH64) -> Hasher:
 
 
 def hash_string(
-    text: str,
-    algorithm: Algorithm = Algorithm.XXHASH64,
-    truncate: int | None = None
+    text: str, algorithm: Algorithm = Algorithm.XXHASH64, truncate: int | None = None
 ) -> str:
     """
     Hash string to hex digest.
-    
+
     Args:
         text: String to hash
         algorithm: Hash algorithm (default: xxhash64 for speed)
         truncate: Optional length to truncate digest (e.g., 16 for cache keys)
-        
+
     Returns:
         Hex digest string
-        
+
     Examples:
         >>> hash_string("test")  # Fast cache key
         'a4f6c9...'
@@ -93,31 +92,29 @@ def hash_string(
     """
     hasher = create_hasher(algorithm)
     digest = hasher.digest(text.encode("utf-8"))
-    
+
     if truncate:
         return digest[:truncate]
     return digest
 
 
 def hash_bytes(
-    data: bytes,
-    algorithm: Algorithm = Algorithm.XXHASH64,
-    truncate: int | None = None
+    data: bytes, algorithm: Algorithm = Algorithm.XXHASH64, truncate: int | None = None
 ) -> str:
     """
     Hash bytes to hex digest.
-    
+
     Args:
         data: Bytes to hash
         algorithm: Hash algorithm
         truncate: Optional length to truncate digest
-        
+
     Returns:
         Hex digest string
     """
     hasher = create_hasher(algorithm)
     digest = hasher.digest(data)
-    
+
     if truncate:
         return digest[:truncate]
     return digest
@@ -126,14 +123,14 @@ def hash_bytes(
 def hash_fields(*fields: str, algorithm: Algorithm = Algorithm.XXHASH64) -> str:
     """
     Hash multiple fields together (deterministic).
-    
+
     Args:
         *fields: Fields to combine and hash
         algorithm: Hash algorithm
-        
+
     Returns:
         Hex digest of combined fields
-        
+
     Examples:
         >>> hash_fields("app", "user-123", "v1.0")
         'b4f3c2...'
@@ -150,4 +147,3 @@ __all__ = [
     "hash_bytes",
     "hash_fields",
 ]
-

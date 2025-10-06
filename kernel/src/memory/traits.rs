@@ -4,7 +4,7 @@
  */
 
 use super::types::*;
-use crate::core::types::{Pid, Address, Size};
+use crate::core::types::{Address, Pid, Size};
 
 /// Memory allocator interface
 pub trait Allocator: Send + Sync {

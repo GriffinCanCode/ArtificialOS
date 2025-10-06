@@ -1,8 +1,8 @@
 /*!
 
- * IPC Syscalls
- * Inter-process communication (pipes and shared memory)
- */
+* IPC Syscalls
+* Inter-process communication (pipes and shared memory)
+*/
 
 use crate::core::types::Pid;
 
@@ -98,7 +98,12 @@ impl SyscallExecutor {
 
         match pipe_manager.read(pipe_id, pid, size) {
             Ok(data) => {
-                info!("PID {} read {} bytes from pipe {}", pid, data.len(), pipe_id);
+                info!(
+                    "PID {} read {} bytes from pipe {}",
+                    pid,
+                    data.len(),
+                    pipe_id
+                );
                 SyscallResult::success_with_data(data)
             }
             Err(e) => {
@@ -184,7 +189,10 @@ impl SyscallExecutor {
 
         match shm_manager.create(size, pid) {
             Ok(segment_id) => {
-                info!("PID {} created shared memory segment {} ({} bytes)", pid, segment_id, size);
+                info!(
+                    "PID {} created shared memory segment {} ({} bytes)",
+                    pid, segment_id, size
+                );
                 match serde_json::to_vec(&segment_id) {
                     Ok(data) => SyscallResult::success_with_data(data),
                     Err(e) => {
@@ -215,7 +223,10 @@ impl SyscallExecutor {
 
         match shm_manager.attach(segment_id, pid, read_only) {
             Ok(_) => {
-                info!("PID {} attached to segment {} (read_only: {})", pid, segment_id, read_only);
+                info!(
+                    "PID {} attached to segment {} (read_only: {})",
+                    pid, segment_id, read_only
+                );
                 SyscallResult::success()
             }
             Err(e) => {
@@ -243,7 +254,13 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn write_shm(&self, pid: Pid, segment_id: u32, offset: usize, data: &[u8]) -> SyscallResult {
+    pub(super) fn write_shm(
+        &self,
+        pid: Pid,
+        segment_id: u32,
+        offset: usize,
+        data: &[u8],
+    ) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::SendMessage)
@@ -258,7 +275,13 @@ impl SyscallExecutor {
 
         match shm_manager.write(segment_id, pid, offset, data) {
             Ok(_) => {
-                info!("PID {} wrote {} bytes to segment {} at offset {}", pid, data.len(), segment_id, offset);
+                info!(
+                    "PID {} wrote {} bytes to segment {} at offset {}",
+                    pid,
+                    data.len(),
+                    segment_id,
+                    offset
+                );
                 SyscallResult::success()
             }
             Err(e) => {
@@ -268,7 +291,13 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn read_shm(&self, pid: Pid, segment_id: u32, offset: usize, size: usize) -> SyscallResult {
+    pub(super) fn read_shm(
+        &self,
+        pid: Pid,
+        segment_id: u32,
+        offset: usize,
+        size: usize,
+    ) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::ReceiveMessage)
@@ -283,7 +312,13 @@ impl SyscallExecutor {
 
         match shm_manager.read(segment_id, pid, offset, size) {
             Ok(data) => {
-                info!("PID {} read {} bytes from segment {} at offset {}", pid, data.len(), segment_id, offset);
+                info!(
+                    "PID {} read {} bytes from segment {} at offset {}",
+                    pid,
+                    data.len(),
+                    segment_id,
+                    offset
+                );
                 SyscallResult::success_with_data(data)
             }
             Err(e) => {

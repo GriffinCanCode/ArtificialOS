@@ -19,10 +19,7 @@ class UICache:
             max_size: Maximum cached specs
             ttl_seconds: Time-to-live in seconds
         """
-        self._cache: LRUCache[Blueprint] = LRUCache(
-            max_size=max_size,
-            ttl_seconds=ttl_seconds
-        )
+        self._cache: LRUCache[Blueprint] = LRUCache(max_size=max_size, ttl_seconds=ttl_seconds)
 
     def get(self, key: str) -> Blueprint | None:
         """Get cached UI spec if valid."""

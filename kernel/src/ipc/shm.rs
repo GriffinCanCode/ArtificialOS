@@ -253,12 +253,7 @@ impl ShmManager {
         Ok(segment_id)
     }
 
-    pub fn attach(
-        &self,
-        segment_id: ShmId,
-        pid: Pid,
-        read_only: bool,
-    ) -> Result<(), ShmError> {
+    pub fn attach(&self, segment_id: ShmId, pid: Pid, read_only: bool) -> Result<(), ShmError> {
         let mut segments = self.segments.write();
         let segment = segments
             .get_mut(&segment_id)
@@ -437,21 +432,30 @@ impl ShmManager {
                 if segment.owner_pid == pid {
                     drop(segments);
                     if let Err(e) = self.destroy(segment_id, pid) {
-                        warn!("Failed to destroy segment {} during cleanup: {}", segment_id, e);
+                        warn!(
+                            "Failed to destroy segment {} during cleanup: {}",
+                            segment_id, e
+                        );
                     } else {
                         count += 1;
                     }
                 } else {
                     drop(segments);
                     if let Err(e) = self.detach(segment_id, pid) {
-                        warn!("Failed to detach from segment {} during cleanup: {}", segment_id, e);
+                        warn!(
+                            "Failed to detach from segment {} during cleanup: {}",
+                            segment_id, e
+                        );
                     }
                 }
             }
         }
 
         if count > 0 {
-            info!("Cleaned up {} shared memory segments for PID {}", count, pid);
+            info!(
+                "Cleaned up {} shared memory segments for PID {}",
+                count, pid
+            );
         }
 
         count

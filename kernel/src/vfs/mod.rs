@@ -14,6 +14,4 @@ pub use local::LocalFS;
 pub use memory::MemFS;
 pub use mount::{MountManager, MountPoint};
 pub use traits::{FileSystem, OpenFile};
-pub use types::{
-    Entry, FileType, Metadata, OpenFlags, OpenMode, Permissions, VfsError, VfsResult,
-};
+pub use types::{Entry, FileType, Metadata, OpenFlags, OpenMode, Permissions, VfsError, VfsResult};

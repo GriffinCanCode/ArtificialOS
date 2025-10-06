@@ -1,8 +1,8 @@
 /*!
 
- * VFS Adapter for Syscalls
- * Routes filesystem syscalls through VFS when available
- */
+* VFS Adapter for Syscalls
+* Routes filesystem syscalls through VFS when available
+*/
 
 use crate::core::types::Pid;
 
@@ -43,11 +43,19 @@ impl SyscallExecutor {
         if let Some(ref vfs) = self.vfs {
             match vfs.read(path) {
                 Ok(data) => {
-                    info!("PID {} read file via VFS: {:?} ({} bytes)", pid, path, data.len());
+                    info!(
+                        "PID {} read file via VFS: {:?} ({} bytes)",
+                        pid,
+                        path,
+                        data.len()
+                    );
                     return SyscallResult::success_with_data(data);
                 }
                 Err(e) => {
-                    warn!("VFS read failed for {:?}: {}, falling back to std::fs", path, e);
+                    warn!(
+                        "VFS read failed for {:?}: {}, falling back to std::fs",
+                        path, e
+                    );
                 }
             }
         }
@@ -94,11 +102,19 @@ impl SyscallExecutor {
         if let Some(ref vfs) = self.vfs {
             match vfs.write(path, data) {
                 Ok(()) => {
-                    info!("PID {} wrote file via VFS: {:?} ({} bytes)", pid, path, data.len());
+                    info!(
+                        "PID {} wrote file via VFS: {:?} ({} bytes)",
+                        pid,
+                        path,
+                        data.len()
+                    );
                     return SyscallResult::success();
                 }
                 Err(e) => {
-                    warn!("VFS write failed for {:?}: {}, falling back to std::fs", path, e);
+                    warn!(
+                        "VFS write failed for {:?}: {}, falling back to std::fs",
+                        path, e
+                    );
                 }
             }
         }
@@ -122,7 +138,10 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied("Missing DeleteFile capability");
         }
 
-        if !self.sandbox_manager.check_path_access(pid, &path.to_path_buf()) {
+        if !self
+            .sandbox_manager
+            .check_path_access(pid, &path.to_path_buf())
+        {
             return SyscallResult::permission_denied(format!("Path not accessible: {:?}", path));
         }
 
@@ -134,7 +153,10 @@ impl SyscallExecutor {
                     return SyscallResult::success();
                 }
                 Err(e) => {
-                    warn!("VFS delete failed for {:?}: {}, falling back to std::fs", path, e);
+                    warn!(
+                        "VFS delete failed for {:?}: {}, falling back to std::fs",
+                        path, e
+                    );
                 }
             }
         }
@@ -158,7 +180,10 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied("Missing ReadFile capability");
         }
 
-        if !self.sandbox_manager.check_path_access(pid, &path.to_path_buf()) {
+        if !self
+            .sandbox_manager
+            .check_path_access(pid, &path.to_path_buf())
+        {
             return SyscallResult::permission_denied(format!("Path not accessible: {:?}", path));
         }
 
@@ -182,7 +207,10 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied("Missing CreateFile capability");
         }
 
-        if !self.sandbox_manager.check_path_access(pid, &path.to_path_buf()) {
+        if !self
+            .sandbox_manager
+            .check_path_access(pid, &path.to_path_buf())
+        {
             return SyscallResult::permission_denied(format!("Path not accessible: {:?}", path));
         }
 
@@ -194,7 +222,10 @@ impl SyscallExecutor {
                     return SyscallResult::success();
                 }
                 Err(e) => {
-                    warn!("VFS create_dir failed for {:?}: {}, falling back to std::fs", path, e);
+                    warn!(
+                        "VFS create_dir failed for {:?}: {}, falling back to std::fs",
+                        path, e
+                    );
                 }
             }
         }
@@ -218,7 +249,10 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied("Missing DeleteFile capability");
         }
 
-        if !self.sandbox_manager.check_path_access(pid, &path.to_path_buf()) {
+        if !self
+            .sandbox_manager
+            .check_path_access(pid, &path.to_path_buf())
+        {
             return SyscallResult::permission_denied(format!("Path not accessible: {:?}", path));
         }
 
@@ -230,7 +264,10 @@ impl SyscallExecutor {
                     return SyscallResult::success();
                 }
                 Err(e) => {
-                    warn!("VFS remove_dir failed for {:?}: {}, falling back to std::fs", path, e);
+                    warn!(
+                        "VFS remove_dir failed for {:?}: {}, falling back to std::fs",
+                        path, e
+                    );
                 }
             }
         }
@@ -254,7 +291,10 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied("Missing ListDirectory capability");
         }
 
-        if !self.sandbox_manager.check_path_access(pid, &path.to_path_buf()) {
+        if !self
+            .sandbox_manager
+            .check_path_access(pid, &path.to_path_buf())
+        {
             return SyscallResult::permission_denied(format!("Path not accessible: {:?}", path));
         }
 
@@ -263,7 +303,12 @@ impl SyscallExecutor {
             match vfs.list_dir(path) {
                 Ok(entries) => {
                     let files: Vec<String> = entries.into_iter().map(|e| e.name).collect();
-                    info!("PID {} listed directory via VFS: {:?} ({} entries)", pid, path, files.len());
+                    info!(
+                        "PID {} listed directory via VFS: {:?} ({} entries)",
+                        pid,
+                        path,
+                        files.len()
+                    );
 
                     match serde_json::to_vec(&files) {
                         Ok(json) => return SyscallResult::success_with_data(json),
@@ -276,7 +321,10 @@ impl SyscallExecutor {
                     }
                 }
                 Err(e) => {
-                    warn!("VFS list_dir failed for {:?}: {}, falling back to std::fs", path, e);
+                    warn!(
+                        "VFS list_dir failed for {:?}: {}, falling back to std::fs",
+                        path, e
+                    );
                 }
             }
         }
@@ -289,7 +337,12 @@ impl SyscallExecutor {
                     .filter_map(|e| e.file_name().into_string().ok())
                     .collect();
 
-                info!("PID {} listed directory: {:?} ({} entries)", pid, path, files.len());
+                info!(
+                    "PID {} listed directory: {:?} ({} entries)",
+                    pid,
+                    path,
+                    files.len()
+                );
                 match serde_json::to_vec(&files) {
                     Ok(json) => SyscallResult::success_with_data(json),
                     Err(e) => SyscallResult::error(format!(

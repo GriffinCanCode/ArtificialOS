@@ -96,7 +96,10 @@ impl LimitManager {
         // Create cgroup directory
         if !cgroup_dir.exists() {
             if let Err(e) = fs::create_dir_all(&cgroup_dir) {
-                log::warn!("Failed to create cgroup directory: {}. Skipping resource limits.", e);
+                log::warn!(
+                    "Failed to create cgroup directory: {}. Skipping resource limits.",
+                    e
+                );
                 return Ok(()); // Don't fail, just skip
             }
         }

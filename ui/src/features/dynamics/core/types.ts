@@ -39,13 +39,7 @@ export interface ComponentRenderer {
 /**
  * Component categories for organization
  */
-export type ComponentCategory =
-  | "primitive"
-  | "layout"
-  | "form"
-  | "media"
-  | "ui"
-  | "special";
+export type ComponentCategory = "primitive" | "layout" | "form" | "media" | "ui" | "special";
 
 // ============================================================================
 // Event Handler Types

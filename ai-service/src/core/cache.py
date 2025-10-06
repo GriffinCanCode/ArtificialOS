@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 
 from .hash import hash_string, Algorithm
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 @dataclass
@@ -33,12 +33,12 @@ class Stats:
     def to_dict(self) -> dict[str, Any]:
         """Export as dictionary."""
         return {
-            'size': self.size,
-            'max_size': self.max_size,
-            'hits': self.hits,
-            'misses': self.misses,
-            'evictions': self.evictions,
-            'hit_rate': self.hit_rate,
+            "size": self.size,
+            "max_size": self.max_size,
+            "hits": self.hits,
+            "misses": self.misses,
+            "evictions": self.evictions,
+            "hit_rate": self.hit_rate,
         }
 
 
@@ -66,7 +66,7 @@ class LRUCache(Generic[T]):
         self,
         max_size: int = 100,
         ttl_seconds: int | None = None,
-        hash_algorithm: Algorithm = Algorithm.XXHASH64
+        hash_algorithm: Algorithm = Algorithm.XXHASH64,
     ):
         """
         Initialize LRU cache.
@@ -189,4 +189,3 @@ class LRUCache(Generic[T]):
 
 
 __all__ = ["LRUCache", "Stats"]
-

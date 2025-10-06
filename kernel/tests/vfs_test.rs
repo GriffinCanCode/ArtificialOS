@@ -79,12 +79,14 @@ fn test_memfs_copy_and_rename() {
     fs.write(Path::new("/source.txt"), b"data").unwrap();
 
     // Copy
-    fs.copy(Path::new("/source.txt"), Path::new("/dest.txt")).unwrap();
+    fs.copy(Path::new("/source.txt"), Path::new("/dest.txt"))
+        .unwrap();
     assert_eq!(fs.read(Path::new("/source.txt")).unwrap(), b"data");
     assert_eq!(fs.read(Path::new("/dest.txt")).unwrap(), b"data");
 
     // Rename
-    fs.rename(Path::new("/dest.txt"), Path::new("/renamed.txt")).unwrap();
+    fs.rename(Path::new("/dest.txt"), Path::new("/renamed.txt"))
+        .unwrap();
     assert!(!fs.exists(Path::new("/dest.txt")));
     assert!(fs.exists(Path::new("/renamed.txt")));
 }
@@ -129,7 +131,9 @@ fn test_localfs_readonly() {
     assert_eq!(data, b"data");
 
     // Write should fail
-    assert!(fs_readonly.write(Path::new("test2.txt"), b"more data").is_err());
+    assert!(fs_readonly
+        .write(Path::new("test2.txt"), b"more data")
+        .is_err());
 }
 
 #[test]
@@ -186,11 +190,15 @@ fn test_mount_manager_nested_mounts() {
     mgr.mount("/special", special_fs).unwrap();
 
     // Write to nested mount
-    mgr.write(Path::new("/special/file.txt"), b"special").unwrap();
+    mgr.write(Path::new("/special/file.txt"), b"special")
+        .unwrap();
     mgr.write(Path::new("/normal.txt"), b"normal").unwrap();
 
     // Verify correct filesystem resolution
-    assert_eq!(mgr.read(Path::new("/special/file.txt")).unwrap(), b"special");
+    assert_eq!(
+        mgr.read(Path::new("/special/file.txt")).unwrap(),
+        b"special"
+    );
     assert_eq!(mgr.read(Path::new("/normal.txt")).unwrap(), b"normal");
 
     // Special file should not exist in root fs
@@ -212,7 +220,8 @@ fn test_mount_manager_cross_filesystem_copy() {
     mgr.write(Path::new("/src/file.txt"), b"content").unwrap();
 
     // Copy across filesystems
-    mgr.copy(Path::new("/src/file.txt"), Path::new("/dst/file.txt")).unwrap();
+    mgr.copy(Path::new("/src/file.txt"), Path::new("/dst/file.txt"))
+        .unwrap();
 
     // Verify both exist
     assert_eq!(mgr.read(Path::new("/src/file.txt")).unwrap(), b"content");
@@ -233,7 +242,8 @@ fn test_mount_manager_cross_filesystem_rename() {
     mgr.write(Path::new("/src/file.txt"), b"content").unwrap();
 
     // Rename across filesystems (should copy + delete)
-    mgr.rename(Path::new("/src/file.txt"), Path::new("/dst/file.txt")).unwrap();
+    mgr.rename(Path::new("/src/file.txt"), Path::new("/dst/file.txt"))
+        .unwrap();
 
     // Source should not exist
     assert!(!mgr.exists(Path::new("/src/file.txt")));
@@ -325,22 +335,38 @@ fn test_integration_local_and_memory() {
     let mgr = MountManager::new();
 
     // Mount local and memory filesystems
-    mgr.mount("/local", Arc::new(LocalFS::new(temp.path()))).unwrap();
+    mgr.mount("/local", Arc::new(LocalFS::new(temp.path())))
+        .unwrap();
     mgr.mount("/memory", Arc::new(MemFS::new())).unwrap();
 
     // Write to both
-    mgr.write(Path::new("/local/file.txt"), b"local data").unwrap();
-    mgr.write(Path::new("/memory/file.txt"), b"memory data").unwrap();
+    mgr.write(Path::new("/local/file.txt"), b"local data")
+        .unwrap();
+    mgr.write(Path::new("/memory/file.txt"), b"memory data")
+        .unwrap();
 
     // Verify isolation
-    assert_eq!(mgr.read(Path::new("/local/file.txt")).unwrap(), b"local data");
-    assert_eq!(mgr.read(Path::new("/memory/file.txt")).unwrap(), b"memory data");
+    assert_eq!(
+        mgr.read(Path::new("/local/file.txt")).unwrap(),
+        b"local data"
+    );
+    assert_eq!(
+        mgr.read(Path::new("/memory/file.txt")).unwrap(),
+        b"memory data"
+    );
 
     // Copy from memory to local
-    mgr.copy(Path::new("/memory/file.txt"), Path::new("/local/copied.txt")).unwrap();
+    mgr.copy(
+        Path::new("/memory/file.txt"),
+        Path::new("/local/copied.txt"),
+    )
+    .unwrap();
 
     // Verify copied file exists on disk
-    assert_eq!(mgr.read(Path::new("/local/copied.txt")).unwrap(), b"memory data");
+    assert_eq!(
+        mgr.read(Path::new("/local/copied.txt")).unwrap(),
+        b"memory data"
+    );
 }
 
 #[test]

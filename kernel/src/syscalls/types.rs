@@ -277,13 +277,13 @@ pub enum Syscall {
 
     // Network operations - Sockets
     Socket {
-        domain: u32,  // AF_INET, AF_INET6, etc.
-        socket_type: u32,  // SOCK_STREAM, SOCK_DGRAM, etc.
-        protocol: u32,  // IPPROTO_TCP, IPPROTO_UDP, etc.
+        domain: u32,      // AF_INET, AF_INET6, etc.
+        socket_type: u32, // SOCK_STREAM, SOCK_DGRAM, etc.
+        protocol: u32,    // IPPROTO_TCP, IPPROTO_UDP, etc.
     },
     Bind {
         sockfd: SockFd,
-        address: String,  // IP:port format
+        address: String, // IP:port format
     },
     Listen {
         sockfd: SockFd,
@@ -294,7 +294,7 @@ pub enum Syscall {
     },
     Connect {
         sockfd: SockFd,
-        address: String,  // IP:port format
+        address: String, // IP:port format
     },
     Send {
         sockfd: SockFd,
@@ -335,8 +335,8 @@ pub enum Syscall {
     // File Descriptor operations
     Open {
         path: PathBuf,
-        flags: u32,  // O_RDONLY, O_WRONLY, O_RDWR, O_CREAT, O_APPEND, etc.
-        mode: u32,   // File permissions (0644, etc.)
+        flags: u32, // O_RDONLY, O_WRONLY, O_RDWR, O_CREAT, O_APPEND, etc.
+        mode: u32,  // File permissions (0644, etc.)
     },
     Close {
         fd: Fd,
@@ -351,7 +351,7 @@ pub enum Syscall {
     Lseek {
         fd: Fd,
         offset: i64,
-        whence: u32,  // SEEK_SET, SEEK_CUR, SEEK_END
+        whence: u32, // SEEK_SET, SEEK_CUR, SEEK_END
     },
     Fcntl {
         fd: Fd,
@@ -374,4 +374,3 @@ pub struct SystemInfo {
     pub arch: String,
     pub family: String,
 }
-

@@ -8,7 +8,7 @@ from .validate import (
     BlueprintValidator,
     validate_json_size,
     validate_json_depth,
-    validate_ui_spec
+    validate_ui_spec,
 )
 from .logging_config import configure_logging, get_logger, LogContext
 from .stream import TokenBatcher, StreamCounter, batch_tokens, batch_tokens_sync
@@ -17,7 +17,7 @@ from .json import (
     safe_json_dumps,
     JSONParseError,
     validate_json_size,
-    validate_json_depth
+    validate_json_depth,
 )
 from .hash import Algorithm, hash_string, hash_bytes, hash_fields
 from .cache import LRUCache, Stats
@@ -26,7 +26,9 @@ from .cache import LRUCache, Stats
 def create_container(backend_url: str = "http://localhost:8000"):
     """Create dependency injection container (lazy import to avoid circular deps)."""
     from .container import create_container as _create_container
+
     return _create_container(backend_url)
+
 
 __all__ = [
     # Config
@@ -66,4 +68,3 @@ __all__ = [
     "LRUCache",
     "Stats",
 ]
-

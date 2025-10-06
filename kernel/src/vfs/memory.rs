@@ -165,7 +165,10 @@ impl MemFS {
             let nodes = self.nodes.read();
             if !nodes.contains_key(&parent) {
                 drop(nodes);
-                return Err(VfsError::NotFound(format!("parent directory not found: {}", parent.display())));
+                return Err(VfsError::NotFound(format!(
+                    "parent directory not found: {}",
+                    parent.display()
+                )));
             }
 
             let node = nodes.get(&parent).unwrap();
@@ -177,7 +180,12 @@ impl MemFS {
     }
 
     /// Add child to parent directory
-    fn add_child(&self, parent_path: &Path, child_name: &str, child_path: &PathBuf) -> VfsResult<()> {
+    fn add_child(
+        &self,
+        parent_path: &Path,
+        child_name: &str,
+        child_path: &PathBuf,
+    ) -> VfsResult<()> {
         let mut nodes = self.nodes.write();
 
         if let Some(Node::Directory { children, .. }) = nodes.get_mut(parent_path) {
@@ -266,7 +274,11 @@ impl FileSystem for MemFS {
         let mut nodes = self.nodes.write();
 
         match nodes.get_mut(&path) {
-            Some(Node::File { data: file_data, modified, .. }) => {
+            Some(Node::File {
+                data: file_data,
+                modified,
+                ..
+            }) => {
                 file_data.extend_from_slice(data);
                 *modified = SystemTime::now();
                 drop(nodes);
@@ -469,7 +481,8 @@ impl FileSystem for MemFS {
         let to = self.normalize(to);
 
         let mut nodes = self.nodes.write();
-        let node = nodes.remove(&from)
+        let node = nodes
+            .remove(&from)
             .ok_or_else(|| VfsError::NotFound(from.display().to_string()))?;
 
         // Update parent directories
@@ -493,11 +506,15 @@ impl FileSystem for MemFS {
     }
 
     fn symlink(&self, _src: &Path, _dst: &Path) -> VfsResult<()> {
-        Err(VfsError::NotSupported("symlinks not supported in MemFS".to_string()))
+        Err(VfsError::NotSupported(
+            "symlinks not supported in MemFS".to_string(),
+        ))
     }
 
     fn read_link(&self, _path: &Path) -> VfsResult<PathBuf> {
-        Err(VfsError::NotSupported("symlinks not supported in MemFS".to_string()))
+        Err(VfsError::NotSupported(
+            "symlinks not supported in MemFS".to_string(),
+        ))
     }
 
     fn truncate(&self, path: &Path, size: u64) -> VfsResult<()> {
@@ -507,9 +524,11 @@ impl FileSystem for MemFS {
         {
             let nodes = self.nodes.read();
             match nodes.get(&path) {
-                Some(Node::Directory { .. }) => return Err(VfsError::IsADirectory(path.display().to_string())),
+                Some(Node::Directory { .. }) => {
+                    return Err(VfsError::IsADirectory(path.display().to_string()))
+                }
                 None => return Err(VfsError::NotFound(path.display().to_string())),
-                Some(Node::File { .. }) => {}, // Continue
+                Some(Node::File { .. }) => {} // Continue
             }
         }
 
@@ -698,7 +717,8 @@ mod tests {
         assert!(fs.exists(Path::new("/testdir/nested")));
 
         // List
-        fs.write(Path::new("/testdir/file.txt"), b"content").unwrap();
+        fs.write(Path::new("/testdir/file.txt"), b"content")
+            .unwrap();
         let entries = fs.list_dir(Path::new("/testdir")).unwrap();
         assert_eq!(entries.len(), 2);
     }

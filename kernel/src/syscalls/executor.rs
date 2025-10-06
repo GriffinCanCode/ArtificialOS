@@ -193,10 +193,7 @@ impl SyscallExecutor {
             Syscall::TriggerGC { target_pid } => self.trigger_gc(pid, target_pid),
 
             // Signal operations
-            Syscall::SendSignal {
-                target_pid,
-                signal,
-            } => self.send_signal(pid, target_pid, signal),
+            Syscall::SendSignal { target_pid, signal } => self.send_signal(pid, target_pid, signal),
 
             // Network operations
             Syscall::Socket {
@@ -204,23 +201,37 @@ impl SyscallExecutor {
                 socket_type,
                 protocol,
             } => self.socket(pid, domain, socket_type, protocol),
-            Syscall::Bind { sockfd, ref address } => self.bind(pid, sockfd, address),
+            Syscall::Bind {
+                sockfd,
+                ref address,
+            } => self.bind(pid, sockfd, address),
             Syscall::Listen { sockfd, backlog } => self.listen(pid, sockfd, backlog),
             Syscall::Accept { sockfd } => self.accept(pid, sockfd),
-            Syscall::Connect { sockfd, ref address } => self.connect(pid, sockfd, address),
+            Syscall::Connect {
+                sockfd,
+                ref address,
+            } => self.connect(pid, sockfd, address),
             Syscall::Send {
                 sockfd,
                 ref data,
                 flags,
             } => self.send(pid, sockfd, data, flags),
-            Syscall::Recv { sockfd, size, flags } => self.recv(pid, sockfd, size, flags),
+            Syscall::Recv {
+                sockfd,
+                size,
+                flags,
+            } => self.recv(pid, sockfd, size, flags),
             Syscall::SendTo {
                 sockfd,
                 ref data,
                 ref address,
                 flags,
             } => self.sendto(pid, sockfd, data, address, flags),
-            Syscall::RecvFrom { sockfd, size, flags } => self.recvfrom(pid, sockfd, size, flags),
+            Syscall::RecvFrom {
+                sockfd,
+                size,
+                flags,
+            } => self.recvfrom(pid, sockfd, size, flags),
             Syscall::CloseSocket { sockfd } => self.close_socket(pid, sockfd),
             Syscall::SetSockOpt {
                 sockfd,
@@ -243,11 +254,7 @@ impl SyscallExecutor {
             Syscall::Close { fd } => self.close_fd(pid, fd),
             Syscall::Dup { fd } => self.dup(pid, fd),
             Syscall::Dup2 { oldfd, newfd } => self.dup2(pid, oldfd, newfd),
-            Syscall::Lseek {
-                fd,
-                offset,
-                whence,
-            } => self.lseek(pid, fd, offset, whence),
+            Syscall::Lseek { fd, offset, whence } => self.lseek(pid, fd, offset, whence),
             Syscall::Fcntl { fd, cmd, arg } => self.fcntl(pid, fd, cmd, arg),
         }
     }

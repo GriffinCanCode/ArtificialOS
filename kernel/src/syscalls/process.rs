@@ -1,8 +1,8 @@
 /*!
 
- * Process Syscalls
- * Process management and control
- */
+* Process Syscalls
+* Process management and control
+*/
 
 use crate::core::types::{Pid, Priority};
 use log::{error, info, warn};
@@ -147,7 +147,12 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn set_process_priority(&self, pid: Pid, target_pid: Pid, priority: Priority) -> SyscallResult {
+    pub(super) fn set_process_priority(
+        &self,
+        pid: Pid,
+        target_pid: Pid,
+        priority: Priority,
+    ) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::SpawnProcess)
@@ -165,11 +170,14 @@ impl SyscallExecutor {
             Some(_) => {
                 // Priority is part of Process struct, scheduler tracks it
                 // In full implementation would update the process struct
-                info!("PID {} set priority of PID {} to {}", pid, target_pid, priority);
+                info!(
+                    "PID {} set priority of PID {} to {}",
+                    pid, target_pid, priority
+                );
                 warn!("SetProcessPriority not fully implemented - requires mutable process access");
                 SyscallResult::success()
             }
-            None => SyscallResult::error(format!("Process {} not found", target_pid))
+            None => SyscallResult::error(format!("Process {} not found", target_pid)),
         }
     }
 
@@ -229,7 +237,12 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn wait_process(&self, pid: Pid, target_pid: Pid, _timeout_ms: Option<u64>) -> SyscallResult {
+    pub(super) fn wait_process(
+        &self,
+        pid: Pid,
+        target_pid: Pid,
+        _timeout_ms: Option<u64>,
+    ) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::SpawnProcess)

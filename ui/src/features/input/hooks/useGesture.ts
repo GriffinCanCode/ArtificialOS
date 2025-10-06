@@ -16,10 +16,7 @@ import {
 /**
  * Hook for swipe gestures
  */
-export function useSwipe(
-  onSwipe: (direction: SwipeDirection) => void,
-  threshold: number = 0.5
-) {
+export function useSwipe(onSwipe: (direction: SwipeDirection) => void, threshold: number = 0.5) {
   return useDrag(
     ({ velocity: [vx, vy], last }) => {
       if (last && isSwipeGesture(vx, vy, threshold)) {
@@ -37,7 +34,10 @@ export function useSwipe(
 /**
  * Hook for tap gestures
  */
-export function useTap(onTap: () => void, threshold: { distance?: number; duration?: number } = {}) {
+export function useTap(
+  onTap: () => void,
+  threshold: { distance?: number; duration?: number } = {}
+) {
   const startTime = { current: 0 };
 
   return useDrag(
@@ -49,14 +49,7 @@ export function useTap(onTap: () => void, threshold: { distance?: number; durati
         const [dx, dy] = distance;
         const distanceValue = Math.sqrt(dx * dx + dy * dy);
 
-        if (
-          isTapGesture(
-            distanceValue,
-            elapsedTime,
-            threshold.distance,
-            threshold.duration
-          )
-        ) {
+        if (isTapGesture(distanceValue, elapsedTime, threshold.distance, threshold.duration)) {
           onTap();
         }
       }
@@ -86,9 +79,7 @@ export function useLongPress(onLongPress: () => void, threshold: number = 500) {
 /**
  * Hook for pinch gestures
  */
-export function usePinchGesture(
-  onPinch: (scale: number, origin: [number, number]) => void
-) {
+export function usePinchGesture(onPinch: (scale: number, origin: [number, number]) => void) {
   return usePinch(({ offset, origin }) => {
     const scale = Array.isArray(offset) ? offset[0] : offset;
     onPinch(scale, origin);

@@ -264,7 +264,7 @@ impl Default for Limits {
     fn default() -> Self {
         Self {
             memory_bytes: Some(512 * 1024 * 1024), // 512 MB
-            cpu_shares: Some(100),                  // Standard priority
+            cpu_shares: Some(100),                 // Standard priority
             max_pids: Some(10),
             max_open_files: Some(1024),
         }

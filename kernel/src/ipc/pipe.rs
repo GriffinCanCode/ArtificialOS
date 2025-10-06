@@ -55,21 +55,20 @@ impl From<PipeError> for IpcError {
             PipeError::PermissionDenied(msg) => IpcError::PermissionDenied(msg),
             PipeError::Closed => IpcError::Closed("Pipe closed".to_string()),
             PipeError::WouldBlock(msg) => IpcError::WouldBlock(msg),
-            PipeError::CapacityExceeded { requested, capacity } => {
-                IpcError::LimitExceeded(format!(
-                    "Capacity exceeded: requested {}, capacity {}",
-                    requested, capacity
-                ))
-            }
+            PipeError::CapacityExceeded {
+                requested,
+                capacity,
+            } => IpcError::LimitExceeded(format!(
+                "Capacity exceeded: requested {}, capacity {}",
+                requested, capacity
+            )),
             PipeError::ProcessLimitExceeded(current, max) => {
                 IpcError::LimitExceeded(format!("Process pipe limit exceeded: {}/{}", current, max))
             }
-            PipeError::GlobalMemoryExceeded(current, max) => {
-                IpcError::LimitExceeded(format!(
-                    "Global pipe memory limit exceeded: {}/{} bytes",
-                    current, max
-                ))
-            }
+            PipeError::GlobalMemoryExceeded(current, max) => IpcError::LimitExceeded(format!(
+                "Global pipe memory limit exceeded: {}/{} bytes",
+                current, max
+            )),
         }
     }
 }
@@ -172,7 +171,9 @@ impl PipeManager {
         writer_pid: Pid,
         capacity: Option<Size>,
     ) -> Result<PipeId, PipeError> {
-        let capacity = capacity.unwrap_or(DEFAULT_PIPE_CAPACITY).min(MAX_PIPE_CAPACITY);
+        let capacity = capacity
+            .unwrap_or(DEFAULT_PIPE_CAPACITY)
+            .min(MAX_PIPE_CAPACITY);
 
         // Check per-process limits
         let process_pipes = self.process_pipes.read();
@@ -231,9 +232,7 @@ impl PipeManager {
             .ok_or(PipeError::NotFound(pipe_id))?;
 
         if pipe.writer_pid != pid {
-            return Err(PipeError::PermissionDenied(
-                "Not the write end".to_string(),
-            ));
+            return Err(PipeError::PermissionDenied("Not the write end".to_string()));
         }
 
         let written = pipe.write(data)?;
@@ -255,9 +254,7 @@ impl PipeManager {
             .ok_or(PipeError::NotFound(pipe_id))?;
 
         if pipe.reader_pid != pid {
-            return Err(PipeError::PermissionDenied(
-                "Not the read end".to_string(),
-            ));
+            return Err(PipeError::PermissionDenied("Not the read end".to_string()));
         }
 
         let data = pipe.read(size)?;

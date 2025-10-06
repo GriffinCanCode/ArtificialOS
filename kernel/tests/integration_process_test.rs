@@ -63,8 +63,7 @@ async fn test_multiple_processes_with_isolation() {
     let mut pids = Vec::new();
     for i in 1..=3 {
         let config = ExecutionConfig::new("sleep".to_string()).with_args(vec!["0.2".to_string()]);
-        let pid =
-            pm.create_process_with_command(format!("app-{}", i), 5, Some(config));
+        let pid = pm.create_process_with_command(format!("app-{}", i), 5, Some(config));
         pids.push(pid);
     }
 
@@ -112,8 +111,7 @@ async fn test_priority_based_resource_limits() {
     let pid_low = pm.create_process_with_command("low-priority".to_string(), 2, Some(config_low));
 
     // High priority process
-    let config_high =
-        ExecutionConfig::new("sleep".to_string()).with_args(vec!["0.1".to_string()]);
+    let config_high = ExecutionConfig::new("sleep".to_string()).with_args(vec!["0.1".to_string()]);
     let pid_high =
         pm.create_process_with_command("high-priority".to_string(), 9, Some(config_high));
 

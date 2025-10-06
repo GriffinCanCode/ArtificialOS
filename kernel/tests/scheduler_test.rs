@@ -53,10 +53,10 @@ fn test_round_robin_order() {
 fn test_priority_scheduling_order() {
     let scheduler = Scheduler::new(Policy::Priority);
 
-    scheduler.add(1, 3);  // Low priority
-    scheduler.add(2, 8);  // High priority
-    scheduler.add(3, 5);  // Medium priority
-    scheduler.add(4, 8);  // High priority (same as pid 2)
+    scheduler.add(1, 3); // Low priority
+    scheduler.add(2, 8); // High priority
+    scheduler.add(3, 5); // Medium priority
+    scheduler.add(4, 8); // High priority (same as pid 2)
 
     // Should schedule highest priority first
     assert_eq!(scheduler.schedule(), Some(2));
@@ -66,8 +66,8 @@ fn test_priority_scheduling_order() {
 fn test_priority_preemption() {
     let scheduler = Scheduler::with_quantum(Policy::Priority, Duration::from_millis(10));
 
-    scheduler.add(1, 5);  // Medium priority
-    scheduler.add(2, 8);  // High priority
+    scheduler.add(1, 5); // Medium priority
+    scheduler.add(2, 8); // High priority
 
     // Schedule first process (highest priority wins)
     assert_eq!(scheduler.schedule(), Some(2));
@@ -89,9 +89,9 @@ fn test_fair_scheduling() {
     let scheduler = Scheduler::new(Policy::Fair);
 
     // Add processes with different priorities
-    scheduler.add(1, 8);  // High priority
-    scheduler.add(2, 3);  // Low priority
-    scheduler.add(3, 5);  // Medium priority
+    scheduler.add(1, 8); // High priority
+    scheduler.add(2, 3); // Low priority
+    scheduler.add(3, 5); // Medium priority
 
     // First schedule should pick based on vruntime (all start at 0)
     let first = scheduler.schedule();
@@ -105,8 +105,8 @@ fn test_fair_scheduling() {
 fn test_fair_scheduling_balance() {
     let scheduler = Scheduler::with_quantum(Policy::Fair, Duration::from_millis(10));
 
-    scheduler.add(1, 8);  // High priority - slower vruntime growth
-    scheduler.add(2, 3);  // Low priority - faster vruntime growth
+    scheduler.add(1, 8); // High priority - slower vruntime growth
+    scheduler.add(2, 3); // Low priority - faster vruntime growth
 
     let mut pid1_count = 0;
     let mut pid2_count = 0;
@@ -513,8 +513,8 @@ fn test_cpu_time_tracking() {
 fn test_vruntime_tracking() {
     let scheduler = Scheduler::with_quantum(Policy::Fair, Duration::from_millis(10));
 
-    scheduler.add(1, 8);  // High priority
-    scheduler.add(2, 3);  // Low priority
+    scheduler.add(1, 8); // High priority
+    scheduler.add(2, 3); // Low priority
 
     // Schedule both processes
     for _ in 0..4 {
@@ -536,11 +536,11 @@ fn test_priority_levels() {
     let scheduler = Scheduler::new(Policy::Priority);
 
     // Add processes with all priority levels
-    scheduler.add(1, 0);   // Lowest
-    scheduler.add(2, 3);   // Low
-    scheduler.add(3, 5);   // Normal
-    scheduler.add(4, 7);   // Normal-high
-    scheduler.add(5, 10);  // Highest
+    scheduler.add(1, 0); // Lowest
+    scheduler.add(2, 3); // Low
+    scheduler.add(3, 5); // Normal
+    scheduler.add(4, 7); // Normal-high
+    scheduler.add(5, 10); // Highest
 
     // Highest priority should be scheduled first
     assert_eq!(scheduler.schedule(), Some(5));

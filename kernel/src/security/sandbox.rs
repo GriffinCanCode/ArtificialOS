@@ -25,9 +25,7 @@ impl SandboxConfig {
             path.canonicalize().unwrap_or_else(|_| path.to_path_buf())
         } else if let Some(parent) = path.parent() {
             // For non-existent paths, canonicalize the parent directory
-            parent
-                .canonicalize()
-                .unwrap_or_else(|_| path.to_path_buf())
+            parent.canonicalize().unwrap_or_else(|_| path.to_path_buf())
         } else {
             path.to_path_buf()
         };
@@ -251,7 +249,7 @@ impl SandboxProvider for SandboxManager {
             total_sandboxes: sandboxes.len(),
             active_processes: sandboxes.len(),
             permission_denials: 0, // Could track this with an atomic counter
-            capability_checks: 0,   // Could track this with an atomic counter
+            capability_checks: 0,  // Could track this with an atomic counter
         }
     }
 }

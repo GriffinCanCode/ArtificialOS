@@ -1,8 +1,8 @@
 /*!
 
- * Signal Syscalls
- * Process signaling operations
- */
+* Signal Syscalls
+* Process signaling operations
+*/
 
 use crate::core::types::Pid;
 

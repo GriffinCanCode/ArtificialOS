@@ -74,7 +74,7 @@ class BlueprintParser:
             "permissions": app.get("permissions", ["STANDARD"]),
             "tags": app.get("tags", []),
             "ui_spec": self._expand_ui(bp.get("ui", {})),
-            "config": bp.get("config", {})  # App-specific configuration
+            "config": bp.get("config", {}),  # App-specific configuration
         }
 
     def _expand_services(self, services: list[Any]) -> list[str | dict[str, Any]]:
@@ -103,21 +103,20 @@ class BlueprintParser:
                         result.append(key)
                     elif isinstance(value, list):
                         # Explicit tool list: {storage: [get, set]}
-                        result.append({
-                            "service": key,
-                            "tools": value
-                        })
+                        result.append({"service": key, "tools": value})
                     elif isinstance(value, dict):
                         # Full config: {storage: {tools: [...], scope: app}}
                         tools = value.get("tools", "*")
                         if tools == "*":
                             result.append(key)
                         else:
-                            result.append({
-                                "service": key,
-                                "tools": tools,
-                                "config": {k: v for k, v in value.items() if k != "tools"}
-                            })
+                            result.append(
+                                {
+                                    "service": key,
+                                    "tools": tools,
+                                    "config": {k: v for k, v in value.items() if k != "tools"},
+                                }
+                            )
                     else:
                         # Fallback - just service name
                         result.append(key)
@@ -127,19 +126,14 @@ class BlueprintParser:
     def _expand_ui(self, ui: dict[str, Any]) -> dict[str, Any]:
         """Expand UI specification with all shortcuts"""
         if not ui:
-            return {
-                "type": "app",
-                "title": "Untitled",
-                "layout": "vertical",
-                "components": []
-            }
+            return {"type": "app", "title": "Untitled", "layout": "vertical", "components": []}
 
         return {
             "type": "app",
             "title": ui.get("title", "Untitled"),
             "layout": ui.get("layout", "vertical"),
             "lifecycle_hooks": self._expand_lifecycle(ui.get("lifecycle", {})),
-            "components": self._expand_components(ui.get("components", []))
+            "components": self._expand_components(ui.get("components", [])),
         }
 
     def _expand_lifecycle(self, lifecycle: dict[str, Any]) -> dict[str, Any]:
@@ -188,11 +182,7 @@ class BlueprintParser:
         if isinstance(comp, str):
             comp_id = f"text-{self._id_counter}"
             self._id_counter += 1
-            return {
-                "type": "text",
-                "id": comp_id,
-                "props": {"content": comp}
-            }
+            return {"type": "text", "id": comp_id, "props": {"content": comp}}
 
         # Component object
         if isinstance(comp, dict):
@@ -227,11 +217,7 @@ class BlueprintParser:
                         explicit_props[k] = v
 
                 # Build explicit component and recursively expand
-                explicit_comp = {
-                    "type": comp_type,
-                    "id": comp_id,
-                    "props": explicit_props
-                }
+                explicit_comp = {"type": comp_type, "id": comp_id, "props": explicit_props}
                 if events:
                     explicit_comp["on_event"] = events
                 if children_data:
@@ -274,11 +260,7 @@ class BlueprintParser:
             children = self._expand_components(children_data)
 
         # Build result
-        result = {
-            "type": comp_type,
-            "id": comp_id,
-            "props": props
-        }
+        result = {"type": comp_type, "id": comp_id, "props": props}
 
         if events:
             result["on_event"] = events
@@ -301,4 +283,3 @@ def parse_blueprint(content: str) -> dict[str, Any]:
     """
     parser = BlueprintParser()
     return parser.parse(content)
-

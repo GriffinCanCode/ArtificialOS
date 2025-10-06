@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 class BlueprintComponent(BaseModel):
     """UI component specification."""
+
     type: str = Field(..., description="Component type")
     id: str | None = Field(default=None, description="Unique identifier")
     props: dict[str, Any] = Field(default_factory=dict)
@@ -15,6 +16,7 @@ class BlueprintComponent(BaseModel):
 
 class Blueprint(BaseModel):
     """Complete UI specification."""
+
     type: str = Field(default="app")
     title: str
     layout: str = Field(default="vertical")
@@ -26,4 +28,3 @@ class Blueprint(BaseModel):
 
 
 BlueprintComponent.model_rebuild()
-

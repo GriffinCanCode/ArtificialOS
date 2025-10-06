@@ -12,13 +12,7 @@ export const Text: React.FC<BaseComponentProps> = ({ component }) => {
 
   // Map variant to HTML tag
   const Tag =
-    textVariant === "h1"
-      ? "h1"
-      : textVariant === "h2"
-        ? "h2"
-        : textVariant === "h3"
-          ? "h3"
-          : "p";
+    textVariant === "h1" ? "h1" : textVariant === "h2" ? "h2" : textVariant === "h3" ? "h3" : "p";
 
   return (
     <Tag

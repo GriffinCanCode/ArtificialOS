@@ -14,11 +14,11 @@ use std::sync::Arc;
 /// Represents an executing OS process
 #[derive(Debug)]
 pub struct ExecutingProcess {
-    pub pid: Pid,           // Internal PID
-    pub os_pid: Pid,        // OS-level PID
+    pub pid: Pid,    // Internal PID
+    pub os_pid: Pid, // OS-level PID
     pub name: String,
     pub command: String,
-    pub child: Child,       // Process handle
+    pub child: Child, // Process handle
 }
 
 /// Manages OS process execution
@@ -35,12 +35,7 @@ impl ProcessExecutor {
     }
 
     /// Spawn a new OS process
-    pub fn spawn(
-        &self,
-        pid: Pid,
-        name: String,
-        config: ExecutionConfig,
-    ) -> ProcessResult<u32> {
+    pub fn spawn(&self, pid: Pid, name: String, config: ExecutionConfig) -> ProcessResult<u32> {
         // Validate command
         self.validate_command(&config.command)?;
 
@@ -198,7 +193,8 @@ impl ProcessExecutor {
                 Ok(Some(status)) => {
                     info!(
                         "Process PID {} exited with status: {:?}",
-                        pid, status.code()
+                        pid,
+                        status.code()
                     );
                     to_remove.push(*pid);
                 }
@@ -262,7 +258,10 @@ mod tests {
 
         let result = executor.spawn(1, "test-evil".to_string(), config);
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), ProcessError::PermissionDenied(_)));
+        assert!(matches!(
+            result.unwrap_err(),
+            ProcessError::PermissionDenied(_)
+        ));
     }
 
     #[test]

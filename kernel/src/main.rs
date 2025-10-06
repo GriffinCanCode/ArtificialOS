@@ -48,8 +48,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let vfs = MountManager::new();
 
     // Mount local filesystem at /storage for persistent data
-    let storage_path = std::env::var("KERNEL_STORAGE_PATH")
-        .unwrap_or_else(|_| "/tmp/ai-os-storage".to_string());
+    let storage_path =
+        std::env::var("KERNEL_STORAGE_PATH").unwrap_or_else(|_| "/tmp/ai-os-storage".to_string());
     info!("Mounting local filesystem at /storage -> {}", storage_path);
     if let Err(e) = std::fs::create_dir_all(&storage_path) {
         log::warn!("Could not create storage directory: {}", e);

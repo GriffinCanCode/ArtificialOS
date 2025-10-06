@@ -1,8 +1,8 @@
 /*!
 
- * System Info Syscalls
- * System information and environment operations
- */
+* System Info Syscalls
+* System information and environment operations
+*/
 
 use crate::core::types::Pid;
 

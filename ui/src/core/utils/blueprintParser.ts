@@ -12,12 +12,39 @@ interface BlueprintDSLObject {
 // Valid component types that can be rendered
 // Includes layout shortcuts (row, col) that may not have been converted yet
 const VALID_COMPONENT_TYPES = new Set([
-  "button", "input", "text", "container", "grid", "select", "checkbox",
-  "radio", "textarea", "image", "video", "audio", "canvas", "iframe",
-  "slider", "progress", "badge", "divider", "tabs", "modal", "list",
-  "card", "app-shortcut",
+  "button",
+  "input",
+  "text",
+  "container",
+  "grid",
+  "select",
+  "checkbox",
+  "radio",
+  "textarea",
+  "image",
+  "video",
+  "audio",
+  "canvas",
+  "iframe",
+  "slider",
+  "progress",
+  "badge",
+  "divider",
+  "tabs",
+  "modal",
+  "list",
+  "card",
+  "app-shortcut",
   // Layout shortcuts (converted to container by backend, but may arrive unconverted during streaming)
-  "row", "col", "sidebar", "main", "editor", "header", "footer", "content", "section"
+  "row",
+  "col",
+  "sidebar",
+  "main",
+  "editor",
+  "header",
+  "footer",
+  "content",
+  "section",
 ]);
 
 /**
@@ -43,7 +70,10 @@ export function parseBlueprintComponent(
     // Must have type field - skip nested objects like props, on_event, etc.
     if (!comp.type || typeof comp.type !== "string") {
       // Silently skip - these are likely nested property objects during streaming
-      console.log(`[PARSE] Filtering out object with no valid type field:`, Object.keys(comp).slice(0, 5));
+      console.log(
+        `[PARSE] Filtering out object with no valid type field:`,
+        Object.keys(comp).slice(0, 5)
+      );
       return null;
     }
 
@@ -64,7 +94,9 @@ export function parseBlueprintComponent(
     } else if (compType === "col") {
       compType = "container";
       props = { ...props, layout: props.layout || "vertical" };
-    } else if (["sidebar", "main", "editor", "header", "footer", "content", "section"].includes(compType)) {
+    } else if (
+      ["sidebar", "main", "editor", "header", "footer", "content", "section"].includes(compType)
+    ) {
       props = { ...props, role: compType, layout: props.layout || "vertical" };
       compType = "container";
     }
@@ -191,7 +223,7 @@ export function parsePartialBlueprint(jsonStr: string): {
                 // Validate that type is a recognized component type
                 if (!VALID_COMPONENT_TYPES.has(parsed.type)) {
                   console.log(
-                    `[PARSE] Skipping object ${idx + 1} - invalid component type: "${parsed.type}"`,
+                    `[PARSE] Skipping object ${idx + 1} - invalid component type: "${parsed.type}"`
                   );
                   return null;
                 }
@@ -211,10 +243,7 @@ export function parsePartialBlueprint(jsonStr: string): {
                 // Try Blueprint format fallback
                 return parseBlueprintComponent(parsed, idCounter);
               } catch (err) {
-                console.log(
-                  `[PARSE] Failed to parse object ${idx + 1}:`,
-                  (err as Error).message
-                );
+                console.log(`[PARSE] Failed to parse object ${idx + 1}:`, (err as Error).message);
                 return null;
               }
             })
@@ -259,11 +288,18 @@ export function filterValidComponents(components: any[]): BlueprintComponent[] {
 
   const filtered = components
     .filter((comp, idx) => {
-      console.log(`[FILTER] Processing component ${idx + 1}/${components.length}:`, comp?.type, comp?.id);
+      console.log(
+        `[FILTER] Processing component ${idx + 1}/${components.length}:`,
+        comp?.type,
+        comp?.id
+      );
 
       // Must be an object with a type field
       if (!comp || typeof comp !== "object" || !comp.type || typeof comp.type !== "string") {
-        console.log(`[FILTER] ❌ Removing invalid component (no type):`, Object.keys(comp || {}).slice(0, 5));
+        console.log(
+          `[FILTER] ❌ Removing invalid component (no type):`,
+          Object.keys(comp || {}).slice(0, 5)
+        );
         return false;
       }
 
@@ -289,7 +325,9 @@ export function filterValidComponents(components: any[]): BlueprintComponent[] {
         console.log(`[FILTER] Converting col -> container (vertical):`, comp.id);
         compType = "container";
         props = { ...props, layout: props.layout || "vertical" };
-      } else if (["sidebar", "main", "editor", "header", "footer", "content", "section"].includes(compType)) {
+      } else if (
+        ["sidebar", "main", "editor", "header", "footer", "content", "section"].includes(compType)
+      ) {
         console.log(`[FILTER] Converting ${compType} -> container (with role):`, comp.id);
         props = { ...props, role: compType, layout: props.layout || "vertical" };
         compType = "container";
@@ -317,6 +355,8 @@ export function filterValidComponents(components: any[]): BlueprintComponent[] {
       return filtered;
     });
 
-  console.log(`[FILTER] Completed: ${filtered.length} valid components out of ${components.length}`);
+  console.log(
+    `[FILTER] Completed: ${filtered.length} valid components out of ${components.length}`
+  );
   return filtered;
 }

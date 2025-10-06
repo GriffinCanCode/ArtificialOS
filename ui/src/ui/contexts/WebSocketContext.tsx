@@ -89,101 +89,107 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     }
   }, [isConnected]);
 
-  const sendChat = React.useCallback((message: string, context?: Record<string, any>) => {
-    // Check the actual client connection state, not React state
-    if (!client.isConnected()) {
-      logger.error("Cannot send chat: WebSocket not connected", undefined, {
-        component: "WebSocketProvider",
-        messageLength: message.length,
-        reactStateConnected: isConnected,
-        clientStateConnected: client.isConnected(),
-      });
-      return;
-    }
-    logger.debug("Sending chat message", {
-      component: "WebSocketProvider",
-      messageLength: message.length,
-      hasContext: !!context,
-    });
-    client.sendChat(message, context);
-  }, [client, isConnected]);
-
-  const generateUI = React.useCallback((message: string, context?: Record<string, any>) => {
-    // Prevent concurrent generations
-    if ((window as any).__isGenerating) {
-      logger.warn("Generation already in progress, ignoring duplicate call", {
-        component: "WebSocketProvider",
-      });
-      return;
-    }
-
-    // Check the actual client connection state, not React state
-    if (!client.isConnected()) {
-      logger.error("Cannot generate UI: WebSocket not connected", undefined, {
-        component: "WebSocketProvider",
-        messageLength: message.length,
-        reactStateConnected: isConnected,
-        clientStateConnected: client.isConnected(),
-      });
-      return;
-    }
-
-    // Set generating flag
-    (window as any).__isGenerating = true;
-
-    logger.info("Generating UI", {
-      component: "WebSocketProvider",
-      messageLength: message.length,
-      hasContext: !!context,
-    });
-
-    // CRITICAL: Open a builder window immediately
-    // This shows the generation progress in a window instead of fullscreen
-    const appStore = useAppStore.getState();
-    const windowStore = useWindowStore.getState();
-
-    // Reset generation state but DON'T set streaming (no fullscreen UI)
-    // appStore.setStreaming(true); // REMOVED - we're using windows now!
-    appStore.setBuildProgress(0);
-    appStore.setError(null);
-    appStore.setPartialBlueprint({ components: [] });
-
-    // Close any existing builder window first to prevent duplicates
-    const existingBuilderId = (window as any).__builderWindowId;
-    if (existingBuilderId) {
-      const existingBuilder = windowStore.windows.find(w => w.appId === existingBuilderId);
-      if (existingBuilder) {
-        logger.debug("Closing existing builder window before creating new one", {
-          component: "WebSocketContext",
-          existingBuilderId,
+  const sendChat = React.useCallback(
+    (message: string, context?: Record<string, any>) => {
+      // Check the actual client connection state, not React state
+      if (!client.isConnected()) {
+        logger.error("Cannot send chat: WebSocket not connected", undefined, {
+          component: "WebSocketProvider",
+          messageLength: message.length,
+          reactStateConnected: isConnected,
+          clientStateConnected: client.isConnected(),
         });
-        closeWindow(existingBuilder.id);
+        return;
       }
-    }
+      logger.debug("Sending chat message", {
+        component: "WebSocketProvider",
+        messageLength: message.length,
+        hasContext: !!context,
+      });
+      client.sendChat(message, context);
+    },
+    [client, isConnected]
+  );
 
-    // Create builder window - DynamicRenderer will handle showing build UI
-    const builderId = `builder-${Date.now()}`;
-    openWindow(
-      builderId,
-      "🔨 Building App...",
-      {
-        type: "app",
-        title: "Building...",
-        layout: "vertical",
-        components: [],
-        style: {},
-        services: [],
-        service_bindings: {},
-        lifecycle_hooks: {},
-      },
-      "🔨"
-    );
+  const generateUI = React.useCallback(
+    (message: string, context?: Record<string, any>) => {
+      // Prevent concurrent generations
+      if ((window as any).__isGenerating) {
+        logger.warn("Generation already in progress, ignoring duplicate call", {
+          component: "WebSocketProvider",
+        });
+        return;
+      }
 
-    // Store builder window ID for updates during streaming
-    (window as any).__builderWindowId = builderId;
+      // Check the actual client connection state, not React state
+      if (!client.isConnected()) {
+        logger.error("Cannot generate UI: WebSocket not connected", undefined, {
+          component: "WebSocketProvider",
+          messageLength: message.length,
+          reactStateConnected: isConnected,
+          clientStateConnected: client.isConnected(),
+        });
+        return;
+      }
 
-    client.generateUI(message, context);
-  }, [client, isConnected, openWindow, closeWindow]);
+      // Set generating flag
+      (window as any).__isGenerating = true;
+
+      logger.info("Generating UI", {
+        component: "WebSocketProvider",
+        messageLength: message.length,
+        hasContext: !!context,
+      });
+
+      // CRITICAL: Open a builder window immediately
+      // This shows the generation progress in a window instead of fullscreen
+      const appStore = useAppStore.getState();
+      const windowStore = useWindowStore.getState();
+
+      // Reset generation state but DON'T set streaming (no fullscreen UI)
+      // appStore.setStreaming(true); // REMOVED - we're using windows now!
+      appStore.setBuildProgress(0);
+      appStore.setError(null);
+      appStore.setPartialBlueprint({ components: [] });
+
+      // Close any existing builder window first to prevent duplicates
+      const existingBuilderId = (window as any).__builderWindowId;
+      if (existingBuilderId) {
+        const existingBuilder = windowStore.windows.find((w) => w.appId === existingBuilderId);
+        if (existingBuilder) {
+          logger.debug("Closing existing builder window before creating new one", {
+            component: "WebSocketContext",
+            existingBuilderId,
+          });
+          closeWindow(existingBuilder.id);
+        }
+      }
+
+      // Create builder window - DynamicRenderer will handle showing build UI
+      const builderId = `builder-${Date.now()}`;
+      openWindow(
+        builderId,
+        "🔨 Building App...",
+        {
+          type: "app",
+          title: "Building...",
+          layout: "vertical",
+          components: [],
+          style: {},
+          services: [],
+          service_bindings: {},
+          lifecycle_hooks: {},
+        },
+        "🔨"
+      );
+
+      // Store builder window ID for updates during streaming
+      (window as any).__builderWindowId = builderId;
+
+      client.generateUI(message, context);
+    },
+    [client, isConnected, openWindow, closeWindow]
+  );
 
   return (
     <WebSocketContext.Provider value={{ client, isConnected, sendChat, generateUI }}>

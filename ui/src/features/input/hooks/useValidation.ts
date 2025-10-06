@@ -86,9 +86,7 @@ export function useValidation<T extends z.ZodType>(schema: T) {
 /**
  * Hook for custom validation logic
  */
-export function useCustomValidation<T>(
-  validator: (value: T) => string | null
-) {
+export function useCustomValidation<T>(validator: (value: T) => string | null) {
   const [error, setError] = useState<string | null>(null);
 
   const validate = useCallback(
@@ -115,10 +113,7 @@ export function useCustomValidation<T>(
 /**
  * Hook for debounced validation
  */
-export function useDebouncedValidation<T extends z.ZodType>(
-  schema: T,
-  delay: number = 300
-) {
+export function useDebouncedValidation<T extends z.ZodType>(schema: T, delay: number = 300) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isValidating, setIsValidating] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);

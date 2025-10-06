@@ -32,9 +32,7 @@ export const Checkbox: React.FC<BaseComponentProps> = ({ component, state, execu
           handleEvent("change", { checked: newValue });
         }}
       />
-      {component.props?.label && (
-        <span className="checkbox-label">{component.props.label}</span>
-      )}
+      {component.props?.label && <span className="checkbox-label">{component.props.label}</span>}
     </label>
   );
 };

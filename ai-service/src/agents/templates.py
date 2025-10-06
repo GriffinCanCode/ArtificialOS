@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 class Template(BaseModel):
     """App template definition"""
+
     id: str
     name: str
     description: str
@@ -39,9 +40,8 @@ Layout:
 - Item actions (edit, delete)
 """,
             components=["list", "form", "button", "input"],
-            service_requirements=["storage"]
+            service_requirements=["storage"],
         ),
-
         "form": Template(
             id="form",
             name="Form Application",
@@ -60,9 +60,8 @@ Layout:
 - Status message
 """,
             components=["form", "input", "button", "text"],
-            service_requirements=["storage"]
+            service_requirements=["storage"],
         ),
-
         "dashboard": Template(
             id="dashboard",
             name="Dashboard",
@@ -81,9 +80,8 @@ Layout:
 - Refresh button
 """,
             components=["grid", "card", "chart", "button"],
-            service_requirements=["storage"]
+            service_requirements=["storage"],
         ),
-
         "chat": Template(
             id="chat",
             name="Chat Interface",
@@ -102,7 +100,7 @@ Layout:
 - Typing indicator
 """,
             components=["list", "input", "button", "text"],
-            service_requirements=["storage", "ai"]
+            service_requirements=["storage", "ai"],
         ),
     }
 
@@ -123,10 +121,11 @@ Layout:
         results = []
 
         for template in cls.TEMPLATES.values():
-            if (query_lower in template.name.lower() or
-                query_lower in template.description.lower() or
-                any(query_lower in req for req in template.service_requirements)):
+            if (
+                query_lower in template.name.lower()
+                or query_lower in template.description.lower()
+                or any(query_lower in req for req in template.service_requirements)
+            ):
                 results.append(template)
 
         return results
-

@@ -3,7 +3,13 @@
 import time
 import ai_pb2
 
-from core import get_logger, UIGenerationRequest, ValidationError, BlueprintValidator, safe_json_dumps
+from core import (
+    get_logger,
+    UIGenerationRequest,
+    ValidationError,
+    BlueprintValidator,
+    safe_json_dumps,
+)
 from agents.ui_generator import UIGenerator
 
 
@@ -37,21 +43,19 @@ class UIHandler:
                 thoughts=[
                     f"Request: {validated.message[:50]}",
                     f"Title: {ui_spec.title}",
-                    f"Components: {len(ui_spec.components)}"
+                    f"Components: {len(ui_spec.components)}",
                 ],
-                success=True
+                success=True,
             )
         except ValidationError as e:
             logger.error("validation_failed", error=str(e))
             return ai_pb2.UIResponse(
-                app_id="", ui_spec_json="", thoughts=[], success=False,
-                error=f"Validation: {e}"
+                app_id="", ui_spec_json="", thoughts=[], success=False, error=f"Validation: {e}"
             )
         except Exception as e:
             logger.error("generation_failed", error=str(e), exc_info=True)
             return ai_pb2.UIResponse(
-                app_id="", ui_spec_json="", thoughts=[], success=False,
-                error=str(e)
+                app_id="", ui_spec_json="", thoughts=[], success=False, error=str(e)
             )
 
     def stream(self, request: ai_pb2.UIRequest):
@@ -63,7 +67,7 @@ class UIHandler:
             yield ai_pb2.UIToken(
                 type=ai_pb2.UIToken.GENERATION_START,
                 content="Analyzing...",
-                timestamp=int(time.time())
+                timestamp=int(time.time()),
             )
 
             ui_spec = None
@@ -75,15 +79,13 @@ class UIHandler:
                     yield ai_pb2.UIToken(
                         type=ai_pb2.UIToken.GENERATION_START,
                         content="Rule-based generation...",
-                        timestamp=int(time.time())
+                        timestamp=int(time.time()),
                     )
                 elif isinstance(item, str):
                     tokens += 1
                     # Send tokens for incremental parsing
                     yield ai_pb2.UIToken(
-                        type=ai_pb2.UIToken.TOKEN,
-                        content=item,
-                        timestamp=int(time.time())
+                        type=ai_pb2.UIToken.TOKEN, content=item, timestamp=int(time.time())
                     )
                 else:
                     ui_spec = item
@@ -94,7 +96,7 @@ class UIHandler:
                 yield ai_pb2.UIToken(
                     type=ai_pb2.UIToken.THOUGHT,
                     content=f"{len(ui_spec.components)} components",
-                    timestamp=int(time.time())
+                    timestamp=int(time.time()),
                 )
 
                 # Validate the final spec
@@ -103,14 +105,10 @@ class UIHandler:
                 BlueprintValidator.validate(spec_dict, ui_json)
 
             yield ai_pb2.UIToken(
-                type=ai_pb2.UIToken.COMPLETE,
-                content="",
-                timestamp=int(time.time())
+                type=ai_pb2.UIToken.COMPLETE, content="", timestamp=int(time.time())
             )
         except Exception as e:
             logger.error("stream_failed", error=str(e), exc_info=True)
             yield ai_pb2.UIToken(
-                type=ai_pb2.UIToken.ERROR,
-                content=str(e),
-                timestamp=int(time.time())
+                type=ai_pb2.UIToken.ERROR, content=str(e), timestamp=int(time.time())
             )

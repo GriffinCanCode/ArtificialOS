@@ -3,7 +3,7 @@
  * Common types for memory management
  */
 
-use crate::core::types::{Pid, Address, Size};
+use crate::core::types::{Address, Pid, Size};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 

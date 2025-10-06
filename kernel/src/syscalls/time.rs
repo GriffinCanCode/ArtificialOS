@@ -1,8 +1,8 @@
 /*!
 
- * Time Syscalls
- * Time and sleep operations
- */
+* Time Syscalls
+* Time and sleep operations
+*/
 
 use crate::core::types::Pid;
 
@@ -45,7 +45,9 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied("Missing TimeAccess capability");
         }
 
-        let start = SYSTEM_START.get().expect("System start time not initialized");
+        let start = SYSTEM_START
+            .get()
+            .expect("System start time not initialized");
         let uptime = start.elapsed().as_secs();
 
         info!("PID {} retrieved system uptime: {} seconds", pid, uptime);

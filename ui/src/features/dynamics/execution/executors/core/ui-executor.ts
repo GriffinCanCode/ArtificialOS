@@ -121,7 +121,11 @@ export class UIExecutor implements BaseExecutor {
         const currentToggle = this.context.componentState.get(toggleKey, false);
         const newToggle = !currentToggle;
         this.context.componentState.set(toggleKey, newToggle);
-        logger.debug("Value toggled", { component: "UIExecutor", key: toggleKey, value: newToggle });
+        logger.debug("Value toggled", {
+          component: "UIExecutor",
+          key: toggleKey,
+          value: newToggle,
+        });
         return newToggle;
 
       case "backspace":

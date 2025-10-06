@@ -1,8 +1,8 @@
 /*!
 
- * File Descriptor Syscalls
- * Low-level file descriptor operations
- */
+* File Descriptor Syscalls
+* Low-level file descriptor operations
+*/
 
 use crate::core::types::Pid;
 
@@ -56,15 +56,27 @@ impl SyscallExecutor {
         let write_flag = flags & 0x0002; // O_WRONLY or O_RDWR
         let create_flag = flags & 0x0040; // O_CREAT
 
-        if read_flag != 0 && !self.sandbox_manager.check_permission(pid, &Capability::ReadFile) {
+        if read_flag != 0
+            && !self
+                .sandbox_manager
+                .check_permission(pid, &Capability::ReadFile)
+        {
             return SyscallResult::permission_denied("Missing ReadFile capability");
         }
 
-        if write_flag != 0 && !self.sandbox_manager.check_permission(pid, &Capability::WriteFile) {
+        if write_flag != 0
+            && !self
+                .sandbox_manager
+                .check_permission(pid, &Capability::WriteFile)
+        {
             return SyscallResult::permission_denied("Missing WriteFile capability");
         }
 
-        if create_flag != 0 && !self.sandbox_manager.check_permission(pid, &Capability::CreateFile) {
+        if create_flag != 0
+            && !self
+                .sandbox_manager
+                .check_permission(pid, &Capability::CreateFile)
+        {
             return SyscallResult::permission_denied("Missing CreateFile capability");
         }
 
@@ -117,11 +129,15 @@ impl SyscallExecutor {
             Ok(_file) => {
                 // Allocate FD (placeholder - would store file in fd_manager)
                 let fd = 10 + pid; // Mock FD
-                info!("PID {} opened {:?} with FD {}, flags: 0x{:x}, mode: 0o{:o}", pid, path, fd, flags, mode);
+                info!(
+                    "PID {} opened {:?} with FD {}, flags: 0x{:x}, mode: 0o{:o}",
+                    pid, path, fd, flags, mode
+                );
 
                 let data = serde_json::to_vec(&serde_json::json!({
                     "fd": fd
-                })).unwrap();
+                }))
+                .unwrap();
 
                 SyscallResult::success_with_data(data)
             }
@@ -156,7 +172,8 @@ impl SyscallExecutor {
 
         let data = serde_json::to_vec(&serde_json::json!({
             "new_fd": new_fd
-        })).unwrap();
+        }))
+        .unwrap();
 
         SyscallResult::success_with_data(data)
     }
@@ -169,7 +186,10 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied("Missing ReadFile capability");
         }
 
-        warn!("Dup2 syscall not fully implemented: oldfd={}, newfd={}", oldfd, newfd);
+        warn!(
+            "Dup2 syscall not fully implemented: oldfd={}, newfd={}",
+            oldfd, newfd
+        );
         info!("PID {} duplicated FD {} to {}", pid, oldfd, newfd);
         SyscallResult::success()
     }
@@ -182,7 +202,10 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied("Missing ReadFile capability");
         }
 
-        warn!("Lseek syscall not fully implemented: fd={}, offset={}, whence={}", fd, offset, whence);
+        warn!(
+            "Lseek syscall not fully implemented: fd={}, offset={}, whence={}",
+            fd, offset, whence
+        );
 
         let whence_str = match whence {
             0 => "SEEK_SET",
@@ -191,11 +214,15 @@ impl SyscallExecutor {
             _ => "UNKNOWN",
         };
 
-        info!("PID {} seeked FD {} to offset {} ({})", pid, fd, offset, whence_str);
+        info!(
+            "PID {} seeked FD {} to offset {} ({})",
+            pid, fd, offset, whence_str
+        );
 
         let data = serde_json::to_vec(&serde_json::json!({
             "offset": offset
-        })).unwrap();
+        }))
+        .unwrap();
 
         SyscallResult::success_with_data(data)
     }
@@ -208,12 +235,16 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied("Missing ReadFile capability");
         }
 
-        warn!("Fcntl syscall not fully implemented: fd={}, cmd={}, arg={}", fd, cmd, arg);
+        warn!(
+            "Fcntl syscall not fully implemented: fd={}, cmd={}, arg={}",
+            fd, cmd, arg
+        );
         info!("PID {} performed fcntl on FD {}", pid, fd);
 
         let data = serde_json::to_vec(&serde_json::json!({
             "result": 0
-        })).unwrap();
+        }))
+        .unwrap();
 
         SyscallResult::success_with_data(data)
     }

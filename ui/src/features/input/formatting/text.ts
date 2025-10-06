@@ -16,9 +16,7 @@ export function toTitleCase(text: string): string {
 }
 
 export function toCamelCase(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^a-zA-Z0-9]+(.)/g, (_, char) => char.toUpperCase());
+  return text.toLowerCase().replace(/[^a-zA-Z0-9]+(.)/g, (_, char) => char.toUpperCase());
 }
 
 export function toKebabCase(text: string): string {
@@ -90,9 +88,7 @@ export function indentLines(text: string, spaces: number): string {
 // ============================================================================
 
 export function sanitizeInput(text: string): string {
-  return text
-    .replace(/[<>]/g, "")
-    .trim();
+  return text.replace(/[<>]/g, "").trim();
 }
 
 export function escapeHtml(text: string): string {

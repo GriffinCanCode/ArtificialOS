@@ -10,10 +10,7 @@ import { shouldIgnoreKeyboardEvent, matchesShortcut } from "../core/keyboard";
 /**
  * Hook for handling keyboard shortcuts
  */
-export function useKeyboard(
-  shortcuts: ShortcutConfig[],
-  options?: KeyboardOptions
-) {
+export function useKeyboard(shortcuts: ShortcutConfig[], options?: KeyboardOptions) {
   const shortcutsRef = useRef(shortcuts);
 
   useEffect(() => {
@@ -125,9 +122,7 @@ export function useArrowKeys(handlers: {
   }, [handlers]);
 
   const shortcuts: ShortcutConfig[] = [
-    ...(handlers.onUp
-      ? [{ key: "ArrowUp", handler: () => handlersRef.current.onUp?.() }]
-      : []),
+    ...(handlers.onUp ? [{ key: "ArrowUp", handler: () => handlersRef.current.onUp?.() }] : []),
     ...(handlers.onDown
       ? [{ key: "ArrowDown", handler: () => handlersRef.current.onDown?.() }]
       : []),

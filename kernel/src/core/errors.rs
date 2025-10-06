@@ -67,4 +67,3 @@ pub enum KernelError {
 
 /// Result type for kernel operations
 pub type Result<T> = std::result::Result<T, KernelError>;
-
