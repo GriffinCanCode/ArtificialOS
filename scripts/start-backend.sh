@@ -7,7 +7,7 @@
 cd "$(dirname "$0")/.." || exit
 
 echo "=============================="
-echo "🚀 Starting Backend Stack"
+echo "Starting Backend Stack"
 echo "=============================="
 echo ""
 
@@ -15,26 +15,26 @@ echo ""
 mkdir -p logs
 
 # Kill any existing backend processes by port (more reliable)
-echo "🧹 Cleaning up existing processes..."
+echo "Cleaning up existing processes..."
 
 # Kill process on port 50051 (Kernel)
 KERNEL_PORT_PID=$(lsof -ti :50051 2>/dev/null)
 if [ ! -z "$KERNEL_PORT_PID" ]; then
-    echo "   🔴 Killing old kernel process on port 50051 (PID: $KERNEL_PORT_PID)"
+    echo "   Killing old kernel process on port 50051 (PID: $KERNEL_PORT_PID)"
     kill -9 $KERNEL_PORT_PID 2>/dev/null || true
 fi
 
 # Kill process on port 50052 (AI gRPC)
 AI_PORT_PID=$(lsof -ti :50052 2>/dev/null)
 if [ ! -z "$AI_PORT_PID" ]; then
-    echo "   🔴 Killing old AI service process on port 50052 (PID: $AI_PORT_PID)"
+    echo "   Killing old AI service process on port 50052 (PID: $AI_PORT_PID)"
     kill -9 $AI_PORT_PID 2>/dev/null || true
 fi
 
 # Kill process on port 8000 (Backend)
 BACKEND_PORT_PID=$(lsof -ti :8000 2>/dev/null)
 if [ ! -z "$BACKEND_PORT_PID" ]; then
-    echo "   🔴 Killing old backend process on port 8000 (PID: $BACKEND_PORT_PID)"
+    echo "   Killing old backend process on port 8000 (PID: $BACKEND_PORT_PID)"
     kill -9 $BACKEND_PORT_PID 2>/dev/null || true
 fi
 
@@ -54,7 +54,7 @@ if [ ! -f "target/release/kernel" ]; then
 fi
 ./target/release/kernel > ../logs/kernel.log 2>&1 &
 KERNEL_PID=$!
-echo "   ✅ Kernel started (PID: $KERNEL_PID)"
+echo "   Kernel started (PID: $KERNEL_PID)"
 cd ..
 
 sleep 2
@@ -63,25 +63,25 @@ sleep 2
 echo "2️⃣  Starting Python AI gRPC Service..."
 cd ai-service || exit
 if [ ! -d "venv" ]; then
-    echo "   ❌ Virtual environment not found. Please run: python3 -m venv venv"
+    echo "   Virtual environment not found. Please run: python3 -m venv venv"
     exit 1
 fi
 
 # Load environment variables from .env file
 if [ -f "src/.env" ]; then
-    echo "   📝 Loading environment variables from src/.env"
+    echo "   Loading environment variables from src/.env"
     export $(grep -v '^#' src/.env | xargs)
 elif [ -f ".env" ]; then
-    echo "   📝 Loading environment variables from .env"
+    echo "   Loading environment variables from .env"
     export $(grep -v '^#' .env | xargs)
 else
-    echo "   ⚠️  Warning: .env file not found. API key may not be set."
+    echo "   Warning: .env file not found. API key may not be set."
 fi
 
 source venv/bin/activate
 PYTHONPATH=src python3 -m server > ../logs/ai-grpc.log 2>&1 &
 AI_PID=$!
-echo "   ✅ AI gRPC Service started (PID: $AI_PID)"
+echo "   AI gRPC Service started (PID: $AI_PID)"
 cd ..
 
 sleep 2
@@ -95,24 +95,24 @@ if [ ! -f "bin/server" ]; then
 fi
 ./bin/server -port 8000 -kernel localhost:50051 -ai localhost:50052 > ../logs/backend.log 2>&1 &
 BACKEND_PID=$!
-echo "   ✅ Backend started (PID: $BACKEND_PID)"
+echo "   Backend started (PID: $BACKEND_PID)"
 cd ..
 
 echo ""
 echo "=============================="
-echo "✅ Backend Stack Running"
+echo "Backend Stack Running"
 echo "=============================="
 echo ""
-echo "🌐 Services:"
+echo "Services:"
 echo "   - Kernel:      localhost:50051"
 echo "   - AI gRPC:     localhost:50052"
 echo "   - Backend:     localhost:8000"
 echo ""
-echo "📊 Logs:"
+echo "Logs:"
 echo "   - Kernel:      logs/kernel.log"
 echo "   - AI gRPC:     logs/ai-grpc.log"
 echo "   - Backend:     logs/backend.log"
 echo ""
-echo "🛑 To stop: pkill -f kernel && pkill -f grpc_server && pkill -f backend"
-echo "📺 Tail logs: tail -f logs/backend.log"
+echo "To stop: pkill -f kernel && pkill -f grpc_server && pkill -f backend"
+echo "Tail logs: tail -f logs/backend.log"
 echo ""

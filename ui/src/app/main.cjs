@@ -23,7 +23,7 @@ function createWindow() {
   const preloadPath = path.join(__dirname, 'preload.cjs');
   log.info('Preload script path:', preloadPath);
   log.info('Preload script exists:', require('fs').existsSync(preloadPath));
-  
+
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -41,7 +41,7 @@ function createWindow() {
   // Load the React app
   // In development, load from Vite dev server
   const isDev = !app.isPackaged;
-  
+
   if (isDev) {
     log.info('Loading app from Vite dev server: http://localhost:5173');
     mainWindow.loadURL('http://localhost:5173');
@@ -67,7 +67,7 @@ function createWindow() {
 
 // App lifecycle
 app.whenReady().then(() => {
-  log.info('🚀 AI-OS UI starting...');
+  log.info('AgentOS UI starting...');
   createWindow();
 
   app.on('activate', () => {
@@ -116,5 +116,5 @@ process.on('unhandledRejection', (reason, promise) => {
   log.error('Unhandled rejection in main process:', reason);
 });
 
-log.info('✅ Electron main process ready');
+log.info('Electron main process ready');
 

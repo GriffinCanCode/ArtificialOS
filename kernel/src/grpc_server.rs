@@ -155,6 +155,11 @@ impl KernelService for KernelServiceImpl {
             Some(syscall_request::Syscall::ShmStats(call)) => Syscall::ShmStats {
                 segment_id: call.segment_id,
             },
+            // Scheduler operations
+            Some(syscall_request::Syscall::ScheduleNext(_)) => Syscall::ScheduleNext,
+            Some(syscall_request::Syscall::YieldProcess(_)) => Syscall::YieldProcess,
+            Some(syscall_request::Syscall::GetCurrentScheduled(_)) => Syscall::GetCurrentScheduled,
+            Some(syscall_request::Syscall::GetSchedulerStats(_)) => Syscall::GetSchedulerStats,
             None => {
                 return Err(Status::invalid_argument("No syscall provided"));
             }
@@ -316,6 +321,95 @@ impl KernelService for KernelServiceImpl {
             rx,
         )))
     }
+
+    async fn schedule_next(
+        &self,
+        _request: Request<ScheduleNextRequest>,
+    ) -> Result<Response<ScheduleNextResponse>, Status> {
+        info!("gRPC: Schedule next requested");
+
+        match self.process_manager.schedule_next() {
+            Some(pid) => Ok(Response::new(ScheduleNextResponse {
+                success: true,
+                next_pid: Some(pid),
+                error: String::new(),
+            })),
+            None => Ok(Response::new(ScheduleNextResponse {
+                success: true,
+                next_pid: None,
+                error: String::new(),
+            })),
+        }
+    }
+
+    async fn get_scheduler_stats(
+        &self,
+        _request: Request<GetSchedulerStatsRequest>,
+    ) -> Result<Response<GetSchedulerStatsResponse>, Status> {
+        info!("gRPC: Scheduler stats requested");
+
+        if let Some(stats) = self.process_manager.get_scheduler_stats() {
+            let policy_str = match stats.policy {
+                crate::scheduler::Policy::RoundRobin => "RoundRobin",
+                crate::scheduler::Policy::Priority => "Priority",
+                crate::scheduler::Policy::Fair => "Fair",
+            };
+
+            Ok(Response::new(GetSchedulerStatsResponse {
+                success: true,
+                stats: Some(SchedulerStats {
+                    total_scheduled: stats.total_scheduled,
+                    context_switches: stats.context_switches,
+                    preemptions: stats.preemptions,
+                    active_processes: stats.active_processes as u32,
+                    policy: policy_str.to_string(),
+                    quantum_micros: stats.quantum_micros,
+                }),
+                error: String::new(),
+            }))
+        } else {
+            Ok(Response::new(GetSchedulerStatsResponse {
+                success: false,
+                stats: None,
+                error: "Scheduler not available".to_string(),
+            }))
+        }
+    }
+
+    async fn set_scheduling_policy(
+        &self,
+        request: Request<SetSchedulingPolicyRequest>,
+    ) -> Result<Response<SetSchedulingPolicyResponse>, Status> {
+        let req = request.into_inner();
+        info!("gRPC: Set scheduling policy to: {}", req.policy);
+
+        // Convert string policy to enum
+        let policy = match req.policy.to_lowercase().as_str() {
+            "roundrobin" | "round_robin" => crate::scheduler::Policy::RoundRobin,
+            "priority" => crate::scheduler::Policy::Priority,
+            "fair" => crate::scheduler::Policy::Fair,
+            _ => {
+                return Ok(Response::new(SetSchedulingPolicyResponse {
+                    success: false,
+                    error: format!("Unknown policy: {}. Use RoundRobin, Priority, or Fair", req.policy),
+                }));
+            }
+        };
+
+        // Set the policy dynamically
+        if self.process_manager.set_scheduling_policy(policy) {
+            info!("Successfully changed scheduling policy to {:?}", policy);
+            Ok(Response::new(SetSchedulingPolicyResponse {
+                success: true,
+                error: String::new(),
+            }))
+        } else {
+            Ok(Response::new(SetSchedulingPolicyResponse {
+                success: false,
+                error: "Scheduler not available".to_string(),
+            }))
+        }
+    }
 }
 
 // Helper function to convert proto capability to sandbox capability
@@ -346,7 +440,7 @@ pub async fn start_grpc_server(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let service = KernelServiceImpl::new(syscall_executor, process_manager, sandbox_manager);
 
-    info!("🌐 gRPC server starting on {}", addr);
+    info!("gRPC server starting on {}", addr);
 
     // Configure server with very lenient keepalive settings to prevent "too_many_pings" errors
     Server::builder()

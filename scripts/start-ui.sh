@@ -7,7 +7,7 @@
 cd "$(dirname "$0")/.." || exit
 
 echo "=============================="
-echo "🎨 Starting UI"
+echo "Starting UI"
 echo "=============================="
 echo ""
 
@@ -15,10 +15,10 @@ cd ui || exit
 
 # Check if node_modules exists
 if [ ! -d "node_modules" ]; then
-    echo "📦 Installing dependencies..."
+    echo "Installing dependencies..."
     npm install
 fi
 
-echo "🚀 Starting Vite dev server..."
+echo "Starting Vite dev server..."
 echo ""
 npm run dev

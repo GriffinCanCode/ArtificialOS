@@ -48,7 +48,7 @@ func main() {
 	defer logger.Sync()
 
 	logger.Info("=" + string(make([]byte, 60)) + "=")
-	logger.Info("🤖 AI-Powered OS - Go Service")
+	logger.Info("AI-Powered OS - Go Service")
 	logger.Info("=" + string(make([]byte, 60)) + "=")
 
 	// Create server
@@ -77,7 +77,7 @@ func main() {
 			logger.Error("Error during shutdown", zap.Error(err))
 			os.Exit(1)
 		}
-		logger.Info("✅ Shutdown complete")
+		logger.Info("Shutdown complete")
 	case err := <-errChan:
 		logger.Fatal("Server error", zap.Error(err))
 	}

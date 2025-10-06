@@ -29,7 +29,7 @@
           "children": [
             {
               "text#title": {
-                "content": "🚀 Hub",
+                "content": "Hub",
                 "variant": "h1",
                 "style": {
                   "flex": 1
@@ -48,7 +48,7 @@
             },
             {
               "button#refresh": {
-                "text": "⟳",
+                "text": "Refresh",
                 "variant": "ghost",
                 "@click": "hub.load_apps"
               }

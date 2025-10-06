@@ -13,6 +13,7 @@ use crate::executor::{ExecutionConfig, ProcessExecutor};
 use crate::ipc::IPCManager;
 use crate::limits::{LimitManager, Limits};
 use crate::memory::MemoryManager;
+use crate::scheduler::{Policy, Scheduler};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Process {
@@ -39,71 +40,137 @@ pub struct ProcessManager {
     executor: Option<ProcessExecutor>,
     limit_manager: Option<LimitManager>,
     ipc_manager: Option<IPCManager>,
+    scheduler: Option<Arc<RwLock<Scheduler>>>,
     // Track child processes per parent PID for limit enforcement
     child_counts: Arc<RwLock<HashMap<u32, u32>>>,
 }
 
-impl ProcessManager {
+/// Builder for ProcessManager
+pub struct ProcessManagerBuilder {
+    memory_manager: Option<MemoryManager>,
+    enable_executor: bool,
+    enable_limits: bool,
+    ipc_manager: Option<IPCManager>,
+    scheduler_policy: Option<Policy>,
+}
+
+impl ProcessManagerBuilder {
+    /// Create a new ProcessManager builder
     pub fn new() -> Self {
-        info!("Process manager initialized");
         Self {
-            processes: Arc::new(RwLock::new(HashMap::new())),
-            next_pid: Arc::new(RwLock::new(1)),
             memory_manager: None,
-            executor: None,
-            limit_manager: None,
+            enable_executor: false,
+            enable_limits: false,
             ipc_manager: None,
-            child_counts: Arc::new(RwLock::new(HashMap::new())),
+            scheduler_policy: None,
         }
     }
 
-    /// Create process manager with full features
-    pub fn with_memory_manager(memory_manager: MemoryManager) -> Self {
-        info!("Process manager initialized with memory management");
-        Self {
-            processes: Arc::new(RwLock::new(HashMap::new())),
-            next_pid: Arc::new(RwLock::new(1)),
-            memory_manager: Some(memory_manager),
-            executor: None,
-            limit_manager: None,
-            ipc_manager: None,
-            child_counts: Arc::new(RwLock::new(HashMap::new())),
-        }
+    /// Add memory manager
+    pub fn with_memory_manager(mut self, memory_manager: MemoryManager) -> Self {
+        self.memory_manager = Some(memory_manager);
+        self
     }
 
-    /// Create process manager with OS execution capabilities
-    pub fn with_executor() -> Self {
-        info!("Process manager initialized with OS execution");
-        Self {
-            processes: Arc::new(RwLock::new(HashMap::new())),
-            next_pid: Arc::new(RwLock::new(1)),
-            memory_manager: None,
-            executor: Some(ProcessExecutor::new()),
-            limit_manager: LimitManager::new().ok(),
-            ipc_manager: None,
-            child_counts: Arc::new(RwLock::new(HashMap::new())),
-        }
+    /// Enable OS process execution
+    pub fn with_executor(mut self) -> Self {
+        self.enable_executor = true;
+        self
     }
 
-    /// Create process manager with full capabilities
-    pub fn full(memory_manager: MemoryManager) -> Self {
-        info!("Process manager initialized with full capabilities");
-        Self {
-            processes: Arc::new(RwLock::new(HashMap::new())),
-            next_pid: Arc::new(RwLock::new(1)),
-            memory_manager: Some(memory_manager),
-            executor: Some(ProcessExecutor::new()),
-            limit_manager: LimitManager::new().ok(),
-            ipc_manager: None,
-            child_counts: Arc::new(RwLock::new(HashMap::new())),
-        }
+    /// Enable resource limits (requires executor)
+    pub fn with_limits(mut self) -> Self {
+        self.enable_limits = true;
+        self
     }
 
-    /// Set IPC manager for automatic cleanup on process termination
+    /// Add IPC manager for automatic cleanup
     pub fn with_ipc_manager(mut self, ipc_manager: IPCManager) -> Self {
-        info!("Process manager configured with IPC cleanup");
         self.ipc_manager = Some(ipc_manager);
         self
+    }
+
+    /// Add scheduler with specified policy
+    pub fn with_scheduler(mut self, policy: Policy) -> Self {
+        self.scheduler_policy = Some(policy);
+        self
+    }
+
+    /// Build the ProcessManager
+    pub fn build(self) -> ProcessManager {
+        let executor = if self.enable_executor {
+            Some(ProcessExecutor::new())
+        } else {
+            None
+        };
+
+        let limit_manager = if self.enable_limits {
+            LimitManager::new().ok()
+        } else {
+            None
+        };
+
+        let scheduler = self.scheduler_policy.map(|policy| {
+            Arc::new(RwLock::new(Scheduler::new(policy)))
+        });
+
+        let mut features = Vec::new();
+        if self.memory_manager.is_some() {
+            features.push("memory");
+        }
+        if executor.is_some() {
+            features.push("executor");
+        }
+        if limit_manager.is_some() {
+            features.push("limits");
+        }
+        if self.ipc_manager.is_some() {
+            features.push("IPC");
+        }
+        if scheduler.is_some() {
+            features.push("scheduler");
+        }
+
+        info!("Process manager initialized with: {}", features.join(", "));
+
+        ProcessManager {
+            processes: Arc::new(RwLock::new(HashMap::new())),
+            next_pid: Arc::new(RwLock::new(1)),
+            memory_manager: self.memory_manager,
+            executor,
+            limit_manager,
+            ipc_manager: self.ipc_manager,
+            scheduler,
+            child_counts: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+}
+
+impl Default for ProcessManagerBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ProcessManager {
+    /// Create a basic ProcessManager with no features
+    pub fn new() -> Self {
+        info!("Process manager initialized (basic)");
+        Self {
+            processes: Arc::new(RwLock::new(HashMap::new())),
+            next_pid: Arc::new(RwLock::new(1)),
+            memory_manager: None,
+            executor: None,
+            limit_manager: None,
+            ipc_manager: None,
+            scheduler: None,
+            child_counts: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+
+    /// Create a builder for constructing a ProcessManager
+    pub fn builder() -> ProcessManagerBuilder {
+        ProcessManagerBuilder::new()
     }
 
     /// Create a process (metadata only, no OS process)
@@ -171,6 +238,12 @@ impl ProcessManager {
 
         processes.insert(pid, process);
         info!("Created process: {} (PID: {}, OS PID: {:?})", name, pid, os_pid);
+
+        // Add to scheduler if available
+        if let Some(ref scheduler) = self.scheduler {
+            scheduler.read().add(pid, priority);
+        }
+
         pid
     }
 
@@ -235,6 +308,11 @@ impl ProcessManager {
                 }
             }
 
+            // Remove from scheduler if available
+            if let Some(ref scheduler) = self.scheduler {
+                scheduler.read().remove(pid);
+            }
+
             true
         } else {
             false
@@ -281,6 +359,53 @@ impl ProcessManager {
             }
         }
     }
+
+    /// Get scheduler statistics
+    pub fn get_scheduler_stats(&self) -> Option<crate::scheduler::Stats> {
+        self.scheduler.as_ref().map(|s| s.read().stats())
+    }
+
+    /// Get current scheduling policy
+    pub fn get_scheduling_policy(&self) -> Option<crate::scheduler::Policy> {
+        self.scheduler.as_ref().map(|s| s.read().policy())
+    }
+
+    /// Change scheduling policy (requires scheduler)
+    pub fn set_scheduling_policy(&self, policy: crate::scheduler::Policy) -> bool {
+        if let Some(ref scheduler) = self.scheduler {
+            let scheduler = scheduler.read();
+            scheduler.set_policy(policy);
+            info!("Scheduling policy changed to {:?}", policy);
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Get per-process CPU statistics (requires scheduler)
+    pub fn get_process_stats(&self, pid: u32) -> Option<crate::scheduler::ProcessStats> {
+        self.scheduler.as_ref().and_then(|s| s.read().process_stats(pid))
+    }
+
+    /// Get all process CPU statistics (requires scheduler)
+    pub fn get_all_process_stats(&self) -> Vec<crate::scheduler::ProcessStats> {
+        self.scheduler.as_ref().map(|s| s.read().all_process_stats()).unwrap_or_default()
+    }
+
+    /// Schedule next process (requires scheduler)
+    pub fn schedule_next(&self) -> Option<u32> {
+        self.scheduler.as_ref().and_then(|s| s.read().schedule())
+    }
+
+    /// Yield current process (requires scheduler)
+    pub fn yield_current(&self) -> Option<u32> {
+        self.scheduler.as_ref().and_then(|s| s.read().yield_process())
+    }
+
+    /// Get currently scheduled process (requires scheduler)
+    pub fn current_scheduled(&self) -> Option<u32> {
+        self.scheduler.as_ref().and_then(|s| s.read().current())
+    }
 }
 
 impl Clone for ProcessManager {
@@ -292,6 +417,7 @@ impl Clone for ProcessManager {
             executor: self.executor.clone(),
             limit_manager: None, // Limit manager is not Clone, create new if needed
             ipc_manager: self.ipc_manager.clone(),
+            scheduler: self.scheduler.clone(),
             child_counts: Arc::clone(&self.child_counts),
         }
     }

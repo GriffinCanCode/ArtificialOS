@@ -49,7 +49,7 @@ func NewHandlers(
 func (h *Handlers) Root(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "online",
-		"service": "AI-OS Service (Go)",
+		"service": "AgentOS Service (Go)",
 		"version": "0.2.0",
 	})
 }

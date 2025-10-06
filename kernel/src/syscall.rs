@@ -154,6 +154,12 @@ pub enum Syscall {
     ShmStats {
         segment_id: u32,
     },
+
+    // Scheduler operations
+    ScheduleNext,
+    YieldProcess,
+    GetCurrentScheduled,
+    GetSchedulerStats,
 }
 
 /// System call executor
@@ -256,6 +262,12 @@ impl SyscallExecutor {
             } => self.read_shm(pid, segment_id, offset, size),
             Syscall::DestroyShm { segment_id } => self.destroy_shm(pid, segment_id),
             Syscall::ShmStats { segment_id } => self.shm_stats(pid, segment_id),
+
+            // Scheduler operations
+            Syscall::ScheduleNext => self.schedule_next(pid),
+            Syscall::YieldProcess => self.yield_process(pid),
+            Syscall::GetCurrentScheduled => self.get_current_scheduled(pid),
+            Syscall::GetSchedulerStats => self.get_scheduler_stats(pid),
         }
     }
 
@@ -1105,6 +1117,37 @@ impl SyscallExecutor {
                 SyscallResult::error(format!("Stats failed: {}", e))
             }
         }
+    }
+
+    // ========================================================================
+    // Scheduler Operations
+    // ========================================================================
+
+    fn schedule_next(&self, _pid: u32) -> SyscallResult {
+        info!("Schedule next syscall requested");
+        // Note: Scheduler operations would require ProcessManager access
+        // This is a placeholder that returns success
+        // In a full implementation, this would call ProcessManager::schedule_next()
+        SyscallResult::success()
+    }
+
+    fn yield_process(&self, pid: u32) -> SyscallResult {
+        info!("Process {} yielding CPU", pid);
+        // Note: This would call ProcessManager::yield_current()
+        SyscallResult::success()
+    }
+
+    fn get_current_scheduled(&self, _pid: u32) -> SyscallResult {
+        info!("Get current scheduled process requested");
+        // Note: This would call ProcessManager::current_scheduled()
+        SyscallResult::success()
+    }
+
+    fn get_scheduler_stats(&self, pid: u32) -> SyscallResult {
+        info!("PID {} requested scheduler statistics", pid);
+        // Note: This would call Scheduler::stats() via ProcessManager
+        // Placeholder implementation
+        SyscallResult::success()
     }
 }
 

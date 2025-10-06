@@ -28,11 +28,11 @@ func NewSeeder(manager *Manager, appsDir string) *Seeder {
 
 // SeedApps loads all prebuilt apps from the apps directory
 func (s *Seeder) SeedApps() error {
-	log.Printf("📦 Seeding prebuilt apps from %s...", s.appsDir)
+	log.Printf("Seeding prebuilt apps from %s...", s.appsDir)
 
 	// Check if apps directory exists
 	if _, err := os.Stat(s.appsDir); os.IsNotExist(err) {
-		log.Printf("⚠️  Apps directory not found: %s", s.appsDir)
+		log.Printf("Warning: Apps directory not found: %s", s.appsDir)
 		return nil
 	}
 
@@ -56,10 +56,10 @@ func (s *Seeder) SeedApps() error {
 
 		// Load and register the app
 		if err := s.loadApp(path); err != nil {
-			log.Printf("  ✗ Failed to load %s: %v", info.Name(), err)
+			log.Printf("  Failed to load %s: %v", info.Name(), err)
 			failed++
 		} else {
-			log.Printf("  ✓ Loaded %s", info.Name())
+			log.Printf("  Loaded %s", info.Name())
 			loaded++
 		}
 
@@ -70,7 +70,7 @@ func (s *Seeder) SeedApps() error {
 		return err
 	}
 
-	log.Printf("📊 Seeding complete: %d loaded, %d failed", loaded, failed)
+	log.Printf("Seeding complete: %d loaded, %d failed", loaded, failed)
 	return nil
 }
 
@@ -111,7 +111,7 @@ func (s *Seeder) loadApp(path string) error {
 
 // SeedDefaultApps creates essential system apps if they don't exist
 func (s *Seeder) SeedDefaultApps() error {
-	log.Println("🌱 Seeding default system apps...")
+	log.Println("Seeding default system apps...")
 
 	defaults := []types.Package{
 		{
@@ -293,14 +293,14 @@ func (s *Seeder) SeedDefaultApps() error {
 		// Only seed if doesn't exist
 		if !s.manager.Exists(ctx, pkg.ID) {
 			if err := s.manager.Save(ctx, &pkg); err != nil {
-				log.Printf("  ✗ Failed to seed %s: %v", pkg.Name, err)
+				log.Printf("  Failed to seed %s: %v", pkg.Name, err)
 			} else {
-				log.Printf("  ✓ Seeded %s", pkg.Name)
+				log.Printf("  Seeded %s", pkg.Name)
 				seeded++
 			}
 		}
 	}
 
-	log.Printf("🌱 Seeded %d default apps", seeded)
+	log.Printf("Seeded %d default apps", seeded)
 	return nil
 }

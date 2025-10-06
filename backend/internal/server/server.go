@@ -45,7 +45,7 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	}
 	defer logger.Sync()
 
-	logger.Info("🤖 Initializing AI-OS Server",
+	logger.Info("Initializing AgentOS Server",
 		zap.String("port", cfg.Server.Port),
 		zap.String("kernel_addr", cfg.Kernel.Address),
 		zap.String("ai_addr", cfg.AI.Address),
@@ -59,7 +59,7 @@ func NewServer(cfg *config.Config) (*Server, error) {
 			logger.Warn("Failed to connect to kernel", zap.Error(err))
 		} else {
 			kernelClient = client
-			logger.Info("✅ Connected to kernel", zap.String("addr", cfg.Kernel.Address))
+			logger.Info("Connected to kernel", zap.String("addr", cfg.Kernel.Address))
 		}
 	}
 
@@ -72,14 +72,14 @@ func NewServer(cfg *config.Config) (*Server, error) {
 		}
 		return nil, fmt.Errorf("failed to connect to AI service: %w", err)
 	}
-	logger.Info("✅ Connected to AI service", zap.String("addr", cfg.AI.Address))
+	logger.Info("Connected to AI service", zap.String("addr", cfg.AI.Address))
 
 	// Initialize app manager and service registry
 	appManager := app.NewManager(kernelClient)
 	serviceRegistry := service.NewRegistry()
 
 	// Register service providers
-	logger.Info("📦 Registering service providers...")
+	logger.Info("Registering service providers...")
 	registerProviders(serviceRegistry, kernelClient)
 
 	// Initialize app registry with storage
@@ -93,10 +93,10 @@ func NewServer(cfg *config.Config) (*Server, error) {
 			storagePID = *pid
 		}
 	}
-	appRegistry := registry.NewManager(kernelClient, storagePID, "/tmp/ai-os-storage/system")
+	appRegistry := registry.NewManager(kernelClient, storagePID, "/tmp/agentos-storage/system")
 
 	// Seed prebuilt apps
-	logger.Info("🌱 Loading prebuilt apps...")
+	logger.Info("Loading prebuilt apps...")
 	seeder := registry.NewSeeder(appRegistry, "../apps")
 	if err := seeder.SeedApps(); err != nil {
 		logger.Warn("Failed to seed prebuilt apps", zap.Error(err))
@@ -106,7 +106,7 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	}
 
 	// Initialize session manager
-	sessionManager := session.NewManager(appManager, kernelClient, storagePID, "/tmp/ai-os-storage/system")
+	sessionManager := session.NewManager(appManager, kernelClient, storagePID, "/tmp/agentos-storage/system")
 
 	// Create router
 	if !cfg.Logging.Development {
@@ -118,7 +118,7 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	router.Use(gin.Recovery())
 	router.Use(middleware.CORS(middleware.DefaultCORSConfig()))
 	if cfg.RateLimit.Enabled {
-		logger.Info("⚡ Rate limiting enabled",
+		logger.Info("Rate limiting enabled",
 			zap.Int("rps", cfg.RateLimit.RequestsPerSecond),
 			zap.Int("burst", cfg.RateLimit.Burst),
 		)
@@ -165,10 +165,15 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	router.POST("/sessions/:id/restore", handlers.RestoreSession)
 	router.DELETE("/sessions/:id", handlers.DeleteSession)
 
+	// Kernel/Scheduler operations
+	router.POST("/kernel/schedule-next", handlers.ScheduleNext)
+	router.GET("/kernel/scheduler/stats", handlers.GetSchedulerStats)
+	router.PUT("/kernel/scheduler/policy", handlers.SetSchedulingPolicy)
+
 	// WebSocket
 	router.GET("/stream", wsHandler.HandleConnection)
 
-	logger.Info("🚀 Server initialized successfully")
+	logger.Info("Server initialized successfully")
 
 	return &Server{
 		router:         router,
@@ -186,13 +191,13 @@ func NewServer(cfg *config.Config) (*Server, error) {
 // Run starts the HTTP server
 func (s *Server) Run() error {
 	addr := s.config.Server.Host + ":" + s.config.Server.Port
-	s.logger.Info("🎧 Starting HTTP server", zap.String("addr", addr))
+	s.logger.Info("Starting HTTP server", zap.String("addr", addr))
 	return s.router.Run(addr)
 }
 
 // Close gracefully shuts down the server
 func (s *Server) Close() error {
-	s.logger.Info("🛑 Shutting down server...")
+	s.logger.Info("Shutting down server...")
 
 	// Close gRPC connections
 	if s.kernel != nil {
@@ -217,7 +222,7 @@ func (s *Server) Close() error {
 }
 
 func registerProviders(registry *service.Registry, kernel *grpc.KernelClient) {
-	storagePath := "/tmp/ai-os-storage"
+	storagePath := "/tmp/agentos-storage"
 	var storagePID uint32 = 1
 
 	// Storage provider

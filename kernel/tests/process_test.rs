@@ -77,7 +77,7 @@ fn test_list_processes() {
 #[test]
 fn test_process_manager_with_memory() {
     let mem_mgr = MemoryManager::new();
-    let pm = ProcessManager::with_memory_manager(mem_mgr.clone());
+    let pm = ProcessManager::builder().with_memory_manager(mem_mgr.clone()).build();
 
     let pid = pm.create_process("test-app".to_string(), 5);
 
@@ -98,7 +98,7 @@ fn test_process_manager_with_memory() {
 #[test]
 fn test_process_memory_cleanup_on_termination() {
     let mem_mgr = MemoryManager::new();
-    let pm = ProcessManager::with_memory_manager(mem_mgr.clone());
+    let pm = ProcessManager::builder().with_memory_manager(mem_mgr.clone()).build();
 
     let pid1 = pm.create_process("app1".to_string(), 5);
     let pid2 = pm.create_process("app2".to_string(), 5);

@@ -49,7 +49,7 @@
                 "children": [
                   {
                     "button#home-btn": {
-                      "text": "🏠 Home",
+                      "text": "Home",
                       "variant": "ghost",
                       "fullWidth": true,
                       "@click": "ui.set"
@@ -57,7 +57,7 @@
                   },
                   {
                     "button#applications-btn": {
-                      "text": "📦 Applications",
+                      "text": "Applications",
                       "variant": "ghost",
                       "fullWidth": true,
                       "@click": "ui.set"
@@ -65,7 +65,7 @@
                   },
                   {
                     "button#documents-btn": {
-                      "text": "📄 Documents",
+                      "text": "Documents",
                       "variant": "ghost",
                       "fullWidth": true,
                       "@click": "ui.set"
@@ -73,7 +73,7 @@
                   },
                   {
                     "button#data-btn": {
-                      "text": "💾 Data",
+                      "text": "Data",
                       "variant": "ghost",
                       "fullWidth": true,
                       "@click": "ui.set"
@@ -81,7 +81,7 @@
                   },
                   {
                     "button#system-btn": {
-                      "text": "⚙️ System",
+                      "text": "System",
                       "variant": "ghost",
                       "fullWidth": true,
                       "@click": "ui.set"
@@ -144,7 +144,7 @@
                   },
                   {
                     "button#refresh": {
-                      "text": "⟳",
+                      "text": "Refresh",
                       "variant": "outline",
                       "size": "small",
                       "@click": "filesystem.list"

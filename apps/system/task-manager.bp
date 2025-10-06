@@ -39,7 +39,7 @@
             },
             {
               "button#refresh": {
-                "text": "⟳ Refresh",
+                "text": "Refresh",
                 "variant": "outline",
                 "@click": "system.info"
               }

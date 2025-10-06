@@ -319,11 +319,11 @@ class UIGenerator:
     "permissions": ["STANDARD"]
   },
   "services": [],
-  "ui": {
-    "title": "Todo App",
-    "layout": "vertical",
-    "components": [
-      {"type": "text", "id": "header", "props": {"content": "📝 Todo List", "variant": "h2"}},
+            "ui": {
+                "title": "Todo App",
+                "layout": "vertical",
+                "components": [
+                    {"type": "text", "id": "header", "props": {"content": "Todo List", "variant": "h2"}},
       {
         "type": "row",
         "id": "input",
@@ -401,7 +401,7 @@ class UIGenerator:
 
     def _build_todo(self) -> Blueprint:
         """Build todo UI (legacy)."""
-        header = self.templates.text("header", "📝 Todo List", variant="h2")
+        header = self.templates.text("header", "Todo List", variant="h2")
         task_input = self.templates.input("task-input", placeholder="New task...")
         add_btn = self.templates.button("add", "Add", "ui.add_todo")
         input_row = self.templates.container("input", [task_input, add_btn], layout="horizontal", gap=8)

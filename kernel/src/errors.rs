@@ -69,6 +69,21 @@ pub enum ProcessError {
 }
 
 #[derive(Error, Debug)]
+pub enum SchedulerError {
+    #[error("Process {0} not found in scheduler")]
+    ProcessNotFound(u32),
+
+    #[error("Scheduler queue full: {0}")]
+    QueueFull(String),
+
+    #[error("Invalid scheduling policy: {0}")]
+    InvalidPolicy(String),
+
+    #[error("Cannot schedule: {0}")]
+    SchedulingFailed(String),
+}
+
+#[derive(Error, Debug)]
 pub enum KernelError {
     #[error("Memory error: {0}")]
     Memory(#[from] MemoryError),
@@ -81,6 +96,9 @@ pub enum KernelError {
 
     #[error("Syscall error: {0}")]
     Syscall(#[from] SyscallError),
+
+    #[error("Scheduler error: {0}")]
+    Scheduler(#[from] SchedulerError),
 
     #[error("gRPC error: {0}")]
     Grpc(#[from] tonic::Status),

@@ -256,7 +256,7 @@ function AppContent() {
       {showWelcome && (
         <div className={`welcome-screen ${!showWelcome ? "exiting" : ""}`}>
           <div className="welcome-content">
-            <div className="welcome-icon">✨</div>
+            <div className="welcome-icon">AgentOS</div>
             <h1 className="welcome-title">Welcome to Griffin's AgentOS</h1>
             <p className="welcome-subtitle">
               Press <kbd>⌘K</kbd> or click below to create something
@@ -288,7 +288,7 @@ function AppContent() {
         <div className="creator-overlay">
           <div className="creator-backdrop" onClick={() => setShowCreator(false)} />
           <div className="creator-content">
-            <div className="welcome-icon">✨</div>
+            <div className="welcome-icon">AgentOS</div>
             <h1 className="welcome-title">What would you like to create?</h1>
             <div
               ref={spotlightContainerRef}

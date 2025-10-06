@@ -13,7 +13,7 @@ NC := \033[0m # No Color
 
 ## help: Display this help message
 help:
-	@echo "$(BLUE)AI-OS Kernel - Available targets:$(NC)"
+	@echo "$(BLUE)AgentOS Kernel - Available targets:$(NC)"
 	@echo ""
 	@sed -n 's/^##//p' $(MAKEFILE_LIST) | column -t -s ':' | sed -e 's/^/ /'
 	@echo ""
@@ -174,26 +174,26 @@ update:
 
 ## verify: Run all verification checks (format, lint, test)
 verify: fmt-check clippy test
-	@echo "$(GREEN)✓ All verification checks passed!$(NC)"
+	@echo "$(GREEN)All verification checks passed!$(NC)"
 
 ## pre-commit: Run pre-commit checks
 pre-commit: fmt lint test
-	@echo "$(GREEN)✓ Pre-commit checks passed!$(NC)"
+	@echo "$(GREEN)Pre-commit checks passed!$(NC)"
 
 ## ci: Run CI pipeline (check, test, lint, audit)
 ci: check test lint audit
-	@echo "$(GREEN)✓ CI pipeline passed!$(NC)"
+	@echo "$(GREEN)CI pipeline passed!$(NC)"
 
 ## release: Build release binary and strip symbols
 release: clean build-release
-	@echo "$(GREEN)✓ Release build complete!$(NC)"
+	@echo "$(GREEN)Release build complete!$(NC)"
 	@ls -lh target/release/kernel
 
 ## proto: Generate protobuf files
 proto:
 	@echo "$(BLUE)Generating protobuf files...$(NC)"
 	cargo build
-	@echo "$(GREEN)✓ Protobuf files generated!$(NC)"
+	@echo "$(GREEN)Protobuf files generated!$(NC)"
 
 ## deps: Show dependency tree
 deps:
@@ -219,5 +219,5 @@ fix:
 
 ## all: Build everything
 all: clean verify build-release doc
-	@echo "$(GREEN)✓ Build complete!$(NC)"
+	@echo "$(GREEN)Build complete!$(NC)"
 

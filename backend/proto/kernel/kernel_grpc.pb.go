@@ -19,10 +19,13 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	KernelService_ExecuteSyscall_FullMethodName = "/kernel.KernelService/ExecuteSyscall"
-	KernelService_CreateProcess_FullMethodName  = "/kernel.KernelService/CreateProcess"
-	KernelService_UpdateSandbox_FullMethodName  = "/kernel.KernelService/UpdateSandbox"
-	KernelService_StreamEvents_FullMethodName   = "/kernel.KernelService/StreamEvents"
+	KernelService_ExecuteSyscall_FullMethodName      = "/kernel.KernelService/ExecuteSyscall"
+	KernelService_CreateProcess_FullMethodName       = "/kernel.KernelService/CreateProcess"
+	KernelService_UpdateSandbox_FullMethodName       = "/kernel.KernelService/UpdateSandbox"
+	KernelService_ScheduleNext_FullMethodName        = "/kernel.KernelService/ScheduleNext"
+	KernelService_GetSchedulerStats_FullMethodName   = "/kernel.KernelService/GetSchedulerStats"
+	KernelService_SetSchedulingPolicy_FullMethodName = "/kernel.KernelService/SetSchedulingPolicy"
+	KernelService_StreamEvents_FullMethodName        = "/kernel.KernelService/StreamEvents"
 )
 
 // KernelServiceClient is the client API for KernelService service.
@@ -37,6 +40,10 @@ type KernelServiceClient interface {
 	CreateProcess(ctx context.Context, in *CreateProcessRequest, opts ...grpc.CallOption) (*CreateProcessResponse, error)
 	// Manage sandbox permissions
 	UpdateSandbox(ctx context.Context, in *UpdateSandboxRequest, opts ...grpc.CallOption) (*UpdateSandboxResponse, error)
+	// Scheduler operations
+	ScheduleNext(ctx context.Context, in *ScheduleNextRequest, opts ...grpc.CallOption) (*ScheduleNextResponse, error)
+	GetSchedulerStats(ctx context.Context, in *GetSchedulerStatsRequest, opts ...grpc.CallOption) (*GetSchedulerStatsResponse, error)
+	SetSchedulingPolicy(ctx context.Context, in *SetSchedulingPolicyRequest, opts ...grpc.CallOption) (*SetSchedulingPolicyResponse, error)
 	// Stream kernel events (optional, for future)
 	StreamEvents(ctx context.Context, in *EventStreamRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[KernelEvent], error)
 }
@@ -79,6 +86,36 @@ func (c *kernelServiceClient) UpdateSandbox(ctx context.Context, in *UpdateSandb
 	return out, nil
 }
 
+func (c *kernelServiceClient) ScheduleNext(ctx context.Context, in *ScheduleNextRequest, opts ...grpc.CallOption) (*ScheduleNextResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ScheduleNextResponse)
+	err := c.cc.Invoke(ctx, KernelService_ScheduleNext_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *kernelServiceClient) GetSchedulerStats(ctx context.Context, in *GetSchedulerStatsRequest, opts ...grpc.CallOption) (*GetSchedulerStatsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetSchedulerStatsResponse)
+	err := c.cc.Invoke(ctx, KernelService_GetSchedulerStats_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *kernelServiceClient) SetSchedulingPolicy(ctx context.Context, in *SetSchedulingPolicyRequest, opts ...grpc.CallOption) (*SetSchedulingPolicyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetSchedulingPolicyResponse)
+	err := c.cc.Invoke(ctx, KernelService_SetSchedulingPolicy_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *kernelServiceClient) StreamEvents(ctx context.Context, in *EventStreamRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[KernelEvent], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &KernelService_ServiceDesc.Streams[0], KernelService_StreamEvents_FullMethodName, cOpts...)
@@ -110,6 +147,10 @@ type KernelServiceServer interface {
 	CreateProcess(context.Context, *CreateProcessRequest) (*CreateProcessResponse, error)
 	// Manage sandbox permissions
 	UpdateSandbox(context.Context, *UpdateSandboxRequest) (*UpdateSandboxResponse, error)
+	// Scheduler operations
+	ScheduleNext(context.Context, *ScheduleNextRequest) (*ScheduleNextResponse, error)
+	GetSchedulerStats(context.Context, *GetSchedulerStatsRequest) (*GetSchedulerStatsResponse, error)
+	SetSchedulingPolicy(context.Context, *SetSchedulingPolicyRequest) (*SetSchedulingPolicyResponse, error)
 	// Stream kernel events (optional, for future)
 	StreamEvents(*EventStreamRequest, grpc.ServerStreamingServer[KernelEvent]) error
 	mustEmbedUnimplementedKernelServiceServer()
@@ -130,6 +171,15 @@ func (UnimplementedKernelServiceServer) CreateProcess(context.Context, *CreatePr
 }
 func (UnimplementedKernelServiceServer) UpdateSandbox(context.Context, *UpdateSandboxRequest) (*UpdateSandboxResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateSandbox not implemented")
+}
+func (UnimplementedKernelServiceServer) ScheduleNext(context.Context, *ScheduleNextRequest) (*ScheduleNextResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ScheduleNext not implemented")
+}
+func (UnimplementedKernelServiceServer) GetSchedulerStats(context.Context, *GetSchedulerStatsRequest) (*GetSchedulerStatsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSchedulerStats not implemented")
+}
+func (UnimplementedKernelServiceServer) SetSchedulingPolicy(context.Context, *SetSchedulingPolicyRequest) (*SetSchedulingPolicyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetSchedulingPolicy not implemented")
 }
 func (UnimplementedKernelServiceServer) StreamEvents(*EventStreamRequest, grpc.ServerStreamingServer[KernelEvent]) error {
 	return status.Errorf(codes.Unimplemented, "method StreamEvents not implemented")
@@ -209,6 +259,60 @@ func _KernelService_UpdateSandbox_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _KernelService_ScheduleNext_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ScheduleNextRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KernelServiceServer).ScheduleNext(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KernelService_ScheduleNext_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KernelServiceServer).ScheduleNext(ctx, req.(*ScheduleNextRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KernelService_GetSchedulerStats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSchedulerStatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KernelServiceServer).GetSchedulerStats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KernelService_GetSchedulerStats_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KernelServiceServer).GetSchedulerStats(ctx, req.(*GetSchedulerStatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KernelService_SetSchedulingPolicy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetSchedulingPolicyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KernelServiceServer).SetSchedulingPolicy(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KernelService_SetSchedulingPolicy_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KernelServiceServer).SetSchedulingPolicy(ctx, req.(*SetSchedulingPolicyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _KernelService_StreamEvents_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(EventStreamRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -238,6 +342,18 @@ var KernelService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateSandbox",
 			Handler:    _KernelService_UpdateSandbox_Handler,
+		},
+		{
+			MethodName: "ScheduleNext",
+			Handler:    _KernelService_ScheduleNext_Handler,
+		},
+		{
+			MethodName: "GetSchedulerStats",
+			Handler:    _KernelService_GetSchedulerStats_Handler,
+		},
+		{
+			MethodName: "SetSchedulingPolicy",
+			Handler:    _KernelService_SetSchedulingPolicy_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

@@ -15,6 +15,11 @@ service KernelService {
   // Manage sandbox permissions
   rpc UpdateSandbox(UpdateSandboxRequest) returns (UpdateSandboxResponse);
 
+  // Scheduler operations
+  rpc ScheduleNext(ScheduleNextRequest) returns (ScheduleNextResponse);
+  rpc GetSchedulerStats(GetSchedulerStatsRequest) returns (GetSchedulerStatsResponse);
+  rpc SetSchedulingPolicy(SetSchedulingPolicyRequest) returns (SetSchedulingPolicyResponse);
+
   // Stream kernel events (optional, for future)
   rpc StreamEvents(EventStreamRequest) returns (stream KernelEvent);
 }
@@ -57,6 +62,11 @@ message SyscallRequest {
     ReadShmCall read_shm = 64;
     DestroyShmCall destroy_shm = 65;
     ShmStatsCall shm_stats = 66;
+    // Scheduler
+    ScheduleNextCall schedule_next = 70;
+    YieldProcessCall yield_process = 71;
+    GetCurrentScheduledCall get_current_scheduled = 72;
+    GetSchedulerStatsCall get_scheduler_stats = 73;
   }
 }
 
@@ -230,6 +240,18 @@ message ShmStatsCall {
 }
 
 // ============================================================================
+// Scheduler Calls
+// ============================================================================
+
+message ScheduleNextCall {}
+
+message YieldProcessCall {}
+
+message GetCurrentScheduledCall {}
+
+message GetSchedulerStatsCall {}
+
+// ============================================================================
 // Process Management
 // ============================================================================
 
@@ -334,5 +356,43 @@ message PermissionDeniedEvent {
   uint32 pid = 1;
   string syscall_type = 2;
   string reason = 3;
+}
+
+// ============================================================================
+// Scheduler Service Messages
+// ============================================================================
+
+message ScheduleNextRequest {}
+
+message ScheduleNextResponse {
+  bool success = 1;
+  optional uint32 next_pid = 2;
+  string error = 3;
+}
+
+message GetSchedulerStatsRequest {}
+
+message GetSchedulerStatsResponse {
+  bool success = 1;
+  SchedulerStats stats = 2;
+  string error = 3;
+}
+
+message SchedulerStats {
+  uint64 total_scheduled = 1;
+  uint64 context_switches = 2;
+  uint64 preemptions = 3;
+  uint32 active_processes = 4;
+  string policy = 5;
+  uint64 quantum_micros = 6;
+}
+
+message SetSchedulingPolicyRequest {
+  string policy = 1; // "RoundRobin", "Priority", or "Fair"
+}
+
+message SetSchedulingPolicyResponse {
+  bool success = 1;
+  string error = 2;
 }
 

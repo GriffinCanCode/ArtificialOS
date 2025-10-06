@@ -11,7 +11,7 @@ use tokio::time::sleep;
 
 #[tokio::test]
 async fn test_full_process_lifecycle_with_executor() {
-    let pm = ProcessManager::with_executor();
+    let pm = ProcessManager::builder().with_executor().build();
 
     // Create process with OS execution
     let config = ExecutionConfig::new("echo".to_string()).with_args(vec!["test".to_string()]);
@@ -32,7 +32,11 @@ async fn test_full_process_lifecycle_with_executor() {
 #[tokio::test]
 async fn test_process_manager_with_memory_and_executor() {
     let mem_mgr = MemoryManager::new();
-    let pm = ProcessManager::full(mem_mgr.clone());
+    let pm = ProcessManager::builder()
+        .with_memory_manager(mem_mgr.clone())
+        .with_executor()
+        .with_limits()
+        .build();
 
     // Create process with command
     let config = ExecutionConfig::new("sleep".to_string()).with_args(vec!["0.1".to_string()]);
@@ -53,7 +57,7 @@ async fn test_process_manager_with_memory_and_executor() {
 
 #[tokio::test]
 async fn test_multiple_processes_with_isolation() {
-    let pm = ProcessManager::with_executor();
+    let pm = ProcessManager::builder().with_executor().build();
 
     // Create 3 processes
     let mut pids = Vec::new();
@@ -86,7 +90,7 @@ async fn test_multiple_processes_with_isolation() {
 
 #[tokio::test]
 async fn test_process_without_os_execution() {
-    let pm = ProcessManager::with_executor();
+    let pm = ProcessManager::builder().with_executor().build();
 
     // Create process without command (metadata only)
     let pid = pm.create_process("virtual-app".to_string(), 5);
@@ -101,7 +105,7 @@ async fn test_process_without_os_execution() {
 
 #[tokio::test]
 async fn test_priority_based_resource_limits() {
-    let pm = ProcessManager::with_executor();
+    let pm = ProcessManager::builder().with_executor().build();
 
     // Low priority process
     let config_low = ExecutionConfig::new("sleep".to_string()).with_args(vec!["0.1".to_string()]);
@@ -139,7 +143,7 @@ fn test_limit_manager_standalone() {
 
 #[tokio::test]
 async fn test_executor_command_validation() {
-    let pm = ProcessManager::with_executor();
+    let pm = ProcessManager::builder().with_executor().build();
 
     // Try to spawn with dangerous command
     let config = ExecutionConfig::new("echo; rm -rf /".to_string());

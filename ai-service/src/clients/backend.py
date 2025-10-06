@@ -166,6 +166,117 @@ class BackendClient:
         except Exception:
             return False
 
+    # ========================================================================
+    # Kernel/Scheduler Operations
+    # ========================================================================
+
+    def schedule_next(self) -> int | None:
+        """
+        Schedule the next process.
+
+        Returns:
+            PID of the next scheduled process, or None if no processes available
+
+        Raises:
+            httpx.HTTPError: If the request fails
+        """
+        try:
+            url = f"{self.backend_url}/kernel/schedule-next"
+            response = self._client.post(url)
+            response.raise_for_status()
+
+            data = response.json()
+            if not data.get("success", False):
+                logger.error("schedule_next_failed", error=data.get("error"))
+                return None
+
+            logger.info("schedule_next_success", next_pid=data.get("next_pid"))
+            return data.get("next_pid")
+
+        except httpx.HTTPError as e:
+            logger.warning("schedule_next_http_error", error=str(e))
+            raise
+        except Exception as e:
+            logger.error("schedule_next_failed", error=str(e), exc_info=True)
+            return None
+
+    def get_scheduler_stats(self) -> dict | None:
+        """
+        Get scheduler statistics.
+
+        Returns:
+            Dictionary with scheduler statistics:
+            - total_scheduled: Total number of processes scheduled
+            - context_switches: Number of context switches
+            - preemptions: Number of preemptions
+            - active_processes: Number of active processes
+            - policy: Current scheduling policy (RoundRobin, Priority, Fair)
+            - quantum_micros: Time quantum in microseconds
+
+        Raises:
+            httpx.HTTPError: If the request fails
+        """
+        try:
+            url = f"{self.backend_url}/kernel/scheduler/stats"
+            response = self._client.get(url)
+            response.raise_for_status()
+
+            data = response.json()
+            if not data.get("success", False):
+                logger.error("get_scheduler_stats_failed", error=data.get("error"))
+                return None
+
+            stats = data.get("stats", {})
+            logger.info("get_scheduler_stats_success", stats=stats)
+            return stats
+
+        except httpx.HTTPError as e:
+            logger.warning("get_scheduler_stats_http_error", error=str(e))
+            raise
+        except Exception as e:
+            logger.error("get_scheduler_stats_failed", error=str(e), exc_info=True)
+            return None
+
+    def set_scheduling_policy(self, policy: str) -> bool:
+        """
+        Set the scheduling policy.
+
+        Args:
+            policy: Scheduling policy to set (RoundRobin, Priority, or Fair)
+
+        Returns:
+            True if successful, False otherwise
+
+        Raises:
+            httpx.HTTPError: If the request fails
+            ValueError: If policy is invalid
+        """
+        valid_policies = {"RoundRobin", "Priority", "Fair"}
+        if policy not in valid_policies:
+            raise ValueError(f"Invalid policy '{policy}'. Must be one of: {valid_policies}")
+
+        try:
+            url = f"{self.backend_url}/kernel/scheduler/policy"
+            response = self._client.put(url, json={"policy": policy})
+            response.raise_for_status()
+
+            data = response.json()
+            success = data.get("success", False)
+
+            if success:
+                logger.info("set_scheduling_policy_success", policy=policy)
+            else:
+                logger.error("set_scheduling_policy_failed", error=data.get("error"))
+
+            return success
+
+        except httpx.HTTPError as e:
+            logger.warning("set_scheduling_policy_http_error", error=str(e))
+            raise
+        except Exception as e:
+            logger.error("set_scheduling_policy_failed", error=str(e), exc_info=True)
+            return False
+
     def close(self) -> None:
         """Close HTTP client"""
         self._client.close()

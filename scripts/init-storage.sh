@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Initialize AI-OS storage structure
+# Initialize AgentOS storage structure
 # Run from project root
 
-STORAGE_ROOT="/tmp/ai-os-storage"
+STORAGE_ROOT="/tmp/agentos-storage"
 
-echo "🗂️  Initializing AI-OS storage structure..."
+echo "Initializing AgentOS storage structure..."
 
 # Create system directories
 mkdir -p "$STORAGE_ROOT/system/apps"
@@ -24,9 +24,9 @@ mkdir -p "$STORAGE_ROOT/System"
 # Create app-specific storage
 mkdir -p "$STORAGE_ROOT/Data/storage"
 
-echo "✅ Storage structure created at $STORAGE_ROOT"
+echo "Storage structure created at $STORAGE_ROOT"
 echo ""
-echo "📁 Directory structure:"
+echo "Directory structure:"
 echo "  $STORAGE_ROOT/"
 echo "    ├── Home/              # User home directory"
 echo "    ├── Applications/      # Installed applications"
