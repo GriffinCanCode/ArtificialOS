@@ -1451,7 +1451,7 @@ impl MemoryManager {
 - ✅ Error handling and permission checks
 
 **Go Backend:**
-- ✅ `grpc/kernel.go`: ExecuteSyscall supports all 50 syscalls
+- ✅ `grpc/kernel.go`: ExecuteSyscall supports all 50 syscalls (✅ **October 6, 2025: Fixed missing 17 syscalls - IPC Pipes, IPC Shared Memory, Scheduler operations now fully accessible**)
 - ✅ Strongly-typed parameter mapping
 - ✅ Proper error handling and timeouts
 

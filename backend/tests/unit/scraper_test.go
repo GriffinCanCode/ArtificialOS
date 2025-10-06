@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/GriffinCanCode/AgentOS/backend/internal/providers"
-	"github.com/GriffinCanCode/AgentOS/backend/internal/types"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

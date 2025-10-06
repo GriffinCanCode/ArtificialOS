@@ -26,6 +26,7 @@ import {
   HubExecutor,
   FilesystemExecutor,
   CalcExecutor,
+  NotesExecutor,
 } from "./executors";
 
 // ============================================================================
@@ -57,6 +58,7 @@ export class ToolExecutor {
   private hubExecutor: HubExecutor;
   private filesystemExecutor: FilesystemExecutor;
   private calcExecutor: CalcExecutor;
+  private notesExecutor: NotesExecutor;
 
   constructor(componentState: ComponentState) {
     this.componentState = componentState;
@@ -85,6 +87,7 @@ export class ToolExecutor {
     this.hubExecutor = new HubExecutor(this.context);
     this.filesystemExecutor = new FilesystemExecutor(this.context, this.serviceExecutor);
     this.calcExecutor = new CalcExecutor(this.context);
+    this.notesExecutor = new NotesExecutor(this.context);
 
     this.setupStateManagement();
   }
@@ -203,6 +206,9 @@ export class ToolExecutor {
             break;
           case "notification":
             result = this.notificationExecutor.execute(toolId.split(".")[1], params);
+            break;
+          case "notes":
+            result = await this.notesExecutor.execute(toolId.split(".")[1], params);
             break;
 
           // Legacy specific tools - kept for backward compatibility but deprecated

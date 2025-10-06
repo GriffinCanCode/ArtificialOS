@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/GriffinCanCode/AgentOS/backend/internal/types"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/types"
 )
 
 // PatternsOps handles pattern-based extraction with cached regex

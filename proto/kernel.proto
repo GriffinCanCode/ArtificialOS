@@ -64,6 +64,26 @@ message SyscallRequest {
     TriggerGCCall trigger_gc = 41;
     SendSignalCall send_signal = 42;
     NetworkRequestCall network_request = 40;
+    // Network - Sockets
+    SocketCall socket = 80;
+    BindCall bind = 81;
+    ListenCall listen = 82;
+    AcceptCall accept = 83;
+    ConnectCall connect = 84;
+    SendCall send = 85;
+    RecvCall recv = 86;
+    SendToCall send_to = 87;
+    RecvFromCall recv_from = 88;
+    CloseSocketCall close_socket = 89;
+    SetSockOptCall set_sock_opt = 90;
+    GetSockOptCall get_sock_opt = 91;
+    // File Descriptors
+    OpenCall open = 100;
+    CloseCall close = 101;
+    DupCall dup = 102;
+    Dup2Call dup2 = 103;
+    LseekCall lseek = 104;
+    FcntlCall fcntl = 105;
     // IPC - Pipes
     CreatePipeCall create_pipe = 50;
     WritePipeCall write_pipe = 51;
@@ -262,6 +282,112 @@ message SendSignalCall {
 
 message NetworkRequestCall {
   string url = 1;
+}
+
+// ============================================================================
+// Network Calls - Sockets
+// ============================================================================
+
+message SocketCall {
+  uint32 domain = 1;
+  uint32 socket_type = 2;
+  uint32 protocol = 3;
+}
+
+message BindCall {
+  uint32 sockfd = 1;
+  string address = 2;
+}
+
+message ListenCall {
+  uint32 sockfd = 1;
+  uint32 backlog = 2;
+}
+
+message AcceptCall {
+  uint32 sockfd = 1;
+}
+
+message ConnectCall {
+  uint32 sockfd = 1;
+  string address = 2;
+}
+
+message SendCall {
+  uint32 sockfd = 1;
+  bytes data = 2;
+  uint32 flags = 3;
+}
+
+message RecvCall {
+  uint32 sockfd = 1;
+  uint32 size = 2;
+  uint32 flags = 3;
+}
+
+message SendToCall {
+  uint32 sockfd = 1;
+  bytes data = 2;
+  string address = 3;
+  uint32 flags = 4;
+}
+
+message RecvFromCall {
+  uint32 sockfd = 1;
+  uint32 size = 2;
+  uint32 flags = 3;
+}
+
+message CloseSocketCall {
+  uint32 sockfd = 1;
+}
+
+message SetSockOptCall {
+  uint32 sockfd = 1;
+  uint32 level = 2;
+  uint32 optname = 3;
+  bytes optval = 4;
+}
+
+message GetSockOptCall {
+  uint32 sockfd = 1;
+  uint32 level = 2;
+  uint32 optname = 3;
+}
+
+// ============================================================================
+// File Descriptor Calls
+// ============================================================================
+
+message OpenCall {
+  string path = 1;
+  uint32 flags = 2;
+  uint32 mode = 3;
+}
+
+message CloseCall {
+  uint32 fd = 1;
+}
+
+message DupCall {
+  uint32 fd = 1;
+}
+
+message Dup2Call {
+  uint32 oldfd = 1;
+  uint32 newfd = 2;
+}
+
+message LseekCall {
+  uint32 fd = 1;
+  int64 offset = 2;
+  uint32 whence = 3;
+}
+
+message FcntlCall {
+  uint32 fd = 1;
+  uint32 cmd = 2;
+  uint32 arg = 3;
 }
 
 // ============================================================================

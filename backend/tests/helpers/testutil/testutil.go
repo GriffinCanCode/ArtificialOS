@@ -5,7 +5,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/GriffinCanCode/AgentOS/backend/internal/types"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/types"
 	"github.com/stretchr/testify/mock"
 )
 

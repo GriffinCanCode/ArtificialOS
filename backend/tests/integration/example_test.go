@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/GriffinCanCode/AgentOS/backend/internal/app"
-	"github.com/GriffinCanCode/AgentOS/backend/internal/config"
-	"github.com/GriffinCanCode/AgentOS/backend/internal/service"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/domain/app"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/infrastructure/config"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/domain/service"
 	"github.com/GriffinCanCode/AgentOS/backend/tests/helpers/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -6,17 +6,18 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/GriffinCanCode/AgentOS/backend/internal/grpc/kernel"
 	pb "github.com/GriffinCanCode/AgentOS/backend/proto/kernel"
 )
 
 // IPCClient provides IPC operations through the kernel
 type IPCClient struct {
-	*KernelClient
+	client *kernel.KernelClient
 }
 
 // NewIPCClient creates a new IPC client
-func NewIPCClient(kernelClient *KernelClient) *IPCClient {
-	return &IPCClient{KernelClient: kernelClient}
+func NewIPCClient(kernelClient *kernel.KernelClient) *IPCClient {
+	return &IPCClient{client: kernelClient}
 }
 
 // ========================================================================
@@ -39,7 +40,7 @@ func (c *IPCClient) CreatePipe(ctx context.Context, readerPID, writerPID uint32,
 		},
 	}
 
-	resp, err := c.client.ExecuteSyscall(ctx, req)
+	resp, err := c.client.ExecuteSyscallRaw(ctx, req)
 	if err != nil {
 		return 0, fmt.Errorf("create pipe failed: %w", err)
 	}
@@ -81,7 +82,7 @@ func (c *IPCClient) WritePipe(ctx context.Context, pid, pipeID uint32, data []by
 		},
 	}
 
-	resp, err := c.client.ExecuteSyscall(ctx, req)
+	resp, err := c.client.ExecuteSyscallRaw(ctx, req)
 	if err != nil {
 		return 0, fmt.Errorf("write pipe failed: %w", err)
 	}
@@ -118,7 +119,7 @@ func (c *IPCClient) ReadPipe(ctx context.Context, pid, pipeID, size uint32) ([]b
 		},
 	}
 
-	resp, err := c.client.ExecuteSyscall(ctx, req)
+	resp, err := c.client.ExecuteSyscallRaw(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("read pipe failed: %w", err)
 	}
@@ -149,7 +150,7 @@ func (c *IPCClient) ClosePipe(ctx context.Context, pid, pipeID uint32) error {
 		},
 	}
 
-	resp, err := c.client.ExecuteSyscall(ctx, req)
+	resp, err := c.client.ExecuteSyscallRaw(ctx, req)
 	if err != nil {
 		return fmt.Errorf("close pipe failed: %w", err)
 	}
@@ -184,7 +185,7 @@ func (c *IPCClient) CreateShm(ctx context.Context, pid, size uint32) (uint32, er
 		},
 	}
 
-	resp, err := c.client.ExecuteSyscall(ctx, req)
+	resp, err := c.client.ExecuteSyscallRaw(ctx, req)
 	if err != nil {
 		return 0, fmt.Errorf("create shm failed: %w", err)
 	}
@@ -220,7 +221,7 @@ func (c *IPCClient) AttachShm(ctx context.Context, pid, segmentID uint32, readOn
 		},
 	}
 
-	resp, err := c.client.ExecuteSyscall(ctx, req)
+	resp, err := c.client.ExecuteSyscallRaw(ctx, req)
 	if err != nil {
 		return fmt.Errorf("attach shm failed: %w", err)
 	}
@@ -253,7 +254,7 @@ func (c *IPCClient) WriteShm(ctx context.Context, pid, segmentID, offset uint32,
 		},
 	}
 
-	resp, err := c.client.ExecuteSyscall(ctx, req)
+	resp, err := c.client.ExecuteSyscallRaw(ctx, req)
 	if err != nil {
 		return fmt.Errorf("write shm failed: %w", err)
 	}
@@ -286,7 +287,7 @@ func (c *IPCClient) ReadShm(ctx context.Context, pid, segmentID, offset, size ui
 		},
 	}
 
-	resp, err := c.client.ExecuteSyscall(ctx, req)
+	resp, err := c.client.ExecuteSyscallRaw(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("read shm failed: %w", err)
 	}

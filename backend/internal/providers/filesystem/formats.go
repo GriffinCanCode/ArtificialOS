@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/GriffinCanCode/AgentOS/backend/internal/types"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/types"
 	"github.com/bytedance/sonic"
 	"github.com/goccy/go-yaml"
 	"github.com/pelletier/go-toml/v2"

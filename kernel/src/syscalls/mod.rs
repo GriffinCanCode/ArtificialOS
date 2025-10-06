@@ -4,9 +4,11 @@
  */
 
 mod executor;
+mod fd;
 mod fs;
 mod ipc;
 mod memory;
+mod network;
 mod process;
 mod scheduler;
 mod signal;

@@ -8,9 +8,9 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/GriffinCanCode/AgentOS/backend/internal/config"
-	"github.com/GriffinCanCode/AgentOS/backend/internal/logging"
-	"github.com/GriffinCanCode/AgentOS/backend/internal/server"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/infrastructure/config"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/infrastructure/logging"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/infrastructure/server"
 )
 
 func main() {

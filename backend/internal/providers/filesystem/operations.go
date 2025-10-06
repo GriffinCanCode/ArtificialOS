@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/GriffinCanCode/AgentOS/backend/internal/types"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/types"
 )
 
 // OperationsOps handles file operations (copy, move, rename, links)

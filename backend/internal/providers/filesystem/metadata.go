@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/GriffinCanCode/AgentOS/backend/internal/types"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/types"
 	"github.com/charlievieth/fastwalk"
 	"github.com/gabriel-vasile/mimetype"
 )

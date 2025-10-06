@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/GriffinCanCode/AgentOS/backend/internal/types"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/types"
 )
 
 // FileInfo represents file metadata

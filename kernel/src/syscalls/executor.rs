@@ -186,6 +186,58 @@ impl SyscallExecutor {
                 target_pid,
                 signal,
             } => self.send_signal(pid, target_pid, signal),
+
+            // Network operations
+            Syscall::Socket {
+                domain,
+                socket_type,
+                protocol,
+            } => self.socket(pid, domain, socket_type, protocol),
+            Syscall::Bind { sockfd, ref address } => self.bind(pid, sockfd, address),
+            Syscall::Listen { sockfd, backlog } => self.listen(pid, sockfd, backlog),
+            Syscall::Accept { sockfd } => self.accept(pid, sockfd),
+            Syscall::Connect { sockfd, ref address } => self.connect(pid, sockfd, address),
+            Syscall::Send {
+                sockfd,
+                ref data,
+                flags,
+            } => self.send(pid, sockfd, data, flags),
+            Syscall::Recv { sockfd, size, flags } => self.recv(pid, sockfd, size, flags),
+            Syscall::SendTo {
+                sockfd,
+                ref data,
+                ref address,
+                flags,
+            } => self.sendto(pid, sockfd, data, address, flags),
+            Syscall::RecvFrom { sockfd, size, flags } => self.recvfrom(pid, sockfd, size, flags),
+            Syscall::CloseSocket { sockfd } => self.close_socket(pid, sockfd),
+            Syscall::SetSockOpt {
+                sockfd,
+                level,
+                optname,
+                ref optval,
+            } => self.setsockopt(pid, sockfd, level, optname, optval),
+            Syscall::GetSockOpt {
+                sockfd,
+                level,
+                optname,
+            } => self.getsockopt(pid, sockfd, level, optname),
+
+            // File Descriptor operations
+            Syscall::Open {
+                ref path,
+                flags,
+                mode,
+            } => self.open(pid, path, flags, mode),
+            Syscall::Close { fd } => self.close_fd(pid, fd),
+            Syscall::Dup { fd } => self.dup(pid, fd),
+            Syscall::Dup2 { oldfd, newfd } => self.dup2(pid, oldfd, newfd),
+            Syscall::Lseek {
+                fd,
+                offset,
+                whence,
+            } => self.lseek(pid, fd, offset, whence),
+            Syscall::Fcntl { fd, cmd, arg } => self.fcntl(pid, fd, cmd, arg),
         }
     }
 }

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/GriffinCanCode/AgentOS/backend/internal/types"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/types"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/antchfx/htmlquery"
 	"github.com/microcosm-cc/bluemonday"

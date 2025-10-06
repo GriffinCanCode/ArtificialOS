@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/GriffinCanCode/AgentOS/backend/internal/types"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/types"
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/charlievieth/fastwalk"
 )

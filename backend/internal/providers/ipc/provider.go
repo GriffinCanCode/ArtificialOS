@@ -5,7 +5,8 @@ import (
 	"fmt"
 
 	"github.com/GriffinCanCode/AgentOS/backend/internal/grpc"
-	"github.com/GriffinCanCode/AgentOS/backend/internal/types"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/grpc/kernel"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/types"
 )
 
 // Provider implements IPC operations through the kernel
@@ -14,7 +15,7 @@ type Provider struct {
 }
 
 // NewProvider creates a new IPC provider
-func NewProvider(kernelClient *grpc.KernelClient) *Provider {
+func NewProvider(kernelClient *kernel.KernelClient) *Provider {
 	return &Provider{
 		ipcClient: grpc.NewIPCClient(kernelClient),
 	}

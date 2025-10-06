@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/GriffinCanCode/AgentOS/backend/internal/types"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/types"
 	"github.com/PuerkitoBio/goquery"
 )
 

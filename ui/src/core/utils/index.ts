@@ -17,3 +17,30 @@ export * from "./animation/componentVariants";
 export { WebSocketClient } from "./api/websocketClient";
 export { SessionClient } from "./api/sessionClient";
 export { RegistryClient } from "./api/registryClient";
+
+// ID generation utilities
+export {
+  generateTimestampId,
+  generateShortId,
+  generateUUID,
+  generatePrefixedId,
+  generateSequentialId,
+  extractTimestamp,
+  isValidUUID,
+  IDGenerator,
+  defaultIDGenerator,
+} from "./id";
+
+// Hash utilities
+export {
+  hashString,
+  hashObject,
+  hashFields,
+  shortHash,
+  verifyHash,
+  Hasher,
+  defaultHasher,
+  simpleHash,
+  cacheKey,
+} from "./hash";
+export type { HashAlgorithm } from "./hash";

@@ -4,7 +4,7 @@
 // error handling, and Go-friendly interfaces.
 //
 // Clients:
-//   - KernelClient: System call execution and process management
+//   - kernel.KernelClient: System call execution and process management
 //   - AIClient: UI generation and chat streaming
 //
 // Features:
@@ -15,8 +15,9 @@
 //
 // Example Usage:
 //
-//	kernel, err := grpc.NewKernelClient("localhost:50051")
-//	pid, osPid, err := kernel.CreateProcess(ctx, "my-app", 5, "medium", opts)
+//	import "github.com/GriffinCanCode/AgentOS/backend/internal/grpc/kernel"
+//	client, err := kernel.New("localhost:50051")
+//	pid, osPid, err := client.CreateProcess(ctx, "my-app", 5, "medium", opts)
 //
 //	ai, err := grpc.NewAIClient("localhost:50052")
 //	stream, err := ai.StreamUI(ctx, "create calculator", context, nil)

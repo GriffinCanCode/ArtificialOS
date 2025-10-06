@@ -9,11 +9,11 @@
     "tags": ["notes", "markdown", "productivity"],
     "permissions": ["STANDARD"]
   },
-  "services": [{"storage": ["get", "set", "list"]}],
+  "services": [{"storage": ["get", "set", "list", "remove"]}],
   "ui": {
     "title": "Notes",
     "layout": "horizontal",
-    "lifecycle": {"on_mount": "storage.get"},
+    "lifecycle": {"on_mount": "notes.list"},
     "components": [
       {
         "type": "container",
@@ -51,7 +51,7 @@
                 "type": "text",
                 "id": "notes-count",
                 "props": {
-                  "content": "0 notes",
+                  "content": "0 NOTES",
                   "variant": "caption",
                   "color": "muted",
                   "style": {
@@ -78,7 +78,7 @@
                     "borderRadius": "6px"
                   }
                 },
-                "on_event": {"click": "storage.set"}
+                "on_event": {"click": "notes.create"}
               }
             ]
           },
@@ -129,7 +129,7 @@
                 "type": "text",
                 "id": "last-edited",
                 "props": {
-                  "content": "October 4, 2025 at 12:03 PM",
+                  "content": "Select or create a note",
                   "variant": "caption",
                   "color": "muted",
                   "style": {
@@ -150,7 +150,7 @@
                     "padding": "0.5rem 1rem"
                   }
                 },
-                "on_event": {"click": "storage.set"}
+                "on_event": {"click": "notes.save"}
               }
             ]
           },

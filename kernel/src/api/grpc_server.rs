@@ -162,6 +162,88 @@ impl KernelService for KernelServiceImpl {
             Some(syscall_request::Syscall::NetworkRequest(call)) => {
                 Syscall::NetworkRequest { url: call.url }
             }
+            // Network - Sockets
+            Some(syscall_request::Syscall::Socket(call)) => Syscall::Socket {
+                domain: call.domain,
+                socket_type: call.socket_type,
+                protocol: call.protocol,
+            },
+            Some(syscall_request::Syscall::Bind(call)) => Syscall::Bind {
+                sockfd: call.sockfd,
+                address: call.address,
+            },
+            Some(syscall_request::Syscall::Listen(call)) => Syscall::Listen {
+                sockfd: call.sockfd,
+                backlog: call.backlog,
+            },
+            Some(syscall_request::Syscall::Accept(call)) => Syscall::Accept {
+                sockfd: call.sockfd,
+            },
+            Some(syscall_request::Syscall::Connect(call)) => Syscall::Connect {
+                sockfd: call.sockfd,
+                address: call.address,
+            },
+            Some(syscall_request::Syscall::Send(call)) => Syscall::Send {
+                sockfd: call.sockfd,
+                data: call.data,
+                flags: call.flags,
+            },
+            Some(syscall_request::Syscall::Recv(call)) => Syscall::Recv {
+                sockfd: call.sockfd,
+                size: call.size as usize,
+                flags: call.flags,
+            },
+            Some(syscall_request::Syscall::SendTo(call)) => Syscall::SendTo {
+                sockfd: call.sockfd,
+                data: call.data,
+                address: call.address,
+                flags: call.flags,
+            },
+            Some(syscall_request::Syscall::RecvFrom(call)) => Syscall::RecvFrom {
+                sockfd: call.sockfd,
+                size: call.size as usize,
+                flags: call.flags,
+            },
+            Some(syscall_request::Syscall::CloseSocket(call)) => Syscall::CloseSocket {
+                sockfd: call.sockfd,
+            },
+            Some(syscall_request::Syscall::SetSockOpt(call)) => Syscall::SetSockOpt {
+                sockfd: call.sockfd,
+                level: call.level,
+                optname: call.optname,
+                optval: call.optval,
+            },
+            Some(syscall_request::Syscall::GetSockOpt(call)) => Syscall::GetSockOpt {
+                sockfd: call.sockfd,
+                level: call.level,
+                optname: call.optname,
+            },
+            // File Descriptors
+            Some(syscall_request::Syscall::Open(call)) => Syscall::Open {
+                path: PathBuf::from(call.path),
+                flags: call.flags,
+                mode: call.mode,
+            },
+            Some(syscall_request::Syscall::Close(call)) => Syscall::Close {
+                fd: call.fd,
+            },
+            Some(syscall_request::Syscall::Dup(call)) => Syscall::Dup {
+                fd: call.fd,
+            },
+            Some(syscall_request::Syscall::Dup2(call)) => Syscall::Dup2 {
+                oldfd: call.oldfd,
+                newfd: call.newfd,
+            },
+            Some(syscall_request::Syscall::Lseek(call)) => Syscall::Lseek {
+                fd: call.fd,
+                offset: call.offset,
+                whence: call.whence,
+            },
+            Some(syscall_request::Syscall::Fcntl(call)) => Syscall::Fcntl {
+                fd: call.fd,
+                cmd: call.cmd,
+                arg: call.arg,
+            },
             // IPC - Pipes
             Some(syscall_request::Syscall::CreatePipe(call)) => Syscall::CreatePipe {
                 reader_pid: call.reader_pid,

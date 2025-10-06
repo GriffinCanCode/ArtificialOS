@@ -206,6 +206,90 @@ pub enum Syscall {
         target_pid: u32,
         signal: u32,
     },
+
+    // Network operations - Sockets
+    Socket {
+        domain: u32,  // AF_INET, AF_INET6, etc.
+        socket_type: u32,  // SOCK_STREAM, SOCK_DGRAM, etc.
+        protocol: u32,  // IPPROTO_TCP, IPPROTO_UDP, etc.
+    },
+    Bind {
+        sockfd: u32,
+        address: String,  // IP:port format
+    },
+    Listen {
+        sockfd: u32,
+        backlog: u32,
+    },
+    Accept {
+        sockfd: u32,
+    },
+    Connect {
+        sockfd: u32,
+        address: String,  // IP:port format
+    },
+    Send {
+        sockfd: u32,
+        data: Vec<u8>,
+        flags: u32,
+    },
+    Recv {
+        sockfd: u32,
+        size: usize,
+        flags: u32,
+    },
+    SendTo {
+        sockfd: u32,
+        data: Vec<u8>,
+        address: String,
+        flags: u32,
+    },
+    RecvFrom {
+        sockfd: u32,
+        size: usize,
+        flags: u32,
+    },
+    CloseSocket {
+        sockfd: u32,
+    },
+    SetSockOpt {
+        sockfd: u32,
+        level: u32,
+        optname: u32,
+        optval: Vec<u8>,
+    },
+    GetSockOpt {
+        sockfd: u32,
+        level: u32,
+        optname: u32,
+    },
+
+    // File Descriptor operations
+    Open {
+        path: PathBuf,
+        flags: u32,  // O_RDONLY, O_WRONLY, O_RDWR, O_CREAT, O_APPEND, etc.
+        mode: u32,   // File permissions (0644, etc.)
+    },
+    Close {
+        fd: u32,
+    },
+    Dup {
+        fd: u32,
+    },
+    Dup2 {
+        oldfd: u32,
+        newfd: u32,
+    },
+    Lseek {
+        fd: u32,
+        offset: i64,
+        whence: u32,  // SEEK_SET, SEEK_CUR, SEEK_END
+    },
+    Fcntl {
+        fd: u32,
+        cmd: u32,
+        arg: u32,
+    },
 }
 
 /// Helper structs for serialization
