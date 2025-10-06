@@ -27,6 +27,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
     info!("AgentOS Kernel starting...");
     info!("================================================");
 
+    // Initialize monitoring
+    info!("Initializing performance monitoring...");
+    let metrics_collector = std::sync::Arc::new(ai_os_kernel::MetricsCollector::new());
+    info!("Metrics collector initialized");
+
     // Initialize kernel subsystems
     info!("Initializing memory manager...");
     let memory_manager = MemoryManager::new();
@@ -73,7 +78,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
         ipc_manager.pipes().clone(),
         ipc_manager.shm().clone(),
     )
-    .with_vfs(vfs);
+    .with_queues(ipc_manager.queues().clone())
+    .with_vfs(vfs)
+    .with_metrics(metrics_collector.clone());
 
     info!("Kernel initialization complete");
     info!("================================================");

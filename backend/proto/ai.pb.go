@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.10
 // 	protoc        v5.29.3
-// source: proto/ai.proto
+// source: ai.proto
 
 package ai
 
@@ -60,11 +60,11 @@ func (x ChatToken_Type) String() string {
 }
 
 func (ChatToken_Type) Descriptor() protoreflect.EnumDescriptor {
-	return file_proto_ai_proto_enumTypes[0].Descriptor()
+	return file_ai_proto_enumTypes[0].Descriptor()
 }
 
 func (ChatToken_Type) Type() protoreflect.EnumType {
-	return &file_proto_ai_proto_enumTypes[0]
+	return &file_ai_proto_enumTypes[0]
 }
 
 func (x ChatToken_Type) Number() protoreflect.EnumNumber {
@@ -73,7 +73,7 @@ func (x ChatToken_Type) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ChatToken_Type.Descriptor instead.
 func (ChatToken_Type) EnumDescriptor() ([]byte, []int) {
-	return file_proto_ai_proto_rawDescGZIP(), []int{4, 0}
+	return file_ai_proto_rawDescGZIP(), []int{4, 0}
 }
 
 type UIToken_Type int32
@@ -115,11 +115,11 @@ func (x UIToken_Type) String() string {
 }
 
 func (UIToken_Type) Descriptor() protoreflect.EnumDescriptor {
-	return file_proto_ai_proto_enumTypes[1].Descriptor()
+	return file_ai_proto_enumTypes[1].Descriptor()
 }
 
 func (UIToken_Type) Type() protoreflect.EnumType {
-	return &file_proto_ai_proto_enumTypes[1]
+	return &file_ai_proto_enumTypes[1]
 }
 
 func (x UIToken_Type) Number() protoreflect.EnumNumber {
@@ -128,7 +128,7 @@ func (x UIToken_Type) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use UIToken_Type.Descriptor instead.
 func (UIToken_Type) EnumDescriptor() ([]byte, []int) {
-	return file_proto_ai_proto_rawDescGZIP(), []int{5, 0}
+	return file_ai_proto_rawDescGZIP(), []int{5, 0}
 }
 
 type UIRequest struct {
@@ -142,7 +142,7 @@ type UIRequest struct {
 
 func (x *UIRequest) Reset() {
 	*x = UIRequest{}
-	mi := &file_proto_ai_proto_msgTypes[0]
+	mi := &file_ai_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -154,7 +154,7 @@ func (x *UIRequest) String() string {
 func (*UIRequest) ProtoMessage() {}
 
 func (x *UIRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ai_proto_msgTypes[0]
+	mi := &file_ai_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -167,7 +167,7 @@ func (x *UIRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UIRequest.ProtoReflect.Descriptor instead.
 func (*UIRequest) Descriptor() ([]byte, []int) {
-	return file_proto_ai_proto_rawDescGZIP(), []int{0}
+	return file_ai_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *UIRequest) GetMessage() string {
@@ -204,7 +204,7 @@ type UIResponse struct {
 
 func (x *UIResponse) Reset() {
 	*x = UIResponse{}
-	mi := &file_proto_ai_proto_msgTypes[1]
+	mi := &file_ai_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -216,7 +216,7 @@ func (x *UIResponse) String() string {
 func (*UIResponse) ProtoMessage() {}
 
 func (x *UIResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ai_proto_msgTypes[1]
+	mi := &file_ai_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -229,7 +229,7 @@ func (x *UIResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UIResponse.ProtoReflect.Descriptor instead.
 func (*UIResponse) Descriptor() ([]byte, []int) {
-	return file_proto_ai_proto_rawDescGZIP(), []int{1}
+	return file_ai_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *UIResponse) GetAppId() string {
@@ -278,7 +278,7 @@ type ChatRequest struct {
 
 func (x *ChatRequest) Reset() {
 	*x = ChatRequest{}
-	mi := &file_proto_ai_proto_msgTypes[2]
+	mi := &file_ai_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -290,7 +290,7 @@ func (x *ChatRequest) String() string {
 func (*ChatRequest) ProtoMessage() {}
 
 func (x *ChatRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ai_proto_msgTypes[2]
+	mi := &file_ai_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -303,7 +303,7 @@ func (x *ChatRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatRequest.ProtoReflect.Descriptor instead.
 func (*ChatRequest) Descriptor() ([]byte, []int) {
-	return file_proto_ai_proto_rawDescGZIP(), []int{2}
+	return file_ai_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ChatRequest) GetMessage() string {
@@ -338,7 +338,7 @@ type ChatMessage struct {
 
 func (x *ChatMessage) Reset() {
 	*x = ChatMessage{}
-	mi := &file_proto_ai_proto_msgTypes[3]
+	mi := &file_ai_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -350,7 +350,7 @@ func (x *ChatMessage) String() string {
 func (*ChatMessage) ProtoMessage() {}
 
 func (x *ChatMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ai_proto_msgTypes[3]
+	mi := &file_ai_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -363,7 +363,7 @@ func (x *ChatMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatMessage.ProtoReflect.Descriptor instead.
 func (*ChatMessage) Descriptor() ([]byte, []int) {
-	return file_proto_ai_proto_rawDescGZIP(), []int{3}
+	return file_ai_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ChatMessage) GetRole() string {
@@ -398,7 +398,7 @@ type ChatToken struct {
 
 func (x *ChatToken) Reset() {
 	*x = ChatToken{}
-	mi := &file_proto_ai_proto_msgTypes[4]
+	mi := &file_ai_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -410,7 +410,7 @@ func (x *ChatToken) String() string {
 func (*ChatToken) ProtoMessage() {}
 
 func (x *ChatToken) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ai_proto_msgTypes[4]
+	mi := &file_ai_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -423,7 +423,7 @@ func (x *ChatToken) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatToken.ProtoReflect.Descriptor instead.
 func (*ChatToken) Descriptor() ([]byte, []int) {
-	return file_proto_ai_proto_rawDescGZIP(), []int{4}
+	return file_ai_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ChatToken) GetType() ChatToken_Type {
@@ -458,7 +458,7 @@ type UIToken struct {
 
 func (x *UIToken) Reset() {
 	*x = UIToken{}
-	mi := &file_proto_ai_proto_msgTypes[5]
+	mi := &file_ai_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -470,7 +470,7 @@ func (x *UIToken) String() string {
 func (*UIToken) ProtoMessage() {}
 
 func (x *UIToken) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ai_proto_msgTypes[5]
+	mi := &file_ai_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -483,7 +483,7 @@ func (x *UIToken) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UIToken.ProtoReflect.Descriptor instead.
 func (*UIToken) Descriptor() ([]byte, []int) {
-	return file_proto_ai_proto_rawDescGZIP(), []int{5}
+	return file_ai_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *UIToken) GetType() UIToken_Type {
@@ -507,11 +507,11 @@ func (x *UIToken) GetTimestamp() int64 {
 	return 0
 }
 
-var File_proto_ai_proto protoreflect.FileDescriptor
+var File_ai_proto protoreflect.FileDescriptor
 
-const file_proto_ai_proto_rawDesc = "" +
+const file_ai_proto_rawDesc = "" +
 	"\n" +
-	"\x0eproto/ai.proto\x12\x02ai\"\xc7\x01\n" +
+	"\bai.proto\x12\x02ai\"\xc7\x01\n" +
 	"\tUIRequest\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\x124\n" +
 	"\acontext\x18\x02 \x03(\v2\x1a.ai.UIRequest.ContextEntryR\acontext\x12 \n" +
@@ -569,20 +569,20 @@ const file_proto_ai_proto_rawDesc = "" +
 	"\bStreamUI\x12\r.ai.UIRequest\x1a\v.ai.UIToken0\x01B4Z2github.com/GriffinCanCode/AgentOS/backend/proto/aib\x06proto3"
 
 var (
-	file_proto_ai_proto_rawDescOnce sync.Once
-	file_proto_ai_proto_rawDescData []byte
+	file_ai_proto_rawDescOnce sync.Once
+	file_ai_proto_rawDescData []byte
 )
 
-func file_proto_ai_proto_rawDescGZIP() []byte {
-	file_proto_ai_proto_rawDescOnce.Do(func() {
-		file_proto_ai_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_proto_ai_proto_rawDesc), len(file_proto_ai_proto_rawDesc)))
+func file_ai_proto_rawDescGZIP() []byte {
+	file_ai_proto_rawDescOnce.Do(func() {
+		file_ai_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_ai_proto_rawDesc), len(file_ai_proto_rawDesc)))
 	})
-	return file_proto_ai_proto_rawDescData
+	return file_ai_proto_rawDescData
 }
 
-var file_proto_ai_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_proto_ai_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
-var file_proto_ai_proto_goTypes = []any{
+var file_ai_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_ai_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_ai_proto_goTypes = []any{
 	(ChatToken_Type)(0), // 0: ai.ChatToken.Type
 	(UIToken_Type)(0),   // 1: ai.UIToken.Type
 	(*UIRequest)(nil),   // 2: ai.UIRequest
@@ -594,7 +594,7 @@ var file_proto_ai_proto_goTypes = []any{
 	nil,                 // 8: ai.UIRequest.ContextEntry
 	nil,                 // 9: ai.ChatRequest.ContextEntry
 }
-var file_proto_ai_proto_depIdxs = []int32{
+var file_ai_proto_depIdxs = []int32{
 	8, // 0: ai.UIRequest.context:type_name -> ai.UIRequest.ContextEntry
 	9, // 1: ai.ChatRequest.context:type_name -> ai.ChatRequest.ContextEntry
 	5, // 2: ai.ChatRequest.history:type_name -> ai.ChatMessage
@@ -613,29 +613,29 @@ var file_proto_ai_proto_depIdxs = []int32{
 	0, // [0:5] is the sub-list for field type_name
 }
 
-func init() { file_proto_ai_proto_init() }
-func file_proto_ai_proto_init() {
-	if File_proto_ai_proto != nil {
+func init() { file_ai_proto_init() }
+func file_ai_proto_init() {
+	if File_ai_proto != nil {
 		return
 	}
-	file_proto_ai_proto_msgTypes[0].OneofWrappers = []any{}
-	file_proto_ai_proto_msgTypes[1].OneofWrappers = []any{}
+	file_ai_proto_msgTypes[0].OneofWrappers = []any{}
+	file_ai_proto_msgTypes[1].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_ai_proto_rawDesc), len(file_proto_ai_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ai_proto_rawDesc), len(file_ai_proto_rawDesc)),
 			NumEnums:      2,
 			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_proto_ai_proto_goTypes,
-		DependencyIndexes: file_proto_ai_proto_depIdxs,
-		EnumInfos:         file_proto_ai_proto_enumTypes,
-		MessageInfos:      file_proto_ai_proto_msgTypes,
+		GoTypes:           file_ai_proto_goTypes,
+		DependencyIndexes: file_ai_proto_depIdxs,
+		EnumInfos:         file_ai_proto_enumTypes,
+		MessageInfos:      file_ai_proto_msgTypes,
 	}.Build()
-	File_proto_ai_proto = out.File
-	file_proto_ai_proto_goTypes = nil
-	file_proto_ai_proto_depIdxs = nil
+	File_ai_proto = out.File
+	file_ai_proto_goTypes = nil
+	file_ai_proto_depIdxs = nil
 }

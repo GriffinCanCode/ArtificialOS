@@ -8,7 +8,7 @@ A userspace microkernel runtime with capability-based security and AI-native app
 
 AgentOS implements a microkernel-architecture runtime running on the host OS, where applications are generated from natural language descriptions and executed through a structured tool system. The system uses a four-layer architecture with specialized components for orchestration, AI inference, kernel operations, and dynamic rendering.
 
-**Implementation Status:** Production-ready userspace microkernel with 63 syscalls, multi-window management, OS-level process execution, scheduling policies, advanced IPC (pipes + shared memory), and virtual filesystem. Core infrastructure ~90% complete.
+**Implementation Status:** Production-ready userspace microkernel with 71 syscalls, multi-window management, OS-level process execution, scheduling policies, advanced IPC (pipes + shared memory + async queues), and virtual filesystem. Core infrastructure ~95% complete.
 
 ## Architecture
 
@@ -101,8 +101,8 @@ Production-ready userspace microkernel with IPC, capability-based security, and 
 - Memory usage tracking with OOM detection and garbage collection
 - Capability-based sandboxing with resource limits enforcement (cgroups v2 on Linux)
 - Virtual filesystem with pluggable backends (local, in-memory)
-- IPC implementation: Unix-style pipes (64KB buffers) + shared memory (zero-copy transfers)
-- System call interface with 63 fully implemented syscalls via gRPC
+- IPC implementation: Unix-style pipes (64KB buffers) + shared memory (zero-copy transfers) + async message queues (FIFO, Priority, PubSub)
+- System call interface with 71 fully implemented syscalls via gRPC
 
 **Core Subsystems:**
 - `ProcessManager`: OS process spawning with ExecutionConfig (command, args, env, working dir)
@@ -111,8 +111,8 @@ Production-ready userspace microkernel with IPC, capability-based security, and 
 - `MemoryManager`: Per-process usage tracking with pressure monitoring and OOM detection
 - `SandboxManager`: 14 capability types with per-process permission enforcement
 - `VFSManager`: Mount manager with LocalFS and MemFS backends, 18 filesystem operations
-- `IPCManager`: Unix-style pipes (64KB buffer, 50MB global limit) + shared memory segments (100MB per segment, 500MB global limit)
-- `SyscallExecutor`: 63 syscalls across 12 categories (filesystem, process, IPC, scheduler, memory, network, signals)
+- `IPCManager`: Unix-style pipes (64KB buffer, 50MB global limit) + shared memory segments (100MB per segment, 500MB global limit) + async queues (FIFO, Priority, PubSub with 100MB global limit)
+- `SyscallExecutor`: 71 syscalls across 12 categories (filesystem, process, IPC, scheduler, memory, network, signals)
 
 ### Frontend Layer (TypeScript/React)
 
@@ -632,13 +632,14 @@ wscat -c ws://localhost:8000/stream
 - **Model**: gemini-2.0-flash-exp for fast, high-quality responses when LLM is enabled
 
 ### Kernel Performance
-- **Syscall Latency**: Low-latency syscall execution via gRPC (63 syscalls fully implemented)
+- **Syscall Latency**: Low-latency syscall execution via gRPC (71 syscalls fully implemented)
 - **OS Process Execution**: Native process spawning with command validation and zombie cleanup
 - **Scheduling Policies**: 3 configurable policies (round-robin, priority, fair) for priority tracking
 - **Memory Tracking**: Proactive OOM detection with per-process usage tracking and garbage collection
 - **IPC Throughput**
   - Pipes: 64KB buffers, 50MB global limit, streaming data transfer with backpressure
   - Shared Memory: Zero-copy transfers, 100MB per segment, 500MB global limit, permission-based access
+  - Async Queues: FIFO/Priority/PubSub queues, configurable capacity, 100MB global limit, multi-subscriber support
 - **VFS Operations**: Mount manager routes operations to pluggable backends (LocalFS, MemFS)
 - **Sandboxing**: Efficient capability-based permission checks before syscall execution
 - **Resource Limits**: cgroups v2 enforcement on Linux (memory, CPU shares, max PIDs)
@@ -690,8 +691,8 @@ wscat -c ws://localhost:8000/stream
 - **OS Process Isolation**: Process isolation via std::process::Command with security validation
 - **Shell Injection Prevention**: Command validation blocks dangerous characters (;, |, &, `, $, etc.)
 - **Path Restrictions**: Allowed/blocked path lists with canonicalization enforced before filesystem operations
-- **Permission Checking**: All 63 syscalls verified against sandbox capabilities before execution
-- **IPC Isolation**: Pipes and shared memory with per-process ownership and permission management
+- **Permission Checking**: All 71 syscalls verified against sandbox capabilities before execution
+- **IPC Isolation**: Pipes, shared memory, and async queues with per-process ownership and permission management
 - **Rate Limiting**: Per-IP token bucket algorithm at HTTP layer (configurable RPS and burst)
 - **CORS Configuration**: Configurable cross-origin policies
 - **No Arbitrary Code Execution**: UI specs are pure data, tools are pre-defined functions
@@ -705,10 +706,102 @@ wscat -c ws://localhost:8000/stream
 - **Component System**: 23 pluggable UI components across 6 categories with Zod validation
 - **VFS Architecture**: Pluggable filesystem backends (LocalFS, MemFS) with trait-based design
 - **Scheduler Policies**: 3 configurable policies (round-robin, priority, fair) with customizable quantum
-- **IPC Mechanisms**: Multiple communication methods (message queues, pipes, shared memory)
+- **IPC Mechanisms**: Multiple communication methods (message queues, pipes, shared memory, async queues: FIFO/Priority/PubSub)
 - **Modular Architecture**: Registry-based component and tool registration
 - **Middleware Stack**: Extensible HTTP middleware (CORS, rate limiting, auth-ready)
-- **Protocol Buffers**: Versioned, type-safe service definitions (63 syscalls, 12 categories)
+- **Protocol Buffers**: Versioned, type-safe service definitions (71 syscalls, 12 categories)
+
+## Performance Monitoring
+
+AgentOS includes comprehensive performance monitoring across all layers of the stack:
+
+### Kernel (Rust)
+- **Metrics**: Custom metrics collector with counters, gauges, and histograms
+- **Tracing**: Structured tracing for syscalls and operations
+- **Format**: JSON and Prometheus-compatible metrics export
+- **Access**: Via kernel API
+
+**Key Metrics:**
+- Syscall latency (p50, p95, p99)
+- Process creation/termination rates
+- Memory allocation/deallocation
+- IPC throughput (pipes, shared memory)
+- VFS operation latency
+
+### Backend (Go)
+- **Library**: Prometheus client_golang
+- **Metrics**: HTTP requests, service calls, gRPC operations, system metrics
+- **Middleware**: Automatic request tracking with duration, size, and status
+- **Endpoint**: `GET /metrics` (Prometheus format)
+
+**Key Metrics:**
+- HTTP request duration (p50, p95, p99)
+- Request/response sizes
+- Active applications count
+- Service call latency
+- gRPC call metrics
+- WebSocket connections
+- Session operations
+
+### AI Service (Python)
+- **Library**: prometheus-client
+- **Tracing**: Structured tracing with context managers
+- **Metrics**: UI generation, chat, LLM calls, cache performance
+- **Format**: Prometheus-compatible
+
+**Key Metrics:**
+- UI generation duration and token counts
+- Chat response latency
+- LLM API call latency and token usage
+- Cache hit/miss rates
+- gRPC request metrics
+- Stream message counts
+
+### UI (TypeScript/React)
+- **Library**: web-vitals
+- **Metrics**: Core Web Vitals, custom performance metrics
+- **Format**: Prometheus-compatible JSON export
+
+**Key Metrics:**
+- Core Web Vitals (CLS, FID, LCP)
+- First Contentful Paint (FCP)
+- Time to First Byte (TTFB)
+- Interaction to Next Paint (INP)
+- Component render duration
+- Tool execution latency
+- WebSocket message latency
+
+### Metrics Collection
+
+Each service exposes metrics on a dedicated endpoint:
+
+- **Kernel**: Via kernel API (port 50051)
+- **Backend**: `http://localhost:8000/metrics`
+- **AI Service**: Via gRPC API (port 50052)
+- **UI**: Client-side collection, exportable as JSON
+
+### Prometheus Integration
+
+To scrape metrics with Prometheus, use the following `prometheus.yml` configuration:
+
+```yaml
+scrape_configs:
+  - job_name: 'agentos-backend'
+    static_configs:
+      - targets: ['localhost:8000']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  # Add kernel and AI service endpoints as needed
+```
+
+### Monitoring Best Practices
+
+1. **Set Alerts**: Configure alerts for high latency (p95 > threshold)
+2. **Track Trends**: Monitor metrics over time to identify degradation
+3. **Resource Limits**: Watch memory and CPU usage against configured limits
+4. **Cache Performance**: Monitor cache hit rates to optimize caching strategy
+5. **Error Rates**: Track error metrics to identify reliability issues
 
 ## License
 

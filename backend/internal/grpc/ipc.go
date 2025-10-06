@@ -304,6 +304,244 @@ func (c *IPCClient) ReadShm(ctx context.Context, pid, segmentID, offset, size ui
 	}
 }
 
+// ========================================================================
+// Queue Operations
+// ========================================================================
+
+// CreateQueue creates an async message queue
+func (c *IPCClient) CreateQueue(ctx context.Context, pid uint32, queueType string, capacity *uint32) (uint32, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	req := &pb.SyscallRequest{
+		Pid: pid,
+		Syscall: &pb.SyscallRequest_CreateQueue{
+			CreateQueue: &pb.CreateQueueCall{
+				QueueType: queueType,
+				Capacity:  capacity,
+			},
+		},
+	}
+
+	resp, err := c.client.ExecuteSyscallRaw(ctx, req)
+	if err != nil {
+		return 0, fmt.Errorf("create queue failed: %w", err)
+	}
+
+	switch result := resp.Result.(type) {
+	case *pb.SyscallResponse_Success:
+		var queueID uint32
+		if err := parseJSONUint32(result.Success.Data, &queueID); err != nil {
+			return 0, fmt.Errorf("failed to parse queue ID: %w", err)
+		}
+		return queueID, nil
+	case *pb.SyscallResponse_Error:
+		return 0, fmt.Errorf("error: %s", result.Error.Message)
+	case *pb.SyscallResponse_PermissionDenied:
+		return 0, fmt.Errorf("permission denied: %s", result.PermissionDenied.Reason)
+	default:
+		return 0, fmt.Errorf("unexpected response type")
+	}
+}
+
+// SendQueue sends a message to a queue
+func (c *IPCClient) SendQueue(ctx context.Context, pid, queueID uint32, data []byte, priority *uint32) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	req := &pb.SyscallRequest{
+		Pid: pid,
+		Syscall: &pb.SyscallRequest_SendQueue{
+			SendQueue: &pb.SendQueueCall{
+				QueueId:  queueID,
+				Data:     data,
+				Priority: priority,
+			},
+		},
+	}
+
+	resp, err := c.client.ExecuteSyscallRaw(ctx, req)
+	if err != nil {
+		return fmt.Errorf("send queue failed: %w", err)
+	}
+
+	switch result := resp.Result.(type) {
+	case *pb.SyscallResponse_Success:
+		return nil
+	case *pb.SyscallResponse_Error:
+		return fmt.Errorf("error: %s", result.Error.Message)
+	case *pb.SyscallResponse_PermissionDenied:
+		return fmt.Errorf("permission denied: %s", result.PermissionDenied.Reason)
+	default:
+		return fmt.Errorf("unexpected response type")
+	}
+}
+
+// ReceiveQueue receives a message from a queue (non-blocking)
+func (c *IPCClient) ReceiveQueue(ctx context.Context, pid, queueID uint32) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	req := &pb.SyscallRequest{
+		Pid: pid,
+		Syscall: &pb.SyscallRequest_ReceiveQueue{
+			ReceiveQueue: &pb.ReceiveQueueCall{
+				QueueId: queueID,
+			},
+		},
+	}
+
+	resp, err := c.client.ExecuteSyscallRaw(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("receive queue failed: %w", err)
+	}
+
+	switch result := resp.Result.(type) {
+	case *pb.SyscallResponse_Success:
+		if len(result.Success.Data) == 0 {
+			return nil, nil // No message available
+		}
+		// Parse QueueMessage JSON
+		var msg struct {
+			Data []byte `json:"data"`
+		}
+		if err := json.Unmarshal(result.Success.Data, &msg); err != nil {
+			return nil, fmt.Errorf("failed to parse message: %w", err)
+		}
+		return msg.Data, nil
+	case *pb.SyscallResponse_Error:
+		return nil, fmt.Errorf("error: %s", result.Error.Message)
+	case *pb.SyscallResponse_PermissionDenied:
+		return nil, fmt.Errorf("permission denied: %s", result.PermissionDenied.Reason)
+	default:
+		return nil, fmt.Errorf("unexpected response type")
+	}
+}
+
+// SubscribeQueue subscribes to a PubSub queue
+func (c *IPCClient) SubscribeQueue(ctx context.Context, pid, queueID uint32) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	req := &pb.SyscallRequest{
+		Pid: pid,
+		Syscall: &pb.SyscallRequest_SubscribeQueue{
+			SubscribeQueue: &pb.SubscribeQueueCall{
+				QueueId: queueID,
+			},
+		},
+	}
+
+	resp, err := c.client.ExecuteSyscallRaw(ctx, req)
+	if err != nil {
+		return fmt.Errorf("subscribe queue failed: %w", err)
+	}
+
+	switch result := resp.Result.(type) {
+	case *pb.SyscallResponse_Success:
+		return nil
+	case *pb.SyscallResponse_Error:
+		return fmt.Errorf("error: %s", result.Error.Message)
+	case *pb.SyscallResponse_PermissionDenied:
+		return fmt.Errorf("permission denied: %s", result.PermissionDenied.Reason)
+	default:
+		return fmt.Errorf("unexpected response type")
+	}
+}
+
+// UnsubscribeQueue unsubscribes from a PubSub queue
+func (c *IPCClient) UnsubscribeQueue(ctx context.Context, pid, queueID uint32) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	req := &pb.SyscallRequest{
+		Pid: pid,
+		Syscall: &pb.SyscallRequest_UnsubscribeQueue{
+			UnsubscribeQueue: &pb.UnsubscribeQueueCall{
+				QueueId: queueID,
+			},
+		},
+	}
+
+	resp, err := c.client.ExecuteSyscallRaw(ctx, req)
+	if err != nil {
+		return fmt.Errorf("unsubscribe queue failed: %w", err)
+	}
+
+	switch result := resp.Result.(type) {
+	case *pb.SyscallResponse_Success:
+		return nil
+	case *pb.SyscallResponse_Error:
+		return fmt.Errorf("error: %s", result.Error.Message)
+	case *pb.SyscallResponse_PermissionDenied:
+		return fmt.Errorf("permission denied: %s", result.PermissionDenied.Reason)
+	default:
+		return fmt.Errorf("unexpected response type")
+	}
+}
+
+// CloseQueue closes a queue
+func (c *IPCClient) CloseQueue(ctx context.Context, pid, queueID uint32) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	req := &pb.SyscallRequest{
+		Pid: pid,
+		Syscall: &pb.SyscallRequest_CloseQueue{
+			CloseQueue: &pb.CloseQueueCall{
+				QueueId: queueID,
+			},
+		},
+	}
+
+	resp, err := c.client.ExecuteSyscallRaw(ctx, req)
+	if err != nil {
+		return fmt.Errorf("close queue failed: %w", err)
+	}
+
+	switch result := resp.Result.(type) {
+	case *pb.SyscallResponse_Success:
+		return nil
+	case *pb.SyscallResponse_Error:
+		return fmt.Errorf("error: %s", result.Error.Message)
+	case *pb.SyscallResponse_PermissionDenied:
+		return fmt.Errorf("permission denied: %s", result.PermissionDenied.Reason)
+	default:
+		return fmt.Errorf("unexpected response type")
+	}
+}
+
+// DestroyQueue destroys a queue
+func (c *IPCClient) DestroyQueue(ctx context.Context, pid, queueID uint32) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	req := &pb.SyscallRequest{
+		Pid: pid,
+		Syscall: &pb.SyscallRequest_DestroyQueue{
+			DestroyQueue: &pb.DestroyQueueCall{
+				QueueId: queueID,
+			},
+		},
+	}
+
+	resp, err := c.client.ExecuteSyscallRaw(ctx, req)
+	if err != nil {
+		return fmt.Errorf("destroy queue failed: %w", err)
+	}
+
+	switch result := resp.Result.(type) {
+	case *pb.SyscallResponse_Success:
+		return nil
+	case *pb.SyscallResponse_Error:
+		return fmt.Errorf("error: %s", result.Error.Message)
+	case *pb.SyscallResponse_PermissionDenied:
+		return fmt.Errorf("permission denied: %s", result.PermissionDenied.Reason)
+	default:
+		return fmt.Errorf("unexpected response type")
+	}
+}
+
 // Helper function to parse JSON-encoded uint32
 func parseJSONUint32(data []byte, out *uint32) error {
 	if len(data) == 0 {

@@ -20,8 +20,10 @@ AgentOS now features a beautiful desktop experience with animated welcome screen
 - **Dock**: macOS-style dock at bottom with:
   - Hub (🚀) - Opens app store
   - Files (📁) - File explorer
-  - Calculator (🧮)
-  - Notes (📝)
+  - Browser (🌐) - Web browser
+  - Calculator (🧮) - Calculator
+  - Notes (📝) - Note taking
+  - System Analysis (📊) - Performance monitoring
   - Separator line
   - Creator (✨) - Opens Cmd+K overlay
 - **Hint**: "Press ⌘K to create something" (fades in after 2s)

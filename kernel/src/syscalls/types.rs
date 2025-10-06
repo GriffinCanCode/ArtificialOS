@@ -248,6 +248,35 @@ pub enum Syscall {
         segment_id: Pid,
     },
 
+    // IPC - Async Queues
+    CreateQueue {
+        queue_type: String, // "fifo", "priority", "pubsub"
+        capacity: Option<Size>,
+    },
+    SendQueue {
+        queue_id: Pid,
+        data: Vec<u8>,
+        priority: Option<u8>,
+    },
+    ReceiveQueue {
+        queue_id: Pid,
+    },
+    SubscribeQueue {
+        queue_id: Pid,
+    },
+    UnsubscribeQueue {
+        queue_id: Pid,
+    },
+    CloseQueue {
+        queue_id: Pid,
+    },
+    DestroyQueue {
+        queue_id: Pid,
+    },
+    QueueStats {
+        queue_id: Pid,
+    },
+
     // Scheduler operations
     ScheduleNext,
     YieldProcess,

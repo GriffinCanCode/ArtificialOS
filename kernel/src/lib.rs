@@ -8,6 +8,7 @@ pub mod api;
 pub mod core;
 pub mod ipc;
 pub mod memory;
+pub mod monitoring;
 pub mod process;
 pub mod security;
 pub mod syscalls;
@@ -27,6 +28,9 @@ pub use ipc::{
 
 // Memory
 pub use memory::{MemoryBlock, MemoryError, MemoryManager, MemoryStats, ProcessMemoryStats};
+
+// Monitoring
+pub use monitoring::{MetricsCollector, MetricsSnapshot};
 
 // Process
 pub use process::{

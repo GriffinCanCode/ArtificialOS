@@ -125,6 +125,30 @@ pub trait IpcSyscalls: Send + Sync {
 
     /// Get shared memory statistics
     fn shm_stats(&self, pid: Pid, segment_id: u32) -> SyscallResult;
+
+    /// Create async queue
+    fn create_queue(&self, pid: Pid, queue_type: &str, capacity: Option<usize>) -> SyscallResult;
+
+    /// Send message to queue
+    fn send_queue(&self, pid: Pid, queue_id: u32, data: &[u8], priority: Option<u8>) -> SyscallResult;
+
+    /// Receive message from queue
+    fn receive_queue(&self, pid: Pid, queue_id: u32) -> SyscallResult;
+
+    /// Subscribe to PubSub queue
+    fn subscribe_queue(&self, pid: Pid, queue_id: u32) -> SyscallResult;
+
+    /// Unsubscribe from PubSub queue
+    fn unsubscribe_queue(&self, pid: Pid, queue_id: u32) -> SyscallResult;
+
+    /// Close queue
+    fn close_queue(&self, pid: Pid, queue_id: u32) -> SyscallResult;
+
+    /// Destroy queue
+    fn destroy_queue(&self, pid: Pid, queue_id: u32) -> SyscallResult;
+
+    /// Get queue statistics
+    fn queue_stats(&self, pid: Pid, queue_id: u32) -> SyscallResult;
 }
 
 /// Network syscalls

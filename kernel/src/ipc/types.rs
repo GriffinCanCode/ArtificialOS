@@ -55,8 +55,22 @@ pub type PipeId = u32;
 /// Shared memory segment identifier
 pub type ShmId = u32;
 
+/// Queue identifier
+pub type QueueId = u32;
+
 /// Message timestamp
 pub type MessageTimestamp = Timestamp;
+
+/// Queue type
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum QueueType {
+    /// First-in-first-out queue
+    Fifo,
+    /// Priority-based queue (higher priority first)
+    Priority,
+    /// Publish-subscribe (broadcast to all subscribers)
+    PubSub,
+}
 
 /// IPC message
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -110,6 +110,13 @@ export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpen
           <button className="dock-item" onClick={() => onLaunchApp("notes")} title="Notes">
             <span className="dock-icon">📝</span>
           </button>
+          <button
+            className="dock-item"
+            onClick={() => onLaunchApp("system-analysis")}
+            title="System Analysis"
+          >
+            <span className="dock-icon">📊</span>
+          </button>
           <div className="dock-separator" />
           <button className="dock-item" onClick={onOpenCreator} title="Create (⌘K)">
             <span className="dock-icon">✨</span>

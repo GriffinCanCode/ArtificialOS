@@ -26,7 +26,7 @@ func (p *Provider) Definition() types.Service {
 	return types.Service{
 		ID:          "ipc",
 		Name:        "Inter-Process Communication",
-		Description: "Provides pipes and shared memory for zero-copy data sharing between apps",
+		Description: "Provides pipes, shared memory, and async queues for efficient data sharing between apps",
 		Category:    types.CategorySystem,
 		Capabilities: []string{
 			"create_pipe",
@@ -35,6 +35,10 @@ func (p *Provider) Definition() types.Service {
 			"create_shared_memory",
 			"write_shared_memory",
 			"read_shared_memory",
+			"create_queue",
+			"send_queue",
+			"receive_queue",
+			"subscribe_queue",
 		},
 		Tools: []types.Tool{
 			{
@@ -189,6 +193,94 @@ func (p *Provider) Definition() types.Service {
 				},
 				Returns: "Data read from segment (string)",
 			},
+			{
+				ID:          "ipc.create_queue",
+				Name:        "Create Async Queue",
+				Description: "Create an async message queue (FIFO, Priority, or PubSub)",
+				Parameters: []types.Parameter{
+					{
+						Name:        "queue_type",
+						Type:        "string",
+						Description: "Queue type: 'fifo', 'priority', or 'pubsub'",
+						Required:    true,
+					},
+					{
+						Name:        "capacity",
+						Type:        "number",
+						Description: "Maximum queue capacity (default: 1000)",
+						Required:    false,
+					},
+				},
+				Returns: "Queue ID",
+			},
+			{
+				ID:          "ipc.send_queue",
+				Name:        "Send to Queue",
+				Description: "Send a message to an async queue",
+				Parameters: []types.Parameter{
+					{
+						Name:        "queue_id",
+						Type:        "number",
+						Description: "ID of the queue",
+						Required:    true,
+					},
+					{
+						Name:        "data",
+						Type:        "string",
+						Description: "Data to send",
+						Required:    true,
+					},
+					{
+						Name:        "priority",
+						Type:        "number",
+						Description: "Message priority (0-255, for priority queues)",
+						Required:    false,
+					},
+				},
+				Returns: "Success",
+			},
+			{
+				ID:          "ipc.receive_queue",
+				Name:        "Receive from Queue",
+				Description: "Receive a message from an async queue (non-blocking)",
+				Parameters: []types.Parameter{
+					{
+						Name:        "queue_id",
+						Type:        "number",
+						Description: "ID of the queue",
+						Required:    true,
+					},
+				},
+				Returns: "Message data (or null if empty)",
+			},
+			{
+				ID:          "ipc.subscribe_queue",
+				Name:        "Subscribe to Queue",
+				Description: "Subscribe to a PubSub queue to receive broadcasts",
+				Parameters: []types.Parameter{
+					{
+						Name:        "queue_id",
+						Type:        "number",
+						Description: "ID of the PubSub queue",
+						Required:    true,
+					},
+				},
+				Returns: "Success",
+			},
+			{
+				ID:          "ipc.unsubscribe_queue",
+				Name:        "Unsubscribe from Queue",
+				Description: "Unsubscribe from a PubSub queue",
+				Parameters: []types.Parameter{
+					{
+						Name:        "queue_id",
+						Type:        "number",
+						Description: "ID of the PubSub queue",
+						Required:    true,
+					},
+				},
+				Returns: "Success",
+			},
 		},
 	}
 }
@@ -219,6 +311,16 @@ func (p *Provider) Execute(ctx context.Context, toolID string, params map[string
 		return p.writeShm(ctx, params, pid)
 	case "ipc.read_shm":
 		return p.readShm(ctx, params, pid)
+	case "ipc.create_queue":
+		return p.createQueue(ctx, params, pid)
+	case "ipc.send_queue":
+		return p.sendQueue(ctx, params, pid)
+	case "ipc.receive_queue":
+		return p.receiveQueue(ctx, params, pid)
+	case "ipc.subscribe_queue":
+		return p.subscribeQueue(ctx, params, pid)
+	case "ipc.unsubscribe_queue":
+		return p.unsubscribeQueue(ctx, params, pid)
 	default:
 		return &types.Result{
 			Success: false,
@@ -410,6 +512,125 @@ func (p *Provider) readShm(ctx context.Context, params map[string]interface{}, p
 		Data: map[string]interface{}{
 			"data":  string(data),
 			"bytes": len(data),
+		},
+	}, nil
+}
+
+func (p *Provider) createQueue(ctx context.Context, params map[string]interface{}, pid uint32) (*types.Result, error) {
+	queueType, ok := params["queue_type"].(string)
+	if !ok {
+		return errorResult("queue_type is required")
+	}
+
+	var capacity *uint32
+	if cap, ok := params["capacity"].(float64); ok {
+		c := uint32(cap)
+		capacity = &c
+	}
+
+	queueID, err := p.ipcClient.CreateQueue(ctx, pid, queueType, capacity)
+	if err != nil {
+		return errorResult(err.Error())
+	}
+
+	return &types.Result{
+		Success: true,
+		Data: map[string]interface{}{
+			"queue_id":   queueID,
+			"queue_type": queueType,
+			"owner_pid":  pid,
+		},
+	}, nil
+}
+
+func (p *Provider) sendQueue(ctx context.Context, params map[string]interface{}, pid uint32) (*types.Result, error) {
+	queueID, ok := params["queue_id"].(float64)
+	if !ok {
+		return errorResult("queue_id is required")
+	}
+
+	data, ok := params["data"].(string)
+	if !ok {
+		return errorResult("data is required")
+	}
+
+	var priority *uint32
+	if pri, ok := params["priority"].(float64); ok {
+		p := uint32(pri)
+		priority = &p
+	}
+
+	err := p.ipcClient.SendQueue(ctx, pid, uint32(queueID), []byte(data), priority)
+	if err != nil {
+		return errorResult(err.Error())
+	}
+
+	return &types.Result{
+		Success: true,
+		Data: map[string]interface{}{
+			"queue_id": uint32(queueID),
+			"sent":     true,
+		},
+	}, nil
+}
+
+func (p *Provider) receiveQueue(ctx context.Context, params map[string]interface{}, pid uint32) (*types.Result, error) {
+	queueID, ok := params["queue_id"].(float64)
+	if !ok {
+		return errorResult("queue_id is required")
+	}
+
+	data, err := p.ipcClient.ReceiveQueue(ctx, pid, uint32(queueID))
+	if err != nil {
+		return errorResult(err.Error())
+	}
+
+	return &types.Result{
+		Success: true,
+		Data: map[string]interface{}{
+			"queue_id": uint32(queueID),
+			"data":     string(data),
+			"bytes":    len(data),
+		},
+	}, nil
+}
+
+func (p *Provider) subscribeQueue(ctx context.Context, params map[string]interface{}, pid uint32) (*types.Result, error) {
+	queueID, ok := params["queue_id"].(float64)
+	if !ok {
+		return errorResult("queue_id is required")
+	}
+
+	err := p.ipcClient.SubscribeQueue(ctx, pid, uint32(queueID))
+	if err != nil {
+		return errorResult(err.Error())
+	}
+
+	return &types.Result{
+		Success: true,
+		Data: map[string]interface{}{
+			"queue_id":   uint32(queueID),
+			"subscribed": true,
+		},
+	}, nil
+}
+
+func (p *Provider) unsubscribeQueue(ctx context.Context, params map[string]interface{}, pid uint32) (*types.Result, error) {
+	queueID, ok := params["queue_id"].(float64)
+	if !ok {
+		return errorResult("queue_id is required")
+	}
+
+	err := p.ipcClient.UnsubscribeQueue(ctx, pid, uint32(queueID))
+	if err != nil {
+		return errorResult(err.Error())
+	}
+
+	return &types.Result{
+		Success: true,
+		Data: map[string]interface{}{
+			"queue_id":     uint32(queueID),
+			"unsubscribed": true,
 		},
 	}, nil
 }

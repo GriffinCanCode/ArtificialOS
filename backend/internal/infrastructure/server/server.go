@@ -18,6 +18,7 @@ import (
 	"github.com/GriffinCanCode/AgentOS/backend/internal/grpc/kernel"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/infrastructure/config"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/infrastructure/logging"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/infrastructure/monitoring"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/auth"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/filesystem"
 	httpProvider "github.com/GriffinCanCode/AgentOS/backend/internal/providers/http"
@@ -39,6 +40,7 @@ type Server struct {
 	kernel         *kernel.KernelClient
 	logger         *logging.Logger
 	config         *config.Config
+	metrics        *monitoring.Metrics
 }
 
 // NewServer creates a new server instance
@@ -57,6 +59,10 @@ func NewServer(cfg *config.Config) (*Server, error) {
 		zap.String("kernel_addr", cfg.Kernel.Address),
 		zap.String("ai_addr", cfg.AI.Address),
 	)
+
+	// Initialize metrics first (needed by other components)
+	metrics := monitoring.NewMetrics()
+	logger.Info("Performance monitoring initialized")
 
 	// Initialize kernel client (optional)
 	var kernelClient *kernel.KernelClient
@@ -82,7 +88,7 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	logger.Info("Connected to AI service", zap.String("addr", cfg.AI.Address))
 
 	// Initialize app manager and service registry
-	appManager := app.NewManager(kernelClient)
+	appManager := app.NewManager(kernelClient).WithMetrics(metrics)
 	serviceRegistry := service.NewRegistry()
 
 	// Register service providers
@@ -123,6 +129,7 @@ func NewServer(cfg *config.Config) (*Server, error) {
 
 	// Add middleware
 	router.Use(gin.Recovery())
+	router.Use(monitoring.Middleware(metrics))
 	router.Use(middleware.CORS(middleware.DefaultCORSConfig()))
 	if cfg.RateLimit.Enabled {
 		logger.Info("Rate limiting enabled",
@@ -135,8 +142,11 @@ func NewServer(cfg *config.Config) (*Server, error) {
 		}))
 	}
 
+	// Create handler metrics wrapper
+	handlerMetrics := http.NewHandlerMetrics(metrics)
+
 	// Create handlers
-	handlers := http.NewHandlers(appManager, serviceRegistry, appRegistry, sessionManager, aiClient, kernelClient)
+	handlers := http.NewHandlers(appManager, serviceRegistry, appRegistry, sessionManager, aiClient, kernelClient, handlerMetrics)
 	wsHandler := ws.NewHandler(appManager, aiClient)
 
 	// Register routes
@@ -180,6 +190,18 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	// WebSocket
 	router.GET("/stream", wsHandler.HandleConnection)
 
+	// Create metrics aggregator
+	metricsAggregator := http.NewMetricsAggregator(metrics, kernelClient)
+
+	// Metrics endpoints
+	router.GET("/metrics", func(c *gin.Context) {
+		c.String(200, metrics.GetMetricsPrometheus())
+	})
+	router.GET("/metrics/json", metricsAggregator.GetAggregatedMetrics)
+	router.GET("/metrics/dashboard", metricsAggregator.GetMetricsDashboard)
+	router.GET("/metrics/kernel", metricsAggregator.ProxyKernelMetrics)
+	router.GET("/metrics/ai", metricsAggregator.ProxyAIMetrics)
+
 	logger.Info("Server initialized successfully")
 
 	return &Server{
@@ -192,6 +214,7 @@ func NewServer(cfg *config.Config) (*Server, error) {
 		kernel:         kernelClient,
 		logger:         logger,
 		config:         cfg,
+		metrics:        metrics,
 	}, nil
 }
 

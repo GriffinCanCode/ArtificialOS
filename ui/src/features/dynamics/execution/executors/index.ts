@@ -14,6 +14,7 @@ export * from "./app/app-executor";
 export * from "./app/hub-executor";
 export * from "./app/navigation-executor";
 export * from "./app/notes-executor";
+export * from "./app/analysis-executor";
 
 // Media - rendering and playback
 export * from "./media/browser-executor";

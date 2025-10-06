@@ -294,6 +294,34 @@ impl KernelService for KernelServiceImpl {
             Some(syscall_request::Syscall::ShmStats(call)) => Syscall::ShmStats {
                 segment_id: call.segment_id,
             },
+            // IPC - Async Queues
+            Some(syscall_request::Syscall::CreateQueue(call)) => Syscall::CreateQueue {
+                queue_type: call.queue_type,
+                capacity: call.capacity.map(|c| c as usize),
+            },
+            Some(syscall_request::Syscall::SendQueue(call)) => Syscall::SendQueue {
+                queue_id: call.queue_id,
+                data: call.data,
+                priority: call.priority.map(|p| p as u8),
+            },
+            Some(syscall_request::Syscall::ReceiveQueue(call)) => Syscall::ReceiveQueue {
+                queue_id: call.queue_id,
+            },
+            Some(syscall_request::Syscall::SubscribeQueue(call)) => Syscall::SubscribeQueue {
+                queue_id: call.queue_id,
+            },
+            Some(syscall_request::Syscall::UnsubscribeQueue(call)) => Syscall::UnsubscribeQueue {
+                queue_id: call.queue_id,
+            },
+            Some(syscall_request::Syscall::CloseQueue(call)) => Syscall::CloseQueue {
+                queue_id: call.queue_id,
+            },
+            Some(syscall_request::Syscall::DestroyQueue(call)) => Syscall::DestroyQueue {
+                queue_id: call.queue_id,
+            },
+            Some(syscall_request::Syscall::QueueStats(call)) => Syscall::QueueStats {
+                queue_id: call.queue_id,
+            },
             // Scheduler operations
             Some(syscall_request::Syscall::ScheduleNext(_)) => Syscall::ScheduleNext,
             Some(syscall_request::Syscall::YieldProcess(_)) => Syscall::YieldProcess,

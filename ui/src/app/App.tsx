@@ -22,6 +22,7 @@ import { useFadeIn, useSlideInUp } from "../ui/hooks/useGSAP";
 import { queryClient } from "../core/lib/queryClient";
 import { shouldIgnoreKeyboardEvent } from "../features/input";
 import "./App.css";
+import { initWebVitals } from "../core/monitoring";
 
 interface SpotlightFormData {
   prompt: string;
@@ -42,6 +43,13 @@ function AppContent() {
   const { client, generateUI } = useWebSocket();
   const { addMessage, addThought, appendToLastMessage } = useAppActions();
   const { open: openWindow } = useActions();
+
+  // Initialize performance monitoring
+  useEffect(() => {
+    initWebVitals();
+    log.info("Performance monitoring initialized");
+    log.info("Access metrics via window.agentOSMetrics in console");
+  }, [log]);
 
   // Initialize session manager with auto-save every 30s
   // Memoize options to prevent hooks order issues during HMR

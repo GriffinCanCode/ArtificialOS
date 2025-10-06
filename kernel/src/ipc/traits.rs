@@ -79,6 +79,33 @@ pub trait IpcCleanup: Send + Sync {
     fn global_memory_usage(&self) -> Size;
 }
 
+/// Async queue interface
+pub trait AsyncQueue: Send + Sync {
+    /// Create a new async queue
+    fn create(&self, owner_pid: Pid, queue_type: super::types::QueueType, capacity: Option<Size>) -> IpcResult<super::types::QueueId>;
+
+    /// Send message to queue
+    fn send(&self, queue_id: super::types::QueueId, from_pid: Pid, data: Vec<u8>, priority: Option<u8>) -> IpcResult<()>;
+
+    /// Receive message from queue (non-blocking)
+    fn receive(&self, queue_id: super::types::QueueId, pid: Pid) -> IpcResult<Option<super::queue::QueueMessage>>;
+
+    /// Subscribe to PubSub queue
+    fn subscribe(&self, queue_id: super::types::QueueId, pid: Pid) -> IpcResult<()>;
+
+    /// Unsubscribe from PubSub queue
+    fn unsubscribe(&self, queue_id: super::types::QueueId, pid: Pid) -> IpcResult<()>;
+
+    /// Close queue
+    fn close(&self, queue_id: super::types::QueueId, pid: Pid) -> IpcResult<()>;
+
+    /// Destroy queue
+    fn destroy(&self, queue_id: super::types::QueueId, pid: Pid) -> IpcResult<()>;
+
+    /// Get queue statistics
+    fn stats(&self, queue_id: super::types::QueueId) -> IpcResult<super::queue::QueueStats>;
+}
+
 /// Combined IPC interface
 pub trait IpcManager: MessageQueue + IpcCleanup + Send + Sync + Clone {
     /// Get pipe manager
@@ -86,4 +113,7 @@ pub trait IpcManager: MessageQueue + IpcCleanup + Send + Sync + Clone {
 
     /// Get shared memory manager
     fn shm(&self) -> &dyn SharedMemory;
+
+    /// Get async queue manager
+    fn queues(&self) -> &dyn AsyncQueue;
 }

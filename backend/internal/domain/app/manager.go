@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/GriffinCanCode/AgentOS/backend/internal/grpc/kernel"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/infrastructure/monitoring"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/types"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/utils"
 	"github.com/google/uuid"
@@ -19,6 +20,7 @@ type Manager struct {
 	focusedHash   *string               // Protected by mu
 	kernelGRPC    KernelClient
 	appIdentifier *utils.AppIdentifier
+	metrics       *monitoring.Metrics
 }
 
 // KernelClient interface for dependency injection
@@ -33,6 +35,12 @@ func NewManager(kernelClient KernelClient) *Manager {
 		kernelGRPC:    kernelClient,
 		appIdentifier: utils.NewAppIdentifier(utils.DefaultHasher()),
 	}
+}
+
+// WithMetrics adds metrics tracking to the manager
+func (m *Manager) WithMetrics(metrics *monitoring.Metrics) *Manager {
+	m.metrics = metrics
+	return m
 }
 
 // Spawn creates a new app instance

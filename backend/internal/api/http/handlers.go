@@ -25,6 +25,7 @@ type Handlers struct {
 	sessionManager *session.Manager
 	aiClient       *grpc.AIClient
 	kernel         *kernel.KernelClient
+	metrics        *HandlerMetrics
 }
 
 // NewHandlers creates a new handler set
@@ -35,6 +36,7 @@ func NewHandlers(
 	sessionManager *session.Manager,
 	aiClient *grpc.AIClient,
 	kernel *kernel.KernelClient,
+	metrics *HandlerMetrics,
 ) *Handlers {
 	return &Handlers{
 		appManager:     appManager,
@@ -43,6 +45,7 @@ func NewHandlers(
 		sessionManager: sessionManager,
 		aiClient:       aiClient,
 		kernel:         kernel,
+		metrics:        metrics,
 	}
 }
 
@@ -68,6 +71,8 @@ func (h *Handlers) Health(c *gin.Context) {
 
 // ListApps lists all running apps
 func (h *Handlers) ListApps(c *gin.Context) {
+	defer h.metrics.TrackAppOperation("list")()
+
 	apps := h.appManager.List(nil)
 	stats := h.appManager.Stats()
 
@@ -79,6 +84,8 @@ func (h *Handlers) ListApps(c *gin.Context) {
 
 // FocusApp brings an app to foreground
 func (h *Handlers) FocusApp(c *gin.Context) {
+	defer h.metrics.TrackAppOperation("focus")()
+
 	appID := c.Param("id")
 
 	// Validate app ID

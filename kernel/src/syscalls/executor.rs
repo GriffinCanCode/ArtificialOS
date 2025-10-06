@@ -4,9 +4,10 @@
  */
 
 use crate::core::types::Pid;
+use crate::monitoring::{MetricsCollector, span_syscall};
 use crate::security::SandboxManager;
 use log::info;
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 use std::time::Instant;
 
 use super::types::{Syscall, SyscallResult};
@@ -20,9 +21,11 @@ pub struct SyscallExecutor {
     pub(super) sandbox_manager: SandboxManager,
     pub(super) pipe_manager: Option<crate::ipc::PipeManager>,
     pub(super) shm_manager: Option<crate::ipc::ShmManager>,
+    pub(super) queue_manager: Option<crate::ipc::QueueManager>,
     pub(super) process_manager: Option<crate::process::ProcessManagerImpl>,
     pub(super) memory_manager: Option<crate::memory::MemoryManager>,
     pub(super) vfs: Option<crate::vfs::MountManager>,
+    pub(super) metrics: Option<Arc<MetricsCollector>>,
 }
 
 impl SyscallExecutor {
@@ -35,10 +38,17 @@ impl SyscallExecutor {
             sandbox_manager,
             pipe_manager: None,
             shm_manager: None,
+            queue_manager: None,
             process_manager: None,
             memory_manager: None,
             vfs: None,
+            metrics: None,
         }
+    }
+
+    pub fn with_metrics(mut self, metrics: Arc<MetricsCollector>) -> Self {
+        self.metrics = Some(metrics);
+        self
     }
 
     pub fn with_ipc(
@@ -54,10 +64,18 @@ impl SyscallExecutor {
             sandbox_manager,
             pipe_manager: Some(pipe_manager),
             shm_manager: Some(shm_manager),
+            queue_manager: None,
             process_manager: None,
             memory_manager: None,
             vfs: None,
+            metrics: None,
         }
+    }
+
+    pub fn with_queues(mut self, queue_manager: crate::ipc::QueueManager) -> Self {
+        self.queue_manager = Some(queue_manager);
+        info!("Queue support enabled for syscall executor");
+        self
     }
 
     pub fn with_full_features(
@@ -75,9 +93,11 @@ impl SyscallExecutor {
             sandbox_manager,
             pipe_manager: Some(pipe_manager),
             shm_manager: Some(shm_manager),
+            queue_manager: None,
             process_manager: Some(process_manager),
             memory_manager: Some(memory_manager),
             vfs: None,
+            metrics: None,
         }
     }
 
@@ -174,6 +194,16 @@ impl SyscallExecutor {
             } => self.read_shm(pid, segment_id, offset, size),
             Syscall::DestroyShm { segment_id } => self.destroy_shm(pid, segment_id),
             Syscall::ShmStats { segment_id } => self.shm_stats(pid, segment_id),
+
+            // IPC - Async Queues
+            Syscall::CreateQueue { ref queue_type, capacity } => self.create_queue(pid, queue_type, capacity),
+            Syscall::SendQueue { queue_id, ref data, priority } => self.send_queue(pid, queue_id, data, priority),
+            Syscall::ReceiveQueue { queue_id } => self.receive_queue(pid, queue_id),
+            Syscall::SubscribeQueue { queue_id } => self.subscribe_queue(pid, queue_id),
+            Syscall::UnsubscribeQueue { queue_id } => self.unsubscribe_queue(pid, queue_id),
+            Syscall::CloseQueue { queue_id } => self.close_queue(pid, queue_id),
+            Syscall::DestroyQueue { queue_id } => self.destroy_queue(pid, queue_id),
+            Syscall::QueueStats { queue_id } => self.queue_stats(pid, queue_id),
 
             // Scheduler operations
             Syscall::ScheduleNext => self.schedule_next(pid),

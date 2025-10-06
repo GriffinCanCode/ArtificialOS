@@ -27,6 +27,7 @@ import {
   FilesystemExecutor,
   CalcExecutor,
   NotesExecutor,
+  AnalysisExecutor,
 } from "./executors";
 
 // ============================================================================
@@ -59,6 +60,7 @@ export class ToolExecutor {
   private filesystemExecutor: FilesystemExecutor;
   private calcExecutor: CalcExecutor;
   private notesExecutor: NotesExecutor;
+  private analysisExecutor: AnalysisExecutor;
 
   constructor(componentState: ComponentState) {
     this.componentState = componentState;
@@ -88,6 +90,7 @@ export class ToolExecutor {
     this.filesystemExecutor = new FilesystemExecutor(this.context, this.serviceExecutor);
     this.calcExecutor = new CalcExecutor(this.context);
     this.notesExecutor = new NotesExecutor(this.context, this.serviceExecutor);
+    this.analysisExecutor = new AnalysisExecutor(this.context);
 
     this.setupStateManagement();
   }
@@ -154,6 +157,7 @@ export class ToolExecutor {
    */
   cleanup(): void {
     this.timerExecutor.cleanup();
+    this.analysisExecutor.cleanup();
   }
 
   async execute(toolId: string, params: Record<string, any> = {}): Promise<any> {
@@ -209,6 +213,9 @@ export class ToolExecutor {
             break;
           case "notes":
             result = await this.notesExecutor.execute(toolId.split(".")[1], params);
+            break;
+          case "analysis":
+            result = await this.analysisExecutor.execute(toolId.split(".")[1], params);
             break;
 
           // Legacy specific tools - kept for backward compatibility but deprecated

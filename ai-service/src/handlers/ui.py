@@ -1,114 +1,119 @@
-"""UI Generation Handler - Optimized with fast JSON."""
+"""UI Handler."""
 
 import time
+from typing import Iterator
+
 import ai_pb2
 
-from core import (
-    get_logger,
-    UIGenerationRequest,
-    ValidationError,
-    BlueprintValidator,
-    safe_json_dumps,
-)
+from core import get_logger, UIRequest, ValidationError
 from agents.ui_generator import UIGenerator
+from monitoring import metrics_collector, trace_operation
 
 
 logger = get_logger(__name__)
 
 
 class UIHandler:
-    """Handles UI generation."""
+    """Handles UI generation requests."""
 
     def __init__(self, ui_generator: UIGenerator) -> None:
         self.ui_generator = ui_generator
 
     def generate(self, request: ai_pb2.UIRequest) -> ai_pb2.UIResponse:
-        """Generate UI spec."""
+        """Generate UI specification (non-streaming)."""
+        start_time = time.time()
+
         try:
-            validated = UIGenerationRequest(message=request.message)
-            logger.info("generate", message=validated.message[:50])
-
-            ui_spec = self.ui_generator.generate_ui(validated.message)
-            spec_dict = ui_spec.model_dump()
-
-            # Use orjson for fast serialization (2-3x faster)
-            ui_json = safe_json_dumps(spec_dict, indent=2)
-
-            # Validate before sending
-            BlueprintValidator.validate(spec_dict, ui_json)
-
-            return ai_pb2.UIResponse(
-                app_id="",
-                ui_spec_json=ui_json,
-                thoughts=[
-                    f"Request: {validated.message[:50]}",
-                    f"Title: {ui_spec.title}",
-                    f"Components: {len(ui_spec.components)}",
-                ],
-                success=True,
+            validated = UIRequest(
+                message=request.message,
+                context=dict(request.context) if request.context else {},
             )
+            logger.info("ui_generate", message=validated.message[:50])
+
+            with trace_operation("ui_generation", message=validated.message[:50]):
+                # Generate UI
+                package = self.ui_generator.generate(
+                    validated.message, context=validated.context
+                )
+
+                # Track metrics
+                duration = time.time() - start_time
+                metrics_collector.record_ui_request("success", duration, "generate")
+
+                return ai_pb2.UIResponse(
+                    app_id=package.app_id,
+                    ui_spec=package.model_dump_json(),
+                    thoughts=[],  # Non-streaming doesn't track thoughts
+                )
+
         except ValidationError as e:
-            logger.error("validation_failed", error=str(e))
-            return ai_pb2.UIResponse(
-                app_id="", ui_spec_json="", thoughts=[], success=False, error=f"Validation: {e}"
-            )
+            duration = time.time() - start_time
+            metrics_collector.record_ui_request("validation_error", duration, "generate")
+            logger.error("validation", error=str(e))
+            raise
         except Exception as e:
-            logger.error("generation_failed", error=str(e), exc_info=True)
-            return ai_pb2.UIResponse(
-                app_id="", ui_spec_json="", thoughts=[], success=False, error=str(e)
-            )
+            duration = time.time() - start_time
+            metrics_collector.record_ui_request("error", duration, "generate")
+            metrics_collector.record_error("generation_error", "ui_handler")
+            logger.error("generation", error=str(e))
+            raise
 
-    def stream(self, request: ai_pb2.UIRequest):
+    def stream(self, request: ai_pb2.UIRequest) -> Iterator[ai_pb2.UIToken]:
         """Stream UI generation."""
+        start_time = time.time()
+
         try:
-            validated = UIGenerationRequest(message=request.message)
-            logger.info("stream", message=validated.message[:50])
-
-            yield ai_pb2.UIToken(
-                type=ai_pb2.UIToken.GENERATION_START,
-                content="Analyzing...",
-                timestamp=int(time.time()),
+            validated = UIRequest(
+                message=request.message,
+                context=dict(request.context) if request.context else {},
             )
+            logger.info("ui_stream", message=validated.message[:50])
 
-            ui_spec = None
-            tokens = 0
-
-            for item in self.ui_generator.generate_ui_stream(validated.message):
-                if isinstance(item, dict) and item.get("reset"):
-                    logger.info("fallback")
-                    yield ai_pb2.UIToken(
-                        type=ai_pb2.UIToken.GENERATION_START,
-                        content="Rule-based generation...",
-                        timestamp=int(time.time()),
-                    )
-                elif isinstance(item, str):
-                    tokens += 1
-                    # Send tokens for incremental parsing
-                    yield ai_pb2.UIToken(
-                        type=ai_pb2.UIToken.TOKEN, content=item, timestamp=int(time.time())
-                    )
-                else:
-                    ui_spec = item
-
-            logger.info("complete", tokens=tokens)
-
-            if ui_spec:
+            with trace_operation("ui_streaming", message=validated.message[:50]):
+                # Start token
                 yield ai_pb2.UIToken(
-                    type=ai_pb2.UIToken.THOUGHT,
-                    content=f"{len(ui_spec.components)} components",
+                    type=ai_pb2.UIToken.GENERATION_START,
+                    content="",
                     timestamp=int(time.time()),
                 )
 
-                # Validate the final spec
-                spec_dict = ui_spec.model_dump()
-                ui_json = safe_json_dumps(spec_dict, indent=2)
-                BlueprintValidator.validate(spec_dict, ui_json)
+                # Generate with streaming
+                package = self.ui_generator.generate(
+                    validated.message, context=validated.context
+                )
 
-            yield ai_pb2.UIToken(
-                type=ai_pb2.UIToken.COMPLETE, content="", timestamp=int(time.time())
-            )
+                # Stream UI spec (in production, this would stream incrementally)
+                ui_spec_str = package.model_dump_json()
+                yield ai_pb2.UIToken(
+                    type=ai_pb2.UIToken.UI_SPEC,
+                    content=ui_spec_str,
+                    timestamp=int(time.time()),
+                )
+
+                # Complete
+                yield ai_pb2.UIToken(
+                    type=ai_pb2.UIToken.COMPLETE,
+                    content="",
+                    timestamp=int(time.time()),
+                )
+
+                # Track metrics
+                duration = time.time() - start_time
+                metrics_collector.record_ui_request("success", duration, "stream")
+                metrics_collector.record_stream_message("ui_complete")
+
+                logger.info("complete", duration_ms=duration * 1000)
+
+        except ValidationError as e:
+            duration = time.time() - start_time
+            metrics_collector.record_ui_request("validation_error", duration, "stream")
+            metrics_collector.record_stream_error("validation_error")
+            logger.error("validation", error=str(e))
+            raise
         except Exception as e:
-            logger.error("stream_failed", error=str(e), exc_info=True)
-            yield ai_pb2.UIToken(
-                type=ai_pb2.UIToken.ERROR, content=str(e), timestamp=int(time.time())
-            )
+            duration = time.time() - start_time
+            metrics_collector.record_ui_request("error", duration, "stream")
+            metrics_collector.record_stream_error("generation_error")
+            metrics_collector.record_error("generation_error", "ui_handler")
+            logger.error("generation", error=str(e))
+            raise

@@ -4,11 +4,12 @@
  */
 
 use super::traits::{
-    IpcCleanup, IpcManager as IpcManagerTrait, MessageQueue, PipeChannel, SharedMemory,
+    AsyncQueue, IpcCleanup, IpcManager as IpcManagerTrait, MessageQueue, PipeChannel, SharedMemory,
 };
 use super::types::{IpcError, IpcResult, Message};
 use crate::core::types::{Pid, Size};
 use crate::ipc::pipe::PipeManager;
+use crate::ipc::queue::QueueManager;
 use crate::ipc::shm::ShmManager;
 use log::{info, warn};
 use parking_lot::RwLock;
@@ -29,6 +30,7 @@ pub struct IPCManager {
     message_queues: Arc<RwLock<HashMap<Pid, VecDeque<Message>>>>,
     pipe_manager: PipeManager,
     shm_manager: ShmManager,
+    queue_manager: QueueManager,
 }
 
 impl IPCManager {
@@ -42,6 +44,7 @@ impl IPCManager {
             message_queues: Arc::new(RwLock::new(HashMap::new())),
             pipe_manager: PipeManager::new(),
             shm_manager: ShmManager::new(),
+            queue_manager: QueueManager::new(),
         }
     }
 
@@ -53,6 +56,11 @@ impl IPCManager {
     /// Get reference to shared memory manager
     pub fn shm(&self) -> &ShmManager {
         &self.shm_manager
+    }
+
+    /// Get reference to async queue manager
+    pub fn queues(&self) -> &QueueManager {
+        &self.queue_manager
     }
 
     pub fn send_message(&self, from: Pid, to: Pid, data: Vec<u8>) -> IpcResult<()> {
@@ -231,5 +239,62 @@ impl IpcManagerTrait for IPCManager {
 
     fn shm(&self) -> &dyn SharedMemory {
         &self.shm_manager
+    }
+
+    fn queues(&self) -> &dyn AsyncQueue {
+        &self.queue_manager
+    }
+}
+
+// Implement AsyncQueue trait for QueueManager
+impl AsyncQueue for QueueManager {
+    fn create(
+        &self,
+        owner_pid: Pid,
+        queue_type: super::types::QueueType,
+        capacity: Option<Size>,
+    ) -> IpcResult<super::types::QueueId> {
+        QueueManager::create(self, owner_pid, queue_type, capacity)
+    }
+
+    fn send(
+        &self,
+        queue_id: super::types::QueueId,
+        from_pid: Pid,
+        data: Vec<u8>,
+        priority: Option<u8>,
+    ) -> IpcResult<()> {
+        QueueManager::send(self, queue_id, from_pid, data, priority)
+    }
+
+    fn receive(
+        &self,
+        queue_id: super::types::QueueId,
+        pid: Pid,
+    ) -> IpcResult<Option<super::queue::QueueMessage>> {
+        QueueManager::receive(self, queue_id, pid)
+    }
+
+    fn subscribe(&self, queue_id: super::types::QueueId, pid: Pid) -> IpcResult<()> {
+        QueueManager::subscribe(self, queue_id, pid)
+    }
+
+    fn unsubscribe(&self, queue_id: super::types::QueueId, pid: Pid) -> IpcResult<()> {
+        QueueManager::unsubscribe(self, queue_id, pid)
+    }
+
+    fn close(&self, queue_id: super::types::QueueId, pid: Pid) -> IpcResult<()> {
+        QueueManager::close(self, queue_id, pid)
+    }
+
+    fn destroy(&self, queue_id: super::types::QueueId, pid: Pid) -> IpcResult<()> {
+        QueueManager::destroy(self, queue_id, pid)
+    }
+
+    fn stats(
+        &self,
+        queue_id: super::types::QueueId,
+    ) -> IpcResult<super::queue::QueueStats> {
+        QueueManager::stats(self, queue_id)
     }
 }

@@ -99,6 +99,15 @@ message SyscallRequest {
     ReadShmCall read_shm = 64;
     DestroyShmCall destroy_shm = 65;
     ShmStatsCall shm_stats = 66;
+    // IPC - Async Queues
+    CreateQueueCall create_queue = 110;
+    SendQueueCall send_queue = 111;
+    ReceiveQueueCall receive_queue = 112;
+    SubscribeQueueCall subscribe_queue = 113;
+    UnsubscribeQueueCall unsubscribe_queue = 114;
+    CloseQueueCall close_queue = 115;
+    DestroyQueueCall destroy_queue = 116;
+    QueueStatsCall queue_stats = 117;
     // Scheduler
     ScheduleNextCall schedule_next = 70;
     YieldProcessCall yield_process = 71;
@@ -457,6 +466,45 @@ message DestroyShmCall {
 
 message ShmStatsCall {
   uint32 segment_id = 1;
+}
+
+// ============================================================================
+// IPC Calls - Async Queues
+// ============================================================================
+
+message CreateQueueCall {
+  string queue_type = 1; // "fifo", "priority", "pubsub"
+  optional uint32 capacity = 2;
+}
+
+message SendQueueCall {
+  uint32 queue_id = 1;
+  bytes data = 2;
+  optional uint32 priority = 3;
+}
+
+message ReceiveQueueCall {
+  uint32 queue_id = 1;
+}
+
+message SubscribeQueueCall {
+  uint32 queue_id = 1;
+}
+
+message UnsubscribeQueueCall {
+  uint32 queue_id = 1;
+}
+
+message CloseQueueCall {
+  uint32 queue_id = 1;
+}
+
+message DestroyQueueCall {
+  uint32 queue_id = 1;
+}
+
+message QueueStatsCall {
+  uint32 queue_id = 1;
 }
 
 // ============================================================================
