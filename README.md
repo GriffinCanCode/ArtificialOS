@@ -1,14 +1,14 @@
 # AgentOS
 
-A microkernel-based operating system with AI-native application generation and execution.
+A userspace microkernel runtime with capability-based security and AI-native application generation.
 
 ![AgentOS Interface](assets/demo.png)
 
 ## Overview
 
-AgentOS implements a userspace OS where applications are generated from natural language descriptions and executed through a structured tool system. The system uses a four-layer architecture with specialized components for orchestration, AI inference, kernel operations, and dynamic rendering.
+AgentOS implements a microkernel-architecture runtime running on the host OS, where applications are generated from natural language descriptions and executed through a structured tool system. The system uses a four-layer architecture with specialized components for orchestration, AI inference, kernel operations, and dynamic rendering.
 
-**Implementation Status:** Production-ready userspace OS with 63 syscalls, multi-window management, OS-level process execution, CPU scheduling, advanced IPC (pipes + shared memory), and virtual filesystem. Core infrastructure ~90% complete.
+**Implementation Status:** Production-ready userspace microkernel with 63 syscalls, multi-window management, OS-level process execution, scheduling policies, advanced IPC (pipes + shared memory), and virtual filesystem. Core infrastructure ~90% complete.
 
 ## Architecture
 
@@ -32,16 +32,16 @@ AgentOS implements a userspace OS where applications are generated from natural 
         ┌────────┴─────────┐
         │                  │
         ▼                  ▼
-┌──────────────┐  ┌──────────────────┐
-│ AI Service   │  │ Rust Kernel      │
-│ (Python)     │  │ (Microkernel)    │
-│              │  │                  │
-│ - LLM        │  │ - Process mgmt   │
-│ - UI gen     │  │ - Memory mgmt    │
-│ - Streaming  │  │ - Sandboxing     │
-│              │  │ - Syscalls       │
-│ Port 50052   │  │ Port 50051       │
-└──────────────┘  └──────────────────┘
+┌──────────────┐  ┌────────────────────────┐
+│ AI Service   │  │ Rust Kernel            │
+│ (Python)     │  │ (Userspace Microkernel)│
+│              │  │                        │
+│ - LLM        │  │ - Process mgmt         │
+│ - UI gen     │  │ - IPC                  │
+│ - Streaming  │  │ - Sandboxing           │
+│              │  │ - Syscalls (63)        │
+│ Port 50052   │  │ Port 50051             │
+└──────────────┘  └────────────────────────┘
 ```
 
 ## System Components
@@ -74,17 +74,17 @@ The Go backend serves as the central orchestration hub, managing application lif
 
 ### AI Service Layer (Python)
 
-Isolated Python service focused exclusively on LLM operations via gRPC.
+Isolated Python service for UI generation via gRPC.
 
 **Key Responsibilities:**
-- LLM inference using Google Gemini API (gemini-2.0-flash-exp)
-- UI specification generation from natural language
+- UI specification generation (template-based with LLM enhancement)
 - Token-level streaming for real-time updates
 - Chat response generation with thought streaming
 - UI caching for performance optimization
+- Optional LLM inference using Google Gemini API (gemini-2.0-flash-exp)
 
 **Core Components:**
-- `UIGeneratorAgent`: Generates structured JSON UI specifications
+- `UIGeneratorAgent`: Generates structured JSON UI specifications (rule-based + LLM)
 - `BlueprintParser`: Parses Blueprint DSL into Package format
 - `ChatAgent`: Handles conversational interactions
 - `ModelLoader`: Manages LLM loading and inference
@@ -93,25 +93,25 @@ Isolated Python service focused exclusively on LLM operations via gRPC.
 
 ### Kernel Layer (Rust)
 
-Production-ready microkernel with OS-level process execution, advanced IPC, and virtual filesystem.
+Production-ready userspace microkernel with IPC, capability-based security, and OS process execution.
 
 **Key Responsibilities:**
-- Process creation with true OS execution (std::process::Command)
-- CPU scheduling with multiple policies (round-robin, priority, CFS-inspired fair)
-- Memory allocation with OOM handling and garbage collection
-- Capability-based sandboxing with resource limits (memory, CPU, process spawns)
+- Process execution via host OS (std::process::Command with security validation)
+- Scheduling policy tracking (round-robin, priority, CFS-inspired fair) for priority management
+- Memory usage tracking with OOM detection and garbage collection
+- Capability-based sandboxing with resource limits enforcement (cgroups v2 on Linux)
 - Virtual filesystem with pluggable backends (local, in-memory)
-- Advanced IPC with pipes and shared memory (zero-copy transfers)
-- System call execution with 63 fully implemented syscalls
+- IPC implementation: Unix-style pipes (64KB buffers) + shared memory (zero-copy transfers)
+- System call interface with 63 fully implemented syscalls via gRPC
 
 **Core Subsystems:**
 - `ProcessManager`: OS process spawning with ExecutionConfig (command, args, env, working dir)
 - `ProcessExecutor`: Shell injection prevention, security validation, zombie cleanup
-- `Scheduler`: 3 scheduling policies with configurable time quantum and preemption
-- `MemoryManager`: Per-process tracking with pressure monitoring and OOM detection
-- `SandboxManager`: 14 capability types with per-process resource limits
+- `Scheduler`: 3 scheduling policies for priority tracking and process selection
+- `MemoryManager`: Per-process usage tracking with pressure monitoring and OOM detection
+- `SandboxManager`: 14 capability types with per-process permission enforcement
 - `VFSManager`: Mount manager with LocalFS and MemFS backends, 18 filesystem operations
-- `IPCManager`: Unix-style pipes (64KB buffer) + shared memory segments (100MB per segment)
+- `IPCManager`: Unix-style pipes (64KB buffer, 50MB global limit) + shared memory segments (100MB per segment, 500MB global limit)
 - `SyscallExecutor`: 63 syscalls across 12 categories (filesystem, process, IPC, scheduler, memory, network, signals)
 
 ### Frontend Layer (TypeScript/React)
@@ -349,11 +349,11 @@ AgentOS implements a generate-once-execute-many pattern that fundamentally separ
 
 ### Application Lifecycle
 
-**Generation Phase (One-Time, ~2-5s)**
+**Generation Phase (One-Time, ~100ms-5s)**
 ```
 1. User: "create a calculator"
 2. Go Backend → AI Service (gRPC)
-3. LLM generates structured JSON UISpec
+3. Template-based or LLM generates structured JSON UISpec
 4. Spec includes components + tool bindings
 5. Backend stores app state
 6. Frontend receives complete specification
@@ -377,11 +377,11 @@ AgentOS implements a generate-once-execute-many pattern that fundamentally separ
 - Non-deterministic behavior
 
 **AgentOS Approach:**
-- LLM generates once, tools execute many times
+- UI spec generated once (template or LLM), tools execute many times
 - Sub-10ms response after initial generation
-- Single token cost per application
+- Single generation cost per application (instant for templates, 2-5s for LLM)
 - Deterministic tool execution
-- No network latency for interactions
+- No network latency for user interactions
 
 ### Component System
 
@@ -625,21 +625,22 @@ wscat -c ws://localhost:8000/stream
 - **Type Safety**: Compile-time type checking prevents entire classes of runtime errors
 
 ### AI Service Performance
-- **Inference**: Google Gemini API with cloud-based optimization
+- **Template Generation**: Sub-100ms for predefined app patterns
+- **LLM Inference**: Google Gemini API with cloud-based optimization (optional)
 - **Streaming**: Token-level streaming for real-time user feedback
 - **Caching**: LRU cache for frequently requested UI specifications
-- **Model**: gemini-2.0-flash-exp for fast, high-quality responses
+- **Model**: gemini-2.0-flash-exp for fast, high-quality responses when LLM is enabled
 
 ### Kernel Performance
-- **Syscall Latency**: Sub-millisecond syscall execution through gRPC (63 syscalls fully implemented)
+- **Syscall Latency**: Low-latency syscall execution via gRPC (63 syscalls fully implemented)
 - **OS Process Execution**: Native process spawning with command validation and zombie cleanup
-- **CPU Scheduling**: Configurable policies with 10ms default quantum and preemptive multitasking
-- **Memory Management**: Proactive OOM detection with per-process tracking and garbage collection
-- **IPC Throughput**: 
-  - Pipes: 64KB buffer, 50MB global limit, streaming data transfer
-  - Shared Memory: Zero-copy transfers, 100MB per segment, 500MB global limit
-- **VFS Operations**: Mount manager routes operations to correct backend (LocalFS, MemFS)
-- **Sandboxing**: Zero-copy capability checks for minimal overhead
+- **Scheduling Policies**: 3 configurable policies (round-robin, priority, fair) for priority tracking
+- **Memory Tracking**: Proactive OOM detection with per-process usage tracking and garbage collection
+- **IPC Throughput**
+  - Pipes: 64KB buffers, 50MB global limit, streaming data transfer with backpressure
+  - Shared Memory: Zero-copy transfers, 100MB per segment, 500MB global limit, permission-based access
+- **VFS Operations**: Mount manager routes operations to pluggable backends (LocalFS, MemFS)
+- **Sandboxing**: Efficient capability-based permission checks before syscall execution
 - **Resource Limits**: cgroups v2 enforcement on Linux (memory, CPU shares, max PIDs)
 
 ### Frontend Performance
@@ -684,13 +685,14 @@ wscat -c ws://localhost:8000/stream
 - **Structured Storage**: JSON-based storage with metadata support
 
 ### Security Model
-- **Capability-Based Sandboxing**: Processes request specific capabilities (14 types: filesystem, network, process, IPC, memory, scheduler)
-- **Resource Limits**: Per-process memory, CPU shares (cgroups v2 on Linux), and process spawn limits
-- **OS Process Isolation**: True process isolation with std::process::Command and security validation
+- **Capability-Based Sandboxing**: Process-level capability enforcement (14 types: filesystem, network, process, IPC, memory, scheduler)
+- **Resource Limits**: Per-process limits enforced via cgroups v2 on Linux (memory, CPU shares, max PIDs)
+- **OS Process Isolation**: Process isolation via std::process::Command with security validation
 - **Shell Injection Prevention**: Command validation blocks dangerous characters (;, |, &, `, $, etc.)
-- **Path Restrictions**: Allowed/blocked path lists enforced at VFS mount level
+- **Path Restrictions**: Allowed/blocked path lists with canonicalization enforced before filesystem operations
 - **Permission Checking**: All 63 syscalls verified against sandbox capabilities before execution
-- **Rate Limiting**: Per-IP token bucket algorithm (configurable RPS and burst)
+- **IPC Isolation**: Pipes and shared memory with per-process ownership and permission management
+- **Rate Limiting**: Per-IP token bucket algorithm at HTTP layer (configurable RPS and burst)
 - **CORS Configuration**: Configurable cross-origin policies
 - **No Arbitrary Code Execution**: UI specs are pure data, tools are pre-defined functions
 - **Automatic Cleanup**: Zombie processes cleaned up, IPC resources freed on process termination
