@@ -43,7 +43,7 @@ pub trait PipeChannel: Send + Sync {
     fn destroy(&self, pipe_id: PipeId) -> IpcResult<()>;
 
     /// Get pipe statistics
-    fn stats(&self, pipe_id: PipeId) -> IpcResult<super::pipe::PipeStats>;
+    fn stats(&self, pipe_id: PipeId) -> IpcResult<crate::ipc::pipe::PipeStats>;
 }
 
 /// Shared memory interface
@@ -67,7 +67,7 @@ pub trait SharedMemory: Send + Sync {
     fn destroy(&self, segment_id: ShmId, pid: Pid) -> IpcResult<()>;
 
     /// Get shared memory statistics
-    fn stats(&self, segment_id: ShmId) -> IpcResult<super::shm::ShmStats>;
+    fn stats(&self, segment_id: ShmId) -> IpcResult<crate::ipc::shm::ShmStats>;
 }
 
 /// IPC cleanup interface
@@ -88,7 +88,7 @@ pub trait AsyncQueue: Send + Sync {
     fn send(&self, queue_id: super::types::QueueId, from_pid: Pid, data: Vec<u8>, priority: Option<u8>) -> IpcResult<()>;
 
     /// Receive message from queue (non-blocking)
-    fn receive(&self, queue_id: super::types::QueueId, pid: Pid) -> IpcResult<Option<super::queue::QueueMessage>>;
+    fn receive(&self, queue_id: super::types::QueueId, pid: Pid) -> IpcResult<Option<crate::ipc::queue::QueueMessage>>;
 
     /// Subscribe to PubSub queue
     fn subscribe(&self, queue_id: super::types::QueueId, pid: Pid) -> IpcResult<()>;
@@ -103,7 +103,7 @@ pub trait AsyncQueue: Send + Sync {
     fn destroy(&self, queue_id: super::types::QueueId, pid: Pid) -> IpcResult<()>;
 
     /// Get queue statistics
-    fn stats(&self, queue_id: super::types::QueueId) -> IpcResult<super::queue::QueueStats>;
+    fn stats(&self, queue_id: super::types::QueueId) -> IpcResult<crate::ipc::queue::QueueStats>;
 }
 
 /// Combined IPC interface

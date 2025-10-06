@@ -1,184 +1,37 @@
 /*!
- * Shared Memory Module
- * Zero-copy data sharing between processes
+ * Shared Memory Manager
+ * Central manager for shared memory segments
  */
 
-use super::traits::SharedMemory;
-use super::types::{IpcError, IpcResult, ShmId};
+use super::segment::SharedSegment;
+use super::super::traits::SharedMemory;
+use super::super::types::{IpcResult, ShmId};
+use super::types::{
+    ShmError, ShmPermission, ShmStats, GLOBAL_SHM_MEMORY_LIMIT, MAX_SEGMENT_SIZE,
+    MAX_SEGMENTS_PER_PROCESS,
+};
 use crate::core::types::{Pid, Size};
+use crate::memory::MemoryManager;
 use log::{info, warn};
 use parking_lot::RwLock;
-use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use thiserror::Error;
-
-// Shared memory limits
-const MAX_SEGMENT_SIZE: usize = 100 * 1024 * 1024; // 100MB per segment
-const MAX_SEGMENTS_PER_PROCESS: usize = 10;
-const GLOBAL_SHM_MEMORY_LIMIT: usize = 500 * 1024 * 1024; // 500MB total
 
 // Global shared memory tracking
 static GLOBAL_SHM_MEMORY: AtomicUsize = AtomicUsize::new(0);
 
-#[derive(Debug, Error)]
-pub enum ShmError {
-    #[error("Segment not found: {0}")]
-    NotFound(u32),
-
-    #[error("Permission denied: {0}")]
-    PermissionDenied(String),
-
-    #[error("Invalid size: {0}")]
-    InvalidSize(String),
-
-    #[error("Invalid offset or size: offset {offset}, size {size}, segment size {segment_size}")]
-    InvalidRange {
-        offset: usize,
-        size: usize,
-        segment_size: usize,
-    },
-
-    #[error("Segment size exceeds limit: requested {requested}, max {max}")]
-    SizeExceeded { requested: usize, max: usize },
-
-    #[error("Process segment limit exceeded: {0}/{1}")]
-    ProcessLimitExceeded(usize, usize),
-
-    #[error("Global shared memory limit exceeded: {0}/{1} bytes")]
-    GlobalMemoryExceeded(usize, usize),
-}
-
-// Convert ShmError to IpcError
-impl From<ShmError> for IpcError {
-    fn from(err: ShmError) -> Self {
-        match err {
-            ShmError::NotFound(id) => IpcError::NotFound(format!("Shared memory segment {}", id)),
-            ShmError::PermissionDenied(msg) => IpcError::PermissionDenied(msg),
-            ShmError::InvalidSize(msg) => IpcError::InvalidOperation(msg),
-            ShmError::InvalidRange {
-                offset,
-                size,
-                segment_size,
-            } => IpcError::InvalidOperation(format!(
-                "Invalid range: offset {}, size {}, segment size {}",
-                offset, size, segment_size
-            )),
-            ShmError::SizeExceeded { requested, max } => IpcError::LimitExceeded(format!(
-                "Segment size exceeds limit: requested {}, max {}",
-                requested, max
-            )),
-            ShmError::ProcessLimitExceeded(current, max) => IpcError::LimitExceeded(format!(
-                "Process segment limit exceeded: {}/{}",
-                current, max
-            )),
-            ShmError::GlobalMemoryExceeded(current, max) => IpcError::LimitExceeded(format!(
-                "Global shared memory limit exceeded: {}/{} bytes",
-                current, max
-            )),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ShmStats {
-    pub id: ShmId,
-    pub size: Size,
-    pub owner_pid: Pid,
-    pub attached_pids: Vec<Pid>,
-    pub read_only_pids: Vec<Pid>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ShmPermission {
-    ReadWrite,
-    ReadOnly,
-}
-
-struct SharedSegment {
-    id: ShmId,
-    size: Size,
-    data: Arc<RwLock<Vec<u8>>>,
-    owner_pid: Pid,
-    attached_pids: HashSet<Pid>,
-    permissions: HashMap<Pid, ShmPermission>,
-}
-
-impl SharedSegment {
-    fn new(id: ShmId, size: Size, owner_pid: Pid) -> Self {
-        let mut attached_pids = HashSet::new();
-        attached_pids.insert(owner_pid);
-
-        let mut permissions = HashMap::new();
-        permissions.insert(owner_pid, ShmPermission::ReadWrite);
-
-        Self {
-            id,
-            size,
-            data: Arc::new(RwLock::new(vec![0u8; size])),
-            owner_pid,
-            attached_pids,
-            permissions,
-        }
-    }
-
-    fn has_permission(&self, pid: Pid, perm: ShmPermission) -> bool {
-        match self.permissions.get(&pid) {
-            Some(ShmPermission::ReadWrite) => true,
-            Some(ShmPermission::ReadOnly) => perm == ShmPermission::ReadOnly,
-            None => false,
-        }
-    }
-
-    fn attach(&mut self, pid: Pid, perm: ShmPermission) {
-        self.attached_pids.insert(pid);
-        self.permissions.insert(pid, perm);
-    }
-
-    fn detach(&mut self, pid: Pid) {
-        self.attached_pids.remove(&pid);
-        self.permissions.remove(&pid);
-    }
-
-    fn write(&self, offset: Size, data: &[u8]) -> Result<(), ShmError> {
-        if offset + data.len() > self.size {
-            return Err(ShmError::InvalidRange {
-                offset,
-                size: data.len(),
-                segment_size: self.size,
-            });
-        }
-
-        let mut segment_data = self.data.write();
-        segment_data[offset..offset + data.len()].copy_from_slice(data);
-
-        Ok(())
-    }
-
-    fn read(&self, offset: Size, size: Size) -> Result<Vec<u8>, ShmError> {
-        if offset + size > self.size {
-            return Err(ShmError::InvalidRange {
-                offset,
-                size,
-                segment_size: self.size,
-            });
-        }
-
-        let segment_data = self.data.read();
-        Ok(segment_data[offset..offset + size].to_vec())
-    }
-}
-
+/// Shared memory manager
 pub struct ShmManager {
     segments: Arc<RwLock<HashMap<ShmId, SharedSegment>>>,
     next_id: Arc<RwLock<ShmId>>,
     // Track segment count per process
     process_segments: Arc<RwLock<HashMap<Pid, Size>>>,
+    memory_manager: MemoryManager,
 }
 
 impl ShmManager {
-    pub fn new() -> Self {
+    pub fn new(memory_manager: MemoryManager) -> Self {
         info!(
             "Shared memory manager initialized (max segment: {} MB, global limit: {} MB)",
             MAX_SEGMENT_SIZE / (1024 * 1024),
@@ -188,6 +41,7 @@ impl ShmManager {
             segments: Arc::new(RwLock::new(HashMap::new())),
             next_id: Arc::new(RwLock::new(1)),
             process_segments: Arc::new(RwLock::new(HashMap::new())),
+            memory_manager,
         }
     }
 
@@ -223,13 +77,25 @@ impl ShmManager {
             ));
         }
 
+        // Allocate memory through MemoryManager (unified memory accounting)
+        let address = self
+            .memory_manager
+            .allocate(size, owner_pid)
+            .map_err(|e| ShmError::AllocationFailed(e.to_string()))?;
+
         let mut segments = self.segments.write();
         let mut next_id = self.next_id.write();
 
         let segment_id = *next_id;
         *next_id += 1;
 
-        let segment = SharedSegment::new(segment_id, size, owner_pid);
+        let segment = SharedSegment::new(
+            segment_id,
+            size,
+            owner_pid,
+            address,
+            self.memory_manager.clone(),
+        );
         segments.insert(segment_id, segment);
         drop(segments);
         drop(next_id);
@@ -243,10 +109,11 @@ impl ShmManager {
         GLOBAL_SHM_MEMORY.fetch_add(size, Ordering::Release);
 
         info!(
-            "Created shared memory segment {} ({} bytes) for PID {} ({} bytes global memory)",
+            "Created shared memory segment {} ({} bytes) for PID {} at address 0x{:x} ({} bytes global memory)",
             segment_id,
             size,
             owner_pid,
+            address,
             GLOBAL_SHM_MEMORY.load(Ordering::Relaxed)
         );
 
@@ -365,9 +232,18 @@ impl ShmManager {
 
         let owner_pid = segment.owner_pid;
         let size = segment.size;
+        let address = segment.address;
 
         segments.remove(&segment_id);
         drop(segments);
+
+        // Deallocate memory through MemoryManager (unified memory accounting)
+        if let Err(e) = self.memory_manager.deallocate(address) {
+            warn!(
+                "Failed to deallocate memory for segment {} at address 0x{:x}: {}",
+                segment_id, address, e
+            );
+        }
 
         // Update process segment count
         let mut process_segments = self.process_segments.write();
@@ -383,9 +259,10 @@ impl ShmManager {
         GLOBAL_SHM_MEMORY.fetch_sub(size, Ordering::Release);
 
         info!(
-            "Destroyed segment {} (reclaimed {} bytes, {} bytes global memory)",
+            "Destroyed segment {} (reclaimed {} bytes at 0x{:x}, {} bytes global memory)",
             segment_id,
             size,
+            address,
             GLOBAL_SHM_MEMORY.load(Ordering::Relaxed)
         );
 
@@ -472,13 +349,8 @@ impl Clone for ShmManager {
             segments: Arc::clone(&self.segments),
             next_id: Arc::clone(&self.next_id),
             process_segments: Arc::clone(&self.process_segments),
+            memory_manager: self.memory_manager.clone(),
         }
-    }
-}
-
-impl Default for ShmManager {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

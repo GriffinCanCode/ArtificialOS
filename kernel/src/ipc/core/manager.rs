@@ -11,6 +11,7 @@ use crate::core::types::{Pid, Size};
 use crate::ipc::pipe::PipeManager;
 use crate::ipc::queue::QueueManager;
 use crate::ipc::shm::ShmManager;
+use crate::memory::MemoryManager;
 use log::{info, warn};
 use parking_lot::RwLock;
 use std::collections::{HashMap, VecDeque};
@@ -34,17 +35,17 @@ pub struct IPCManager {
 }
 
 impl IPCManager {
-    pub fn new() -> Self {
+    pub fn new(memory_manager: MemoryManager) -> Self {
         info!(
-            "IPC manager initialized with queue limit: {}, global memory limit: {} MB",
+            "IPC manager initialized with unified memory management (queue limit: {}, global memory limit: {} MB)",
             MAX_QUEUE_SIZE,
             GLOBAL_IPC_MEMORY_LIMIT / (1024 * 1024)
         );
         Self {
             message_queues: Arc::new(RwLock::new(HashMap::new())),
-            pipe_manager: PipeManager::new(),
-            shm_manager: ShmManager::new(),
-            queue_manager: QueueManager::new(),
+            pipe_manager: PipeManager::new(memory_manager.clone()),
+            shm_manager: ShmManager::new(memory_manager.clone()),
+            queue_manager: QueueManager::new(memory_manager),
         }
     }
 
@@ -190,11 +191,7 @@ impl IPCManager {
     }
 }
 
-impl Default for IPCManager {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// Note: Default trait removed - IPCManager now requires MemoryManager dependency
 
 // Implement MessageQueue trait
 impl MessageQueue for IPCManager {
@@ -271,7 +268,7 @@ impl AsyncQueue for QueueManager {
         &self,
         queue_id: super::types::QueueId,
         pid: Pid,
-    ) -> IpcResult<Option<super::queue::QueueMessage>> {
+    ) -> IpcResult<Option<crate::ipc::queue::QueueMessage>> {
         QueueManager::receive(self, queue_id, pid)
     }
 
@@ -294,7 +291,7 @@ impl AsyncQueue for QueueManager {
     fn stats(
         &self,
         queue_id: super::types::QueueId,
-    ) -> IpcResult<super::queue::QueueStats> {
+    ) -> IpcResult<crate::ipc::queue::QueueStats> {
         QueueManager::stats(self, queue_id)
     }
 }

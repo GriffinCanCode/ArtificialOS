@@ -4,12 +4,14 @@
  */
 
 use ai_os_kernel::pipe::{PipeError, PipeManager};
+use ai_os_kernel::MemoryManager;
 use pretty_assertions::assert_eq;
 use serial_test::serial;
 
 #[test]
 fn test_basic_pipe_create() {
-    let pm = PipeManager::new();
+    let memory_manager = MemoryManager::new();
+    let pm = PipeManager::new(memory_manager);
 
     let reader_pid = 100;
     let writer_pid = 200;
@@ -20,7 +22,8 @@ fn test_basic_pipe_create() {
 
 #[test]
 fn test_pipe_write_read() {
-    let pm = PipeManager::new();
+    let memory_manager = MemoryManager::new();
+    let pm = PipeManager::new(memory_manager);
 
     let reader_pid = 100;
     let writer_pid = 200;
@@ -39,7 +42,8 @@ fn test_pipe_write_read() {
 
 #[test]
 fn test_pipe_streaming() {
-    let pm = PipeManager::new();
+    let memory_manager = MemoryManager::new();
+    let pm = PipeManager::new(memory_manager);
 
     let reader_pid = 100;
     let writer_pid = 200;
@@ -64,7 +68,8 @@ fn test_pipe_streaming() {
 
 #[test]
 fn test_pipe_permissions() {
-    let pm = PipeManager::new();
+    let memory_manager = MemoryManager::new();
+    let pm = PipeManager::new(memory_manager);
 
     let reader_pid = 100;
     let writer_pid = 200;
@@ -90,7 +95,8 @@ fn test_pipe_permissions() {
 
 #[test]
 fn test_pipe_capacity() {
-    let pm = PipeManager::new();
+    let memory_manager = MemoryManager::new();
+    let pm = PipeManager::new(memory_manager);
 
     let reader_pid = 100;
     let writer_pid = 200;
@@ -117,7 +123,8 @@ fn test_pipe_capacity() {
 
 #[test]
 fn test_pipe_read_empty() {
-    let pm = PipeManager::new();
+    let memory_manager = MemoryManager::new();
+    let pm = PipeManager::new(memory_manager);
 
     let reader_pid = 100;
     let writer_pid = 200;
@@ -131,7 +138,8 @@ fn test_pipe_read_empty() {
 
 #[test]
 fn test_pipe_close() {
-    let pm = PipeManager::new();
+    let memory_manager = MemoryManager::new();
+    let pm = PipeManager::new(memory_manager);
 
     let reader_pid = 100;
     let writer_pid = 200;
@@ -163,7 +171,8 @@ fn test_pipe_close() {
 
 #[test]
 fn test_pipe_destroy() {
-    let pm = PipeManager::new();
+    let memory_manager = MemoryManager::new();
+    let pm = PipeManager::new(memory_manager);
 
     let reader_pid = 100;
     let writer_pid = 200;
@@ -182,7 +191,8 @@ fn test_pipe_destroy() {
 
 #[test]
 fn test_pipe_stats() {
-    let pm = PipeManager::new();
+    let memory_manager = MemoryManager::new();
+    let pm = PipeManager::new(memory_manager);
 
     let reader_pid = 100;
     let writer_pid = 200;
@@ -204,7 +214,8 @@ fn test_pipe_stats() {
 
 #[test]
 fn test_pipe_process_cleanup() {
-    let pm = PipeManager::new();
+    let memory_manager = MemoryManager::new();
+    let pm = PipeManager::new(memory_manager);
 
     let pid = 100;
 
@@ -220,7 +231,8 @@ fn test_pipe_process_cleanup() {
 
 #[test]
 fn test_pipe_per_process_limit() {
-    let pm = PipeManager::new();
+    let memory_manager = MemoryManager::new();
+    let pm = PipeManager::new(memory_manager);
 
     let reader_pid = 100;
     let writer_pid = 200;
@@ -238,7 +250,8 @@ fn test_pipe_per_process_limit() {
 #[test]
 #[serial]
 fn test_pipe_global_memory_limit() {
-    let pm = PipeManager::new();
+    let memory_manager = MemoryManager::new();
+    let pm = PipeManager::new(memory_manager);
 
     let mut created = 0;
 
@@ -271,7 +284,8 @@ fn test_pipe_global_memory_limit() {
 
 #[test]
 fn test_pipe_partial_write() {
-    let pm = PipeManager::new();
+    let memory_manager = MemoryManager::new();
+    let pm = PipeManager::new(memory_manager);
 
     let reader_pid = 100;
     let writer_pid = 200;
@@ -297,7 +311,8 @@ fn test_pipe_partial_write() {
 
 #[test]
 fn test_pipe_bidirectional_setup() {
-    let pm = PipeManager::new();
+    let memory_manager = MemoryManager::new();
+    let pm = PipeManager::new(memory_manager);
 
     let pid1 = 100;
     let pid2 = 200;
@@ -320,7 +335,8 @@ fn test_pipe_bidirectional_setup() {
 #[test]
 #[serial]
 fn test_pipe_memory_tracking() {
-    let pm = PipeManager::new();
+    let memory_manager = MemoryManager::new();
+    let pm = PipeManager::new(memory_manager);
 
     let initial = pm.get_global_memory_usage();
 
@@ -338,7 +354,8 @@ fn test_pipe_memory_tracking() {
 
 #[test]
 fn test_pipe_not_found() {
-    let pm = PipeManager::new();
+    let memory_manager = MemoryManager::new();
+    let pm = PipeManager::new(memory_manager);
 
     let result = pm.write(999, 100, b"test");
     assert!(matches!(result, Err(PipeError::NotFound(999))));
@@ -355,7 +372,8 @@ fn test_pipe_concurrent_operations() {
     use std::sync::Arc;
     use std::thread;
 
-    let pm = Arc::new(PipeManager::new());
+    let memory_manager = MemoryManager::new();
+    let pm = Arc::new(PipeManager::new(memory_manager));
     let pipe_id = pm.create(100, 200, Some(10000)).unwrap();
 
     let pm_writer = Arc::clone(&pm);

@@ -1,158 +1,37 @@
 /*!
- * Pipe Module
- * Unix-style pipes for streaming data between processes
+ * Pipe Manager
+ * Central manager for Unix-style pipes
  */
 
-use super::traits::PipeChannel;
-use super::types::{IpcError, IpcResult, PipeId};
+use super::pipe::Pipe;
+use super::super::traits::PipeChannel;
+use super::super::types::{IpcResult, PipeId};
+use super::types::{
+    PipeError, PipeStats, DEFAULT_PIPE_CAPACITY, GLOBAL_PIPE_MEMORY_LIMIT, MAX_PIPE_CAPACITY,
+    MAX_PIPES_PER_PROCESS,
+};
 use crate::core::types::{Pid, Size};
+use crate::memory::MemoryManager;
 use log::{info, warn};
 use parking_lot::RwLock;
-use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use thiserror::Error;
-
-// Pipe limits to prevent resource exhaustion
-const DEFAULT_PIPE_CAPACITY: usize = 65536; // 64KB (Linux default)
-const MAX_PIPE_CAPACITY: usize = 1024 * 1024; // 1MB max
-const MAX_PIPES_PER_PROCESS: usize = 100;
-const GLOBAL_PIPE_MEMORY_LIMIT: usize = 50 * 1024 * 1024; // 50MB total
 
 // Global pipe memory tracking
 static GLOBAL_PIPE_MEMORY: AtomicUsize = AtomicUsize::new(0);
 
-#[derive(Debug, Error)]
-pub enum PipeError {
-    #[error("Pipe not found: {0}")]
-    NotFound(u32),
-
-    #[error("Permission denied: {0}")]
-    PermissionDenied(String),
-
-    #[error("Pipe closed")]
-    Closed,
-
-    #[error("Would block: {0}")]
-    WouldBlock(String),
-
-    #[error("Capacity exceeded: requested {requested}, capacity {capacity}")]
-    CapacityExceeded { requested: usize, capacity: usize },
-
-    #[error("Process pipe limit exceeded: {0}/{1}")]
-    ProcessLimitExceeded(usize, usize),
-
-    #[error("Global pipe memory limit exceeded: {0}/{1} bytes")]
-    GlobalMemoryExceeded(usize, usize),
-}
-
-// Convert PipeError to IpcError
-impl From<PipeError> for IpcError {
-    fn from(err: PipeError) -> Self {
-        match err {
-            PipeError::NotFound(id) => IpcError::NotFound(format!("Pipe {}", id)),
-            PipeError::PermissionDenied(msg) => IpcError::PermissionDenied(msg),
-            PipeError::Closed => IpcError::Closed("Pipe closed".to_string()),
-            PipeError::WouldBlock(msg) => IpcError::WouldBlock(msg),
-            PipeError::CapacityExceeded {
-                requested,
-                capacity,
-            } => IpcError::LimitExceeded(format!(
-                "Capacity exceeded: requested {}, capacity {}",
-                requested, capacity
-            )),
-            PipeError::ProcessLimitExceeded(current, max) => {
-                IpcError::LimitExceeded(format!("Process pipe limit exceeded: {}/{}", current, max))
-            }
-            PipeError::GlobalMemoryExceeded(current, max) => IpcError::LimitExceeded(format!(
-                "Global pipe memory limit exceeded: {}/{} bytes",
-                current, max
-            )),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PipeStats {
-    pub id: PipeId,
-    pub reader_pid: Pid,
-    pub writer_pid: Pid,
-    pub capacity: Size,
-    pub buffered: Size,
-    pub closed: bool,
-}
-
-#[derive(Debug)]
-struct Pipe {
-    id: PipeId,
-    reader_pid: Pid,
-    writer_pid: Pid,
-    buffer: VecDeque<u8>,
-    capacity: Size,
-    closed: bool,
-}
-
-impl Pipe {
-    fn new(id: PipeId, reader_pid: Pid, writer_pid: Pid, capacity: Size) -> Self {
-        Self {
-            id,
-            reader_pid,
-            writer_pid,
-            buffer: VecDeque::with_capacity(capacity),
-            capacity,
-            closed: false,
-        }
-    }
-
-    fn available_space(&self) -> Size {
-        self.capacity.saturating_sub(self.buffer.len())
-    }
-
-    fn buffered(&self) -> Size {
-        self.buffer.len()
-    }
-
-    fn write(&mut self, data: &[u8]) -> Result<Size, PipeError> {
-        if self.closed {
-            return Err(PipeError::Closed);
-        }
-
-        let available = self.available_space();
-        if available == 0 {
-            return Err(PipeError::WouldBlock("Pipe buffer full".to_string()));
-        }
-
-        let to_write = data.len().min(available);
-        self.buffer.extend(&data[..to_write]);
-
-        Ok(to_write)
-    }
-
-    fn read(&mut self, size: Size) -> Result<Vec<u8>, PipeError> {
-        if self.buffer.is_empty() {
-            if self.closed {
-                return Ok(Vec::new()); // EOF
-            }
-            return Err(PipeError::WouldBlock("No data available".to_string()));
-        }
-
-        let to_read = size.min(self.buffer.len());
-        let data: Vec<u8> = self.buffer.drain(..to_read).collect();
-
-        Ok(data)
-    }
-}
-
+/// Pipe manager
 pub struct PipeManager {
     pipes: Arc<RwLock<HashMap<PipeId, Pipe>>>,
     next_id: Arc<RwLock<PipeId>>,
     // Track pipe count per process
     process_pipes: Arc<RwLock<HashMap<Pid, Size>>>,
+    memory_manager: MemoryManager,
 }
 
 impl PipeManager {
-    pub fn new() -> Self {
+    pub fn new(memory_manager: MemoryManager) -> Self {
         info!(
             "Pipe manager initialized (capacity: {}, limit: {} MB)",
             DEFAULT_PIPE_CAPACITY,
@@ -162,6 +41,7 @@ impl PipeManager {
             pipes: Arc::new(RwLock::new(HashMap::new())),
             next_id: Arc::new(RwLock::new(1)),
             process_pipes: Arc::new(RwLock::new(HashMap::new())),
+            memory_manager,
         }
     }
 
@@ -197,13 +77,27 @@ impl PipeManager {
             ));
         }
 
+        // Allocate memory through MemoryManager (unified memory accounting)
+        // Use writer_pid as the owner for accounting purposes
+        let address = self
+            .memory_manager
+            .allocate(capacity, writer_pid)
+            .map_err(|e| PipeError::AllocationFailed(e.to_string()))?;
+
         let mut pipes = self.pipes.write();
         let mut next_id = self.next_id.write();
 
         let pipe_id = *next_id;
         *next_id += 1;
 
-        let pipe = Pipe::new(pipe_id, reader_pid, writer_pid, capacity);
+        let pipe = Pipe::new(
+            pipe_id,
+            reader_pid,
+            writer_pid,
+            capacity,
+            address,
+            self.memory_manager.clone(),
+        );
         pipes.insert(pipe_id, pipe);
         drop(pipes);
         drop(next_id);
@@ -218,8 +112,8 @@ impl PipeManager {
         GLOBAL_PIPE_MEMORY.fetch_add(capacity, Ordering::Release);
 
         info!(
-            "Created pipe {} (reader: {}, writer: {}, capacity: {} bytes)",
-            pipe_id, reader_pid, writer_pid, capacity
+            "Created pipe {} (reader: {}, writer: {}, capacity: {} bytes, address: 0x{:x})",
+            pipe_id, reader_pid, writer_pid, capacity, address
         );
 
         Ok(pipe_id)
@@ -292,29 +186,45 @@ impl PipeManager {
         let mut pipes = self.pipes.write();
         let pipe = pipes.remove(&pipe_id).ok_or(PipeError::NotFound(pipe_id))?;
 
+        let capacity = pipe.capacity;
+        let address = pipe.address;
+        let reader_pid = pipe.reader_pid;
+        let writer_pid = pipe.writer_pid;
+
+        drop(pipes);
+
+        // Deallocate memory through MemoryManager (unified memory accounting)
+        if let Err(e) = self.memory_manager.deallocate(address) {
+            warn!(
+                "Failed to deallocate memory for pipe {} at address 0x{:x}: {}",
+                pipe_id, address, e
+            );
+        }
+
         // Update process pipe counts
         let mut process_pipes = self.process_pipes.write();
-        if let Some(count) = process_pipes.get_mut(&pipe.reader_pid) {
+        if let Some(count) = process_pipes.get_mut(&reader_pid) {
             *count = count.saturating_sub(1);
             if *count == 0 {
-                process_pipes.remove(&pipe.reader_pid);
+                process_pipes.remove(&reader_pid);
             }
         }
-        if let Some(count) = process_pipes.get_mut(&pipe.writer_pid) {
+        if let Some(count) = process_pipes.get_mut(&writer_pid) {
             *count = count.saturating_sub(1);
             if *count == 0 {
-                process_pipes.remove(&pipe.writer_pid);
+                process_pipes.remove(&writer_pid);
             }
         }
         drop(process_pipes);
 
         // Reclaim global memory
-        GLOBAL_PIPE_MEMORY.fetch_sub(pipe.capacity, Ordering::Release);
+        GLOBAL_PIPE_MEMORY.fetch_sub(capacity, Ordering::Release);
 
         info!(
-            "Destroyed pipe {} (reclaimed {} bytes, {} bytes global memory)",
+            "Destroyed pipe {} (reclaimed {} bytes at 0x{:x}, {} bytes global memory)",
             pipe_id,
-            pipe.capacity,
+            capacity,
+            address,
             GLOBAL_PIPE_MEMORY.load(Ordering::Relaxed)
         );
 
@@ -370,15 +280,12 @@ impl Clone for PipeManager {
             pipes: Arc::clone(&self.pipes),
             next_id: Arc::clone(&self.next_id),
             process_pipes: Arc::clone(&self.process_pipes),
+            memory_manager: self.memory_manager.clone(),
         }
     }
 }
 
-impl Default for PipeManager {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// Note: Default trait removed - PipeManager now requires MemoryManager dependency
 
 // Implement PipeChannel trait
 impl PipeChannel for PipeManager {

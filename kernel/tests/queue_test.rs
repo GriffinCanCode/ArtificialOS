@@ -4,12 +4,14 @@
  */
 
 use ai_os_kernel::ipc::{QueueManager, QueueType};
+use ai_os_kernel::MemoryManager;
 use pretty_assertions::assert_eq;
 use serial_test::serial;
 
 #[test]
 fn test_create_fifo_queue() {
-    let manager = QueueManager::new();
+    let memory_manager = MemoryManager::new();
+    let manager = QueueManager::new(memory_manager);
 
     let owner_pid = 100;
     let queue_id = manager.create(owner_pid, QueueType::Fifo, Some(100))
@@ -26,7 +28,8 @@ fn test_create_fifo_queue() {
 
 #[test]
 fn test_create_priority_queue() {
-    let manager = QueueManager::new();
+    let memory_manager = MemoryManager::new();
+    let manager = QueueManager::new(memory_manager);
 
     let owner_pid = 100;
     let queue_id = manager.create(owner_pid, QueueType::Priority, Some(50))
@@ -39,7 +42,8 @@ fn test_create_priority_queue() {
 
 #[test]
 fn test_create_pubsub_queue() {
-    let manager = QueueManager::new();
+    let memory_manager = MemoryManager::new();
+    let manager = QueueManager::new(memory_manager);
 
     let owner_pid = 100;
     let queue_id = manager.create(owner_pid, QueueType::PubSub, None)
@@ -52,7 +56,8 @@ fn test_create_pubsub_queue() {
 
 #[test]
 fn test_fifo_send_receive() {
-    let manager = QueueManager::new();
+    let memory_manager = MemoryManager::new();
+    let manager = QueueManager::new(memory_manager);
 
     let owner_pid = 100;
     let queue_id = manager.create(owner_pid, QueueType::Fifo, Some(10))
@@ -69,7 +74,8 @@ fn test_fifo_send_receive() {
 
 #[test]
 fn test_fifo_ordering() {
-    let manager = QueueManager::new();
+    let memory_manager = MemoryManager::new();
+    let manager = QueueManager::new(memory_manager);
 
     let owner_pid = 100;
     let queue_id = manager.create(owner_pid, QueueType::Fifo, Some(10))
@@ -91,7 +97,8 @@ fn test_fifo_ordering() {
 
 #[test]
 fn test_priority_queue_ordering() {
-    let manager = QueueManager::new();
+    let memory_manager = MemoryManager::new();
+    let manager = QueueManager::new(memory_manager);
 
     let owner_pid = 100;
     let queue_id = manager.create(owner_pid, QueueType::Priority, Some(10))
@@ -118,7 +125,8 @@ fn test_priority_queue_ordering() {
 
 #[test]
 fn test_pubsub_subscribe_unsubscribe() {
-    let manager = QueueManager::new();
+    let memory_manager = MemoryManager::new();
+    let manager = QueueManager::new(memory_manager);
 
     let owner_pid = 100;
     let sub_pid1 = 200;
@@ -143,7 +151,8 @@ fn test_pubsub_subscribe_unsubscribe() {
 
 #[test]
 fn test_pubsub_message_delivery() {
-    let manager = QueueManager::new();
+    let memory_manager = MemoryManager::new();
+    let manager = QueueManager::new(memory_manager);
 
     let owner_pid = 100;
     let sub_pid1 = 200;
@@ -171,7 +180,8 @@ fn test_pubsub_message_delivery() {
 
 #[test]
 fn test_queue_capacity_limit() {
-    let manager = QueueManager::new();
+    let memory_manager = MemoryManager::new();
+    let manager = QueueManager::new(memory_manager);
 
     let owner_pid = 100;
     let capacity = 5;
@@ -191,7 +201,8 @@ fn test_queue_capacity_limit() {
 
 #[test]
 fn test_receive_empty_queue() {
-    let manager = QueueManager::new();
+    let memory_manager = MemoryManager::new();
+    let manager = QueueManager::new(memory_manager);
 
     let owner_pid = 100;
     let queue_id = manager.create(owner_pid, QueueType::Fifo, Some(10))
@@ -204,7 +215,8 @@ fn test_receive_empty_queue() {
 
 #[test]
 fn test_close_queue() {
-    let manager = QueueManager::new();
+    let memory_manager = MemoryManager::new();
+    let manager = QueueManager::new(memory_manager);
 
     let owner_pid = 100;
     let queue_id = manager.create(owner_pid, QueueType::Fifo, Some(10))
@@ -224,7 +236,8 @@ fn test_close_queue() {
 
 #[test]
 fn test_destroy_queue() {
-    let manager = QueueManager::new();
+    let memory_manager = MemoryManager::new();
+    let manager = QueueManager::new(memory_manager);
 
     let owner_pid = 100;
     let queue_id = manager.create(owner_pid, QueueType::Fifo, Some(10))
@@ -240,7 +253,8 @@ fn test_destroy_queue() {
 
 #[test]
 fn test_queue_stats() {
-    let manager = QueueManager::new();
+    let memory_manager = MemoryManager::new();
+    let manager = QueueManager::new(memory_manager);
 
     let owner_pid = 100;
     let queue_id = manager.create(owner_pid, QueueType::Fifo, Some(10))
@@ -267,7 +281,8 @@ fn test_concurrent_queue_operations() {
     use std::sync::Arc;
     use std::thread;
 
-    let manager = Arc::new(QueueManager::new());
+    let memory_manager = MemoryManager::new();
+    let manager = Arc::new(QueueManager::new(memory_manager));
 
     let owner_pid = 100;
     let queue_id = manager.create(owner_pid, QueueType::Fifo, Some(100))
@@ -301,7 +316,8 @@ fn test_concurrent_queue_operations() {
 
 #[test]
 fn test_multiple_queues() {
-    let manager = QueueManager::new();
+    let memory_manager = MemoryManager::new();
+    let manager = QueueManager::new(memory_manager);
 
     let pid1 = 100;
     let pid2 = 200;
@@ -325,7 +341,8 @@ fn test_multiple_queues() {
 
 #[test]
 fn test_message_timestamp() {
-    let manager = QueueManager::new();
+    let memory_manager = MemoryManager::new();
+    let manager = QueueManager::new(memory_manager);
 
     let owner_pid = 100;
     let queue_id = manager.create(owner_pid, QueueType::Fifo, Some(10))
@@ -341,7 +358,8 @@ fn test_message_timestamp() {
 
 #[test]
 fn test_pubsub_no_subscribers() {
-    let manager = QueueManager::new();
+    let memory_manager = MemoryManager::new();
+    let manager = QueueManager::new(memory_manager);
 
     let owner_pid = 100;
     let queue_id = manager.create(owner_pid, QueueType::PubSub, None)
@@ -354,7 +372,8 @@ fn test_pubsub_no_subscribers() {
 
 #[test]
 fn test_priority_default_value() {
-    let manager = QueueManager::new();
+    let memory_manager = MemoryManager::new();
+    let manager = QueueManager::new(memory_manager);
 
     let owner_pid = 100;
     let queue_id = manager.create(owner_pid, QueueType::Priority, Some(10))
@@ -371,7 +390,8 @@ fn test_priority_default_value() {
 
 #[test]
 fn test_queue_isolation() {
-    let manager = QueueManager::new();
+    let memory_manager = MemoryManager::new();
+    let manager = QueueManager::new(memory_manager);
 
     let pid1 = 100;
     let pid2 = 200;

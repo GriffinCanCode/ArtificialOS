@@ -1,0 +1,923 @@
+{
+  "app": {
+    "id": "data-pipeline",
+    "name": "Data Pipeline",
+    "description": "Multi-process ETL pipeline demonstrating IPC: pipes, shared memory, and queues",
+    "icon": "🔄",
+    "category": "utilities",
+    "version": "1.0.0",
+    "author": "system",
+    "tags": ["data", "pipeline", "etl", "ipc", "processing"],
+    "permissions": ["PRIVILEGED"]
+  },
+  "services": [
+    {
+      "ipc": ["create_pipe", "write_pipe", "read_pipe", "pipe_stats", "create_shm", "attach_shm", "write_shm", "read_shm", "create_queue", "send_queue", "receive_queue", "subscribe_queue"]
+    },
+    {
+      "system": ["info", "time", "log"]
+    }
+  ],
+  "ui": {
+    "title": "Data Pipeline Builder",
+    "layout": "vertical",
+    "lifecycle": {
+      "on_mount": "pipeline.init"
+    },
+    "components": [
+      {
+        "type": "container",
+        "id": "header",
+        "props": {
+          "layout": "horizontal",
+          "spacing": "medium",
+          "padding": "medium",
+          "align": "center",
+          "justify": "between",
+          "style": {
+            "borderBottom": "1px solid rgba(255,255,255,0.1)",
+            "background": "rgba(0,0,0,0.3)"
+          }
+        },
+        "children": [
+          {
+            "type": "container",
+            "id": "title-section",
+            "props": {
+              "layout": "vertical",
+              "spacing": "none"
+            },
+            "children": [
+              {
+                "type": "text",
+                "id": "title",
+                "props": {
+                  "content": "Data Pipeline Builder",
+                  "variant": "h1",
+                  "style": {
+                    "fontSize": "1.5rem",
+                    "fontWeight": "700"
+                  }
+                }
+              },
+              {
+                "type": "text",
+                "id": "subtitle",
+                "props": {
+                  "content": "Multi-process ETL with IPC demonstration",
+                  "variant": "caption",
+                  "color": "muted",
+                  "style": {
+                    "fontSize": "0.875rem"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "type": "container",
+            "id": "controls",
+            "props": {
+              "layout": "horizontal",
+              "spacing": "small",
+              "align": "center"
+            },
+            "children": [
+              {
+                "type": "button",
+                "id": "start-pipeline",
+                "props": {
+                  "text": "▶ Start Pipeline",
+                  "variant": "primary",
+                  "style": {
+                    "fontWeight": "600"
+                  }
+                },
+                "on_event": {
+                  "click": "pipeline.start"
+                }
+              },
+              {
+                "type": "button",
+                "id": "stop-pipeline",
+                "props": {
+                  "text": "■ Stop",
+                  "variant": "danger",
+                  "style": {
+                    "fontWeight": "600"
+                  }
+                },
+                "on_event": {
+                  "click": "pipeline.stop"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "container",
+        "id": "main-content",
+        "props": {
+          "layout": "horizontal",
+          "spacing": "none",
+          "style": {
+            "flex": "1",
+            "height": "100%",
+            "overflow": "hidden"
+          }
+        },
+        "children": [
+          {
+            "type": "container",
+            "id": "pipeline-stages",
+            "props": {
+              "layout": "vertical",
+              "spacing": "medium",
+              "padding": "large",
+              "style": {
+                "flex": "1",
+                "overflowY": "auto",
+                "background": "rgba(0,0,0,0.15)"
+              }
+            },
+            "children": [
+              {
+                "type": "text",
+                "id": "stages-title",
+                "props": {
+                  "content": "PIPELINE STAGES",
+                  "variant": "caption",
+                  "color": "muted",
+                  "style": {
+                    "fontSize": "11px",
+                    "textTransform": "uppercase",
+                    "letterSpacing": "0.5px",
+                    "marginBottom": "1rem"
+                  }
+                }
+              },
+              {
+                "type": "card",
+                "id": "stage-1-card",
+                "props": {
+                  "title": "Stage 1: Data Ingestion",
+                  "style": {
+                    "marginBottom": "1rem"
+                  }
+                },
+                "children": [
+                  {
+                    "type": "container",
+                    "id": "stage-1-content",
+                    "props": {
+                      "layout": "vertical",
+                      "spacing": "small"
+                    },
+                    "children": [
+                      {
+                        "type": "text",
+                        "id": "stage-1-desc",
+                        "props": {
+                          "content": "Reads raw data and sends to processing via pipe",
+                          "variant": "body",
+                          "style": {
+                            "fontSize": "0.875rem",
+                            "color": "rgba(255,255,255,0.7)"
+                          }
+                        }
+                      },
+                      {
+                        "type": "container",
+                        "id": "stage-1-stats",
+                        "props": {
+                          "layout": "horizontal",
+                          "spacing": "medium",
+                          "style": {
+                            "marginTop": "0.5rem"
+                          }
+                        },
+                        "children": [
+                          {
+                            "type": "badge",
+                            "id": "stage-1-status",
+                            "props": {
+                              "text": "IDLE",
+                              "variant": "info"
+                            }
+                          },
+                          {
+                            "type": "text",
+                            "id": "stage-1-processed",
+                            "props": {
+                              "content": "0 records",
+                              "variant": "caption",
+                              "style": {
+                                "fontSize": "0.75rem"
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "text",
+                        "id": "stage-1-ipc",
+                        "props": {
+                          "content": "IPC: Pipe → Stage 2",
+                          "variant": "caption",
+                          "color": "muted",
+                          "style": {
+                            "fontSize": "0.75rem",
+                            "fontFamily": "monospace",
+                            "marginTop": "0.5rem"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "text",
+                "id": "pipe-arrow-1",
+                "props": {
+                  "content": "↓ PIPE (streaming data)",
+                  "variant": "caption",
+                  "color": "muted",
+                  "style": {
+                    "fontSize": "0.75rem",
+                    "textAlign": "center",
+                    "padding": "0.5rem 0",
+                    "fontFamily": "monospace"
+                  }
+                }
+              },
+              {
+                "type": "card",
+                "id": "stage-2-card",
+                "props": {
+                  "title": "Stage 2: Data Transformation",
+                  "style": {
+                    "marginBottom": "1rem"
+                  }
+                },
+                "children": [
+                  {
+                    "type": "container",
+                    "id": "stage-2-content",
+                    "props": {
+                      "layout": "vertical",
+                      "spacing": "small"
+                    },
+                    "children": [
+                      {
+                        "type": "text",
+                        "id": "stage-2-desc",
+                        "props": {
+                          "content": "Processes data and writes to shared memory",
+                          "variant": "body",
+                          "style": {
+                            "fontSize": "0.875rem",
+                            "color": "rgba(255,255,255,0.7)"
+                          }
+                        }
+                      },
+                      {
+                        "type": "container",
+                        "id": "stage-2-stats",
+                        "props": {
+                          "layout": "horizontal",
+                          "spacing": "medium",
+                          "style": {
+                            "marginTop": "0.5rem"
+                          }
+                        },
+                        "children": [
+                          {
+                            "type": "badge",
+                            "id": "stage-2-status",
+                            "props": {
+                              "text": "IDLE",
+                              "variant": "info"
+                            }
+                          },
+                          {
+                            "type": "text",
+                            "id": "stage-2-processed",
+                            "props": {
+                              "content": "0 records",
+                              "variant": "caption",
+                              "style": {
+                                "fontSize": "0.75rem"
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "text",
+                        "id": "stage-2-ipc",
+                        "props": {
+                          "content": "IPC: Shared Memory (zero-copy)",
+                          "variant": "caption",
+                          "color": "muted",
+                          "style": {
+                            "fontSize": "0.75rem",
+                            "fontFamily": "monospace",
+                            "marginTop": "0.5rem"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "text",
+                "id": "shm-arrow",
+                "props": {
+                  "content": "↓ SHARED MEMORY (zero-copy transfer)",
+                  "variant": "caption",
+                  "color": "muted",
+                  "style": {
+                    "fontSize": "0.75rem",
+                    "textAlign": "center",
+                    "padding": "0.5rem 0",
+                    "fontFamily": "monospace"
+                  }
+                }
+              },
+              {
+                "type": "card",
+                "id": "stage-3-card",
+                "props": {
+                  "title": "Stage 3: Data Aggregation",
+                  "style": {
+                    "marginBottom": "1rem"
+                  }
+                },
+                "children": [
+                  {
+                    "type": "container",
+                    "id": "stage-3-content",
+                    "props": {
+                      "layout": "vertical",
+                      "spacing": "small"
+                    },
+                    "children": [
+                      {
+                        "type": "text",
+                        "id": "stage-3-desc",
+                        "props": {
+                          "content": "Reads from shared memory and publishes to queue",
+                          "variant": "body",
+                          "style": {
+                            "fontSize": "0.875rem",
+                            "color": "rgba(255,255,255,0.7)"
+                          }
+                        }
+                      },
+                      {
+                        "type": "container",
+                        "id": "stage-3-stats",
+                        "props": {
+                          "layout": "horizontal",
+                          "spacing": "medium",
+                          "style": {
+                            "marginTop": "0.5rem"
+                          }
+                        },
+                        "children": [
+                          {
+                            "type": "badge",
+                            "id": "stage-3-status",
+                            "props": {
+                              "text": "IDLE",
+                              "variant": "info"
+                            }
+                          },
+                          {
+                            "type": "text",
+                            "id": "stage-3-processed",
+                            "props": {
+                              "content": "0 records",
+                              "variant": "caption",
+                              "style": {
+                                "fontSize": "0.75rem"
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "text",
+                        "id": "stage-3-ipc",
+                        "props": {
+                          "content": "IPC: PubSub Queue → Subscribers",
+                          "variant": "caption",
+                          "color": "muted",
+                          "style": {
+                            "fontSize": "0.75rem",
+                            "fontFamily": "monospace",
+                            "marginTop": "0.5rem"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "text",
+                "id": "queue-arrow",
+                "props": {
+                  "content": "↓ QUEUE (async broadcast)",
+                  "variant": "caption",
+                  "color": "muted",
+                  "style": {
+                    "fontSize": "0.75rem",
+                    "textAlign": "center",
+                    "padding": "0.5rem 0",
+                    "fontFamily": "monospace"
+                  }
+                }
+              },
+              {
+                "type": "card",
+                "id": "stage-4-card",
+                "props": {
+                  "title": "Stage 4: Output Writers (×3)",
+                  "style": {
+                    "marginBottom": "1rem"
+                  }
+                },
+                "children": [
+                  {
+                    "type": "container",
+                    "id": "stage-4-content",
+                    "props": {
+                      "layout": "vertical",
+                      "spacing": "small"
+                    },
+                    "children": [
+                      {
+                        "type": "text",
+                        "id": "stage-4-desc",
+                        "props": {
+                          "content": "Multiple subscribers receive processed data",
+                          "variant": "body",
+                          "style": {
+                            "fontSize": "0.875rem",
+                            "color": "rgba(255,255,255,0.7)"
+                          }
+                        }
+                      },
+                      {
+                        "type": "container",
+                        "id": "stage-4-stats",
+                        "props": {
+                          "layout": "vertical",
+                          "spacing": "small",
+                          "style": {
+                            "marginTop": "0.5rem"
+                          }
+                        },
+                        "children": [
+                          {
+                            "type": "container",
+                            "id": "writer-1",
+                            "props": {
+                              "layout": "horizontal",
+                              "spacing": "small"
+                            },
+                            "children": [
+                              {
+                                "type": "badge",
+                                "id": "writer-1-status",
+                                "props": {
+                                  "text": "IDLE",
+                                  "variant": "info"
+                                }
+                              },
+                              {
+                                "type": "text",
+                                "id": "writer-1-label",
+                                "props": {
+                                  "content": "Writer 1: Database",
+                                  "variant": "caption",
+                                  "style": {
+                                    "fontSize": "0.75rem"
+                                  }
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "type": "container",
+                            "id": "writer-2",
+                            "props": {
+                              "layout": "horizontal",
+                              "spacing": "small"
+                            },
+                            "children": [
+                              {
+                                "type": "badge",
+                                "id": "writer-2-status",
+                                "props": {
+                                  "text": "IDLE",
+                                  "variant": "info"
+                                }
+                              },
+                              {
+                                "type": "text",
+                                "id": "writer-2-label",
+                                "props": {
+                                  "content": "Writer 2: File System",
+                                  "variant": "caption",
+                                  "style": {
+                                    "fontSize": "0.75rem"
+                                  }
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "type": "container",
+                            "id": "writer-3",
+                            "props": {
+                              "layout": "horizontal",
+                              "spacing": "small"
+                            },
+                            "children": [
+                              {
+                                "type": "badge",
+                                "id": "writer-3-status",
+                                "props": {
+                                  "text": "IDLE",
+                                  "variant": "info"
+                                }
+                              },
+                              {
+                                "type": "text",
+                                "id": "writer-3-label",
+                                "props": {
+                                  "content": "Writer 3: Analytics",
+                                  "variant": "caption",
+                                  "style": {
+                                    "fontSize": "0.75rem"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "container",
+            "id": "monitoring-panel",
+            "props": {
+              "layout": "vertical",
+              "spacing": "none",
+              "style": {
+                "width": "400px",
+                "minWidth": "400px",
+                "borderLeft": "1px solid rgba(255,255,255,0.1)",
+                "background": "rgba(0,0,0,0.25)",
+                "height": "100%",
+                "overflowY": "auto"
+              }
+            },
+            "children": [
+              {
+                "type": "tabs",
+                "id": "monitoring-tabs",
+                "props": {
+                  "variant": "default",
+                  "defaultTab": "metrics"
+                },
+                "children": [
+                  {
+                    "type": "container",
+                    "id": "metrics-tab",
+                    "props": {
+                      "label": "Metrics",
+                      "layout": "vertical",
+                      "spacing": "medium",
+                      "padding": "large"
+                    },
+                    "children": [
+                      {
+                        "type": "card",
+                        "id": "throughput-card",
+                        "props": {
+                          "title": "Throughput"
+                        },
+                        "children": [
+                          {
+                            "type": "text",
+                            "id": "throughput-value",
+                            "props": {
+                              "content": "0 records/sec",
+                              "variant": "h2",
+                              "style": {
+                                "fontSize": "2rem",
+                                "fontWeight": "700"
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "card",
+                        "id": "memory-card",
+                        "props": {
+                          "title": "IPC Memory Usage"
+                        },
+                        "children": [
+                          {
+                            "type": "container",
+                            "id": "memory-stats",
+                            "props": {
+                              "layout": "vertical",
+                              "spacing": "small"
+                            },
+                            "children": [
+                              {
+                                "type": "text",
+                                "id": "pipe-memory",
+                                "props": {
+                                  "content": "Pipes: 0 KB",
+                                  "variant": "body",
+                                  "style": {
+                                    "fontSize": "0.875rem",
+                                    "fontFamily": "monospace"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "text",
+                                "id": "shm-memory",
+                                "props": {
+                                  "content": "Shared Mem: 0 KB",
+                                  "variant": "body",
+                                  "style": {
+                                    "fontSize": "0.875rem",
+                                    "fontFamily": "monospace"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "text",
+                                "id": "queue-memory",
+                                "props": {
+                                  "content": "Queues: 0 KB",
+                                  "variant": "body",
+                                  "style": {
+                                    "fontSize": "0.875rem",
+                                    "fontFamily": "monospace"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "card",
+                        "id": "latency-card",
+                        "props": {
+                          "title": "Stage Latency"
+                        },
+                        "children": [
+                          {
+                            "type": "container",
+                            "id": "latency-stats",
+                            "props": {
+                              "layout": "vertical",
+                              "spacing": "small"
+                            },
+                            "children": [
+                              {
+                                "type": "text",
+                                "id": "stage-1-latency",
+                                "props": {
+                                  "content": "Stage 1: 0ms",
+                                  "variant": "body",
+                                  "style": {
+                                    "fontSize": "0.875rem",
+                                    "fontFamily": "monospace"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "text",
+                                "id": "stage-2-latency",
+                                "props": {
+                                  "content": "Stage 2: 0ms",
+                                  "variant": "body",
+                                  "style": {
+                                    "fontSize": "0.875rem",
+                                    "fontFamily": "monospace"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "text",
+                                "id": "stage-3-latency",
+                                "props": {
+                                  "content": "Stage 3: 0ms",
+                                  "variant": "body",
+                                  "style": {
+                                    "fontSize": "0.875rem",
+                                    "fontFamily": "monospace"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "container",
+                    "id": "logs-tab",
+                    "props": {
+                      "label": "Logs",
+                      "layout": "vertical",
+                      "spacing": "small",
+                      "padding": "large"
+                    },
+                    "children": [
+                      {
+                        "type": "container",
+                        "id": "log-header",
+                        "props": {
+                          "layout": "horizontal",
+                          "spacing": "small",
+                          "align": "center",
+                          "justify": "between",
+                          "style": {
+                            "marginBottom": "1rem"
+                          }
+                        },
+                        "children": [
+                          {
+                            "type": "text",
+                            "id": "log-title",
+                            "props": {
+                              "content": "PIPELINE LOGS",
+                              "variant": "caption",
+                              "style": {
+                                "fontSize": "11px",
+                                "textTransform": "uppercase",
+                                "letterSpacing": "0.5px"
+                              }
+                            }
+                          },
+                          {
+                            "type": "button",
+                            "id": "clear-logs",
+                            "props": {
+                              "text": "Clear",
+                              "variant": "ghost",
+                              "size": "small"
+                            },
+                            "on_event": {
+                              "click": "pipeline.clear_logs"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "container",
+                        "id": "log-container",
+                        "props": {
+                          "layout": "vertical",
+                          "spacing": "none",
+                          "style": {
+                            "background": "rgba(0,0,0,0.5)",
+                            "borderRadius": "8px",
+                            "padding": "1rem",
+                            "fontFamily": "monospace",
+                            "fontSize": "0.75rem",
+                            "maxHeight": "500px",
+                            "overflowY": "auto",
+                            "border": "1px solid rgba(255,255,255,0.1)"
+                          }
+                        },
+                        "children": [
+                          {
+                            "type": "list",
+                            "id": "log-list",
+                            "props": {
+                              "variant": "default",
+                              "style": {
+                                "fontFamily": "monospace",
+                                "fontSize": "0.75rem"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "container",
+                    "id": "ipc-tab",
+                    "props": {
+                      "label": "IPC Details",
+                      "layout": "vertical",
+                      "spacing": "medium",
+                      "padding": "large"
+                    },
+                    "children": [
+                      {
+                        "type": "card",
+                        "id": "pipe-details",
+                        "props": {
+                          "title": "Active Pipes"
+                        },
+                        "children": [
+                          {
+                            "type": "text",
+                            "id": "pipe-count",
+                            "props": {
+                              "content": "0 active pipes",
+                              "variant": "body"
+                            }
+                          },
+                          {
+                            "type": "list",
+                            "id": "pipe-list",
+                            "props": {
+                              "variant": "default"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "card",
+                        "id": "shm-details",
+                        "props": {
+                          "title": "Shared Memory Segments"
+                        },
+                        "children": [
+                          {
+                            "type": "text",
+                            "id": "shm-count",
+                            "props": {
+                              "content": "0 segments",
+                              "variant": "body"
+                            }
+                          },
+                          {
+                            "type": "list",
+                            "id": "shm-list",
+                            "props": {
+                              "variant": "default"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "card",
+                        "id": "queue-details",
+                        "props": {
+                          "title": "Active Queues"
+                        },
+                        "children": [
+                          {
+                            "type": "text",
+                            "id": "queue-count",
+                            "props": {
+                              "content": "0 queues",
+                              "variant": "body"
+                            }
+                          },
+                          {
+                            "type": "list",
+                            "id": "queue-list",
+                            "props": {
+                              "variant": "default"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

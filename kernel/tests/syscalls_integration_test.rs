@@ -23,8 +23,8 @@ fn create_test_executor() -> (SyscallExecutor, SandboxManager, TempDir) {
 
     // Create managers
     let memory_manager = MemoryManager::new();
-    let pipe_manager = PipeManager::new();
-    let shm_manager = ShmManager::new();
+    let pipe_manager = PipeManager::new(memory_manager.clone());
+    let shm_manager = ShmManager::new(memory_manager.clone());
     let process_manager = ProcessManager::new();
 
     let executor = SyscallExecutor::with_full_features(

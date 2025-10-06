@@ -4,12 +4,14 @@
  */
 
 use ai_os_kernel::shm::{ShmError, ShmManager};
+use ai_os_kernel::MemoryManager;
 use pretty_assertions::assert_eq;
 use serial_test::serial;
 
 #[test]
 fn test_basic_shm_create() {
-    let sm = ShmManager::new();
+    let memory_manager = MemoryManager::new();
+    let sm = ShmManager::new(memory_manager);
 
     let owner_pid = 100;
     let size = 4096;
@@ -20,7 +22,8 @@ fn test_basic_shm_create() {
 
 #[test]
 fn test_shm_write_read() {
-    let sm = ShmManager::new();
+    let memory_manager = MemoryManager::new();
+    let sm = ShmManager::new(memory_manager);
 
     let owner_pid = 100;
     let size = 4096;
@@ -38,7 +41,8 @@ fn test_shm_write_read() {
 
 #[test]
 fn test_shm_attach_detach() {
-    let sm = ShmManager::new();
+    let memory_manager = MemoryManager::new();
+    let sm = ShmManager::new(memory_manager);
 
     let owner_pid = 100;
     let other_pid = 200;
@@ -66,7 +70,8 @@ fn test_shm_attach_detach() {
 
 #[test]
 fn test_shm_read_only_permission() {
-    let sm = ShmManager::new();
+    let memory_manager = MemoryManager::new();
+    let sm = ShmManager::new(memory_manager);
 
     let owner_pid = 100;
     let reader_pid = 200;
@@ -91,7 +96,8 @@ fn test_shm_read_only_permission() {
 
 #[test]
 fn test_shm_read_write_permission() {
-    let sm = ShmManager::new();
+    let memory_manager = MemoryManager::new();
+    let sm = ShmManager::new(memory_manager);
 
     let owner_pid = 100;
     let writer_pid = 200;
@@ -112,7 +118,8 @@ fn test_shm_read_write_permission() {
 
 #[test]
 fn test_shm_offset_access() {
-    let sm = ShmManager::new();
+    let memory_manager = MemoryManager::new();
+    let sm = ShmManager::new(memory_manager);
 
     let owner_pid = 100;
     let size = 4096;
@@ -137,7 +144,8 @@ fn test_shm_offset_access() {
 
 #[test]
 fn test_shm_out_of_bounds() {
-    let sm = ShmManager::new();
+    let memory_manager = MemoryManager::new();
+    let sm = ShmManager::new(memory_manager);
 
     let owner_pid = 100;
     let size = 1000;
@@ -155,7 +163,8 @@ fn test_shm_out_of_bounds() {
 
 #[test]
 fn test_shm_zero_size() {
-    let sm = ShmManager::new();
+    let memory_manager = MemoryManager::new();
+    let sm = ShmManager::new(memory_manager);
 
     let owner_pid = 100;
 
@@ -165,7 +174,8 @@ fn test_shm_zero_size() {
 
 #[test]
 fn test_shm_size_limit() {
-    let sm = ShmManager::new();
+    let memory_manager = MemoryManager::new();
+    let sm = ShmManager::new(memory_manager);
 
     let owner_pid = 100;
     let size = 101 * 1024 * 1024; // 101MB (over limit)
@@ -176,7 +186,8 @@ fn test_shm_size_limit() {
 
 #[test]
 fn test_shm_destroy() {
-    let sm = ShmManager::new();
+    let memory_manager = MemoryManager::new();
+    let sm = ShmManager::new(memory_manager);
 
     let owner_pid = 100;
     let other_pid = 200;
@@ -199,7 +210,8 @@ fn test_shm_destroy() {
 
 #[test]
 fn test_shm_stats() {
-    let sm = ShmManager::new();
+    let memory_manager = MemoryManager::new();
+    let sm = ShmManager::new(memory_manager);
 
     let owner_pid = 100;
     let pid2 = 200;
@@ -227,7 +239,8 @@ fn test_shm_stats() {
 
 #[test]
 fn test_shm_process_cleanup() {
-    let sm = ShmManager::new();
+    let memory_manager = MemoryManager::new();
+    let sm = ShmManager::new(memory_manager);
 
     let pid = 100;
 
@@ -247,7 +260,8 @@ fn test_shm_process_cleanup() {
 
 #[test]
 fn test_shm_per_process_limit() {
-    let sm = ShmManager::new();
+    let memory_manager = MemoryManager::new();
+    let sm = ShmManager::new(memory_manager);
 
     let owner_pid = 100;
 
@@ -264,7 +278,8 @@ fn test_shm_per_process_limit() {
 #[test]
 #[serial]
 fn test_shm_global_memory_limit() {
-    let sm = ShmManager::new();
+    let memory_manager = MemoryManager::new();
+    let sm = ShmManager::new(memory_manager);
 
     let mut created = 0;
 
@@ -292,7 +307,8 @@ fn test_shm_global_memory_limit() {
 #[test]
 #[serial]
 fn test_shm_memory_tracking() {
-    let sm = ShmManager::new();
+    let memory_manager = MemoryManager::new();
+    let sm = ShmManager::new(memory_manager);
 
     let initial = sm.get_global_memory_usage();
 
@@ -310,7 +326,8 @@ fn test_shm_memory_tracking() {
 
 #[test]
 fn test_shm_not_found() {
-    let sm = ShmManager::new();
+    let memory_manager = MemoryManager::new();
+    let sm = ShmManager::new(memory_manager);
 
     let result = sm.write(999, 100, 0, b"test");
     assert!(matches!(result, Err(ShmError::NotFound(999))));
@@ -324,7 +341,8 @@ fn test_shm_not_found() {
 
 #[test]
 fn test_shm_unattached_access() {
-    let sm = ShmManager::new();
+    let memory_manager = MemoryManager::new();
+    let sm = ShmManager::new(memory_manager);
 
     let owner_pid = 100;
     let other_pid = 200;
@@ -341,7 +359,8 @@ fn test_shm_unattached_access() {
 
 #[test]
 fn test_shm_multiple_readers() {
-    let sm = ShmManager::new();
+    let memory_manager = MemoryManager::new();
+    let sm = ShmManager::new(memory_manager);
 
     let owner_pid = 100;
     let size = 4096;
@@ -365,7 +384,8 @@ fn test_shm_multiple_readers() {
 
 #[test]
 fn test_shm_large_data() {
-    let sm = ShmManager::new();
+    let memory_manager = MemoryManager::new();
+    let sm = ShmManager::new(memory_manager);
 
     let owner_pid = 100;
     let size = 1024 * 1024; // 1MB
@@ -387,7 +407,8 @@ fn test_shm_concurrent_access() {
     use std::sync::Arc;
     use std::thread;
 
-    let sm = Arc::new(ShmManager::new());
+    let memory_manager = MemoryManager::new();
+    let sm = Arc::new(ShmManager::new(memory_manager));
     let size = 100000;
     let segment_id = sm.create(size, 100).unwrap();
 
@@ -428,7 +449,8 @@ fn test_shm_concurrent_access() {
 
 #[test]
 fn test_shm_zero_copy() {
-    let sm = ShmManager::new();
+    let memory_manager = MemoryManager::new();
+    let sm = ShmManager::new(memory_manager);
 
     let pid1 = 100;
     let pid2 = 200;

@@ -1,286 +1,33 @@
 /*!
- * Async Message Queues
- * High-performance async message passing with multiple queue types
+ * Queue Manager
+ * Central manager for all queue types with async support
  */
 
-use super::types::{IpcError, IpcResult, QueueId, QueueType};
+use super::fifo::FifoQueue;
+use super::priority::PriorityQueue;
+use super::pubsub::PubSubQueue;
+use super::super::types::{IpcError, IpcResult, QueueId, QueueType};
+use super::types::{
+    QueueMessage, QueueStats, GLOBAL_QUEUE_MEMORY_LIMIT, MAX_MESSAGE_SIZE,
+    MAX_QUEUE_CAPACITY, MAX_QUEUES_PER_PROCESS,
+};
 use crate::core::types::{Pid, Priority, Size};
+use crate::memory::MemoryManager;
 use log::{debug, info, warn};
 use parking_lot::RwLock;
-use serde::{Deserialize, Serialize};
-use std::cmp::Ordering;
-use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
-use std::time::SystemTime;
-use tokio::sync::{mpsc, Notify};
-
-// Queue limits
-const MAX_QUEUE_CAPACITY: usize = 10_000;
-const MAX_MESSAGE_SIZE: usize = 1024 * 1024; // 1MB
-const MAX_QUEUES_PER_PROCESS: usize = 100;
-const GLOBAL_QUEUE_MEMORY_LIMIT: usize = 100 * 1024 * 1024; // 100MB
-
-/// Queue message with metadata
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct QueueMessage {
-    pub id: u64,
-    pub from: Pid,
-    pub data: Vec<u8>,
-    pub priority: u8,
-    pub timestamp: SystemTime,
-}
-
-impl QueueMessage {
-    pub fn new(id: u64, from: Pid, data: Vec<u8>, priority: u8) -> Self {
-        Self {
-            id,
-            from,
-            data,
-            priority,
-            timestamp: SystemTime::now(),
-        }
-    }
-
-    pub fn size(&self) -> usize {
-        std::mem::size_of::<Self>() + self.data.len()
-    }
-}
-
-// Priority wrapper for heap ordering
-#[derive(Debug)]
-struct PriorityMessage {
-    message: QueueMessage,
-}
-
-impl PartialEq for PriorityMessage {
-    fn eq(&self, other: &Self) -> bool {
-        self.message.priority == other.message.priority
-    }
-}
-
-impl Eq for PriorityMessage {}
-
-impl PartialOrd for PriorityMessage {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for PriorityMessage {
-    fn cmp(&self, other: &Self) -> Ordering {
-        // Higher priority first (max heap)
-        self.message
-            .priority
-            .cmp(&other.message.priority)
-            .then_with(|| other.message.id.cmp(&self.message.id))
-    }
-}
-
-/// FIFO queue implementation
-struct FifoQueue {
-    id: QueueId,
-    owner: Pid,
-    capacity: usize,
-    messages: VecDeque<QueueMessage>,
-    notify: Arc<Notify>,
-    closed: bool,
-}
-
-impl FifoQueue {
-    fn new(id: QueueId, owner: Pid, capacity: usize) -> Self {
-        Self {
-            id,
-            owner,
-            capacity: capacity.min(MAX_QUEUE_CAPACITY),
-            messages: VecDeque::new(),
-            notify: Arc::new(Notify::new()),
-            closed: false,
-        }
-    }
-
-    fn push(&mut self, message: QueueMessage) -> IpcResult<()> {
-        if self.closed {
-            return Err(IpcError::Closed("Queue closed".into()));
-        }
-
-        if self.messages.len() >= self.capacity {
-            return Err(IpcError::LimitExceeded(format!(
-                "Queue full: {}/{}",
-                self.messages.len(),
-                self.capacity
-            )));
-        }
-
-        self.messages.push_back(message);
-        self.notify.notify_one();
-        Ok(())
-    }
-
-    fn pop(&mut self) -> Option<QueueMessage> {
-        self.messages.pop_front()
-    }
-
-    fn len(&self) -> usize {
-        self.messages.len()
-    }
-
-    fn is_empty(&self) -> bool {
-        self.messages.is_empty()
-    }
-
-    fn close(&mut self) {
-        self.closed = true;
-        self.notify.notify_waiters();
-    }
-}
-
-/// Priority queue implementation
-struct PriorityQueue {
-    id: QueueId,
-    owner: Pid,
-    capacity: usize,
-    messages: BinaryHeap<PriorityMessage>,
-    notify: Arc<Notify>,
-    closed: bool,
-}
-
-impl PriorityQueue {
-    fn new(id: QueueId, owner: Pid, capacity: usize) -> Self {
-        Self {
-            id,
-            owner,
-            capacity: capacity.min(MAX_QUEUE_CAPACITY),
-            messages: BinaryHeap::new(),
-            notify: Arc::new(Notify::new()),
-            closed: false,
-        }
-    }
-
-    fn push(&mut self, message: QueueMessage) -> IpcResult<()> {
-        if self.closed {
-            return Err(IpcError::Closed("Queue closed".into()));
-        }
-
-        if self.messages.len() >= self.capacity {
-            return Err(IpcError::LimitExceeded(format!(
-                "Queue full: {}/{}",
-                self.messages.len(),
-                self.capacity
-            )));
-        }
-
-        self.messages.push(PriorityMessage { message });
-        self.notify.notify_one();
-        Ok(())
-    }
-
-    fn pop(&mut self) -> Option<QueueMessage> {
-        self.messages.pop().map(|pm| pm.message)
-    }
-
-    fn len(&self) -> usize {
-        self.messages.len()
-    }
-
-    fn is_empty(&self) -> bool {
-        self.messages.is_empty()
-    }
-
-    fn close(&mut self) {
-        self.closed = true;
-        self.notify.notify_waiters();
-    }
-}
-
-/// PubSub queue implementation
-struct PubSubQueue {
-    id: QueueId,
-    owner: Pid,
-    capacity: usize,
-    subscribers: HashMap<Pid, mpsc::UnboundedSender<QueueMessage>>,
-    closed: bool,
-}
-
-impl PubSubQueue {
-    fn new(id: QueueId, owner: Pid, capacity: usize) -> Self {
-        Self {
-            id,
-            owner,
-            capacity: capacity.min(MAX_QUEUE_CAPACITY),
-            subscribers: HashMap::new(),
-            closed: false,
-        }
-    }
-
-    fn subscribe(&mut self, pid: Pid) -> mpsc::UnboundedReceiver<QueueMessage> {
-        let (tx, rx) = mpsc::unbounded_channel();
-        self.subscribers.insert(pid, tx);
-        debug!("PID {} subscribed to queue {}", pid, self.id);
-        rx
-    }
-
-    fn unsubscribe(&mut self, pid: Pid) {
-        self.subscribers.remove(&pid);
-        debug!("PID {} unsubscribed from queue {}", pid, self.id);
-    }
-
-    fn publish(&mut self, message: QueueMessage) -> IpcResult<usize> {
-        if self.closed {
-            return Err(IpcError::Closed("Queue closed".into()));
-        }
-
-        let mut sent = 0;
-        let mut to_remove = Vec::new();
-
-        for (pid, tx) in &self.subscribers {
-            match tx.send(message.clone()) {
-                Ok(_) => sent += 1,
-                Err(_) => {
-                    debug!("Subscriber {} disconnected from queue {}", pid, self.id);
-                    to_remove.push(*pid);
-                }
-            }
-        }
-
-        // Clean up disconnected subscribers
-        for pid in to_remove {
-            self.subscribers.remove(&pid);
-        }
-
-        Ok(sent)
-    }
-
-    fn subscriber_count(&self) -> usize {
-        self.subscribers.len()
-    }
-
-    fn close(&mut self) {
-        self.closed = true;
-        self.subscribers.clear();
-    }
-}
-
-/// Queue statistics
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct QueueStats {
-    pub id: QueueId,
-    pub queue_type: QueueType,
-    pub owner_pid: Pid,
-    pub capacity: Size,
-    pub length: Size,
-    pub subscriber_count: Size,
-    pub closed: bool,
-}
+use tokio::sync::mpsc;
 
 /// Unified queue wrapper
-enum Queue {
+pub(super) enum Queue {
     Fifo(FifoQueue),
     Priority(PriorityQueue),
     PubSub(PubSubQueue),
 }
 
 impl Queue {
-    fn owner(&self) -> Pid {
+    pub fn owner(&self) -> Pid {
         match self {
             Queue::Fifo(q) => q.owner,
             Queue::Priority(q) => q.owner,
@@ -288,7 +35,7 @@ impl Queue {
         }
     }
 
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         match self {
             Queue::Fifo(q) => q.len(),
             Queue::Priority(q) => q.len(),
@@ -296,7 +43,7 @@ impl Queue {
         }
     }
 
-    fn close(&mut self) {
+    pub fn close(&mut self) {
         match self {
             Queue::Fifo(q) => q.close(),
             Queue::Priority(q) => q.close(),
@@ -313,10 +60,11 @@ pub struct QueueManager {
     process_queues: Arc<RwLock<HashMap<Pid, HashSet<QueueId>>>>,
     pubsub_receivers: Arc<RwLock<HashMap<(QueueId, Pid), mpsc::UnboundedReceiver<QueueMessage>>>>,
     memory_usage: Arc<RwLock<usize>>,
+    memory_manager: MemoryManager,
 }
 
 impl QueueManager {
-    pub fn new() -> Self {
+    pub fn new(memory_manager: MemoryManager) -> Self {
         info!(
             "Queue manager initialized (capacity: {}, memory: {}MB)",
             MAX_QUEUE_CAPACITY,
@@ -329,6 +77,7 @@ impl QueueManager {
             process_queues: Arc::new(RwLock::new(HashMap::new())),
             pubsub_receivers: Arc::new(RwLock::new(HashMap::new())),
             memory_usage: Arc::new(RwLock::new(0)),
+            memory_manager,
         }
     }
 
@@ -405,11 +154,33 @@ impl QueueManager {
             *mem_usage += message_size;
         }
 
+        // Allocate memory for message data through MemoryManager (unified memory accounting)
+        let data_address = if !data.is_empty() {
+            match self.memory_manager.allocate(data.len(), from_pid) {
+                Ok(addr) => Some(addr),
+                Err(e) => {
+                    // Rollback memory usage tracking
+                    let mut mem_usage = self.memory_usage.write();
+                    *mem_usage = mem_usage.saturating_sub(message_size);
+                    return Err(IpcError::InvalidOperation(format!(
+                        "Memory allocation failed: {}",
+                        e
+                    )));
+                }
+            }
+        } else {
+            None
+        };
+
         let message = {
             let mut msg_id = self.next_msg_id.write();
             let id = *msg_id;
             *msg_id += 1;
-            QueueMessage::new(id, from_pid, data, priority.unwrap_or(0))
+            if let Some(addr) = data_address {
+                QueueMessage::with_address(id, from_pid, data, priority.unwrap_or(0), addr)
+            } else {
+                QueueMessage::new(id, from_pid, data, priority.unwrap_or(0))
+            }
         };
 
         let mut queues = self.queues.write();
@@ -439,6 +210,16 @@ impl QueueManager {
                 if let Some(rx) = receivers.get_mut(&(queue_id, pid)) {
                     match rx.try_recv() {
                         Ok(message) => {
+                            // Deallocate memory through MemoryManager (unified memory accounting)
+                            if let Some(addr) = message.data_address {
+                                if let Err(e) = self.memory_manager.deallocate(addr) {
+                                    warn!(
+                                        "Failed to deallocate message data at 0x{:x}: {}",
+                                        addr, e
+                                    );
+                                }
+                            }
+
                             let mut mem_usage = self.memory_usage.write();
                             *mem_usage = mem_usage.saturating_sub(message.size());
                             return Ok(Some(message));
@@ -466,6 +247,16 @@ impl QueueManager {
         };
 
         if let Some(ref message) = msg {
+            // Deallocate memory through MemoryManager (unified memory accounting)
+            if let Some(addr) = message.data_address {
+                if let Err(e) = self.memory_manager.deallocate(addr) {
+                    warn!(
+                        "Failed to deallocate message data at 0x{:x}: {}",
+                        addr, e
+                    );
+                }
+            }
+
             let mut mem_usage = self.memory_usage.write();
             *mem_usage = mem_usage.saturating_sub(message.size());
         }
@@ -686,15 +477,12 @@ impl Clone for QueueManager {
             process_queues: Arc::clone(&self.process_queues),
             pubsub_receivers: Arc::clone(&self.pubsub_receivers),
             memory_usage: Arc::clone(&self.memory_usage),
+            memory_manager: self.memory_manager.clone(),
         }
     }
 }
 
-impl Default for QueueManager {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// Note: Default trait removed - QueueManager now requires MemoryManager dependency
 
 #[cfg(test)]
 mod tests {

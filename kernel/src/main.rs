@@ -36,8 +36,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     info!("Initializing memory manager...");
     let memory_manager = MemoryManager::new();
 
-    info!("Initializing IPC system...");
-    let ipc_manager = IPCManager::new();
+    info!("Initializing IPC system with memory management...");
+    let ipc_manager = IPCManager::new(memory_manager.clone());
 
     info!("Initializing process manager with memory management, IPC cleanup, and scheduler...");
     let process_manager = ProcessManager::builder()

@@ -1,19 +1,15 @@
 /*!
  * IPC Module
- * Inter-process communication: messages, pipes, and shared memory
+ * Inter-process communication: messages, pipes, queues, and shared memory
  */
 
-pub mod manager;
+pub mod core;
 pub mod pipe;
 pub mod queue;
 pub mod shm;
-pub mod traits;
-pub mod types;
 
 // Re-export for convenience
-pub use manager::IPCManager;
+pub use core::*;
 pub use pipe::{PipeError, PipeManager, PipeStats};
 pub use queue::{QueueManager, QueueMessage, QueueStats};
 pub use shm::{ShmError, ShmManager, ShmPermission, ShmStats};
-pub use traits::*;
-pub use types::*;
