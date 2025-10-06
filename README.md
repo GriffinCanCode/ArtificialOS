@@ -6,7 +6,9 @@ A microkernel-based operating system with AI-native application generation and e
 
 ## Overview
 
-AgentOS implements a novel architecture where applications are generated from natural language descriptions and executed through a structured tool system. The system uses a four-layer architecture with specialized components for orchestration, AI inference, kernel operations, and dynamic rendering.
+AgentOS implements a userspace OS where applications are generated from natural language descriptions and executed through a structured tool system. The system uses a four-layer architecture with specialized components for orchestration, AI inference, kernel operations, and dynamic rendering.
+
+**Implementation Status:** Production-ready userspace OS with 63 syscalls, multi-window management, OS-level process execution, CPU scheduling, advanced IPC (pipes + shared memory), and virtual filesystem. Core infrastructure ~90% complete.
 
 ## Architecture
 
@@ -91,46 +93,50 @@ Isolated Python service focused exclusively on LLM operations via gRPC.
 
 ### Kernel Layer (Rust)
 
-Lightweight microkernel providing sandboxed system operations.
+Production-ready microkernel with OS-level process execution, advanced IPC, and virtual filesystem.
 
 **Key Responsibilities:**
-- Process creation and lifecycle management
-- Memory allocation with OOM (Out of Memory) handling
-- Capability-based sandboxing (filesystem, network, process access)
-- System call execution with permission checking
-- Resource limits enforcement per process
-- IPC (Inter-Process Communication) with pipes and shared memory
+- Process creation with true OS execution (std::process::Command)
+- CPU scheduling with multiple policies (round-robin, priority, CFS-inspired fair)
+- Memory allocation with OOM handling and garbage collection
+- Capability-based sandboxing with resource limits (memory, CPU, process spawns)
+- Virtual filesystem with pluggable backends (local, in-memory)
+- Advanced IPC with pipes and shared memory (zero-copy transfers)
+- System call execution with 63 fully implemented syscalls
 
 **Core Subsystems:**
-- `ProcessManager`: Creates and tracks processes with resource limits
-- `MemoryManager`: Allocates memory with pressure monitoring
-- `SandboxManager`: Enforces capability-based security policies (14 capability types)
-- `SyscallExecutor`: Executes 30+ syscalls (filesystem, process, network, IPC)
-- `IPCManager`: Manages pipes and shared memory segments for process communication
+- `ProcessManager`: OS process spawning with ExecutionConfig (command, args, env, working dir)
+- `ProcessExecutor`: Shell injection prevention, security validation, zombie cleanup
+- `Scheduler`: 3 scheduling policies with configurable time quantum and preemption
+- `MemoryManager`: Per-process tracking with pressure monitoring and OOM detection
+- `SandboxManager`: 14 capability types with per-process resource limits
+- `VFSManager`: Mount manager with LocalFS and MemFS backends, 18 filesystem operations
+- `IPCManager`: Unix-style pipes (64KB buffer) + shared memory segments (100MB per segment)
+- `SyscallExecutor`: 63 syscalls across 12 categories (filesystem, process, IPC, scheduler, memory, network, signals)
 
 ### Frontend Layer (TypeScript/React)
 
-Dynamic rendering engine that executes AI-generated applications with desktop-grade window management.
+Dynamic rendering engine with production-ready window management and sub-10ms tool execution.
 
 **Key Responsibilities:**
 - Parse and render JSON UI specifications (23 component types)
 - Execute local tools with sub-10ms latency
-- Window management (snap-to-edge, drag, resize, minimize, maximize)
-- Manage per-app component state
-- Handle WebSocket streaming for real-time updates
-- Keyboard shortcuts (⌘K spotlight, Alt+Tab switching)
-- Provide app registry UI for saved applications
-- Session management interface
+- Desktop-grade window management (react-rnd powered)
+- Per-app component state with observable updates
+- WebSocket streaming for real-time AI responses
+- Keyboard shortcuts and gesture handling
+- App registry and session management UI
 
 **Core Modules:**
 - `DynamicRenderer`: Main rendering engine with virtual scrolling and modular architecture
 - `ComponentRegistry`: 23 registered components across 6 categories (primitives, layout, forms, media, ui, special)
-- `WindowManager`: Desktop-grade window system with snap zones and keyboard shortcuts
-- `ToolExecutor`: Executes 10+ tool categories (ui, app, system, hub, http, timer, clipboard, notification, etc.)
+- `WindowManager`: Production-ready multi-window system with backend state synchronization
+- `Window`: Drag, resize, maximize, minimize with snap-to-edge positioning (9 zones)
+- `WindowStore`: Zustand store with full window lifecycle (open, close, focus, minimize, restore, snap)
+- `ToolExecutor`: 10+ tool categories with validation and error handling
 - `ComponentState`: Observable state management per application
-- `InputHandler`: Centralized keyboard, mouse, and gesture handling
-- `AppStore`: Zustand-based global state with selectors
-- `WebSocketContext`: Manages streaming connections
+- `InputHandler`: Centralized keyboard, mouse, touch, and gesture handling with Zod validation
+- `WebSocketContext`: Manages streaming connections with reconnection logic
 
 ## Quick Start
 
@@ -654,10 +660,16 @@ wscat -c ws://localhost:8000/stream
 - **Model**: gemini-2.0-flash-exp for fast, high-quality responses
 
 ### Kernel Performance
-- **Syscall Latency**: Sub-millisecond syscall execution through gRPC
-- **Memory Management**: Proactive OOM detection with graceful degradation
+- **Syscall Latency**: Sub-millisecond syscall execution through gRPC (63 syscalls fully implemented)
+- **OS Process Execution**: Native process spawning with command validation and zombie cleanup
+- **CPU Scheduling**: Configurable policies with 10ms default quantum and preemptive multitasking
+- **Memory Management**: Proactive OOM detection with per-process tracking and garbage collection
+- **IPC Throughput**: 
+  - Pipes: 64KB buffer, 50MB global limit, streaming data transfer
+  - Shared Memory: Zero-copy transfers, 100MB per segment, 500MB global limit
+- **VFS Operations**: Mount manager routes operations to correct backend (LocalFS, MemFS)
 - **Sandboxing**: Zero-copy capability checks for minimal overhead
-- **Process Isolation**: Lightweight process tracking without OS-level isolation
+- **Resource Limits**: cgroups v2 enforcement on Linux (memory, CPU shares, max PIDs)
 
 ### Frontend Performance
 - **Tool Execution**: Sub-10ms local tool execution
@@ -669,18 +681,21 @@ wscat -c ws://localhost:8000/stream
 ## System Capabilities
 
 ### Desktop-Grade Window Management
-- **Drag & Drop**: Free-form window dragging with smooth animations
-- **Snap-to-Edge**: Automatic window snapping to screen edges and corners (9 zones)
-- **Resize**: Interactive window resizing with min/max constraints
-- **Minimize/Maximize**: Window state management with restore functionality
+- **Production-Ready Implementation**: Powered by react-rnd library with full drag/resize/focus
+- **Drag & Drop**: Free-form window dragging with smooth animations and visual feedback
+- **Snap-to-Edge**: Automatic window snapping to screen edges and corners (9 snap zones)
+- **Resize**: Interactive window resizing from all edges and corners with min/max constraints
+- **Minimize/Maximize**: Full window state management with smooth transitions
+- **Backend Synchronization**: Window positions and sizes synced to Go backend via `POST /apps/:id/window`
+- **Session Restoration**: Window geometry captured in sessions and restored on load
 - **Keyboard Shortcuts**: 
   - `⌘K` / `Ctrl+K` - Spotlight-style app creator
   - `Alt+Tab` - Cycle through open windows
   - `⌘W` / `Ctrl+W` - Close focused window
   - `⌘M` / `Ctrl+M` - Minimize focused window
-- **Cascade Positioning**: Automatic cascading for new windows
-- **Z-Index Management**: Automatic focus and bring-to-front
-- **State Persistence**: Window positions and sizes synced to backend
+- **Cascade Positioning**: Automatic cascading for new windows with offset calculation
+- **Z-Index Management**: Automatic focus and bring-to-front on interaction
+- **Dual-Mode Architecture**: WindowManager for windowed apps + DynamicRenderer for fullscreen (backward compatible)
 
 ### Multi-Application Management
 - Concurrent execution of multiple AI-generated applications
@@ -698,13 +713,16 @@ wscat -c ws://localhost:8000/stream
 - **Structured Storage**: JSON-based storage with metadata support
 
 ### Security Model
-- **Capability-Based Sandboxing**: Processes request specific capabilities (14 types: filesystem, network, process, IPC)
-- **Resource Limits**: Per-process memory limits with OOM protection
-- **Path Restrictions**: Allowed/blocked path lists for filesystem access
-- **Permission Checking**: All 30+ syscalls verified against process capabilities
+- **Capability-Based Sandboxing**: Processes request specific capabilities (14 types: filesystem, network, process, IPC, memory, scheduler)
+- **Resource Limits**: Per-process memory, CPU shares (cgroups v2 on Linux), and process spawn limits
+- **OS Process Isolation**: True process isolation with std::process::Command and security validation
+- **Shell Injection Prevention**: Command validation blocks dangerous characters (;, |, &, `, $, etc.)
+- **Path Restrictions**: Allowed/blocked path lists enforced at VFS mount level
+- **Permission Checking**: All 63 syscalls verified against sandbox capabilities before execution
 - **Rate Limiting**: Per-IP token bucket algorithm (configurable RPS and burst)
 - **CORS Configuration**: Configurable cross-origin policies
 - **No Arbitrary Code Execution**: UI specs are pure data, tools are pre-defined functions
+- **Automatic Cleanup**: Zombie processes cleaned up, IPC resources freed on process termination
 
 ### Extensibility
 - **Blueprint DSL**: Extensible component and service definitions via `.bp` files
@@ -712,10 +730,12 @@ wscat -c ws://localhost:8000/stream
 - **Service Registry**: Dynamic service discovery and tool binding
 - **Tool System**: 80+ modular tools across 10+ categories with parameter validation
 - **Component System**: 23 pluggable UI components across 6 categories with Zod validation
+- **VFS Architecture**: Pluggable filesystem backends (LocalFS, MemFS) with trait-based design
+- **Scheduler Policies**: 3 configurable policies (round-robin, priority, fair) with customizable quantum
+- **IPC Mechanisms**: Multiple communication methods (message queues, pipes, shared memory)
 - **Modular Architecture**: Registry-based component and tool registration
 - **Middleware Stack**: Extensible HTTP middleware (CORS, rate limiting, auth-ready)
-- **Protocol Buffers**: Versioned, type-safe service definitions
-- **IPC System**: Pipes and shared memory for process communication
+- **Protocol Buffers**: Versioned, type-safe service definitions (63 syscalls, 12 categories)
 
 ## License
 
