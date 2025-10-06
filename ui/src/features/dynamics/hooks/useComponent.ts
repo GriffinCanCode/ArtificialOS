@@ -2,13 +2,16 @@
  * useComponent Hook
  * Shared logic for component state management and event handling
  * Extracted from monolithic renderer for reusability
+ *
+ * PERFORMANCE NOTE: Uses useSyncExternalStore via useSyncState for efficient subscriptions
  */
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import type { BlueprintComponent } from "../../../core/store/appStore";
-import type { ComponentState, SubscriptionOptions } from "../state/state";
+import type { ComponentState } from "../state/state";
 import type { ToolExecutor } from "../execution/executor";
 import type { UseComponentReturn } from "../core/types";
+import { useSyncState } from "./useSyncState";
 
 // ============================================================================
 // Main Hook
@@ -16,6 +19,11 @@ import type { UseComponentReturn } from "../core/types";
 
 /**
  * Provides state management and event handling for dynamic components
+ *
+ * Uses React 18's useSyncExternalStore pattern for optimal performance:
+ * - Zero unnecessary re-renders (only updates when subscribed value changes)
+ * - Eliminates forceUpdate anti-pattern
+ * - Concurrent mode safe
  *
  * @param component - Blueprint component definition
  * @param state - Component state manager
@@ -36,45 +44,10 @@ export function useComponent(
   state: ComponentState,
   executor: ToolExecutor
 ): UseComponentReturn {
-  const [localState, setLocalState] = useState<any>(null);
-  const [, forceUpdate] = useState({});
+  // Use efficient external store subscription via useSyncExternalStore
+  const localState = useSyncState(state, component.id, component.props?.value);
+
   const changeDebounceTimerRef = useRef<number | null>(null);
-
-  // ============================================================================
-  // State Subscription
-  // ============================================================================
-
-  useEffect(() => {
-    if (!component.id) return;
-
-    // Initialize local state from component state manager
-    setLocalState(state.get(component.id, component.props?.value));
-
-    // Configure subscription options based on component type
-    const subscriptionOptions: SubscriptionOptions = {
-      immediate: true,
-    };
-
-    // Add debouncing for text inputs to reduce re-renders
-    if (component.type === "input" && component.props?.type === "text") {
-      subscriptionOptions.debounce = 100;
-    }
-
-    // Subscribe to state changes
-    const unsubscribe = state.subscribe(
-      component.id,
-      (newValue, oldValue) => {
-        // Only update if value actually changed
-        if (newValue !== oldValue) {
-          setLocalState(newValue);
-          forceUpdate({});
-        }
-      },
-      subscriptionOptions
-    );
-
-    return unsubscribe;
-  }, [component.id, component.type, component.props?.value, component.props?.type, state]);
 
   // ============================================================================
   // Cleanup Debounce Timers

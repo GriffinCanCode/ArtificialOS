@@ -2,10 +2,13 @@
  * WebSocket Context
  * Provides a shared WebSocket connection across the application
  * Eliminates duplicate connections and centralizes state management
+ *
+ * PERFORMANCE NOTE: Uses useSyncExternalStore for efficient connection state subscriptions
  */
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { WebSocketClient } from "../../core/api/websocketClient";
+import { useWebSocketConnection } from "../../core/api/hooks/useWebSocketConnection";
 import { logger } from "../../core/utils/monitoring/logger";
 import { useAppStore } from "../../core/store/appStore";
 import { useStore as useWindowStore, useActions } from "../../features/windows";
@@ -42,26 +45,16 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     logger.info("Initializing WebSocket client", { component: "WebSocketProvider" });
     return new WebSocketClient();
   });
-  const [isConnected, setIsConnected] = useState(false);
+
+  // Use useSyncExternalStore for efficient, concurrent-safe connection state
+  const isConnected = useWebSocketConnection(client);
+
   const { open: openWindow, close: closeWindow } = useActions();
 
   useEffect(() => {
     logger.info("WebSocketProvider mounted, setting up connection", {
       component: "WebSocketProvider",
     });
-
-    // Enhanced connection status handler with logging
-    const handleConnectionChange = (connected: boolean) => {
-      setIsConnected(connected);
-      if (connected) {
-        logger.info("WebSocket connected successfully", { component: "WebSocketProvider" });
-      } else {
-        logger.warn("WebSocket disconnected", { component: "WebSocketProvider" });
-      }
-    };
-
-    // Subscribe to connection status
-    const unsubscribeConnection = client.onConnection(handleConnectionChange);
 
     // Connect only if not already connected (handles React Strict Mode)
     if (!client.isConnected()) {
@@ -79,15 +72,22 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
       });
     }
 
-    // Cleanup - unsubscribe and destroy on unmount
+    // Cleanup on unmount
     return () => {
       logger.debug("WebSocketProvider effect cleanup", { component: "WebSocketProvider" });
-      unsubscribeConnection();
-      // Only destroy if we're actually unmounting (not React Strict Mode)
-      // In Strict Mode, the client will persist via useState
-      // On real unmount, the client will be garbage collected
+      // Client will be garbage collected on unmount
+      // The useWebSocketConnection hook manages its own subscription cleanup
     };
   }, [client]);
+
+  // Log connection state changes
+  useEffect(() => {
+    if (isConnected) {
+      logger.info("WebSocket connected successfully", { component: "WebSocketProvider" });
+    } else {
+      logger.warn("WebSocket disconnected", { component: "WebSocketProvider" });
+    }
+  }, [isConnected]);
 
   const sendChat = React.useCallback((message: string, context?: Record<string, any>) => {
     // Check the actual client connection state, not React state

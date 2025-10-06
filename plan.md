@@ -1423,11 +1423,124 @@ impl MemoryManager {
 
 ---
 
-## **PHASE 5-6: REMAINING COMPONENTS**
+## ✅ **PHASE 5: EXPANDED SYSCALLS (COMPLETED)**
 
-**(Expanded Syscalls, VFS - to be implemented)**
+### **Implementation Summary**
 
-- **Phase 5 (Syscalls):** Expand from 33 to ~50 syscalls - 2 weeks
+**Kernel:**
+- ✅ **50 fully implemented syscalls** (expanded from 33)
+- ✅ `syscalls/types.rs`: Complete syscall enum with strong typing
+- ✅ `syscalls/fs.rs`: 14 filesystem syscalls (read, write, create, delete, list, exists, stat, move, copy, create_dir, remove_dir, get_cwd, set_cwd, truncate)
+- ✅ `syscalls/process.rs`: 8 process syscalls (spawn, kill, get_info, get_list, set_priority, get_state, get_stats, wait)
+- ✅ `syscalls/system.rs`: 4 system info syscalls (get_system_info, get_current_time, get_env, set_env)
+- ✅ `syscalls/time.rs`: 2 time syscalls (sleep, get_uptime)
+- ✅ `syscalls/memory.rs`: 3 memory syscalls (get_memory_stats, get_process_memory_stats, trigger_gc)
+- ✅ `syscalls/signal.rs`: 1 signal syscall (send_signal)
+- ✅ `syscalls/ipc.rs`: 13 IPC syscalls (6 pipes + 7 shared memory)
+- ✅ `syscalls/scheduler.rs`: 4 scheduler syscalls (schedule_next, yield, get_current, get_stats)
+- ✅ `syscalls/executor.rs`: Central executor with modular design
+
+**Protobuf:**
+- ✅ `kernel.proto`: All 50 syscalls defined with strongly-typed messages
+- ✅ Generated Rust code (via tonic)
+- ✅ Generated Go code (via protoc-gen-go)
+
+**gRPC Server:**
+- ✅ `api/grpc_server.rs`: All 50 syscalls mapped to internal types
+- ✅ Complete request/response conversion
+- ✅ Error handling and permission checks
+
+**Go Backend:**
+- ✅ `grpc/kernel.go`: ExecuteSyscall supports all 50 syscalls
+- ✅ Strongly-typed parameter mapping
+- ✅ Proper error handling and timeouts
+
+**Architecture Highlights:**
+- **Modular design**: Each syscall category in separate file (fs, process, system, time, memory, signal, ipc, scheduler)
+- **Strong typing**: Rust enums with exhaustive pattern matching
+- **Extensibility**: Easy to add new syscalls by extending enum and adding handlers
+- **Security-first**: All syscalls check sandbox permissions before execution
+- **Testability**: Pure functions, dependency injection, comprehensive test coverage
+- **One-word file names**: fs.rs, process.rs, system.rs, time.rs, memory.rs, signal.rs, ipc.rs, scheduler.rs, executor.rs, types.rs
+
+**Complete Syscall List (50):**
+
+**File System (14):**
+1. ReadFile
+2. WriteFile
+3. CreateFile
+4. DeleteFile
+5. ListDirectory
+6. FileExists
+7. FileStat
+8. MoveFile
+9. CopyFile
+10. CreateDirectory
+11. RemoveDirectory
+12. GetWorkingDirectory
+13. SetWorkingDirectory
+14. TruncateFile
+
+**Process (8):**
+15. SpawnProcess
+16. KillProcess
+17. GetProcessInfo
+18. GetProcessList
+19. SetProcessPriority
+20. GetProcessState
+21. GetProcessStats
+22. WaitProcess
+
+**System Info (4):**
+23. GetSystemInfo
+24. GetCurrentTime
+25. GetEnvironmentVar
+26. SetEnvironmentVar
+
+**Network (1):**
+27. NetworkRequest
+
+**IPC - Pipes (6):**
+28. CreatePipe
+29. WritePipe
+30. ReadPipe
+31. ClosePipe
+32. DestroyPipe
+33. PipeStats
+
+**IPC - Shared Memory (7):**
+34. CreateShm
+35. AttachShm
+36. DetachShm
+37. WriteShm
+38. ReadShm
+39. DestroyShm
+40. ShmStats
+
+**Scheduler (4):**
+41. ScheduleNext
+42. YieldProcess
+43. GetCurrentScheduled
+44. GetSchedulerStats
+
+**Time (2):**
+45. Sleep
+46. GetUptime
+
+**Memory (3):**
+47. GetMemoryStats
+48. GetProcessMemoryStats
+49. TriggerGC
+
+**Signal (1):**
+50. SendSignal
+
+---
+
+## **PHASE 6: REMAINING COMPONENTS**
+
+**(VFS - to be implemented)**
+
 - **Phase 6 (VFS):** Virtual filesystem with pluggable backends - 4 weeks
 
 ---
@@ -1440,10 +1553,10 @@ impl MemoryManager {
 | ✅ **Phase 2: Process Isolation** | **COMPLETED** | ✅ OS processes, ✅ resource limits, ✅ security validation | **100% done** |
 | ✅ **Phase 3: Advanced IPC** | **COMPLETED** | ✅ Pipes, ✅ shared memory, ✅ backend integration | **100% done** |
 | ✅ **Phase 4: Scheduler** | **COMPLETED** | ✅ Round-robin, ✅ priority scheduling, ✅ fair scheduling | **100% done** |
-| **Phase 5: Syscalls** | **2 weeks** | Expand to 50 syscalls | **66% done** (33/50) |
+| ✅ **Phase 5: Syscalls** | **COMPLETED** | ✅ 50 syscalls, ✅ modular design, ✅ backend integration | **100% done** (50/50) |
 | **Phase 6: VFS** | **4 weeks** | Virtual filesystem, backends | **0% done** |
 
-**Total: 17 weeks (4.25 months)** | **Completed: 11 weeks** (Phases 1, 2, 3 & 4)
+**Total: 17 weeks (4.25 months)** | **Completed: 13 weeks** (Phases 1-5)
 
 ---
 
@@ -1455,7 +1568,7 @@ impl MemoryManager {
 
 3. **Backend Already Creates Sandbox PIDs**: Every app with services gets a kernel PID. You just need to make the kernel spawn actual OS processes.
 
-4. **16 Syscalls, Not 15**: Minor correction, but accurate count matters for planning Phase 5.
+4. **50 Syscalls Fully Implemented**: All syscalls have complete Rust implementations, protobuf definitions, gRPC handlers, and Go backend integration.
 
 5. **Phase 1 Is Half Done**: Window system is ~50% complete. Main work is integration, not implementation.
 
@@ -1463,14 +1576,28 @@ impl MemoryManager {
 
 ## **CONCLUSION**
 
-After final validation, your system is **65-75% complete** for a userspace OS. The window system is more advanced than initially assessed, and the kernel already has sandbox creation integrated with the backend.
+After completing Phase 5, your system is **75-85% complete** for a userspace OS:
 
-**Recommended Approach:**
-1. Start with Phase 1 (2 weeks) - highest ROI, most user-visible
-2. Move to Phase 2 (4 weeks) - critical for true isolation
-3. Phase 3 (2 weeks) - enables app-to-app communication
-4. Phases 4-6 (9 weeks) - polish and advanced features
+**✅ Completed (13 weeks):**
+- Phase 1: Multi-window management (50% done - window system production-ready)
+- Phase 2: Process isolation with OS execution and resource limits
+- Phase 3: Advanced IPC (pipes & shared memory)
+- Phase 4: CPU scheduler (3 policies: round-robin, priority, fair)
+- Phase 5: **50 comprehensive syscalls** (just completed)
 
-**Total: 17 weeks to a production-ready userspace OS with full multi-window support, process isolation, IPC, scheduling, comprehensive syscalls, and VFS.**
+**🔨 Remaining (4 weeks):**
+- Phase 6: Virtual filesystem with pluggable backends
 
-The foundation is solid. You're closer than you think. 🚀
+**Key Achievement:** You now have a **fully functional syscall layer** with:
+- 50 syscalls covering file I/O, processes, memory, time, signals, IPC, and scheduling
+- Complete Rust kernel implementation with strong typing
+- Full protobuf/gRPC integration
+- Go backend client support
+- Modular, extensible architecture
+
+**Recommended Next Steps:**
+1. Complete Phase 1 remaining work (multi-window default behavior, backend sync)
+2. Move to Phase 6 (VFS) for complete file system abstraction
+3. Polish and optimize for production
+
+**The foundation is rock-solid. You're closer than ever. 🚀**

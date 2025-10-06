@@ -20,21 +20,75 @@
         "id": "sidebar",
         "props": {
           "layout": "vertical",
-          "gap": 8,
-          "padding": "medium",
-          "style": {"width": "200px", "borderRight": "1px solid rgba(255,255,255,0.1)"}
+          "spacing": "small",
+          "padding": "small",
+          "style": {
+            "width": "240px",
+            "minWidth": "240px",
+            "maxWidth": "240px",
+            "flexShrink": "0",
+            "borderRight": "1px solid rgba(255,255,255,0.12)",
+            "background": "linear-gradient(180deg, rgba(0,0,0,0.4), rgba(0,0,0,0.5))",
+            "boxShadow": "inset -1px 0 0 rgba(255,255,255,0.05)",
+            "height": "100%",
+            "overflowY": "auto",
+            "paddingTop": "1rem"
+          }
         },
         "children": [
           {
-            "type": "button",
-            "id": "new-note",
-            "props": {"text": "+ New Note", "variant": "primary", "fullWidth": true},
-            "on_event": {"click": "storage.set"}
+            "type": "container",
+            "id": "sidebar-header",
+            "props": {
+              "layout": "horizontal",
+              "spacing": "small",
+              "padding": "small",
+              "align": "center",
+              "justify": "between"
+            },
+            "children": [
+              {
+                "type": "text",
+                "id": "notes-count",
+                "props": {
+                  "content": "0 notes",
+                  "variant": "caption",
+                  "color": "muted",
+                  "style": {
+                    "fontSize": "11px",
+                    "textTransform": "uppercase",
+                    "letterSpacing": "0.5px"
+                  }
+                }
+              },
+              {
+                "type": "button",
+                "id": "new-note",
+                "props": {
+                  "text": "+",
+                  "variant": "primary",
+                  "size": "small",
+                  "style": {
+                    "minWidth": "28px",
+                    "width": "28px",
+                    "height": "28px",
+                    "padding": "0",
+                    "fontSize": "18px",
+                    "fontWeight": "600",
+                    "borderRadius": "6px"
+                  }
+                },
+                "on_event": {"click": "storage.set"}
+              }
+            ]
           },
           {
             "type": "list",
             "id": "notes-list",
-            "props": {"variant": "default"}
+            "props": {
+              "variant": "default",
+              "spacing": "none"
+            }
           }
         ]
       },
@@ -43,32 +97,127 @@
         "id": "editor",
         "props": {
           "layout": "vertical",
-          "gap": 12,
-          "padding": "large",
-          "style": {"flex": 1}
+          "spacing": "none",
+          "padding": "none",
+          "style": {
+            "flex": "1",
+            "height": "100%",
+            "overflowY": "auto",
+            "background": "rgba(0,0,0,0.15)"
+          }
         },
         "children": [
           {
-            "type": "input",
-            "id": "note-title",
+            "type": "container",
+            "id": "editor-header",
             "props": {
-              "placeholder": "Note title...",
-              "type": "text",
-              "style": {"fontSize": "24px", "fontWeight": "bold"}
+              "layout": "horizontal",
+              "spacing": "small",
+              "padding": "medium",
+              "align": "center",
+              "justify": "between",
+              "style": {
+                "borderBottom": "1px solid rgba(255,255,255,0.1)",
+                "minHeight": "48px",
+                "background": "rgba(0,0,0,0.25)",
+                "backdropFilter": "blur(10px)",
+                "boxShadow": "0 1px 0 rgba(255,255,255,0.03)"
+              }
             },
-            "on_event": {"change": "ui.set"}
+            "children": [
+              {
+                "type": "text",
+                "id": "last-edited",
+                "props": {
+                  "content": "October 4, 2025 at 12:03 PM",
+                  "variant": "caption",
+                  "color": "muted",
+                  "style": {
+                    "fontSize": "11px"
+                  }
+                }
+              },
+              {
+                "type": "button",
+                "id": "save-note",
+                "props": {
+                  "text": "Done",
+                  "variant": "primary",
+                  "size": "small",
+                  "style": {
+                    "fontSize": "13px",
+                    "fontWeight": "600",
+                    "padding": "0.5rem 1rem"
+                  }
+                },
+                "on_event": {"click": "storage.set"}
+              }
+            ]
           },
           {
-            "type": "textarea",
-            "id": "note-content",
-            "props": {"placeholder": "Start typing...", "rows": 20, "resize": "vertical"},
-            "on_event": {"change": "ui.set"}
-          },
-          {
-            "type": "button",
-            "id": "save-note",
-            "props": {"text": "💾 Save", "variant": "primary"},
-            "on_event": {"click": "storage.set"}
+            "type": "container",
+            "id": "editor-content",
+            "props": {
+              "layout": "vertical",
+              "spacing": "none",
+              "padding": "none",
+              "style": {
+                "flex": "1",
+                "maxWidth": "750px",
+                "width": "100%",
+                "margin": "0 auto",
+                "padding": "2rem 3rem",
+                "background": "rgba(0,0,0,0.2)",
+                "borderRadius": "12px",
+                "boxShadow": "0 2px 20px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)"
+              }
+            },
+            "children": [
+              {
+                "type": "input",
+                "id": "note-title",
+                "props": {
+                  "placeholder": "Title",
+                  "type": "text",
+                  "style": {
+                    "fontSize": "1.875rem",
+                    "fontWeight": "700",
+                    "border": "none",
+                    "borderBottom": "2px solid rgba(255,255,255,0.15)",
+                    "background": "rgba(255,255,255,0.03)",
+                    "padding": "0.75rem 1rem",
+                    "marginBottom": "1rem",
+                    "borderRadius": "8px 8px 0 0",
+                    "color": "rgba(255,255,255,0.95)",
+                    "transition": "all 0.2s ease"
+                  }
+                },
+                "on_event": {"change": "ui.set"}
+              },
+              {
+                "type": "textarea",
+                "id": "note-content",
+                "props": {
+                  "placeholder": "Start typing...",
+                  "rows": 30,
+                  "resize": "none",
+                  "style": {
+                    "fontSize": "1rem",
+                    "lineHeight": "1.7",
+                    "border": "1px solid rgba(255,255,255,0.08)",
+                    "background": "rgba(255,255,255,0.02)",
+                    "padding": "1.25rem 1rem",
+                    "flex": "1",
+                    "minHeight": "500px",
+                    "borderRadius": "8px",
+                    "color": "rgba(255,255,255,0.9)",
+                    "fontWeight": "400",
+                    "transition": "all 0.2s ease"
+                  }
+                },
+                "on_event": {"change": "ui.set"}
+              }
+            ]
           }
         ]
       }

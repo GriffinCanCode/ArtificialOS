@@ -119,8 +119,8 @@ export type TextVariants = VariantProps<typeof textVariants>;
 export const containerVariants = cva("dynamic-container", {
   variants: {
     layout: {
-      vertical: "container-vertical",
-      horizontal: "container-horizontal",
+      vertical: "dynamic-container-vertical",
+      horizontal: "dynamic-container-horizontal",
     },
     spacing: {
       none: "container-spacing-none",

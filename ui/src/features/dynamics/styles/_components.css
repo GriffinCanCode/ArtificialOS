@@ -13,19 +13,23 @@
   padding: var(--space-md, 1rem) var(--space-xl, 2rem);
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.9) 0%, rgba(139, 92, 246, 0.85) 100%);
   border: none;
-  border-radius: 14px;
+  border-radius: 12px;
   color: rgba(255, 255, 255, 0.96);
-  font-size: 1rem;
+  font-size: 0.9375rem;
   font-weight: 600;
   letter-spacing: 0.01em;
   cursor: pointer;
   transition: all 0.2s ease;
-  min-height: 3.25rem;
+  min-height: 2.75rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   overflow: hidden;
   backface-visibility: hidden;
   -webkit-font-smoothing: antialiased;
   contain: layout style paint;
+  width: auto;
+  box-sizing: border-box;
+  white-space: nowrap;
+  text-align: center;
 }
 
 /* Liquid glass reflection effect - disabled for performance */
@@ -52,27 +56,38 @@
 .dynamic-input {
   position: relative;
   width: 100%;
-  padding: var(--space-md, 1rem) 1.25rem;
+  padding: 0.75rem 1rem;
   background: rgba(255, 255, 255, 0.04);
-  border: 1.5px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
   color: rgba(255, 255, 255, 0.95);
   font-size: 1rem;
   font-weight: 400;
   transition: all 0.2s ease;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
-  contain: layout style paint;
+  outline: none;
+  font-family: inherit;
+  box-sizing: border-box;
 }
 
 .dynamic-input::placeholder {
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.dynamic-textarea::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.dynamic-input:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(139, 92, 246, 0.3);
 }
 
 .dynamic-input:focus {
   outline: none;
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(139, 92, 246, 0.6);
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+  transform: translateY(-1px);
 }
 
 .dynamic-input[readonly] {
@@ -85,7 +100,11 @@
 .dynamic-text {
   color: rgba(255, 255, 255, 0.95);
   margin: 0;
+  padding: 0;
   line-height: 1.6;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .dynamic-text-h1 {
@@ -135,16 +154,23 @@
   display: flex;
   animation: fadeIn 0.4s ease;
   position: relative;
+  min-width: 0; /* Allow flex children to shrink */
+  box-sizing: border-box;
+  /* Remove width: 100% to allow flex sizing */
 }
 
 .dynamic-container-vertical {
   flex-direction: column;
+  min-height: 0; /* Allow flex children to shrink vertically */
+  width: 100%; /* Only vertical containers expand to full width */
 }
 
 .dynamic-container-horizontal {
   flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-wrap: nowrap; /* Better for horizontal layouts */
+  align-items: stretch;
+  min-width: 0;
+  width: 100%; /* Horizontal containers expand to full width */
 }
 
 .dynamic-grid {
@@ -295,29 +321,32 @@
 /* Textarea Component */
 .dynamic-textarea {
   width: 100%;
-  padding: 1rem 1.25rem;
-  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.04);
-  border: 1.5px solid rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.95);
   font-size: 1rem;
   font-family: inherit;
   line-height: 1.6;
   transition: all 0.2s ease;
   animation: fadeIn 0.3s ease;
   resize: vertical;
+  box-sizing: border-box;
+  max-width: 100%;
+  outline: none;
 }
 
 .dynamic-textarea:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(139, 92, 246, 0.4);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(139, 92, 246, 0.25);
 }
 
 .dynamic-textarea:focus {
   outline: none;
-  border-color: rgba(139, 92, 246, 0.6);
+  border-color: rgba(139, 92, 246, 0.4);
   box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 /* ============================================================================
@@ -507,8 +536,9 @@
 .divider-horizontal {
   width: 100%;
   height: 1px;
-  background: rgba(255, 255, 255, 0.1);
-  margin: 1rem 0;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 0;
+  flex-shrink: 0;
 }
 
 .divider-vertical {

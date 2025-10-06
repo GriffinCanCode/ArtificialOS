@@ -162,6 +162,95 @@ func (k *KernelClient) ExecuteSyscall(ctx context.Context, pid uint32, syscallTy
 		req.Syscall = &pb.SyscallRequest_FileExists{
 			FileExists: &pb.FileExistsCall{Path: path},
 		}
+	case "file_stat":
+		path, _ := params["path"].(string)
+		req.Syscall = &pb.SyscallRequest_FileStat{
+			FileStat: &pb.FileStatCall{Path: path},
+		}
+	case "move_file":
+		source, _ := params["source"].(string)
+		destination, _ := params["destination"].(string)
+		req.Syscall = &pb.SyscallRequest_MoveFile{
+			MoveFile: &pb.MoveFileCall{Source: source, Destination: destination},
+		}
+	case "copy_file":
+		source, _ := params["source"].(string)
+		destination, _ := params["destination"].(string)
+		req.Syscall = &pb.SyscallRequest_CopyFile{
+			CopyFile: &pb.CopyFileCall{Source: source, Destination: destination},
+		}
+	case "create_directory":
+		path, _ := params["path"].(string)
+		req.Syscall = &pb.SyscallRequest_CreateDirectory{
+			CreateDirectory: &pb.CreateDirectoryCall{Path: path},
+		}
+	case "remove_directory":
+		path, _ := params["path"].(string)
+		req.Syscall = &pb.SyscallRequest_RemoveDirectory{
+			RemoveDirectory: &pb.RemoveDirectoryCall{Path: path},
+		}
+	case "get_working_directory":
+		req.Syscall = &pb.SyscallRequest_GetWorkingDirectory{
+			GetWorkingDirectory: &pb.GetWorkingDirectoryCall{},
+		}
+	case "set_working_directory":
+		path, _ := params["path"].(string)
+		req.Syscall = &pb.SyscallRequest_SetWorkingDirectory{
+			SetWorkingDirectory: &pb.SetWorkingDirectoryCall{Path: path},
+		}
+	case "truncate_file":
+		path, _ := params["path"].(string)
+		size, _ := params["size"].(uint64)
+		req.Syscall = &pb.SyscallRequest_TruncateFile{
+			TruncateFile: &pb.TruncateFileCall{Path: path, Size: size},
+		}
+	// Process operations
+	case "spawn_process":
+		command, _ := params["command"].(string)
+		args, _ := params["args"].([]string)
+		req.Syscall = &pb.SyscallRequest_SpawnProcess{
+			SpawnProcess: &pb.SpawnProcessCall{Command: command, Args: args},
+		}
+	case "kill_process":
+		targetPid, _ := params["target_pid"].(uint32)
+		req.Syscall = &pb.SyscallRequest_KillProcess{
+			KillProcess: &pb.KillProcessCall{TargetPid: targetPid},
+		}
+	case "get_process_info":
+		targetPid, _ := params["target_pid"].(uint32)
+		req.Syscall = &pb.SyscallRequest_GetProcessInfo{
+			GetProcessInfo: &pb.GetProcessInfoCall{TargetPid: targetPid},
+		}
+	case "get_process_list":
+		req.Syscall = &pb.SyscallRequest_GetProcessList{
+			GetProcessList: &pb.GetProcessListCall{},
+		}
+	case "set_process_priority":
+		targetPid, _ := params["target_pid"].(uint32)
+		priority, _ := params["priority"].(uint32)
+		req.Syscall = &pb.SyscallRequest_SetProcessPriority{
+			SetProcessPriority: &pb.SetProcessPriorityCall{TargetPid: targetPid, Priority: priority},
+		}
+	case "get_process_state":
+		targetPid, _ := params["target_pid"].(uint32)
+		req.Syscall = &pb.SyscallRequest_GetProcessState{
+			GetProcessState: &pb.GetProcessStateCall{TargetPid: targetPid},
+		}
+	case "get_process_stats":
+		targetPid, _ := params["target_pid"].(uint32)
+		req.Syscall = &pb.SyscallRequest_GetProcessStats{
+			GetProcessStats: &pb.GetProcessStatsCall{TargetPid: targetPid},
+		}
+	case "wait_process":
+		targetPid, _ := params["target_pid"].(uint32)
+		timeoutMs, hasTimeout := params["timeout_ms"].(uint64)
+		waitCall := &pb.WaitProcessCall{TargetPid: targetPid}
+		if hasTimeout {
+			waitCall.TimeoutMs = &timeoutMs
+		}
+		req.Syscall = &pb.SyscallRequest_WaitProcess{
+			WaitProcess: waitCall,
+		}
 	// System info operations
 	case "get_system_info":
 		req.Syscall = &pb.SyscallRequest_GetSystemInfo{
@@ -175,6 +264,54 @@ func (k *KernelClient) ExecuteSyscall(ctx context.Context, pid uint32, syscallTy
 		key, _ := params["key"].(string)
 		req.Syscall = &pb.SyscallRequest_GetEnvVar{
 			GetEnvVar: &pb.GetEnvVarCall{Key: key},
+		}
+	case "set_env_var":
+		key, _ := params["key"].(string)
+		value, _ := params["value"].(string)
+		req.Syscall = &pb.SyscallRequest_SetEnvVar{
+			SetEnvVar: &pb.SetEnvVarCall{Key: key, Value: value},
+		}
+	// Time operations
+	case "sleep":
+		durationMs, _ := params["duration_ms"].(uint64)
+		req.Syscall = &pb.SyscallRequest_Sleep{
+			Sleep: &pb.SleepCall{DurationMs: durationMs},
+		}
+	case "get_uptime":
+		req.Syscall = &pb.SyscallRequest_GetUptime{
+			GetUptime: &pb.GetUptimeCall{},
+		}
+	// Memory operations
+	case "get_memory_stats":
+		req.Syscall = &pb.SyscallRequest_GetMemoryStats{
+			GetMemoryStats: &pb.GetMemoryStatsCall{},
+		}
+	case "get_process_memory_stats":
+		targetPid, _ := params["target_pid"].(uint32)
+		req.Syscall = &pb.SyscallRequest_GetProcessMemoryStats{
+			GetProcessMemoryStats: &pb.GetProcessMemoryStatsCall{TargetPid: targetPid},
+		}
+	case "trigger_gc":
+		targetPid, hasPid := params["target_pid"].(uint32)
+		gcCall := &pb.TriggerGCCall{}
+		if hasPid {
+			gcCall.TargetPid = &targetPid
+		}
+		req.Syscall = &pb.SyscallRequest_TriggerGc{
+			TriggerGc: gcCall,
+		}
+	// Signal operations
+	case "send_signal":
+		targetPid, _ := params["target_pid"].(uint32)
+		signal, _ := params["signal"].(uint32)
+		req.Syscall = &pb.SyscallRequest_SendSignal{
+			SendSignal: &pb.SendSignalCall{TargetPid: targetPid, Signal: signal},
+		}
+	// Network operations
+	case "network_request":
+		url, _ := params["url"].(string)
+		req.Syscall = &pb.SyscallRequest_NetworkRequest{
+			NetworkRequest: &pb.NetworkRequestCall{Url: url},
 		}
 	default:
 		return nil, fmt.Errorf("unsupported syscall type: %s", syscallType)

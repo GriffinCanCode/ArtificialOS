@@ -90,6 +90,19 @@ impl KernelService for KernelServiceImpl {
             Some(syscall_request::Syscall::CreateDirectory(call)) => Syscall::CreateDirectory {
                 path: PathBuf::from(call.path),
             },
+            Some(syscall_request::Syscall::RemoveDirectory(call)) => Syscall::RemoveDirectory {
+                path: PathBuf::from(call.path),
+            },
+            Some(syscall_request::Syscall::GetWorkingDirectory(_)) => Syscall::GetWorkingDirectory,
+            Some(syscall_request::Syscall::SetWorkingDirectory(call)) => {
+                Syscall::SetWorkingDirectory {
+                    path: PathBuf::from(call.path),
+                }
+            }
+            Some(syscall_request::Syscall::TruncateFile(call)) => Syscall::TruncateFile {
+                path: PathBuf::from(call.path),
+                size: call.size,
+            },
             Some(syscall_request::Syscall::SpawnProcess(call)) => Syscall::SpawnProcess {
                 command: call.command,
                 args: call.args,
@@ -97,11 +110,55 @@ impl KernelService for KernelServiceImpl {
             Some(syscall_request::Syscall::KillProcess(call)) => Syscall::KillProcess {
                 target_pid: call.target_pid,
             },
+            Some(syscall_request::Syscall::GetProcessInfo(call)) => Syscall::GetProcessInfo {
+                target_pid: call.target_pid,
+            },
+            Some(syscall_request::Syscall::GetProcessList(_)) => Syscall::GetProcessList,
+            Some(syscall_request::Syscall::SetProcessPriority(call)) => {
+                Syscall::SetProcessPriority {
+                    target_pid: call.target_pid,
+                    priority: call.priority as u8,
+                }
+            }
+            Some(syscall_request::Syscall::GetProcessState(call)) => Syscall::GetProcessState {
+                target_pid: call.target_pid,
+            },
+            Some(syscall_request::Syscall::GetProcessStats(call)) => Syscall::GetProcessStats {
+                target_pid: call.target_pid,
+            },
+            Some(syscall_request::Syscall::WaitProcess(call)) => Syscall::WaitProcess {
+                target_pid: call.target_pid,
+                timeout_ms: call.timeout_ms,
+            },
             Some(syscall_request::Syscall::GetSystemInfo(_)) => Syscall::GetSystemInfo,
             Some(syscall_request::Syscall::GetCurrentTime(_)) => Syscall::GetCurrentTime,
             Some(syscall_request::Syscall::GetEnvVar(call)) => {
                 Syscall::GetEnvironmentVar { key: call.key }
             }
+            Some(syscall_request::Syscall::SetEnvVar(call)) => Syscall::SetEnvironmentVar {
+                key: call.key,
+                value: call.value,
+            },
+            // Time operations
+            Some(syscall_request::Syscall::Sleep(call)) => Syscall::Sleep {
+                duration_ms: call.duration_ms,
+            },
+            Some(syscall_request::Syscall::GetUptime(_)) => Syscall::GetUptime,
+            // Memory operations
+            Some(syscall_request::Syscall::GetMemoryStats(_)) => Syscall::GetMemoryStats,
+            Some(syscall_request::Syscall::GetProcessMemoryStats(call)) => {
+                Syscall::GetProcessMemoryStats {
+                    target_pid: call.target_pid,
+                }
+            }
+            Some(syscall_request::Syscall::TriggerGc(call)) => Syscall::TriggerGC {
+                target_pid: call.target_pid,
+            },
+            // Signal operations
+            Some(syscall_request::Syscall::SendSignal(call)) => Syscall::SendSignal {
+                target_pid: call.target_pid,
+                signal: call.signal,
+            },
             Some(syscall_request::Syscall::NetworkRequest(call)) => {
                 Syscall::NetworkRequest { url: call.url }
             }

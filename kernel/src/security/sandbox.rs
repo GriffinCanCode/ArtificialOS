@@ -125,6 +125,7 @@ impl SandboxConfig {
         capabilities.insert(Capability::DeleteFile);
         capabilities.insert(Capability::ListDirectory);
         capabilities.insert(Capability::SpawnProcess);
+        capabilities.insert(Capability::KillProcess);
         capabilities.insert(Capability::NetworkAccess);
         capabilities.insert(Capability::SystemInfo);
         capabilities.insert(Capability::TimeAccess);
@@ -356,22 +357,22 @@ mod tests {
     #[test]
     fn test_path_access() {
         use std::fs;
-        
+
         // Create a custom sandbox with actual temp directory
         let mut sandbox = SandboxConfig::minimal(1);
         let temp_dir = std::env::temp_dir().canonicalize().unwrap();
         sandbox.allow_path(temp_dir.clone());
-        
+
         // Create a temp file to test with
         let test_file = temp_dir.join("test.txt");
         fs::write(&test_file, b"test").ok();
-        
+
         // Test with actual temp directory
         assert!(sandbox.can_access_path(&test_file));
-        
+
         // Test blocked path
         assert!(!sandbox.can_access_path(&PathBuf::from("/etc/passwd")));
-        
+
         // Clean up
         fs::remove_file(&test_file).ok();
     }
