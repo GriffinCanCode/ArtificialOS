@@ -201,7 +201,7 @@ func (x AsyncStatusResponse_Status) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use AsyncStatusResponse_Status.Descriptor instead.
 func (AsyncStatusResponse_Status) EnumDescriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{106, 0}
+	return file_kernel_proto_rawDescGZIP(), []int{120, 0}
 }
 
 type SyscallRequest struct {
@@ -273,6 +273,12 @@ type SyscallRequest struct {
 	//	*SyscallRequest_ReadShm
 	//	*SyscallRequest_DestroyShm
 	//	*SyscallRequest_ShmStats
+	//	*SyscallRequest_Mmap
+	//	*SyscallRequest_MmapRead
+	//	*SyscallRequest_MmapWrite
+	//	*SyscallRequest_Msync
+	//	*SyscallRequest_Munmap
+	//	*SyscallRequest_MmapStats
 	//	*SyscallRequest_CreateQueue
 	//	*SyscallRequest_SendQueue
 	//	*SyscallRequest_ReceiveQueue
@@ -285,6 +291,14 @@ type SyscallRequest struct {
 	//	*SyscallRequest_YieldProcess
 	//	*SyscallRequest_GetCurrentScheduled
 	//	*SyscallRequest_GetSchedulerStats
+	//	*SyscallRequest_SetSchedulingPolicy
+	//	*SyscallRequest_GetSchedulingPolicy
+	//	*SyscallRequest_SetTimeQuantum
+	//	*SyscallRequest_GetTimeQuantum
+	//	*SyscallRequest_GetProcessSchedulerStats
+	//	*SyscallRequest_GetAllProcessSchedulerStats
+	//	*SyscallRequest_BoostPriority
+	//	*SyscallRequest_LowerPriority
 	Syscall       isSyscallRequest_Syscall `protobuf_oneof:"syscall"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -910,6 +924,60 @@ func (x *SyscallRequest) GetShmStats() *ShmStatsCall {
 	return nil
 }
 
+func (x *SyscallRequest) GetMmap() *MmapCall {
+	if x != nil {
+		if x, ok := x.Syscall.(*SyscallRequest_Mmap); ok {
+			return x.Mmap
+		}
+	}
+	return nil
+}
+
+func (x *SyscallRequest) GetMmapRead() *MmapReadCall {
+	if x != nil {
+		if x, ok := x.Syscall.(*SyscallRequest_MmapRead); ok {
+			return x.MmapRead
+		}
+	}
+	return nil
+}
+
+func (x *SyscallRequest) GetMmapWrite() *MmapWriteCall {
+	if x != nil {
+		if x, ok := x.Syscall.(*SyscallRequest_MmapWrite); ok {
+			return x.MmapWrite
+		}
+	}
+	return nil
+}
+
+func (x *SyscallRequest) GetMsync() *MsyncCall {
+	if x != nil {
+		if x, ok := x.Syscall.(*SyscallRequest_Msync); ok {
+			return x.Msync
+		}
+	}
+	return nil
+}
+
+func (x *SyscallRequest) GetMunmap() *MunmapCall {
+	if x != nil {
+		if x, ok := x.Syscall.(*SyscallRequest_Munmap); ok {
+			return x.Munmap
+		}
+	}
+	return nil
+}
+
+func (x *SyscallRequest) GetMmapStats() *MmapStatsCall {
+	if x != nil {
+		if x, ok := x.Syscall.(*SyscallRequest_MmapStats); ok {
+			return x.MmapStats
+		}
+	}
+	return nil
+}
+
 func (x *SyscallRequest) GetCreateQueue() *CreateQueueCall {
 	if x != nil {
 		if x, ok := x.Syscall.(*SyscallRequest_CreateQueue); ok {
@@ -1013,6 +1081,78 @@ func (x *SyscallRequest) GetGetSchedulerStats() *GetSchedulerStatsCall {
 	if x != nil {
 		if x, ok := x.Syscall.(*SyscallRequest_GetSchedulerStats); ok {
 			return x.GetSchedulerStats
+		}
+	}
+	return nil
+}
+
+func (x *SyscallRequest) GetSetSchedulingPolicy() *SetSchedulingPolicyCall {
+	if x != nil {
+		if x, ok := x.Syscall.(*SyscallRequest_SetSchedulingPolicy); ok {
+			return x.SetSchedulingPolicy
+		}
+	}
+	return nil
+}
+
+func (x *SyscallRequest) GetGetSchedulingPolicy() *GetSchedulingPolicyCall {
+	if x != nil {
+		if x, ok := x.Syscall.(*SyscallRequest_GetSchedulingPolicy); ok {
+			return x.GetSchedulingPolicy
+		}
+	}
+	return nil
+}
+
+func (x *SyscallRequest) GetSetTimeQuantum() *SetTimeQuantumCall {
+	if x != nil {
+		if x, ok := x.Syscall.(*SyscallRequest_SetTimeQuantum); ok {
+			return x.SetTimeQuantum
+		}
+	}
+	return nil
+}
+
+func (x *SyscallRequest) GetGetTimeQuantum() *GetTimeQuantumCall {
+	if x != nil {
+		if x, ok := x.Syscall.(*SyscallRequest_GetTimeQuantum); ok {
+			return x.GetTimeQuantum
+		}
+	}
+	return nil
+}
+
+func (x *SyscallRequest) GetGetProcessSchedulerStats() *GetProcessSchedulerStatsCall {
+	if x != nil {
+		if x, ok := x.Syscall.(*SyscallRequest_GetProcessSchedulerStats); ok {
+			return x.GetProcessSchedulerStats
+		}
+	}
+	return nil
+}
+
+func (x *SyscallRequest) GetGetAllProcessSchedulerStats() *GetAllProcessSchedulerStatsCall {
+	if x != nil {
+		if x, ok := x.Syscall.(*SyscallRequest_GetAllProcessSchedulerStats); ok {
+			return x.GetAllProcessSchedulerStats
+		}
+	}
+	return nil
+}
+
+func (x *SyscallRequest) GetBoostPriority() *BoostPriorityCall {
+	if x != nil {
+		if x, ok := x.Syscall.(*SyscallRequest_BoostPriority); ok {
+			return x.BoostPriority
+		}
+	}
+	return nil
+}
+
+func (x *SyscallRequest) GetLowerPriority() *LowerPriorityCall {
+	if x != nil {
+		if x, ok := x.Syscall.(*SyscallRequest_LowerPriority); ok {
+			return x.LowerPriority
 		}
 	}
 	return nil
@@ -1156,51 +1296,51 @@ type SyscallRequest_NetworkRequest struct {
 
 type SyscallRequest_Socket struct {
 	// Network - Sockets
-	Socket *SocketCall `protobuf:"bytes,80,opt,name=socket,proto3,oneof"`
+	Socket *SocketCall `protobuf:"bytes,120,opt,name=socket,proto3,oneof"`
 }
 
 type SyscallRequest_Bind struct {
-	Bind *BindCall `protobuf:"bytes,81,opt,name=bind,proto3,oneof"`
+	Bind *BindCall `protobuf:"bytes,121,opt,name=bind,proto3,oneof"`
 }
 
 type SyscallRequest_Listen struct {
-	Listen *ListenCall `protobuf:"bytes,82,opt,name=listen,proto3,oneof"`
+	Listen *ListenCall `protobuf:"bytes,122,opt,name=listen,proto3,oneof"`
 }
 
 type SyscallRequest_Accept struct {
-	Accept *AcceptCall `protobuf:"bytes,83,opt,name=accept,proto3,oneof"`
+	Accept *AcceptCall `protobuf:"bytes,123,opt,name=accept,proto3,oneof"`
 }
 
 type SyscallRequest_Connect struct {
-	Connect *ConnectCall `protobuf:"bytes,84,opt,name=connect,proto3,oneof"`
+	Connect *ConnectCall `protobuf:"bytes,124,opt,name=connect,proto3,oneof"`
 }
 
 type SyscallRequest_Send struct {
-	Send *SendCall `protobuf:"bytes,85,opt,name=send,proto3,oneof"`
+	Send *SendCall `protobuf:"bytes,125,opt,name=send,proto3,oneof"`
 }
 
 type SyscallRequest_Recv struct {
-	Recv *RecvCall `protobuf:"bytes,86,opt,name=recv,proto3,oneof"`
+	Recv *RecvCall `protobuf:"bytes,126,opt,name=recv,proto3,oneof"`
 }
 
 type SyscallRequest_SendTo struct {
-	SendTo *SendToCall `protobuf:"bytes,87,opt,name=send_to,json=sendTo,proto3,oneof"`
+	SendTo *SendToCall `protobuf:"bytes,127,opt,name=send_to,json=sendTo,proto3,oneof"`
 }
 
 type SyscallRequest_RecvFrom struct {
-	RecvFrom *RecvFromCall `protobuf:"bytes,88,opt,name=recv_from,json=recvFrom,proto3,oneof"`
+	RecvFrom *RecvFromCall `protobuf:"bytes,128,opt,name=recv_from,json=recvFrom,proto3,oneof"`
 }
 
 type SyscallRequest_CloseSocket struct {
-	CloseSocket *CloseSocketCall `protobuf:"bytes,89,opt,name=close_socket,json=closeSocket,proto3,oneof"`
+	CloseSocket *CloseSocketCall `protobuf:"bytes,129,opt,name=close_socket,json=closeSocket,proto3,oneof"`
 }
 
 type SyscallRequest_SetSockOpt struct {
-	SetSockOpt *SetSockOptCall `protobuf:"bytes,90,opt,name=set_sock_opt,json=setSockOpt,proto3,oneof"`
+	SetSockOpt *SetSockOptCall `protobuf:"bytes,130,opt,name=set_sock_opt,json=setSockOpt,proto3,oneof"`
 }
 
 type SyscallRequest_GetSockOpt struct {
-	GetSockOpt *GetSockOptCall `protobuf:"bytes,91,opt,name=get_sock_opt,json=getSockOpt,proto3,oneof"`
+	GetSockOpt *GetSockOptCall `protobuf:"bytes,131,opt,name=get_sock_opt,json=getSockOpt,proto3,oneof"`
 }
 
 type SyscallRequest_Open struct {
@@ -1282,6 +1422,31 @@ type SyscallRequest_ShmStats struct {
 	ShmStats *ShmStatsCall `protobuf:"bytes,66,opt,name=shm_stats,json=shmStats,proto3,oneof"`
 }
 
+type SyscallRequest_Mmap struct {
+	// IPC - Memory-Mapped Files
+	Mmap *MmapCall `protobuf:"bytes,67,opt,name=mmap,proto3,oneof"`
+}
+
+type SyscallRequest_MmapRead struct {
+	MmapRead *MmapReadCall `protobuf:"bytes,68,opt,name=mmap_read,json=mmapRead,proto3,oneof"`
+}
+
+type SyscallRequest_MmapWrite struct {
+	MmapWrite *MmapWriteCall `protobuf:"bytes,69,opt,name=mmap_write,json=mmapWrite,proto3,oneof"`
+}
+
+type SyscallRequest_Msync struct {
+	Msync *MsyncCall `protobuf:"bytes,140,opt,name=msync,proto3,oneof"`
+}
+
+type SyscallRequest_Munmap struct {
+	Munmap *MunmapCall `protobuf:"bytes,141,opt,name=munmap,proto3,oneof"`
+}
+
+type SyscallRequest_MmapStats struct {
+	MmapStats *MmapStatsCall `protobuf:"bytes,142,opt,name=mmap_stats,json=mmapStats,proto3,oneof"`
+}
+
 type SyscallRequest_CreateQueue struct {
 	// IPC - Async Queues
 	CreateQueue *CreateQueueCall `protobuf:"bytes,110,opt,name=create_queue,json=createQueue,proto3,oneof"`
@@ -1330,6 +1495,38 @@ type SyscallRequest_GetCurrentScheduled struct {
 
 type SyscallRequest_GetSchedulerStats struct {
 	GetSchedulerStats *GetSchedulerStatsCall `protobuf:"bytes,73,opt,name=get_scheduler_stats,json=getSchedulerStats,proto3,oneof"`
+}
+
+type SyscallRequest_SetSchedulingPolicy struct {
+	SetSchedulingPolicy *SetSchedulingPolicyCall `protobuf:"bytes,74,opt,name=set_scheduling_policy,json=setSchedulingPolicy,proto3,oneof"`
+}
+
+type SyscallRequest_GetSchedulingPolicy struct {
+	GetSchedulingPolicy *GetSchedulingPolicyCall `protobuf:"bytes,75,opt,name=get_scheduling_policy,json=getSchedulingPolicy,proto3,oneof"`
+}
+
+type SyscallRequest_SetTimeQuantum struct {
+	SetTimeQuantum *SetTimeQuantumCall `protobuf:"bytes,76,opt,name=set_time_quantum,json=setTimeQuantum,proto3,oneof"`
+}
+
+type SyscallRequest_GetTimeQuantum struct {
+	GetTimeQuantum *GetTimeQuantumCall `protobuf:"bytes,77,opt,name=get_time_quantum,json=getTimeQuantum,proto3,oneof"`
+}
+
+type SyscallRequest_GetProcessSchedulerStats struct {
+	GetProcessSchedulerStats *GetProcessSchedulerStatsCall `protobuf:"bytes,78,opt,name=get_process_scheduler_stats,json=getProcessSchedulerStats,proto3,oneof"`
+}
+
+type SyscallRequest_GetAllProcessSchedulerStats struct {
+	GetAllProcessSchedulerStats *GetAllProcessSchedulerStatsCall `protobuf:"bytes,79,opt,name=get_all_process_scheduler_stats,json=getAllProcessSchedulerStats,proto3,oneof"`
+}
+
+type SyscallRequest_BoostPriority struct {
+	BoostPriority *BoostPriorityCall `protobuf:"bytes,81,opt,name=boost_priority,json=boostPriority,proto3,oneof"`
+}
+
+type SyscallRequest_LowerPriority struct {
+	LowerPriority *LowerPriorityCall `protobuf:"bytes,82,opt,name=lower_priority,json=lowerPriority,proto3,oneof"`
 }
 
 func (*SyscallRequest_ReadFile) isSyscallRequest_Syscall() {}
@@ -1460,6 +1657,18 @@ func (*SyscallRequest_DestroyShm) isSyscallRequest_Syscall() {}
 
 func (*SyscallRequest_ShmStats) isSyscallRequest_Syscall() {}
 
+func (*SyscallRequest_Mmap) isSyscallRequest_Syscall() {}
+
+func (*SyscallRequest_MmapRead) isSyscallRequest_Syscall() {}
+
+func (*SyscallRequest_MmapWrite) isSyscallRequest_Syscall() {}
+
+func (*SyscallRequest_Msync) isSyscallRequest_Syscall() {}
+
+func (*SyscallRequest_Munmap) isSyscallRequest_Syscall() {}
+
+func (*SyscallRequest_MmapStats) isSyscallRequest_Syscall() {}
+
 func (*SyscallRequest_CreateQueue) isSyscallRequest_Syscall() {}
 
 func (*SyscallRequest_SendQueue) isSyscallRequest_Syscall() {}
@@ -1483,6 +1692,22 @@ func (*SyscallRequest_YieldProcess) isSyscallRequest_Syscall() {}
 func (*SyscallRequest_GetCurrentScheduled) isSyscallRequest_Syscall() {}
 
 func (*SyscallRequest_GetSchedulerStats) isSyscallRequest_Syscall() {}
+
+func (*SyscallRequest_SetSchedulingPolicy) isSyscallRequest_Syscall() {}
+
+func (*SyscallRequest_GetSchedulingPolicy) isSyscallRequest_Syscall() {}
+
+func (*SyscallRequest_SetTimeQuantum) isSyscallRequest_Syscall() {}
+
+func (*SyscallRequest_GetTimeQuantum) isSyscallRequest_Syscall() {}
+
+func (*SyscallRequest_GetProcessSchedulerStats) isSyscallRequest_Syscall() {}
+
+func (*SyscallRequest_GetAllProcessSchedulerStats) isSyscallRequest_Syscall() {}
+
+func (*SyscallRequest_BoostPriority) isSyscallRequest_Syscall() {}
+
+func (*SyscallRequest_LowerPriority) isSyscallRequest_Syscall() {}
 
 type SyscallResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -4834,6 +5059,334 @@ func (x *ShmStatsCall) GetSegmentId() uint32 {
 	return 0
 }
 
+type MmapCall struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Path          string                 `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	Offset        uint32                 `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
+	Length        uint32                 `protobuf:"varint,3,opt,name=length,proto3" json:"length,omitempty"`
+	Prot          uint32                 `protobuf:"varint,4,opt,name=prot,proto3" json:"prot,omitempty"`     // Protection flags: READ=1, WRITE=2, EXEC=4
+	Shared        bool                   `protobuf:"varint,5,opt,name=shared,proto3" json:"shared,omitempty"` // true=Shared, false=Private
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MmapCall) Reset() {
+	*x = MmapCall{}
+	mi := &file_kernel_proto_msgTypes[69]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MmapCall) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MmapCall) ProtoMessage() {}
+
+func (x *MmapCall) ProtoReflect() protoreflect.Message {
+	mi := &file_kernel_proto_msgTypes[69]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MmapCall.ProtoReflect.Descriptor instead.
+func (*MmapCall) Descriptor() ([]byte, []int) {
+	return file_kernel_proto_rawDescGZIP(), []int{69}
+}
+
+func (x *MmapCall) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *MmapCall) GetOffset() uint32 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
+func (x *MmapCall) GetLength() uint32 {
+	if x != nil {
+		return x.Length
+	}
+	return 0
+}
+
+func (x *MmapCall) GetProt() uint32 {
+	if x != nil {
+		return x.Prot
+	}
+	return 0
+}
+
+func (x *MmapCall) GetShared() bool {
+	if x != nil {
+		return x.Shared
+	}
+	return false
+}
+
+type MmapReadCall struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MmapId        uint32                 `protobuf:"varint,1,opt,name=mmap_id,json=mmapId,proto3" json:"mmap_id,omitempty"`
+	Offset        uint32                 `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
+	Length        uint32                 `protobuf:"varint,3,opt,name=length,proto3" json:"length,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MmapReadCall) Reset() {
+	*x = MmapReadCall{}
+	mi := &file_kernel_proto_msgTypes[70]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MmapReadCall) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MmapReadCall) ProtoMessage() {}
+
+func (x *MmapReadCall) ProtoReflect() protoreflect.Message {
+	mi := &file_kernel_proto_msgTypes[70]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MmapReadCall.ProtoReflect.Descriptor instead.
+func (*MmapReadCall) Descriptor() ([]byte, []int) {
+	return file_kernel_proto_rawDescGZIP(), []int{70}
+}
+
+func (x *MmapReadCall) GetMmapId() uint32 {
+	if x != nil {
+		return x.MmapId
+	}
+	return 0
+}
+
+func (x *MmapReadCall) GetOffset() uint32 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
+func (x *MmapReadCall) GetLength() uint32 {
+	if x != nil {
+		return x.Length
+	}
+	return 0
+}
+
+type MmapWriteCall struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MmapId        uint32                 `protobuf:"varint,1,opt,name=mmap_id,json=mmapId,proto3" json:"mmap_id,omitempty"`
+	Offset        uint32                 `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
+	Data          []byte                 `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MmapWriteCall) Reset() {
+	*x = MmapWriteCall{}
+	mi := &file_kernel_proto_msgTypes[71]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MmapWriteCall) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MmapWriteCall) ProtoMessage() {}
+
+func (x *MmapWriteCall) ProtoReflect() protoreflect.Message {
+	mi := &file_kernel_proto_msgTypes[71]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MmapWriteCall.ProtoReflect.Descriptor instead.
+func (*MmapWriteCall) Descriptor() ([]byte, []int) {
+	return file_kernel_proto_rawDescGZIP(), []int{71}
+}
+
+func (x *MmapWriteCall) GetMmapId() uint32 {
+	if x != nil {
+		return x.MmapId
+	}
+	return 0
+}
+
+func (x *MmapWriteCall) GetOffset() uint32 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
+func (x *MmapWriteCall) GetData() []byte {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
+type MsyncCall struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MmapId        uint32                 `protobuf:"varint,1,opt,name=mmap_id,json=mmapId,proto3" json:"mmap_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MsyncCall) Reset() {
+	*x = MsyncCall{}
+	mi := &file_kernel_proto_msgTypes[72]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MsyncCall) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MsyncCall) ProtoMessage() {}
+
+func (x *MsyncCall) ProtoReflect() protoreflect.Message {
+	mi := &file_kernel_proto_msgTypes[72]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MsyncCall.ProtoReflect.Descriptor instead.
+func (*MsyncCall) Descriptor() ([]byte, []int) {
+	return file_kernel_proto_rawDescGZIP(), []int{72}
+}
+
+func (x *MsyncCall) GetMmapId() uint32 {
+	if x != nil {
+		return x.MmapId
+	}
+	return 0
+}
+
+type MunmapCall struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MmapId        uint32                 `protobuf:"varint,1,opt,name=mmap_id,json=mmapId,proto3" json:"mmap_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MunmapCall) Reset() {
+	*x = MunmapCall{}
+	mi := &file_kernel_proto_msgTypes[73]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MunmapCall) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MunmapCall) ProtoMessage() {}
+
+func (x *MunmapCall) ProtoReflect() protoreflect.Message {
+	mi := &file_kernel_proto_msgTypes[73]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MunmapCall.ProtoReflect.Descriptor instead.
+func (*MunmapCall) Descriptor() ([]byte, []int) {
+	return file_kernel_proto_rawDescGZIP(), []int{73}
+}
+
+func (x *MunmapCall) GetMmapId() uint32 {
+	if x != nil {
+		return x.MmapId
+	}
+	return 0
+}
+
+type MmapStatsCall struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MmapId        uint32                 `protobuf:"varint,1,opt,name=mmap_id,json=mmapId,proto3" json:"mmap_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MmapStatsCall) Reset() {
+	*x = MmapStatsCall{}
+	mi := &file_kernel_proto_msgTypes[74]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MmapStatsCall) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MmapStatsCall) ProtoMessage() {}
+
+func (x *MmapStatsCall) ProtoReflect() protoreflect.Message {
+	mi := &file_kernel_proto_msgTypes[74]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MmapStatsCall.ProtoReflect.Descriptor instead.
+func (*MmapStatsCall) Descriptor() ([]byte, []int) {
+	return file_kernel_proto_rawDescGZIP(), []int{74}
+}
+
+func (x *MmapStatsCall) GetMmapId() uint32 {
+	if x != nil {
+		return x.MmapId
+	}
+	return 0
+}
+
 type CreateQueueCall struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	QueueType     string                 `protobuf:"bytes,1,opt,name=queue_type,json=queueType,proto3" json:"queue_type,omitempty"` // "fifo", "priority", "pubsub"
@@ -4844,7 +5397,7 @@ type CreateQueueCall struct {
 
 func (x *CreateQueueCall) Reset() {
 	*x = CreateQueueCall{}
-	mi := &file_kernel_proto_msgTypes[69]
+	mi := &file_kernel_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4856,7 +5409,7 @@ func (x *CreateQueueCall) String() string {
 func (*CreateQueueCall) ProtoMessage() {}
 
 func (x *CreateQueueCall) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[69]
+	mi := &file_kernel_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4869,7 +5422,7 @@ func (x *CreateQueueCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateQueueCall.ProtoReflect.Descriptor instead.
 func (*CreateQueueCall) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{69}
+	return file_kernel_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *CreateQueueCall) GetQueueType() string {
@@ -4897,7 +5450,7 @@ type SendQueueCall struct {
 
 func (x *SendQueueCall) Reset() {
 	*x = SendQueueCall{}
-	mi := &file_kernel_proto_msgTypes[70]
+	mi := &file_kernel_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4909,7 +5462,7 @@ func (x *SendQueueCall) String() string {
 func (*SendQueueCall) ProtoMessage() {}
 
 func (x *SendQueueCall) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[70]
+	mi := &file_kernel_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4922,7 +5475,7 @@ func (x *SendQueueCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendQueueCall.ProtoReflect.Descriptor instead.
 func (*SendQueueCall) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{70}
+	return file_kernel_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *SendQueueCall) GetQueueId() uint32 {
@@ -4955,7 +5508,7 @@ type ReceiveQueueCall struct {
 
 func (x *ReceiveQueueCall) Reset() {
 	*x = ReceiveQueueCall{}
-	mi := &file_kernel_proto_msgTypes[71]
+	mi := &file_kernel_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4967,7 +5520,7 @@ func (x *ReceiveQueueCall) String() string {
 func (*ReceiveQueueCall) ProtoMessage() {}
 
 func (x *ReceiveQueueCall) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[71]
+	mi := &file_kernel_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4980,7 +5533,7 @@ func (x *ReceiveQueueCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReceiveQueueCall.ProtoReflect.Descriptor instead.
 func (*ReceiveQueueCall) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{71}
+	return file_kernel_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *ReceiveQueueCall) GetQueueId() uint32 {
@@ -4999,7 +5552,7 @@ type SubscribeQueueCall struct {
 
 func (x *SubscribeQueueCall) Reset() {
 	*x = SubscribeQueueCall{}
-	mi := &file_kernel_proto_msgTypes[72]
+	mi := &file_kernel_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5011,7 +5564,7 @@ func (x *SubscribeQueueCall) String() string {
 func (*SubscribeQueueCall) ProtoMessage() {}
 
 func (x *SubscribeQueueCall) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[72]
+	mi := &file_kernel_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5024,7 +5577,7 @@ func (x *SubscribeQueueCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscribeQueueCall.ProtoReflect.Descriptor instead.
 func (*SubscribeQueueCall) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{72}
+	return file_kernel_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *SubscribeQueueCall) GetQueueId() uint32 {
@@ -5043,7 +5596,7 @@ type UnsubscribeQueueCall struct {
 
 func (x *UnsubscribeQueueCall) Reset() {
 	*x = UnsubscribeQueueCall{}
-	mi := &file_kernel_proto_msgTypes[73]
+	mi := &file_kernel_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5055,7 +5608,7 @@ func (x *UnsubscribeQueueCall) String() string {
 func (*UnsubscribeQueueCall) ProtoMessage() {}
 
 func (x *UnsubscribeQueueCall) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[73]
+	mi := &file_kernel_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5068,7 +5621,7 @@ func (x *UnsubscribeQueueCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnsubscribeQueueCall.ProtoReflect.Descriptor instead.
 func (*UnsubscribeQueueCall) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{73}
+	return file_kernel_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *UnsubscribeQueueCall) GetQueueId() uint32 {
@@ -5087,7 +5640,7 @@ type CloseQueueCall struct {
 
 func (x *CloseQueueCall) Reset() {
 	*x = CloseQueueCall{}
-	mi := &file_kernel_proto_msgTypes[74]
+	mi := &file_kernel_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5099,7 +5652,7 @@ func (x *CloseQueueCall) String() string {
 func (*CloseQueueCall) ProtoMessage() {}
 
 func (x *CloseQueueCall) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[74]
+	mi := &file_kernel_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5112,7 +5665,7 @@ func (x *CloseQueueCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloseQueueCall.ProtoReflect.Descriptor instead.
 func (*CloseQueueCall) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{74}
+	return file_kernel_proto_rawDescGZIP(), []int{80}
 }
 
 func (x *CloseQueueCall) GetQueueId() uint32 {
@@ -5131,7 +5684,7 @@ type DestroyQueueCall struct {
 
 func (x *DestroyQueueCall) Reset() {
 	*x = DestroyQueueCall{}
-	mi := &file_kernel_proto_msgTypes[75]
+	mi := &file_kernel_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5143,7 +5696,7 @@ func (x *DestroyQueueCall) String() string {
 func (*DestroyQueueCall) ProtoMessage() {}
 
 func (x *DestroyQueueCall) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[75]
+	mi := &file_kernel_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5156,7 +5709,7 @@ func (x *DestroyQueueCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DestroyQueueCall.ProtoReflect.Descriptor instead.
 func (*DestroyQueueCall) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{75}
+	return file_kernel_proto_rawDescGZIP(), []int{81}
 }
 
 func (x *DestroyQueueCall) GetQueueId() uint32 {
@@ -5175,7 +5728,7 @@ type QueueStatsCall struct {
 
 func (x *QueueStatsCall) Reset() {
 	*x = QueueStatsCall{}
-	mi := &file_kernel_proto_msgTypes[76]
+	mi := &file_kernel_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5187,7 +5740,7 @@ func (x *QueueStatsCall) String() string {
 func (*QueueStatsCall) ProtoMessage() {}
 
 func (x *QueueStatsCall) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[76]
+	mi := &file_kernel_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5200,7 +5753,7 @@ func (x *QueueStatsCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueueStatsCall.ProtoReflect.Descriptor instead.
 func (*QueueStatsCall) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{76}
+	return file_kernel_proto_rawDescGZIP(), []int{82}
 }
 
 func (x *QueueStatsCall) GetQueueId() uint32 {
@@ -5218,7 +5771,7 @@ type ScheduleNextCall struct {
 
 func (x *ScheduleNextCall) Reset() {
 	*x = ScheduleNextCall{}
-	mi := &file_kernel_proto_msgTypes[77]
+	mi := &file_kernel_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5230,7 +5783,7 @@ func (x *ScheduleNextCall) String() string {
 func (*ScheduleNextCall) ProtoMessage() {}
 
 func (x *ScheduleNextCall) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[77]
+	mi := &file_kernel_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5243,7 +5796,7 @@ func (x *ScheduleNextCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleNextCall.ProtoReflect.Descriptor instead.
 func (*ScheduleNextCall) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{77}
+	return file_kernel_proto_rawDescGZIP(), []int{83}
 }
 
 type YieldProcessCall struct {
@@ -5254,7 +5807,7 @@ type YieldProcessCall struct {
 
 func (x *YieldProcessCall) Reset() {
 	*x = YieldProcessCall{}
-	mi := &file_kernel_proto_msgTypes[78]
+	mi := &file_kernel_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5266,7 +5819,7 @@ func (x *YieldProcessCall) String() string {
 func (*YieldProcessCall) ProtoMessage() {}
 
 func (x *YieldProcessCall) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[78]
+	mi := &file_kernel_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5279,7 +5832,7 @@ func (x *YieldProcessCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use YieldProcessCall.ProtoReflect.Descriptor instead.
 func (*YieldProcessCall) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{78}
+	return file_kernel_proto_rawDescGZIP(), []int{84}
 }
 
 type GetCurrentScheduledCall struct {
@@ -5290,7 +5843,7 @@ type GetCurrentScheduledCall struct {
 
 func (x *GetCurrentScheduledCall) Reset() {
 	*x = GetCurrentScheduledCall{}
-	mi := &file_kernel_proto_msgTypes[79]
+	mi := &file_kernel_proto_msgTypes[85]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5302,7 +5855,7 @@ func (x *GetCurrentScheduledCall) String() string {
 func (*GetCurrentScheduledCall) ProtoMessage() {}
 
 func (x *GetCurrentScheduledCall) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[79]
+	mi := &file_kernel_proto_msgTypes[85]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5315,7 +5868,7 @@ func (x *GetCurrentScheduledCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCurrentScheduledCall.ProtoReflect.Descriptor instead.
 func (*GetCurrentScheduledCall) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{79}
+	return file_kernel_proto_rawDescGZIP(), []int{85}
 }
 
 type GetSchedulerStatsCall struct {
@@ -5326,7 +5879,7 @@ type GetSchedulerStatsCall struct {
 
 func (x *GetSchedulerStatsCall) Reset() {
 	*x = GetSchedulerStatsCall{}
-	mi := &file_kernel_proto_msgTypes[80]
+	mi := &file_kernel_proto_msgTypes[86]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5338,7 +5891,7 @@ func (x *GetSchedulerStatsCall) String() string {
 func (*GetSchedulerStatsCall) ProtoMessage() {}
 
 func (x *GetSchedulerStatsCall) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[80]
+	mi := &file_kernel_proto_msgTypes[86]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5351,7 +5904,335 @@ func (x *GetSchedulerStatsCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSchedulerStatsCall.ProtoReflect.Descriptor instead.
 func (*GetSchedulerStatsCall) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{80}
+	return file_kernel_proto_rawDescGZIP(), []int{86}
+}
+
+type SetSchedulingPolicyCall struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Policy        string                 `protobuf:"bytes,1,opt,name=policy,proto3" json:"policy,omitempty"` // "round_robin", "priority", "fair"
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetSchedulingPolicyCall) Reset() {
+	*x = SetSchedulingPolicyCall{}
+	mi := &file_kernel_proto_msgTypes[87]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetSchedulingPolicyCall) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetSchedulingPolicyCall) ProtoMessage() {}
+
+func (x *SetSchedulingPolicyCall) ProtoReflect() protoreflect.Message {
+	mi := &file_kernel_proto_msgTypes[87]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetSchedulingPolicyCall.ProtoReflect.Descriptor instead.
+func (*SetSchedulingPolicyCall) Descriptor() ([]byte, []int) {
+	return file_kernel_proto_rawDescGZIP(), []int{87}
+}
+
+func (x *SetSchedulingPolicyCall) GetPolicy() string {
+	if x != nil {
+		return x.Policy
+	}
+	return ""
+}
+
+type GetSchedulingPolicyCall struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSchedulingPolicyCall) Reset() {
+	*x = GetSchedulingPolicyCall{}
+	mi := &file_kernel_proto_msgTypes[88]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSchedulingPolicyCall) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSchedulingPolicyCall) ProtoMessage() {}
+
+func (x *GetSchedulingPolicyCall) ProtoReflect() protoreflect.Message {
+	mi := &file_kernel_proto_msgTypes[88]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSchedulingPolicyCall.ProtoReflect.Descriptor instead.
+func (*GetSchedulingPolicyCall) Descriptor() ([]byte, []int) {
+	return file_kernel_proto_rawDescGZIP(), []int{88}
+}
+
+type SetTimeQuantumCall struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	QuantumMicros uint64                 `protobuf:"varint,1,opt,name=quantum_micros,json=quantumMicros,proto3" json:"quantum_micros,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetTimeQuantumCall) Reset() {
+	*x = SetTimeQuantumCall{}
+	mi := &file_kernel_proto_msgTypes[89]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetTimeQuantumCall) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetTimeQuantumCall) ProtoMessage() {}
+
+func (x *SetTimeQuantumCall) ProtoReflect() protoreflect.Message {
+	mi := &file_kernel_proto_msgTypes[89]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetTimeQuantumCall.ProtoReflect.Descriptor instead.
+func (*SetTimeQuantumCall) Descriptor() ([]byte, []int) {
+	return file_kernel_proto_rawDescGZIP(), []int{89}
+}
+
+func (x *SetTimeQuantumCall) GetQuantumMicros() uint64 {
+	if x != nil {
+		return x.QuantumMicros
+	}
+	return 0
+}
+
+type GetTimeQuantumCall struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetTimeQuantumCall) Reset() {
+	*x = GetTimeQuantumCall{}
+	mi := &file_kernel_proto_msgTypes[90]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTimeQuantumCall) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTimeQuantumCall) ProtoMessage() {}
+
+func (x *GetTimeQuantumCall) ProtoReflect() protoreflect.Message {
+	mi := &file_kernel_proto_msgTypes[90]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTimeQuantumCall.ProtoReflect.Descriptor instead.
+func (*GetTimeQuantumCall) Descriptor() ([]byte, []int) {
+	return file_kernel_proto_rawDescGZIP(), []int{90}
+}
+
+type GetProcessSchedulerStatsCall struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TargetPid     uint32                 `protobuf:"varint,1,opt,name=target_pid,json=targetPid,proto3" json:"target_pid,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetProcessSchedulerStatsCall) Reset() {
+	*x = GetProcessSchedulerStatsCall{}
+	mi := &file_kernel_proto_msgTypes[91]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetProcessSchedulerStatsCall) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetProcessSchedulerStatsCall) ProtoMessage() {}
+
+func (x *GetProcessSchedulerStatsCall) ProtoReflect() protoreflect.Message {
+	mi := &file_kernel_proto_msgTypes[91]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetProcessSchedulerStatsCall.ProtoReflect.Descriptor instead.
+func (*GetProcessSchedulerStatsCall) Descriptor() ([]byte, []int) {
+	return file_kernel_proto_rawDescGZIP(), []int{91}
+}
+
+func (x *GetProcessSchedulerStatsCall) GetTargetPid() uint32 {
+	if x != nil {
+		return x.TargetPid
+	}
+	return 0
+}
+
+type GetAllProcessSchedulerStatsCall struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAllProcessSchedulerStatsCall) Reset() {
+	*x = GetAllProcessSchedulerStatsCall{}
+	mi := &file_kernel_proto_msgTypes[92]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAllProcessSchedulerStatsCall) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAllProcessSchedulerStatsCall) ProtoMessage() {}
+
+func (x *GetAllProcessSchedulerStatsCall) ProtoReflect() protoreflect.Message {
+	mi := &file_kernel_proto_msgTypes[92]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAllProcessSchedulerStatsCall.ProtoReflect.Descriptor instead.
+func (*GetAllProcessSchedulerStatsCall) Descriptor() ([]byte, []int) {
+	return file_kernel_proto_rawDescGZIP(), []int{92}
+}
+
+type BoostPriorityCall struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TargetPid     uint32                 `protobuf:"varint,1,opt,name=target_pid,json=targetPid,proto3" json:"target_pid,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BoostPriorityCall) Reset() {
+	*x = BoostPriorityCall{}
+	mi := &file_kernel_proto_msgTypes[93]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BoostPriorityCall) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BoostPriorityCall) ProtoMessage() {}
+
+func (x *BoostPriorityCall) ProtoReflect() protoreflect.Message {
+	mi := &file_kernel_proto_msgTypes[93]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BoostPriorityCall.ProtoReflect.Descriptor instead.
+func (*BoostPriorityCall) Descriptor() ([]byte, []int) {
+	return file_kernel_proto_rawDescGZIP(), []int{93}
+}
+
+func (x *BoostPriorityCall) GetTargetPid() uint32 {
+	if x != nil {
+		return x.TargetPid
+	}
+	return 0
+}
+
+type LowerPriorityCall struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TargetPid     uint32                 `protobuf:"varint,1,opt,name=target_pid,json=targetPid,proto3" json:"target_pid,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LowerPriorityCall) Reset() {
+	*x = LowerPriorityCall{}
+	mi := &file_kernel_proto_msgTypes[94]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LowerPriorityCall) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LowerPriorityCall) ProtoMessage() {}
+
+func (x *LowerPriorityCall) ProtoReflect() protoreflect.Message {
+	mi := &file_kernel_proto_msgTypes[94]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LowerPriorityCall.ProtoReflect.Descriptor instead.
+func (*LowerPriorityCall) Descriptor() ([]byte, []int) {
+	return file_kernel_proto_rawDescGZIP(), []int{94}
+}
+
+func (x *LowerPriorityCall) GetTargetPid() uint32 {
+	if x != nil {
+		return x.TargetPid
+	}
+	return 0
 }
 
 type CreateProcessRequest struct {
@@ -5368,7 +6249,7 @@ type CreateProcessRequest struct {
 
 func (x *CreateProcessRequest) Reset() {
 	*x = CreateProcessRequest{}
-	mi := &file_kernel_proto_msgTypes[81]
+	mi := &file_kernel_proto_msgTypes[95]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5380,7 +6261,7 @@ func (x *CreateProcessRequest) String() string {
 func (*CreateProcessRequest) ProtoMessage() {}
 
 func (x *CreateProcessRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[81]
+	mi := &file_kernel_proto_msgTypes[95]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5393,7 +6274,7 @@ func (x *CreateProcessRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateProcessRequest.ProtoReflect.Descriptor instead.
 func (*CreateProcessRequest) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{81}
+	return file_kernel_proto_rawDescGZIP(), []int{95}
 }
 
 func (x *CreateProcessRequest) GetName() string {
@@ -5450,7 +6331,7 @@ type CreateProcessResponse struct {
 
 func (x *CreateProcessResponse) Reset() {
 	*x = CreateProcessResponse{}
-	mi := &file_kernel_proto_msgTypes[82]
+	mi := &file_kernel_proto_msgTypes[96]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5462,7 +6343,7 @@ func (x *CreateProcessResponse) String() string {
 func (*CreateProcessResponse) ProtoMessage() {}
 
 func (x *CreateProcessResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[82]
+	mi := &file_kernel_proto_msgTypes[96]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5475,7 +6356,7 @@ func (x *CreateProcessResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateProcessResponse.ProtoReflect.Descriptor instead.
 func (*CreateProcessResponse) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{82}
+	return file_kernel_proto_rawDescGZIP(), []int{96}
 }
 
 func (x *CreateProcessResponse) GetPid() uint32 {
@@ -5519,7 +6400,7 @@ type UpdateSandboxRequest struct {
 
 func (x *UpdateSandboxRequest) Reset() {
 	*x = UpdateSandboxRequest{}
-	mi := &file_kernel_proto_msgTypes[83]
+	mi := &file_kernel_proto_msgTypes[97]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5531,7 +6412,7 @@ func (x *UpdateSandboxRequest) String() string {
 func (*UpdateSandboxRequest) ProtoMessage() {}
 
 func (x *UpdateSandboxRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[83]
+	mi := &file_kernel_proto_msgTypes[97]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5544,7 +6425,7 @@ func (x *UpdateSandboxRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateSandboxRequest.ProtoReflect.Descriptor instead.
 func (*UpdateSandboxRequest) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{83}
+	return file_kernel_proto_rawDescGZIP(), []int{97}
 }
 
 func (x *UpdateSandboxRequest) GetPid() uint32 {
@@ -5592,7 +6473,7 @@ type UpdateSandboxResponse struct {
 
 func (x *UpdateSandboxResponse) Reset() {
 	*x = UpdateSandboxResponse{}
-	mi := &file_kernel_proto_msgTypes[84]
+	mi := &file_kernel_proto_msgTypes[98]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5604,7 +6485,7 @@ func (x *UpdateSandboxResponse) String() string {
 func (*UpdateSandboxResponse) ProtoMessage() {}
 
 func (x *UpdateSandboxResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[84]
+	mi := &file_kernel_proto_msgTypes[98]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5617,7 +6498,7 @@ func (x *UpdateSandboxResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateSandboxResponse.ProtoReflect.Descriptor instead.
 func (*UpdateSandboxResponse) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{84}
+	return file_kernel_proto_rawDescGZIP(), []int{98}
 }
 
 func (x *UpdateSandboxResponse) GetSuccess() bool {
@@ -5647,7 +6528,7 @@ type ResourceLimits struct {
 
 func (x *ResourceLimits) Reset() {
 	*x = ResourceLimits{}
-	mi := &file_kernel_proto_msgTypes[85]
+	mi := &file_kernel_proto_msgTypes[99]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5659,7 +6540,7 @@ func (x *ResourceLimits) String() string {
 func (*ResourceLimits) ProtoMessage() {}
 
 func (x *ResourceLimits) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[85]
+	mi := &file_kernel_proto_msgTypes[99]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5672,7 +6553,7 @@ func (x *ResourceLimits) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResourceLimits.ProtoReflect.Descriptor instead.
 func (*ResourceLimits) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{85}
+	return file_kernel_proto_rawDescGZIP(), []int{99}
 }
 
 func (x *ResourceLimits) GetMaxMemoryBytes() uint64 {
@@ -5719,7 +6600,7 @@ type EventStreamRequest struct {
 
 func (x *EventStreamRequest) Reset() {
 	*x = EventStreamRequest{}
-	mi := &file_kernel_proto_msgTypes[86]
+	mi := &file_kernel_proto_msgTypes[100]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5731,7 +6612,7 @@ func (x *EventStreamRequest) String() string {
 func (*EventStreamRequest) ProtoMessage() {}
 
 func (x *EventStreamRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[86]
+	mi := &file_kernel_proto_msgTypes[100]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5744,7 +6625,7 @@ func (x *EventStreamRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EventStreamRequest.ProtoReflect.Descriptor instead.
 func (*EventStreamRequest) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{86}
+	return file_kernel_proto_rawDescGZIP(), []int{100}
 }
 
 func (x *EventStreamRequest) GetEventTypes() []string {
@@ -5770,7 +6651,7 @@ type KernelEvent struct {
 
 func (x *KernelEvent) Reset() {
 	*x = KernelEvent{}
-	mi := &file_kernel_proto_msgTypes[87]
+	mi := &file_kernel_proto_msgTypes[101]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5782,7 +6663,7 @@ func (x *KernelEvent) String() string {
 func (*KernelEvent) ProtoMessage() {}
 
 func (x *KernelEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[87]
+	mi := &file_kernel_proto_msgTypes[101]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5795,7 +6676,7 @@ func (x *KernelEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KernelEvent.ProtoReflect.Descriptor instead.
 func (*KernelEvent) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{87}
+	return file_kernel_proto_rawDescGZIP(), []int{101}
 }
 
 func (x *KernelEvent) GetTimestamp() uint64 {
@@ -5886,7 +6767,7 @@ type ProcessCreatedEvent struct {
 
 func (x *ProcessCreatedEvent) Reset() {
 	*x = ProcessCreatedEvent{}
-	mi := &file_kernel_proto_msgTypes[88]
+	mi := &file_kernel_proto_msgTypes[102]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5898,7 +6779,7 @@ func (x *ProcessCreatedEvent) String() string {
 func (*ProcessCreatedEvent) ProtoMessage() {}
 
 func (x *ProcessCreatedEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[88]
+	mi := &file_kernel_proto_msgTypes[102]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5911,7 +6792,7 @@ func (x *ProcessCreatedEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessCreatedEvent.ProtoReflect.Descriptor instead.
 func (*ProcessCreatedEvent) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{88}
+	return file_kernel_proto_rawDescGZIP(), []int{102}
 }
 
 func (x *ProcessCreatedEvent) GetPid() uint32 {
@@ -5938,7 +6819,7 @@ type ProcessTerminatedEvent struct {
 
 func (x *ProcessTerminatedEvent) Reset() {
 	*x = ProcessTerminatedEvent{}
-	mi := &file_kernel_proto_msgTypes[89]
+	mi := &file_kernel_proto_msgTypes[103]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5950,7 +6831,7 @@ func (x *ProcessTerminatedEvent) String() string {
 func (*ProcessTerminatedEvent) ProtoMessage() {}
 
 func (x *ProcessTerminatedEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[89]
+	mi := &file_kernel_proto_msgTypes[103]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5963,7 +6844,7 @@ func (x *ProcessTerminatedEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessTerminatedEvent.ProtoReflect.Descriptor instead.
 func (*ProcessTerminatedEvent) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{89}
+	return file_kernel_proto_rawDescGZIP(), []int{103}
 }
 
 func (x *ProcessTerminatedEvent) GetPid() uint32 {
@@ -5991,7 +6872,7 @@ type SyscallExecutedEvent struct {
 
 func (x *SyscallExecutedEvent) Reset() {
 	*x = SyscallExecutedEvent{}
-	mi := &file_kernel_proto_msgTypes[90]
+	mi := &file_kernel_proto_msgTypes[104]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6003,7 +6884,7 @@ func (x *SyscallExecutedEvent) String() string {
 func (*SyscallExecutedEvent) ProtoMessage() {}
 
 func (x *SyscallExecutedEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[90]
+	mi := &file_kernel_proto_msgTypes[104]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6016,7 +6897,7 @@ func (x *SyscallExecutedEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyscallExecutedEvent.ProtoReflect.Descriptor instead.
 func (*SyscallExecutedEvent) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{90}
+	return file_kernel_proto_rawDescGZIP(), []int{104}
 }
 
 func (x *SyscallExecutedEvent) GetPid() uint32 {
@@ -6051,7 +6932,7 @@ type PermissionDeniedEvent struct {
 
 func (x *PermissionDeniedEvent) Reset() {
 	*x = PermissionDeniedEvent{}
-	mi := &file_kernel_proto_msgTypes[91]
+	mi := &file_kernel_proto_msgTypes[105]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6063,7 +6944,7 @@ func (x *PermissionDeniedEvent) String() string {
 func (*PermissionDeniedEvent) ProtoMessage() {}
 
 func (x *PermissionDeniedEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[91]
+	mi := &file_kernel_proto_msgTypes[105]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6076,7 +6957,7 @@ func (x *PermissionDeniedEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PermissionDeniedEvent.ProtoReflect.Descriptor instead.
 func (*PermissionDeniedEvent) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{91}
+	return file_kernel_proto_rawDescGZIP(), []int{105}
 }
 
 func (x *PermissionDeniedEvent) GetPid() uint32 {
@@ -6108,7 +6989,7 @@ type ScheduleNextRequest struct {
 
 func (x *ScheduleNextRequest) Reset() {
 	*x = ScheduleNextRequest{}
-	mi := &file_kernel_proto_msgTypes[92]
+	mi := &file_kernel_proto_msgTypes[106]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6120,7 +7001,7 @@ func (x *ScheduleNextRequest) String() string {
 func (*ScheduleNextRequest) ProtoMessage() {}
 
 func (x *ScheduleNextRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[92]
+	mi := &file_kernel_proto_msgTypes[106]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6133,7 +7014,7 @@ func (x *ScheduleNextRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleNextRequest.ProtoReflect.Descriptor instead.
 func (*ScheduleNextRequest) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{92}
+	return file_kernel_proto_rawDescGZIP(), []int{106}
 }
 
 type ScheduleNextResponse struct {
@@ -6147,7 +7028,7 @@ type ScheduleNextResponse struct {
 
 func (x *ScheduleNextResponse) Reset() {
 	*x = ScheduleNextResponse{}
-	mi := &file_kernel_proto_msgTypes[93]
+	mi := &file_kernel_proto_msgTypes[107]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6159,7 +7040,7 @@ func (x *ScheduleNextResponse) String() string {
 func (*ScheduleNextResponse) ProtoMessage() {}
 
 func (x *ScheduleNextResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[93]
+	mi := &file_kernel_proto_msgTypes[107]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6172,7 +7053,7 @@ func (x *ScheduleNextResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleNextResponse.ProtoReflect.Descriptor instead.
 func (*ScheduleNextResponse) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{93}
+	return file_kernel_proto_rawDescGZIP(), []int{107}
 }
 
 func (x *ScheduleNextResponse) GetSuccess() bool {
@@ -6204,7 +7085,7 @@ type GetSchedulerStatsRequest struct {
 
 func (x *GetSchedulerStatsRequest) Reset() {
 	*x = GetSchedulerStatsRequest{}
-	mi := &file_kernel_proto_msgTypes[94]
+	mi := &file_kernel_proto_msgTypes[108]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6216,7 +7097,7 @@ func (x *GetSchedulerStatsRequest) String() string {
 func (*GetSchedulerStatsRequest) ProtoMessage() {}
 
 func (x *GetSchedulerStatsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[94]
+	mi := &file_kernel_proto_msgTypes[108]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6229,7 +7110,7 @@ func (x *GetSchedulerStatsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSchedulerStatsRequest.ProtoReflect.Descriptor instead.
 func (*GetSchedulerStatsRequest) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{94}
+	return file_kernel_proto_rawDescGZIP(), []int{108}
 }
 
 type GetSchedulerStatsResponse struct {
@@ -6243,7 +7124,7 @@ type GetSchedulerStatsResponse struct {
 
 func (x *GetSchedulerStatsResponse) Reset() {
 	*x = GetSchedulerStatsResponse{}
-	mi := &file_kernel_proto_msgTypes[95]
+	mi := &file_kernel_proto_msgTypes[109]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6255,7 +7136,7 @@ func (x *GetSchedulerStatsResponse) String() string {
 func (*GetSchedulerStatsResponse) ProtoMessage() {}
 
 func (x *GetSchedulerStatsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[95]
+	mi := &file_kernel_proto_msgTypes[109]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6268,7 +7149,7 @@ func (x *GetSchedulerStatsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSchedulerStatsResponse.ProtoReflect.Descriptor instead.
 func (*GetSchedulerStatsResponse) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{95}
+	return file_kernel_proto_rawDescGZIP(), []int{109}
 }
 
 func (x *GetSchedulerStatsResponse) GetSuccess() bool {
@@ -6306,7 +7187,7 @@ type SchedulerStats struct {
 
 func (x *SchedulerStats) Reset() {
 	*x = SchedulerStats{}
-	mi := &file_kernel_proto_msgTypes[96]
+	mi := &file_kernel_proto_msgTypes[110]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6318,7 +7199,7 @@ func (x *SchedulerStats) String() string {
 func (*SchedulerStats) ProtoMessage() {}
 
 func (x *SchedulerStats) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[96]
+	mi := &file_kernel_proto_msgTypes[110]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6331,7 +7212,7 @@ func (x *SchedulerStats) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SchedulerStats.ProtoReflect.Descriptor instead.
 func (*SchedulerStats) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{96}
+	return file_kernel_proto_rawDescGZIP(), []int{110}
 }
 
 func (x *SchedulerStats) GetTotalScheduled() uint64 {
@@ -6385,7 +7266,7 @@ type SetSchedulingPolicyRequest struct {
 
 func (x *SetSchedulingPolicyRequest) Reset() {
 	*x = SetSchedulingPolicyRequest{}
-	mi := &file_kernel_proto_msgTypes[97]
+	mi := &file_kernel_proto_msgTypes[111]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6397,7 +7278,7 @@ func (x *SetSchedulingPolicyRequest) String() string {
 func (*SetSchedulingPolicyRequest) ProtoMessage() {}
 
 func (x *SetSchedulingPolicyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[97]
+	mi := &file_kernel_proto_msgTypes[111]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6410,7 +7291,7 @@ func (x *SetSchedulingPolicyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetSchedulingPolicyRequest.ProtoReflect.Descriptor instead.
 func (*SetSchedulingPolicyRequest) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{97}
+	return file_kernel_proto_rawDescGZIP(), []int{111}
 }
 
 func (x *SetSchedulingPolicyRequest) GetPolicy() string {
@@ -6430,7 +7311,7 @@ type SetSchedulingPolicyResponse struct {
 
 func (x *SetSchedulingPolicyResponse) Reset() {
 	*x = SetSchedulingPolicyResponse{}
-	mi := &file_kernel_proto_msgTypes[98]
+	mi := &file_kernel_proto_msgTypes[112]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6442,7 +7323,7 @@ func (x *SetSchedulingPolicyResponse) String() string {
 func (*SetSchedulingPolicyResponse) ProtoMessage() {}
 
 func (x *SetSchedulingPolicyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[98]
+	mi := &file_kernel_proto_msgTypes[112]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6455,7 +7336,7 @@ func (x *SetSchedulingPolicyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetSchedulingPolicyResponse.ProtoReflect.Descriptor instead.
 func (*SetSchedulingPolicyResponse) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{98}
+	return file_kernel_proto_rawDescGZIP(), []int{112}
 }
 
 func (x *SetSchedulingPolicyResponse) GetSuccess() bool {
@@ -6486,7 +7367,7 @@ type StreamSyscallRequest struct {
 
 func (x *StreamSyscallRequest) Reset() {
 	*x = StreamSyscallRequest{}
-	mi := &file_kernel_proto_msgTypes[99]
+	mi := &file_kernel_proto_msgTypes[113]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6498,7 +7379,7 @@ func (x *StreamSyscallRequest) String() string {
 func (*StreamSyscallRequest) ProtoMessage() {}
 
 func (x *StreamSyscallRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[99]
+	mi := &file_kernel_proto_msgTypes[113]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6511,7 +7392,7 @@ func (x *StreamSyscallRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamSyscallRequest.ProtoReflect.Descriptor instead.
 func (*StreamSyscallRequest) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{99}
+	return file_kernel_proto_rawDescGZIP(), []int{113}
 }
 
 func (x *StreamSyscallRequest) GetPid() uint32 {
@@ -6572,7 +7453,7 @@ type StreamFileRead struct {
 
 func (x *StreamFileRead) Reset() {
 	*x = StreamFileRead{}
-	mi := &file_kernel_proto_msgTypes[100]
+	mi := &file_kernel_proto_msgTypes[114]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6584,7 +7465,7 @@ func (x *StreamFileRead) String() string {
 func (*StreamFileRead) ProtoMessage() {}
 
 func (x *StreamFileRead) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[100]
+	mi := &file_kernel_proto_msgTypes[114]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6597,7 +7478,7 @@ func (x *StreamFileRead) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamFileRead.ProtoReflect.Descriptor instead.
 func (*StreamFileRead) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{100}
+	return file_kernel_proto_rawDescGZIP(), []int{114}
 }
 
 func (x *StreamFileRead) GetPath() string {
@@ -6625,7 +7506,7 @@ type StreamFileWrite struct {
 
 func (x *StreamFileWrite) Reset() {
 	*x = StreamFileWrite{}
-	mi := &file_kernel_proto_msgTypes[101]
+	mi := &file_kernel_proto_msgTypes[115]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6637,7 +7518,7 @@ func (x *StreamFileWrite) String() string {
 func (*StreamFileWrite) ProtoMessage() {}
 
 func (x *StreamFileWrite) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[101]
+	mi := &file_kernel_proto_msgTypes[115]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6650,7 +7531,7 @@ func (x *StreamFileWrite) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamFileWrite.ProtoReflect.Descriptor instead.
 func (*StreamFileWrite) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{101}
+	return file_kernel_proto_rawDescGZIP(), []int{115}
 }
 
 func (x *StreamFileWrite) GetPath() string {
@@ -6688,7 +7569,7 @@ type StreamSyscallChunk struct {
 
 func (x *StreamSyscallChunk) Reset() {
 	*x = StreamSyscallChunk{}
-	mi := &file_kernel_proto_msgTypes[102]
+	mi := &file_kernel_proto_msgTypes[116]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6700,7 +7581,7 @@ func (x *StreamSyscallChunk) String() string {
 func (*StreamSyscallChunk) ProtoMessage() {}
 
 func (x *StreamSyscallChunk) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[102]
+	mi := &file_kernel_proto_msgTypes[116]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6713,7 +7594,7 @@ func (x *StreamSyscallChunk) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamSyscallChunk.ProtoReflect.Descriptor instead.
 func (*StreamSyscallChunk) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{102}
+	return file_kernel_proto_rawDescGZIP(), []int{116}
 }
 
 func (x *StreamSyscallChunk) GetChunk() isStreamSyscallChunk_Chunk {
@@ -6781,7 +7662,7 @@ type StreamComplete struct {
 
 func (x *StreamComplete) Reset() {
 	*x = StreamComplete{}
-	mi := &file_kernel_proto_msgTypes[103]
+	mi := &file_kernel_proto_msgTypes[117]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6793,7 +7674,7 @@ func (x *StreamComplete) String() string {
 func (*StreamComplete) ProtoMessage() {}
 
 func (x *StreamComplete) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[103]
+	mi := &file_kernel_proto_msgTypes[117]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6806,7 +7687,7 @@ func (x *StreamComplete) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamComplete.ProtoReflect.Descriptor instead.
 func (*StreamComplete) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{103}
+	return file_kernel_proto_rawDescGZIP(), []int{117}
 }
 
 func (x *StreamComplete) GetTotalBytes() uint64 {
@@ -6827,7 +7708,7 @@ type AsyncSyscallResponse struct {
 
 func (x *AsyncSyscallResponse) Reset() {
 	*x = AsyncSyscallResponse{}
-	mi := &file_kernel_proto_msgTypes[104]
+	mi := &file_kernel_proto_msgTypes[118]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6839,7 +7720,7 @@ func (x *AsyncSyscallResponse) String() string {
 func (*AsyncSyscallResponse) ProtoMessage() {}
 
 func (x *AsyncSyscallResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[104]
+	mi := &file_kernel_proto_msgTypes[118]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6852,7 +7733,7 @@ func (x *AsyncSyscallResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AsyncSyscallResponse.ProtoReflect.Descriptor instead.
 func (*AsyncSyscallResponse) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{104}
+	return file_kernel_proto_rawDescGZIP(), []int{118}
 }
 
 func (x *AsyncSyscallResponse) GetTaskId() string {
@@ -6885,7 +7766,7 @@ type AsyncStatusRequest struct {
 
 func (x *AsyncStatusRequest) Reset() {
 	*x = AsyncStatusRequest{}
-	mi := &file_kernel_proto_msgTypes[105]
+	mi := &file_kernel_proto_msgTypes[119]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6897,7 +7778,7 @@ func (x *AsyncStatusRequest) String() string {
 func (*AsyncStatusRequest) ProtoMessage() {}
 
 func (x *AsyncStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[105]
+	mi := &file_kernel_proto_msgTypes[119]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6910,7 +7791,7 @@ func (x *AsyncStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AsyncStatusRequest.ProtoReflect.Descriptor instead.
 func (*AsyncStatusRequest) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{105}
+	return file_kernel_proto_rawDescGZIP(), []int{119}
 }
 
 func (x *AsyncStatusRequest) GetTaskId() string {
@@ -6931,7 +7812,7 @@ type AsyncStatusResponse struct {
 
 func (x *AsyncStatusResponse) Reset() {
 	*x = AsyncStatusResponse{}
-	mi := &file_kernel_proto_msgTypes[106]
+	mi := &file_kernel_proto_msgTypes[120]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6943,7 +7824,7 @@ func (x *AsyncStatusResponse) String() string {
 func (*AsyncStatusResponse) ProtoMessage() {}
 
 func (x *AsyncStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[106]
+	mi := &file_kernel_proto_msgTypes[120]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6956,7 +7837,7 @@ func (x *AsyncStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AsyncStatusResponse.ProtoReflect.Descriptor instead.
 func (*AsyncStatusResponse) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{106}
+	return file_kernel_proto_rawDescGZIP(), []int{120}
 }
 
 func (x *AsyncStatusResponse) GetStatus() AsyncStatusResponse_Status {
@@ -6989,7 +7870,7 @@ type AsyncCancelRequest struct {
 
 func (x *AsyncCancelRequest) Reset() {
 	*x = AsyncCancelRequest{}
-	mi := &file_kernel_proto_msgTypes[107]
+	mi := &file_kernel_proto_msgTypes[121]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7001,7 +7882,7 @@ func (x *AsyncCancelRequest) String() string {
 func (*AsyncCancelRequest) ProtoMessage() {}
 
 func (x *AsyncCancelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[107]
+	mi := &file_kernel_proto_msgTypes[121]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7014,7 +7895,7 @@ func (x *AsyncCancelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AsyncCancelRequest.ProtoReflect.Descriptor instead.
 func (*AsyncCancelRequest) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{107}
+	return file_kernel_proto_rawDescGZIP(), []int{121}
 }
 
 func (x *AsyncCancelRequest) GetTaskId() string {
@@ -7034,7 +7915,7 @@ type AsyncCancelResponse struct {
 
 func (x *AsyncCancelResponse) Reset() {
 	*x = AsyncCancelResponse{}
-	mi := &file_kernel_proto_msgTypes[108]
+	mi := &file_kernel_proto_msgTypes[122]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7046,7 +7927,7 @@ func (x *AsyncCancelResponse) String() string {
 func (*AsyncCancelResponse) ProtoMessage() {}
 
 func (x *AsyncCancelResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[108]
+	mi := &file_kernel_proto_msgTypes[122]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7059,7 +7940,7 @@ func (x *AsyncCancelResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AsyncCancelResponse.ProtoReflect.Descriptor instead.
 func (*AsyncCancelResponse) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{108}
+	return file_kernel_proto_rawDescGZIP(), []int{122}
 }
 
 func (x *AsyncCancelResponse) GetCancelled() bool {
@@ -7086,7 +7967,7 @@ type BatchSyscallRequest struct {
 
 func (x *BatchSyscallRequest) Reset() {
 	*x = BatchSyscallRequest{}
-	mi := &file_kernel_proto_msgTypes[109]
+	mi := &file_kernel_proto_msgTypes[123]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7098,7 +7979,7 @@ func (x *BatchSyscallRequest) String() string {
 func (*BatchSyscallRequest) ProtoMessage() {}
 
 func (x *BatchSyscallRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[109]
+	mi := &file_kernel_proto_msgTypes[123]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7111,7 +7992,7 @@ func (x *BatchSyscallRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BatchSyscallRequest.ProtoReflect.Descriptor instead.
 func (*BatchSyscallRequest) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{109}
+	return file_kernel_proto_rawDescGZIP(), []int{123}
 }
 
 func (x *BatchSyscallRequest) GetRequests() []*SyscallRequest {
@@ -7139,7 +8020,7 @@ type BatchSyscallResponse struct {
 
 func (x *BatchSyscallResponse) Reset() {
 	*x = BatchSyscallResponse{}
-	mi := &file_kernel_proto_msgTypes[110]
+	mi := &file_kernel_proto_msgTypes[124]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7151,7 +8032,7 @@ func (x *BatchSyscallResponse) String() string {
 func (*BatchSyscallResponse) ProtoMessage() {}
 
 func (x *BatchSyscallResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_kernel_proto_msgTypes[110]
+	mi := &file_kernel_proto_msgTypes[124]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7164,7 +8045,7 @@ func (x *BatchSyscallResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BatchSyscallResponse.ProtoReflect.Descriptor instead.
 func (*BatchSyscallResponse) Descriptor() ([]byte, []int) {
-	return file_kernel_proto_rawDescGZIP(), []int{110}
+	return file_kernel_proto_rawDescGZIP(), []int{124}
 }
 
 func (x *BatchSyscallResponse) GetResponses() []*SyscallResponse {
@@ -7192,7 +8073,7 @@ var File_kernel_proto protoreflect.FileDescriptor
 
 const file_kernel_proto_rawDesc = "" +
 	"\n" +
-	"\fkernel.proto\x12\x06kernel\"\xee#\n" +
+	"\fkernel.proto\x12\x06kernel\"\xb9+\n" +
 	"\x0eSyscallRequest\x12\x10\n" +
 	"\x03pid\x18\x01 \x01(\rR\x03pid\x123\n" +
 	"\tread_file\x18\n" +
@@ -7236,19 +8117,19 @@ const file_kernel_proto_rawDesc = "" +
 	"\vsend_signal\x18* \x01(\v2\x16.kernel.SendSignalCallH\x00R\n" +
 	"sendSignal\x12E\n" +
 	"\x0fnetwork_request\x18( \x01(\v2\x1a.kernel.NetworkRequestCallH\x00R\x0enetworkRequest\x12,\n" +
-	"\x06socket\x18P \x01(\v2\x12.kernel.SocketCallH\x00R\x06socket\x12&\n" +
-	"\x04bind\x18Q \x01(\v2\x10.kernel.BindCallH\x00R\x04bind\x12,\n" +
-	"\x06listen\x18R \x01(\v2\x12.kernel.ListenCallH\x00R\x06listen\x12,\n" +
-	"\x06accept\x18S \x01(\v2\x12.kernel.AcceptCallH\x00R\x06accept\x12/\n" +
-	"\aconnect\x18T \x01(\v2\x13.kernel.ConnectCallH\x00R\aconnect\x12&\n" +
-	"\x04send\x18U \x01(\v2\x10.kernel.SendCallH\x00R\x04send\x12&\n" +
-	"\x04recv\x18V \x01(\v2\x10.kernel.RecvCallH\x00R\x04recv\x12-\n" +
-	"\asend_to\x18W \x01(\v2\x12.kernel.SendToCallH\x00R\x06sendTo\x123\n" +
-	"\trecv_from\x18X \x01(\v2\x14.kernel.RecvFromCallH\x00R\brecvFrom\x12<\n" +
-	"\fclose_socket\x18Y \x01(\v2\x17.kernel.CloseSocketCallH\x00R\vcloseSocket\x12:\n" +
-	"\fset_sock_opt\x18Z \x01(\v2\x16.kernel.SetSockOptCallH\x00R\n" +
-	"setSockOpt\x12:\n" +
-	"\fget_sock_opt\x18[ \x01(\v2\x16.kernel.GetSockOptCallH\x00R\n" +
+	"\x06socket\x18x \x01(\v2\x12.kernel.SocketCallH\x00R\x06socket\x12&\n" +
+	"\x04bind\x18y \x01(\v2\x10.kernel.BindCallH\x00R\x04bind\x12,\n" +
+	"\x06listen\x18z \x01(\v2\x12.kernel.ListenCallH\x00R\x06listen\x12,\n" +
+	"\x06accept\x18{ \x01(\v2\x12.kernel.AcceptCallH\x00R\x06accept\x12/\n" +
+	"\aconnect\x18| \x01(\v2\x13.kernel.ConnectCallH\x00R\aconnect\x12&\n" +
+	"\x04send\x18} \x01(\v2\x10.kernel.SendCallH\x00R\x04send\x12&\n" +
+	"\x04recv\x18~ \x01(\v2\x10.kernel.RecvCallH\x00R\x04recv\x12-\n" +
+	"\asend_to\x18\x7f \x01(\v2\x12.kernel.SendToCallH\x00R\x06sendTo\x124\n" +
+	"\trecv_from\x18\x80\x01 \x01(\v2\x14.kernel.RecvFromCallH\x00R\brecvFrom\x12=\n" +
+	"\fclose_socket\x18\x81\x01 \x01(\v2\x17.kernel.CloseSocketCallH\x00R\vcloseSocket\x12;\n" +
+	"\fset_sock_opt\x18\x82\x01 \x01(\v2\x16.kernel.SetSockOptCallH\x00R\n" +
+	"setSockOpt\x12;\n" +
+	"\fget_sock_opt\x18\x83\x01 \x01(\v2\x16.kernel.GetSockOptCallH\x00R\n" +
 	"getSockOpt\x12&\n" +
 	"\x04open\x18d \x01(\v2\x10.kernel.OpenCallH\x00R\x04open\x12)\n" +
 	"\x05close\x18e \x01(\v2\x11.kernel.CloseCallH\x00R\x05close\x12#\n" +
@@ -7276,7 +8157,15 @@ const file_kernel_proto_rawDesc = "" +
 	"\bread_shm\x18@ \x01(\v2\x13.kernel.ReadShmCallH\x00R\areadShm\x129\n" +
 	"\vdestroy_shm\x18A \x01(\v2\x16.kernel.DestroyShmCallH\x00R\n" +
 	"destroyShm\x123\n" +
-	"\tshm_stats\x18B \x01(\v2\x14.kernel.ShmStatsCallH\x00R\bshmStats\x12<\n" +
+	"\tshm_stats\x18B \x01(\v2\x14.kernel.ShmStatsCallH\x00R\bshmStats\x12&\n" +
+	"\x04mmap\x18C \x01(\v2\x10.kernel.MmapCallH\x00R\x04mmap\x123\n" +
+	"\tmmap_read\x18D \x01(\v2\x14.kernel.MmapReadCallH\x00R\bmmapRead\x126\n" +
+	"\n" +
+	"mmap_write\x18E \x01(\v2\x15.kernel.MmapWriteCallH\x00R\tmmapWrite\x12*\n" +
+	"\x05msync\x18\x8c\x01 \x01(\v2\x11.kernel.MsyncCallH\x00R\x05msync\x12-\n" +
+	"\x06munmap\x18\x8d\x01 \x01(\v2\x12.kernel.MunmapCallH\x00R\x06munmap\x127\n" +
+	"\n" +
+	"mmap_stats\x18\x8e\x01 \x01(\v2\x15.kernel.MmapStatsCallH\x00R\tmmapStats\x12<\n" +
 	"\fcreate_queue\x18n \x01(\v2\x17.kernel.CreateQueueCallH\x00R\vcreateQueue\x126\n" +
 	"\n" +
 	"send_queue\x18o \x01(\v2\x15.kernel.SendQueueCallH\x00R\tsendQueue\x12?\n" +
@@ -7291,7 +8180,15 @@ const file_kernel_proto_rawDesc = "" +
 	"\rschedule_next\x18F \x01(\v2\x18.kernel.ScheduleNextCallH\x00R\fscheduleNext\x12?\n" +
 	"\ryield_process\x18G \x01(\v2\x18.kernel.YieldProcessCallH\x00R\fyieldProcess\x12U\n" +
 	"\x15get_current_scheduled\x18H \x01(\v2\x1f.kernel.GetCurrentScheduledCallH\x00R\x13getCurrentScheduled\x12O\n" +
-	"\x13get_scheduler_stats\x18I \x01(\v2\x1d.kernel.GetSchedulerStatsCallH\x00R\x11getSchedulerStatsB\t\n" +
+	"\x13get_scheduler_stats\x18I \x01(\v2\x1d.kernel.GetSchedulerStatsCallH\x00R\x11getSchedulerStats\x12U\n" +
+	"\x15set_scheduling_policy\x18J \x01(\v2\x1f.kernel.SetSchedulingPolicyCallH\x00R\x13setSchedulingPolicy\x12U\n" +
+	"\x15get_scheduling_policy\x18K \x01(\v2\x1f.kernel.GetSchedulingPolicyCallH\x00R\x13getSchedulingPolicy\x12F\n" +
+	"\x10set_time_quantum\x18L \x01(\v2\x1a.kernel.SetTimeQuantumCallH\x00R\x0esetTimeQuantum\x12F\n" +
+	"\x10get_time_quantum\x18M \x01(\v2\x1a.kernel.GetTimeQuantumCallH\x00R\x0egetTimeQuantum\x12e\n" +
+	"\x1bget_process_scheduler_stats\x18N \x01(\v2$.kernel.GetProcessSchedulerStatsCallH\x00R\x18getProcessSchedulerStats\x12o\n" +
+	"\x1fget_all_process_scheduler_stats\x18O \x01(\v2'.kernel.GetAllProcessSchedulerStatsCallH\x00R\x1bgetAllProcessSchedulerStats\x12B\n" +
+	"\x0eboost_priority\x18Q \x01(\v2\x19.kernel.BoostPriorityCallH\x00R\rboostPriority\x12B\n" +
+	"\x0elower_priority\x18R \x01(\v2\x19.kernel.LowerPriorityCallH\x00R\rlowerPriorityB\t\n" +
 	"\asyscall\"\xca\x01\n" +
 	"\x0fSyscallResponse\x121\n" +
 	"\asuccess\x18\x01 \x01(\v2\x15.kernel.SuccessResultH\x00R\asuccess\x12+\n" +
@@ -7496,7 +8393,28 @@ const file_kernel_proto_rawDesc = "" +
 	"segment_id\x18\x01 \x01(\rR\tsegmentId\"-\n" +
 	"\fShmStatsCall\x12\x1d\n" +
 	"\n" +
-	"segment_id\x18\x01 \x01(\rR\tsegmentId\"^\n" +
+	"segment_id\x18\x01 \x01(\rR\tsegmentId\"z\n" +
+	"\bMmapCall\x12\x12\n" +
+	"\x04path\x18\x01 \x01(\tR\x04path\x12\x16\n" +
+	"\x06offset\x18\x02 \x01(\rR\x06offset\x12\x16\n" +
+	"\x06length\x18\x03 \x01(\rR\x06length\x12\x12\n" +
+	"\x04prot\x18\x04 \x01(\rR\x04prot\x12\x16\n" +
+	"\x06shared\x18\x05 \x01(\bR\x06shared\"W\n" +
+	"\fMmapReadCall\x12\x17\n" +
+	"\ammap_id\x18\x01 \x01(\rR\x06mmapId\x12\x16\n" +
+	"\x06offset\x18\x02 \x01(\rR\x06offset\x12\x16\n" +
+	"\x06length\x18\x03 \x01(\rR\x06length\"T\n" +
+	"\rMmapWriteCall\x12\x17\n" +
+	"\ammap_id\x18\x01 \x01(\rR\x06mmapId\x12\x16\n" +
+	"\x06offset\x18\x02 \x01(\rR\x06offset\x12\x12\n" +
+	"\x04data\x18\x03 \x01(\fR\x04data\"$\n" +
+	"\tMsyncCall\x12\x17\n" +
+	"\ammap_id\x18\x01 \x01(\rR\x06mmapId\"%\n" +
+	"\n" +
+	"MunmapCall\x12\x17\n" +
+	"\ammap_id\x18\x01 \x01(\rR\x06mmapId\"(\n" +
+	"\rMmapStatsCall\x12\x17\n" +
+	"\ammap_id\x18\x01 \x01(\rR\x06mmapId\"^\n" +
 	"\x0fCreateQueueCall\x12\x1d\n" +
 	"\n" +
 	"queue_type\x18\x01 \x01(\tR\tqueueType\x12\x1f\n" +
@@ -7522,7 +8440,23 @@ const file_kernel_proto_rawDesc = "" +
 	"\x10ScheduleNextCall\"\x12\n" +
 	"\x10YieldProcessCall\"\x19\n" +
 	"\x17GetCurrentScheduledCall\"\x17\n" +
-	"\x15GetSchedulerStatsCall\"\xdb\x01\n" +
+	"\x15GetSchedulerStatsCall\"1\n" +
+	"\x17SetSchedulingPolicyCall\x12\x16\n" +
+	"\x06policy\x18\x01 \x01(\tR\x06policy\"\x19\n" +
+	"\x17GetSchedulingPolicyCall\";\n" +
+	"\x12SetTimeQuantumCall\x12%\n" +
+	"\x0equantum_micros\x18\x01 \x01(\x04R\rquantumMicros\"\x14\n" +
+	"\x12GetTimeQuantumCall\"=\n" +
+	"\x1cGetProcessSchedulerStatsCall\x12\x1d\n" +
+	"\n" +
+	"target_pid\x18\x01 \x01(\rR\ttargetPid\"!\n" +
+	"\x1fGetAllProcessSchedulerStatsCall\"2\n" +
+	"\x11BoostPriorityCall\x12\x1d\n" +
+	"\n" +
+	"target_pid\x18\x01 \x01(\rR\ttargetPid\"2\n" +
+	"\x11LowerPriorityCall\x12\x1d\n" +
+	"\n" +
+	"target_pid\x18\x01 \x01(\rR\ttargetPid\"\xdb\x01\n" +
 	"\x14CreateProcessRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1a\n" +
 	"\bpriority\x18\x02 \x01(\rR\bpriority\x129\n" +
@@ -7700,122 +8634,136 @@ func file_kernel_proto_rawDescGZIP() []byte {
 }
 
 var file_kernel_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_kernel_proto_msgTypes = make([]protoimpl.MessageInfo, 111)
+var file_kernel_proto_msgTypes = make([]protoimpl.MessageInfo, 125)
 var file_kernel_proto_goTypes = []any{
-	(SandboxLevel)(0),                   // 0: kernel.SandboxLevel
-	(Capability)(0),                     // 1: kernel.Capability
-	(AsyncStatusResponse_Status)(0),     // 2: kernel.AsyncStatusResponse.Status
-	(*SyscallRequest)(nil),              // 3: kernel.SyscallRequest
-	(*SyscallResponse)(nil),             // 4: kernel.SyscallResponse
-	(*SuccessResult)(nil),               // 5: kernel.SuccessResult
-	(*ErrorResult)(nil),                 // 6: kernel.ErrorResult
-	(*PermissionDeniedResult)(nil),      // 7: kernel.PermissionDeniedResult
-	(*ReadFileCall)(nil),                // 8: kernel.ReadFileCall
-	(*WriteFileCall)(nil),               // 9: kernel.WriteFileCall
-	(*CreateFileCall)(nil),              // 10: kernel.CreateFileCall
-	(*DeleteFileCall)(nil),              // 11: kernel.DeleteFileCall
-	(*ListDirectoryCall)(nil),           // 12: kernel.ListDirectoryCall
-	(*FileExistsCall)(nil),              // 13: kernel.FileExistsCall
-	(*FileStatCall)(nil),                // 14: kernel.FileStatCall
-	(*MoveFileCall)(nil),                // 15: kernel.MoveFileCall
-	(*CopyFileCall)(nil),                // 16: kernel.CopyFileCall
-	(*CreateDirectoryCall)(nil),         // 17: kernel.CreateDirectoryCall
-	(*RemoveDirectoryCall)(nil),         // 18: kernel.RemoveDirectoryCall
-	(*GetWorkingDirectoryCall)(nil),     // 19: kernel.GetWorkingDirectoryCall
-	(*SetWorkingDirectoryCall)(nil),     // 20: kernel.SetWorkingDirectoryCall
-	(*TruncateFileCall)(nil),            // 21: kernel.TruncateFileCall
-	(*SpawnProcessCall)(nil),            // 22: kernel.SpawnProcessCall
-	(*KillProcessCall)(nil),             // 23: kernel.KillProcessCall
-	(*GetProcessInfoCall)(nil),          // 24: kernel.GetProcessInfoCall
-	(*GetProcessListCall)(nil),          // 25: kernel.GetProcessListCall
-	(*SetProcessPriorityCall)(nil),      // 26: kernel.SetProcessPriorityCall
-	(*GetProcessStateCall)(nil),         // 27: kernel.GetProcessStateCall
-	(*GetProcessStatsCall)(nil),         // 28: kernel.GetProcessStatsCall
-	(*WaitProcessCall)(nil),             // 29: kernel.WaitProcessCall
-	(*GetSystemInfoCall)(nil),           // 30: kernel.GetSystemInfoCall
-	(*GetCurrentTimeCall)(nil),          // 31: kernel.GetCurrentTimeCall
-	(*GetEnvVarCall)(nil),               // 32: kernel.GetEnvVarCall
-	(*SetEnvVarCall)(nil),               // 33: kernel.SetEnvVarCall
-	(*SleepCall)(nil),                   // 34: kernel.SleepCall
-	(*GetUptimeCall)(nil),               // 35: kernel.GetUptimeCall
-	(*GetMemoryStatsCall)(nil),          // 36: kernel.GetMemoryStatsCall
-	(*GetProcessMemoryStatsCall)(nil),   // 37: kernel.GetProcessMemoryStatsCall
-	(*TriggerGCCall)(nil),               // 38: kernel.TriggerGCCall
-	(*SendSignalCall)(nil),              // 39: kernel.SendSignalCall
-	(*NetworkRequestCall)(nil),          // 40: kernel.NetworkRequestCall
-	(*SocketCall)(nil),                  // 41: kernel.SocketCall
-	(*BindCall)(nil),                    // 42: kernel.BindCall
-	(*ListenCall)(nil),                  // 43: kernel.ListenCall
-	(*AcceptCall)(nil),                  // 44: kernel.AcceptCall
-	(*ConnectCall)(nil),                 // 45: kernel.ConnectCall
-	(*SendCall)(nil),                    // 46: kernel.SendCall
-	(*RecvCall)(nil),                    // 47: kernel.RecvCall
-	(*SendToCall)(nil),                  // 48: kernel.SendToCall
-	(*RecvFromCall)(nil),                // 49: kernel.RecvFromCall
-	(*CloseSocketCall)(nil),             // 50: kernel.CloseSocketCall
-	(*SetSockOptCall)(nil),              // 51: kernel.SetSockOptCall
-	(*GetSockOptCall)(nil),              // 52: kernel.GetSockOptCall
-	(*OpenCall)(nil),                    // 53: kernel.OpenCall
-	(*CloseCall)(nil),                   // 54: kernel.CloseCall
-	(*DupCall)(nil),                     // 55: kernel.DupCall
-	(*Dup2Call)(nil),                    // 56: kernel.Dup2Call
-	(*LseekCall)(nil),                   // 57: kernel.LseekCall
-	(*FcntlCall)(nil),                   // 58: kernel.FcntlCall
-	(*CreatePipeCall)(nil),              // 59: kernel.CreatePipeCall
-	(*WritePipeCall)(nil),               // 60: kernel.WritePipeCall
-	(*ReadPipeCall)(nil),                // 61: kernel.ReadPipeCall
-	(*ClosePipeCall)(nil),               // 62: kernel.ClosePipeCall
-	(*DestroyPipeCall)(nil),             // 63: kernel.DestroyPipeCall
-	(*PipeStatsCall)(nil),               // 64: kernel.PipeStatsCall
-	(*CreateShmCall)(nil),               // 65: kernel.CreateShmCall
-	(*AttachShmCall)(nil),               // 66: kernel.AttachShmCall
-	(*DetachShmCall)(nil),               // 67: kernel.DetachShmCall
-	(*WriteShmCall)(nil),                // 68: kernel.WriteShmCall
-	(*ReadShmCall)(nil),                 // 69: kernel.ReadShmCall
-	(*DestroyShmCall)(nil),              // 70: kernel.DestroyShmCall
-	(*ShmStatsCall)(nil),                // 71: kernel.ShmStatsCall
-	(*CreateQueueCall)(nil),             // 72: kernel.CreateQueueCall
-	(*SendQueueCall)(nil),               // 73: kernel.SendQueueCall
-	(*ReceiveQueueCall)(nil),            // 74: kernel.ReceiveQueueCall
-	(*SubscribeQueueCall)(nil),          // 75: kernel.SubscribeQueueCall
-	(*UnsubscribeQueueCall)(nil),        // 76: kernel.UnsubscribeQueueCall
-	(*CloseQueueCall)(nil),              // 77: kernel.CloseQueueCall
-	(*DestroyQueueCall)(nil),            // 78: kernel.DestroyQueueCall
-	(*QueueStatsCall)(nil),              // 79: kernel.QueueStatsCall
-	(*ScheduleNextCall)(nil),            // 80: kernel.ScheduleNextCall
-	(*YieldProcessCall)(nil),            // 81: kernel.YieldProcessCall
-	(*GetCurrentScheduledCall)(nil),     // 82: kernel.GetCurrentScheduledCall
-	(*GetSchedulerStatsCall)(nil),       // 83: kernel.GetSchedulerStatsCall
-	(*CreateProcessRequest)(nil),        // 84: kernel.CreateProcessRequest
-	(*CreateProcessResponse)(nil),       // 85: kernel.CreateProcessResponse
-	(*UpdateSandboxRequest)(nil),        // 86: kernel.UpdateSandboxRequest
-	(*UpdateSandboxResponse)(nil),       // 87: kernel.UpdateSandboxResponse
-	(*ResourceLimits)(nil),              // 88: kernel.ResourceLimits
-	(*EventStreamRequest)(nil),          // 89: kernel.EventStreamRequest
-	(*KernelEvent)(nil),                 // 90: kernel.KernelEvent
-	(*ProcessCreatedEvent)(nil),         // 91: kernel.ProcessCreatedEvent
-	(*ProcessTerminatedEvent)(nil),      // 92: kernel.ProcessTerminatedEvent
-	(*SyscallExecutedEvent)(nil),        // 93: kernel.SyscallExecutedEvent
-	(*PermissionDeniedEvent)(nil),       // 94: kernel.PermissionDeniedEvent
-	(*ScheduleNextRequest)(nil),         // 95: kernel.ScheduleNextRequest
-	(*ScheduleNextResponse)(nil),        // 96: kernel.ScheduleNextResponse
-	(*GetSchedulerStatsRequest)(nil),    // 97: kernel.GetSchedulerStatsRequest
-	(*GetSchedulerStatsResponse)(nil),   // 98: kernel.GetSchedulerStatsResponse
-	(*SchedulerStats)(nil),              // 99: kernel.SchedulerStats
-	(*SetSchedulingPolicyRequest)(nil),  // 100: kernel.SetSchedulingPolicyRequest
-	(*SetSchedulingPolicyResponse)(nil), // 101: kernel.SetSchedulingPolicyResponse
-	(*StreamSyscallRequest)(nil),        // 102: kernel.StreamSyscallRequest
-	(*StreamFileRead)(nil),              // 103: kernel.StreamFileRead
-	(*StreamFileWrite)(nil),             // 104: kernel.StreamFileWrite
-	(*StreamSyscallChunk)(nil),          // 105: kernel.StreamSyscallChunk
-	(*StreamComplete)(nil),              // 106: kernel.StreamComplete
-	(*AsyncSyscallResponse)(nil),        // 107: kernel.AsyncSyscallResponse
-	(*AsyncStatusRequest)(nil),          // 108: kernel.AsyncStatusRequest
-	(*AsyncStatusResponse)(nil),         // 109: kernel.AsyncStatusResponse
-	(*AsyncCancelRequest)(nil),          // 110: kernel.AsyncCancelRequest
-	(*AsyncCancelResponse)(nil),         // 111: kernel.AsyncCancelResponse
-	(*BatchSyscallRequest)(nil),         // 112: kernel.BatchSyscallRequest
-	(*BatchSyscallResponse)(nil),        // 113: kernel.BatchSyscallResponse
+	(SandboxLevel)(0),                       // 0: kernel.SandboxLevel
+	(Capability)(0),                         // 1: kernel.Capability
+	(AsyncStatusResponse_Status)(0),         // 2: kernel.AsyncStatusResponse.Status
+	(*SyscallRequest)(nil),                  // 3: kernel.SyscallRequest
+	(*SyscallResponse)(nil),                 // 4: kernel.SyscallResponse
+	(*SuccessResult)(nil),                   // 5: kernel.SuccessResult
+	(*ErrorResult)(nil),                     // 6: kernel.ErrorResult
+	(*PermissionDeniedResult)(nil),          // 7: kernel.PermissionDeniedResult
+	(*ReadFileCall)(nil),                    // 8: kernel.ReadFileCall
+	(*WriteFileCall)(nil),                   // 9: kernel.WriteFileCall
+	(*CreateFileCall)(nil),                  // 10: kernel.CreateFileCall
+	(*DeleteFileCall)(nil),                  // 11: kernel.DeleteFileCall
+	(*ListDirectoryCall)(nil),               // 12: kernel.ListDirectoryCall
+	(*FileExistsCall)(nil),                  // 13: kernel.FileExistsCall
+	(*FileStatCall)(nil),                    // 14: kernel.FileStatCall
+	(*MoveFileCall)(nil),                    // 15: kernel.MoveFileCall
+	(*CopyFileCall)(nil),                    // 16: kernel.CopyFileCall
+	(*CreateDirectoryCall)(nil),             // 17: kernel.CreateDirectoryCall
+	(*RemoveDirectoryCall)(nil),             // 18: kernel.RemoveDirectoryCall
+	(*GetWorkingDirectoryCall)(nil),         // 19: kernel.GetWorkingDirectoryCall
+	(*SetWorkingDirectoryCall)(nil),         // 20: kernel.SetWorkingDirectoryCall
+	(*TruncateFileCall)(nil),                // 21: kernel.TruncateFileCall
+	(*SpawnProcessCall)(nil),                // 22: kernel.SpawnProcessCall
+	(*KillProcessCall)(nil),                 // 23: kernel.KillProcessCall
+	(*GetProcessInfoCall)(nil),              // 24: kernel.GetProcessInfoCall
+	(*GetProcessListCall)(nil),              // 25: kernel.GetProcessListCall
+	(*SetProcessPriorityCall)(nil),          // 26: kernel.SetProcessPriorityCall
+	(*GetProcessStateCall)(nil),             // 27: kernel.GetProcessStateCall
+	(*GetProcessStatsCall)(nil),             // 28: kernel.GetProcessStatsCall
+	(*WaitProcessCall)(nil),                 // 29: kernel.WaitProcessCall
+	(*GetSystemInfoCall)(nil),               // 30: kernel.GetSystemInfoCall
+	(*GetCurrentTimeCall)(nil),              // 31: kernel.GetCurrentTimeCall
+	(*GetEnvVarCall)(nil),                   // 32: kernel.GetEnvVarCall
+	(*SetEnvVarCall)(nil),                   // 33: kernel.SetEnvVarCall
+	(*SleepCall)(nil),                       // 34: kernel.SleepCall
+	(*GetUptimeCall)(nil),                   // 35: kernel.GetUptimeCall
+	(*GetMemoryStatsCall)(nil),              // 36: kernel.GetMemoryStatsCall
+	(*GetProcessMemoryStatsCall)(nil),       // 37: kernel.GetProcessMemoryStatsCall
+	(*TriggerGCCall)(nil),                   // 38: kernel.TriggerGCCall
+	(*SendSignalCall)(nil),                  // 39: kernel.SendSignalCall
+	(*NetworkRequestCall)(nil),              // 40: kernel.NetworkRequestCall
+	(*SocketCall)(nil),                      // 41: kernel.SocketCall
+	(*BindCall)(nil),                        // 42: kernel.BindCall
+	(*ListenCall)(nil),                      // 43: kernel.ListenCall
+	(*AcceptCall)(nil),                      // 44: kernel.AcceptCall
+	(*ConnectCall)(nil),                     // 45: kernel.ConnectCall
+	(*SendCall)(nil),                        // 46: kernel.SendCall
+	(*RecvCall)(nil),                        // 47: kernel.RecvCall
+	(*SendToCall)(nil),                      // 48: kernel.SendToCall
+	(*RecvFromCall)(nil),                    // 49: kernel.RecvFromCall
+	(*CloseSocketCall)(nil),                 // 50: kernel.CloseSocketCall
+	(*SetSockOptCall)(nil),                  // 51: kernel.SetSockOptCall
+	(*GetSockOptCall)(nil),                  // 52: kernel.GetSockOptCall
+	(*OpenCall)(nil),                        // 53: kernel.OpenCall
+	(*CloseCall)(nil),                       // 54: kernel.CloseCall
+	(*DupCall)(nil),                         // 55: kernel.DupCall
+	(*Dup2Call)(nil),                        // 56: kernel.Dup2Call
+	(*LseekCall)(nil),                       // 57: kernel.LseekCall
+	(*FcntlCall)(nil),                       // 58: kernel.FcntlCall
+	(*CreatePipeCall)(nil),                  // 59: kernel.CreatePipeCall
+	(*WritePipeCall)(nil),                   // 60: kernel.WritePipeCall
+	(*ReadPipeCall)(nil),                    // 61: kernel.ReadPipeCall
+	(*ClosePipeCall)(nil),                   // 62: kernel.ClosePipeCall
+	(*DestroyPipeCall)(nil),                 // 63: kernel.DestroyPipeCall
+	(*PipeStatsCall)(nil),                   // 64: kernel.PipeStatsCall
+	(*CreateShmCall)(nil),                   // 65: kernel.CreateShmCall
+	(*AttachShmCall)(nil),                   // 66: kernel.AttachShmCall
+	(*DetachShmCall)(nil),                   // 67: kernel.DetachShmCall
+	(*WriteShmCall)(nil),                    // 68: kernel.WriteShmCall
+	(*ReadShmCall)(nil),                     // 69: kernel.ReadShmCall
+	(*DestroyShmCall)(nil),                  // 70: kernel.DestroyShmCall
+	(*ShmStatsCall)(nil),                    // 71: kernel.ShmStatsCall
+	(*MmapCall)(nil),                        // 72: kernel.MmapCall
+	(*MmapReadCall)(nil),                    // 73: kernel.MmapReadCall
+	(*MmapWriteCall)(nil),                   // 74: kernel.MmapWriteCall
+	(*MsyncCall)(nil),                       // 75: kernel.MsyncCall
+	(*MunmapCall)(nil),                      // 76: kernel.MunmapCall
+	(*MmapStatsCall)(nil),                   // 77: kernel.MmapStatsCall
+	(*CreateQueueCall)(nil),                 // 78: kernel.CreateQueueCall
+	(*SendQueueCall)(nil),                   // 79: kernel.SendQueueCall
+	(*ReceiveQueueCall)(nil),                // 80: kernel.ReceiveQueueCall
+	(*SubscribeQueueCall)(nil),              // 81: kernel.SubscribeQueueCall
+	(*UnsubscribeQueueCall)(nil),            // 82: kernel.UnsubscribeQueueCall
+	(*CloseQueueCall)(nil),                  // 83: kernel.CloseQueueCall
+	(*DestroyQueueCall)(nil),                // 84: kernel.DestroyQueueCall
+	(*QueueStatsCall)(nil),                  // 85: kernel.QueueStatsCall
+	(*ScheduleNextCall)(nil),                // 86: kernel.ScheduleNextCall
+	(*YieldProcessCall)(nil),                // 87: kernel.YieldProcessCall
+	(*GetCurrentScheduledCall)(nil),         // 88: kernel.GetCurrentScheduledCall
+	(*GetSchedulerStatsCall)(nil),           // 89: kernel.GetSchedulerStatsCall
+	(*SetSchedulingPolicyCall)(nil),         // 90: kernel.SetSchedulingPolicyCall
+	(*GetSchedulingPolicyCall)(nil),         // 91: kernel.GetSchedulingPolicyCall
+	(*SetTimeQuantumCall)(nil),              // 92: kernel.SetTimeQuantumCall
+	(*GetTimeQuantumCall)(nil),              // 93: kernel.GetTimeQuantumCall
+	(*GetProcessSchedulerStatsCall)(nil),    // 94: kernel.GetProcessSchedulerStatsCall
+	(*GetAllProcessSchedulerStatsCall)(nil), // 95: kernel.GetAllProcessSchedulerStatsCall
+	(*BoostPriorityCall)(nil),               // 96: kernel.BoostPriorityCall
+	(*LowerPriorityCall)(nil),               // 97: kernel.LowerPriorityCall
+	(*CreateProcessRequest)(nil),            // 98: kernel.CreateProcessRequest
+	(*CreateProcessResponse)(nil),           // 99: kernel.CreateProcessResponse
+	(*UpdateSandboxRequest)(nil),            // 100: kernel.UpdateSandboxRequest
+	(*UpdateSandboxResponse)(nil),           // 101: kernel.UpdateSandboxResponse
+	(*ResourceLimits)(nil),                  // 102: kernel.ResourceLimits
+	(*EventStreamRequest)(nil),              // 103: kernel.EventStreamRequest
+	(*KernelEvent)(nil),                     // 104: kernel.KernelEvent
+	(*ProcessCreatedEvent)(nil),             // 105: kernel.ProcessCreatedEvent
+	(*ProcessTerminatedEvent)(nil),          // 106: kernel.ProcessTerminatedEvent
+	(*SyscallExecutedEvent)(nil),            // 107: kernel.SyscallExecutedEvent
+	(*PermissionDeniedEvent)(nil),           // 108: kernel.PermissionDeniedEvent
+	(*ScheduleNextRequest)(nil),             // 109: kernel.ScheduleNextRequest
+	(*ScheduleNextResponse)(nil),            // 110: kernel.ScheduleNextResponse
+	(*GetSchedulerStatsRequest)(nil),        // 111: kernel.GetSchedulerStatsRequest
+	(*GetSchedulerStatsResponse)(nil),       // 112: kernel.GetSchedulerStatsResponse
+	(*SchedulerStats)(nil),                  // 113: kernel.SchedulerStats
+	(*SetSchedulingPolicyRequest)(nil),      // 114: kernel.SetSchedulingPolicyRequest
+	(*SetSchedulingPolicyResponse)(nil),     // 115: kernel.SetSchedulingPolicyResponse
+	(*StreamSyscallRequest)(nil),            // 116: kernel.StreamSyscallRequest
+	(*StreamFileRead)(nil),                  // 117: kernel.StreamFileRead
+	(*StreamFileWrite)(nil),                 // 118: kernel.StreamFileWrite
+	(*StreamSyscallChunk)(nil),              // 119: kernel.StreamSyscallChunk
+	(*StreamComplete)(nil),                  // 120: kernel.StreamComplete
+	(*AsyncSyscallResponse)(nil),            // 121: kernel.AsyncSyscallResponse
+	(*AsyncStatusRequest)(nil),              // 122: kernel.AsyncStatusRequest
+	(*AsyncStatusResponse)(nil),             // 123: kernel.AsyncStatusResponse
+	(*AsyncCancelRequest)(nil),              // 124: kernel.AsyncCancelRequest
+	(*AsyncCancelResponse)(nil),             // 125: kernel.AsyncCancelResponse
+	(*BatchSyscallRequest)(nil),             // 126: kernel.BatchSyscallRequest
+	(*BatchSyscallResponse)(nil),            // 127: kernel.BatchSyscallResponse
 }
 var file_kernel_proto_depIdxs = []int32{
 	8,   // 0: kernel.SyscallRequest.read_file:type_name -> kernel.ReadFileCall
@@ -7882,65 +8830,79 @@ var file_kernel_proto_depIdxs = []int32{
 	69,  // 61: kernel.SyscallRequest.read_shm:type_name -> kernel.ReadShmCall
 	70,  // 62: kernel.SyscallRequest.destroy_shm:type_name -> kernel.DestroyShmCall
 	71,  // 63: kernel.SyscallRequest.shm_stats:type_name -> kernel.ShmStatsCall
-	72,  // 64: kernel.SyscallRequest.create_queue:type_name -> kernel.CreateQueueCall
-	73,  // 65: kernel.SyscallRequest.send_queue:type_name -> kernel.SendQueueCall
-	74,  // 66: kernel.SyscallRequest.receive_queue:type_name -> kernel.ReceiveQueueCall
-	75,  // 67: kernel.SyscallRequest.subscribe_queue:type_name -> kernel.SubscribeQueueCall
-	76,  // 68: kernel.SyscallRequest.unsubscribe_queue:type_name -> kernel.UnsubscribeQueueCall
-	77,  // 69: kernel.SyscallRequest.close_queue:type_name -> kernel.CloseQueueCall
-	78,  // 70: kernel.SyscallRequest.destroy_queue:type_name -> kernel.DestroyQueueCall
-	79,  // 71: kernel.SyscallRequest.queue_stats:type_name -> kernel.QueueStatsCall
-	80,  // 72: kernel.SyscallRequest.schedule_next:type_name -> kernel.ScheduleNextCall
-	81,  // 73: kernel.SyscallRequest.yield_process:type_name -> kernel.YieldProcessCall
-	82,  // 74: kernel.SyscallRequest.get_current_scheduled:type_name -> kernel.GetCurrentScheduledCall
-	83,  // 75: kernel.SyscallRequest.get_scheduler_stats:type_name -> kernel.GetSchedulerStatsCall
-	5,   // 76: kernel.SyscallResponse.success:type_name -> kernel.SuccessResult
-	6,   // 77: kernel.SyscallResponse.error:type_name -> kernel.ErrorResult
-	7,   // 78: kernel.SyscallResponse.permission_denied:type_name -> kernel.PermissionDeniedResult
-	0,   // 79: kernel.CreateProcessRequest.sandbox_level:type_name -> kernel.SandboxLevel
-	1,   // 80: kernel.UpdateSandboxRequest.capabilities:type_name -> kernel.Capability
-	88,  // 81: kernel.UpdateSandboxRequest.limits:type_name -> kernel.ResourceLimits
-	91,  // 82: kernel.KernelEvent.process_created:type_name -> kernel.ProcessCreatedEvent
-	92,  // 83: kernel.KernelEvent.process_terminated:type_name -> kernel.ProcessTerminatedEvent
-	93,  // 84: kernel.KernelEvent.syscall_executed:type_name -> kernel.SyscallExecutedEvent
-	94,  // 85: kernel.KernelEvent.permission_denied:type_name -> kernel.PermissionDeniedEvent
-	99,  // 86: kernel.GetSchedulerStatsResponse.stats:type_name -> kernel.SchedulerStats
-	103, // 87: kernel.StreamSyscallRequest.read:type_name -> kernel.StreamFileRead
-	104, // 88: kernel.StreamSyscallRequest.write:type_name -> kernel.StreamFileWrite
-	106, // 89: kernel.StreamSyscallChunk.complete:type_name -> kernel.StreamComplete
-	2,   // 90: kernel.AsyncStatusResponse.status:type_name -> kernel.AsyncStatusResponse.Status
-	4,   // 91: kernel.AsyncStatusResponse.result:type_name -> kernel.SyscallResponse
-	3,   // 92: kernel.BatchSyscallRequest.requests:type_name -> kernel.SyscallRequest
-	4,   // 93: kernel.BatchSyscallResponse.responses:type_name -> kernel.SyscallResponse
-	3,   // 94: kernel.KernelService.ExecuteSyscall:input_type -> kernel.SyscallRequest
-	102, // 95: kernel.KernelService.StreamSyscall:input_type -> kernel.StreamSyscallRequest
-	3,   // 96: kernel.KernelService.ExecuteSyscallAsync:input_type -> kernel.SyscallRequest
-	108, // 97: kernel.KernelService.GetAsyncStatus:input_type -> kernel.AsyncStatusRequest
-	110, // 98: kernel.KernelService.CancelAsync:input_type -> kernel.AsyncCancelRequest
-	112, // 99: kernel.KernelService.ExecuteSyscallBatch:input_type -> kernel.BatchSyscallRequest
-	84,  // 100: kernel.KernelService.CreateProcess:input_type -> kernel.CreateProcessRequest
-	86,  // 101: kernel.KernelService.UpdateSandbox:input_type -> kernel.UpdateSandboxRequest
-	95,  // 102: kernel.KernelService.ScheduleNext:input_type -> kernel.ScheduleNextRequest
-	97,  // 103: kernel.KernelService.GetSchedulerStats:input_type -> kernel.GetSchedulerStatsRequest
-	100, // 104: kernel.KernelService.SetSchedulingPolicy:input_type -> kernel.SetSchedulingPolicyRequest
-	89,  // 105: kernel.KernelService.StreamEvents:input_type -> kernel.EventStreamRequest
-	4,   // 106: kernel.KernelService.ExecuteSyscall:output_type -> kernel.SyscallResponse
-	105, // 107: kernel.KernelService.StreamSyscall:output_type -> kernel.StreamSyscallChunk
-	107, // 108: kernel.KernelService.ExecuteSyscallAsync:output_type -> kernel.AsyncSyscallResponse
-	109, // 109: kernel.KernelService.GetAsyncStatus:output_type -> kernel.AsyncStatusResponse
-	111, // 110: kernel.KernelService.CancelAsync:output_type -> kernel.AsyncCancelResponse
-	113, // 111: kernel.KernelService.ExecuteSyscallBatch:output_type -> kernel.BatchSyscallResponse
-	85,  // 112: kernel.KernelService.CreateProcess:output_type -> kernel.CreateProcessResponse
-	87,  // 113: kernel.KernelService.UpdateSandbox:output_type -> kernel.UpdateSandboxResponse
-	96,  // 114: kernel.KernelService.ScheduleNext:output_type -> kernel.ScheduleNextResponse
-	98,  // 115: kernel.KernelService.GetSchedulerStats:output_type -> kernel.GetSchedulerStatsResponse
-	101, // 116: kernel.KernelService.SetSchedulingPolicy:output_type -> kernel.SetSchedulingPolicyResponse
-	90,  // 117: kernel.KernelService.StreamEvents:output_type -> kernel.KernelEvent
-	106, // [106:118] is the sub-list for method output_type
-	94,  // [94:106] is the sub-list for method input_type
-	94,  // [94:94] is the sub-list for extension type_name
-	94,  // [94:94] is the sub-list for extension extendee
-	0,   // [0:94] is the sub-list for field type_name
+	72,  // 64: kernel.SyscallRequest.mmap:type_name -> kernel.MmapCall
+	73,  // 65: kernel.SyscallRequest.mmap_read:type_name -> kernel.MmapReadCall
+	74,  // 66: kernel.SyscallRequest.mmap_write:type_name -> kernel.MmapWriteCall
+	75,  // 67: kernel.SyscallRequest.msync:type_name -> kernel.MsyncCall
+	76,  // 68: kernel.SyscallRequest.munmap:type_name -> kernel.MunmapCall
+	77,  // 69: kernel.SyscallRequest.mmap_stats:type_name -> kernel.MmapStatsCall
+	78,  // 70: kernel.SyscallRequest.create_queue:type_name -> kernel.CreateQueueCall
+	79,  // 71: kernel.SyscallRequest.send_queue:type_name -> kernel.SendQueueCall
+	80,  // 72: kernel.SyscallRequest.receive_queue:type_name -> kernel.ReceiveQueueCall
+	81,  // 73: kernel.SyscallRequest.subscribe_queue:type_name -> kernel.SubscribeQueueCall
+	82,  // 74: kernel.SyscallRequest.unsubscribe_queue:type_name -> kernel.UnsubscribeQueueCall
+	83,  // 75: kernel.SyscallRequest.close_queue:type_name -> kernel.CloseQueueCall
+	84,  // 76: kernel.SyscallRequest.destroy_queue:type_name -> kernel.DestroyQueueCall
+	85,  // 77: kernel.SyscallRequest.queue_stats:type_name -> kernel.QueueStatsCall
+	86,  // 78: kernel.SyscallRequest.schedule_next:type_name -> kernel.ScheduleNextCall
+	87,  // 79: kernel.SyscallRequest.yield_process:type_name -> kernel.YieldProcessCall
+	88,  // 80: kernel.SyscallRequest.get_current_scheduled:type_name -> kernel.GetCurrentScheduledCall
+	89,  // 81: kernel.SyscallRequest.get_scheduler_stats:type_name -> kernel.GetSchedulerStatsCall
+	90,  // 82: kernel.SyscallRequest.set_scheduling_policy:type_name -> kernel.SetSchedulingPolicyCall
+	91,  // 83: kernel.SyscallRequest.get_scheduling_policy:type_name -> kernel.GetSchedulingPolicyCall
+	92,  // 84: kernel.SyscallRequest.set_time_quantum:type_name -> kernel.SetTimeQuantumCall
+	93,  // 85: kernel.SyscallRequest.get_time_quantum:type_name -> kernel.GetTimeQuantumCall
+	94,  // 86: kernel.SyscallRequest.get_process_scheduler_stats:type_name -> kernel.GetProcessSchedulerStatsCall
+	95,  // 87: kernel.SyscallRequest.get_all_process_scheduler_stats:type_name -> kernel.GetAllProcessSchedulerStatsCall
+	96,  // 88: kernel.SyscallRequest.boost_priority:type_name -> kernel.BoostPriorityCall
+	97,  // 89: kernel.SyscallRequest.lower_priority:type_name -> kernel.LowerPriorityCall
+	5,   // 90: kernel.SyscallResponse.success:type_name -> kernel.SuccessResult
+	6,   // 91: kernel.SyscallResponse.error:type_name -> kernel.ErrorResult
+	7,   // 92: kernel.SyscallResponse.permission_denied:type_name -> kernel.PermissionDeniedResult
+	0,   // 93: kernel.CreateProcessRequest.sandbox_level:type_name -> kernel.SandboxLevel
+	1,   // 94: kernel.UpdateSandboxRequest.capabilities:type_name -> kernel.Capability
+	102, // 95: kernel.UpdateSandboxRequest.limits:type_name -> kernel.ResourceLimits
+	105, // 96: kernel.KernelEvent.process_created:type_name -> kernel.ProcessCreatedEvent
+	106, // 97: kernel.KernelEvent.process_terminated:type_name -> kernel.ProcessTerminatedEvent
+	107, // 98: kernel.KernelEvent.syscall_executed:type_name -> kernel.SyscallExecutedEvent
+	108, // 99: kernel.KernelEvent.permission_denied:type_name -> kernel.PermissionDeniedEvent
+	113, // 100: kernel.GetSchedulerStatsResponse.stats:type_name -> kernel.SchedulerStats
+	117, // 101: kernel.StreamSyscallRequest.read:type_name -> kernel.StreamFileRead
+	118, // 102: kernel.StreamSyscallRequest.write:type_name -> kernel.StreamFileWrite
+	120, // 103: kernel.StreamSyscallChunk.complete:type_name -> kernel.StreamComplete
+	2,   // 104: kernel.AsyncStatusResponse.status:type_name -> kernel.AsyncStatusResponse.Status
+	4,   // 105: kernel.AsyncStatusResponse.result:type_name -> kernel.SyscallResponse
+	3,   // 106: kernel.BatchSyscallRequest.requests:type_name -> kernel.SyscallRequest
+	4,   // 107: kernel.BatchSyscallResponse.responses:type_name -> kernel.SyscallResponse
+	3,   // 108: kernel.KernelService.ExecuteSyscall:input_type -> kernel.SyscallRequest
+	116, // 109: kernel.KernelService.StreamSyscall:input_type -> kernel.StreamSyscallRequest
+	3,   // 110: kernel.KernelService.ExecuteSyscallAsync:input_type -> kernel.SyscallRequest
+	122, // 111: kernel.KernelService.GetAsyncStatus:input_type -> kernel.AsyncStatusRequest
+	124, // 112: kernel.KernelService.CancelAsync:input_type -> kernel.AsyncCancelRequest
+	126, // 113: kernel.KernelService.ExecuteSyscallBatch:input_type -> kernel.BatchSyscallRequest
+	98,  // 114: kernel.KernelService.CreateProcess:input_type -> kernel.CreateProcessRequest
+	100, // 115: kernel.KernelService.UpdateSandbox:input_type -> kernel.UpdateSandboxRequest
+	109, // 116: kernel.KernelService.ScheduleNext:input_type -> kernel.ScheduleNextRequest
+	111, // 117: kernel.KernelService.GetSchedulerStats:input_type -> kernel.GetSchedulerStatsRequest
+	114, // 118: kernel.KernelService.SetSchedulingPolicy:input_type -> kernel.SetSchedulingPolicyRequest
+	103, // 119: kernel.KernelService.StreamEvents:input_type -> kernel.EventStreamRequest
+	4,   // 120: kernel.KernelService.ExecuteSyscall:output_type -> kernel.SyscallResponse
+	119, // 121: kernel.KernelService.StreamSyscall:output_type -> kernel.StreamSyscallChunk
+	121, // 122: kernel.KernelService.ExecuteSyscallAsync:output_type -> kernel.AsyncSyscallResponse
+	123, // 123: kernel.KernelService.GetAsyncStatus:output_type -> kernel.AsyncStatusResponse
+	125, // 124: kernel.KernelService.CancelAsync:output_type -> kernel.AsyncCancelResponse
+	127, // 125: kernel.KernelService.ExecuteSyscallBatch:output_type -> kernel.BatchSyscallResponse
+	99,  // 126: kernel.KernelService.CreateProcess:output_type -> kernel.CreateProcessResponse
+	101, // 127: kernel.KernelService.UpdateSandbox:output_type -> kernel.UpdateSandboxResponse
+	110, // 128: kernel.KernelService.ScheduleNext:output_type -> kernel.ScheduleNextResponse
+	112, // 129: kernel.KernelService.GetSchedulerStats:output_type -> kernel.GetSchedulerStatsResponse
+	115, // 130: kernel.KernelService.SetSchedulingPolicy:output_type -> kernel.SetSchedulingPolicyResponse
+	104, // 131: kernel.KernelService.StreamEvents:output_type -> kernel.KernelEvent
+	120, // [120:132] is the sub-list for method output_type
+	108, // [108:120] is the sub-list for method input_type
+	108, // [108:108] is the sub-list for extension type_name
+	108, // [108:108] is the sub-list for extension extendee
+	0,   // [0:108] is the sub-list for field type_name
 }
 
 func init() { file_kernel_proto_init() }
@@ -8013,6 +8975,12 @@ func file_kernel_proto_init() {
 		(*SyscallRequest_ReadShm)(nil),
 		(*SyscallRequest_DestroyShm)(nil),
 		(*SyscallRequest_ShmStats)(nil),
+		(*SyscallRequest_Mmap)(nil),
+		(*SyscallRequest_MmapRead)(nil),
+		(*SyscallRequest_MmapWrite)(nil),
+		(*SyscallRequest_Msync)(nil),
+		(*SyscallRequest_Munmap)(nil),
+		(*SyscallRequest_MmapStats)(nil),
 		(*SyscallRequest_CreateQueue)(nil),
 		(*SyscallRequest_SendQueue)(nil),
 		(*SyscallRequest_ReceiveQueue)(nil),
@@ -8025,6 +8993,14 @@ func file_kernel_proto_init() {
 		(*SyscallRequest_YieldProcess)(nil),
 		(*SyscallRequest_GetCurrentScheduled)(nil),
 		(*SyscallRequest_GetSchedulerStats)(nil),
+		(*SyscallRequest_SetSchedulingPolicy)(nil),
+		(*SyscallRequest_GetSchedulingPolicy)(nil),
+		(*SyscallRequest_SetTimeQuantum)(nil),
+		(*SyscallRequest_GetTimeQuantum)(nil),
+		(*SyscallRequest_GetProcessSchedulerStats)(nil),
+		(*SyscallRequest_GetAllProcessSchedulerStats)(nil),
+		(*SyscallRequest_BoostPriority)(nil),
+		(*SyscallRequest_LowerPriority)(nil),
 	}
 	file_kernel_proto_msgTypes[1].OneofWrappers = []any{
 		(*SyscallResponse_Success)(nil),
@@ -8034,22 +9010,22 @@ func file_kernel_proto_init() {
 	file_kernel_proto_msgTypes[26].OneofWrappers = []any{}
 	file_kernel_proto_msgTypes[35].OneofWrappers = []any{}
 	file_kernel_proto_msgTypes[56].OneofWrappers = []any{}
-	file_kernel_proto_msgTypes[69].OneofWrappers = []any{}
-	file_kernel_proto_msgTypes[70].OneofWrappers = []any{}
-	file_kernel_proto_msgTypes[81].OneofWrappers = []any{}
-	file_kernel_proto_msgTypes[82].OneofWrappers = []any{}
-	file_kernel_proto_msgTypes[87].OneofWrappers = []any{
+	file_kernel_proto_msgTypes[75].OneofWrappers = []any{}
+	file_kernel_proto_msgTypes[76].OneofWrappers = []any{}
+	file_kernel_proto_msgTypes[95].OneofWrappers = []any{}
+	file_kernel_proto_msgTypes[96].OneofWrappers = []any{}
+	file_kernel_proto_msgTypes[101].OneofWrappers = []any{
 		(*KernelEvent_ProcessCreated)(nil),
 		(*KernelEvent_ProcessTerminated)(nil),
 		(*KernelEvent_SyscallExecuted)(nil),
 		(*KernelEvent_PermissionDenied)(nil),
 	}
-	file_kernel_proto_msgTypes[93].OneofWrappers = []any{}
-	file_kernel_proto_msgTypes[99].OneofWrappers = []any{
+	file_kernel_proto_msgTypes[107].OneofWrappers = []any{}
+	file_kernel_proto_msgTypes[113].OneofWrappers = []any{
 		(*StreamSyscallRequest_Read)(nil),
 		(*StreamSyscallRequest_Write)(nil),
 	}
-	file_kernel_proto_msgTypes[102].OneofWrappers = []any{
+	file_kernel_proto_msgTypes[116].OneofWrappers = []any{
 		(*StreamSyscallChunk_Data)(nil),
 		(*StreamSyscallChunk_Error)(nil),
 		(*StreamSyscallChunk_Complete)(nil),
@@ -8060,7 +9036,7 @@ func file_kernel_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_kernel_proto_rawDesc), len(file_kernel_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   111,
+			NumMessages:   125,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
