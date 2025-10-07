@@ -14,9 +14,9 @@ export * from "./animation/animationConfig";
 export * from "./animation/componentVariants";
 
 // API clients
-export { WebSocketClient } from "./api/websocketClient";
-export { SessionClient } from "./api/sessionClient";
-export { RegistryClient } from "./api/registryClient";
+export { WebSocketClient } from "../api/websocketClient";
+export { SessionClient } from "../api/sessionClient";
+export { RegistryClient } from "../api/registryClient";
 
 // ID generation utilities
 export {
@@ -44,3 +44,6 @@ export {
   cacheKey,
 } from "./hash";
 export type { HashAlgorithm } from "./hash";
+
+// Date utilities
+export * from "./dates";

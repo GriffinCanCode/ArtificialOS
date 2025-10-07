@@ -1,4 +1,4 @@
-.PHONY: help all setup clean install build start stop logs proto test format
+.PHONY: help all setup clean install build start stop logs proto test format audit load-test test-integration
 
 # Default target
 .DEFAULT_GOAL := help
@@ -200,6 +200,21 @@ test-ai: ## Run Python AI service tests
 	@echo "$(YELLOW)Running AI service tests...$(NC)"
 	@cd ai-service && . venv/bin/activate && pytest
 	@echo "$(GREEN)AI service tests passed$(NC)"
+
+test-integration: ## Run integration tests
+	@echo "$(YELLOW)Running integration tests...$(NC)"
+	@cd backend && go test -v -tags=integration ./tests/integration/...
+	@echo "$(GREEN)Integration tests passed$(NC)"
+
+##@ Stability & Security
+
+audit: ## Run security audit across all services
+	@echo "$(YELLOW)Running comprehensive security audit...$(NC)"
+	@./scripts/security-audit.sh
+
+load-test: ## Run load tests to find breaking points
+	@echo "$(YELLOW)Running load tests...$(NC)"
+	@cd backend/tests/load && make medium
 
 ##@ Code Quality
 

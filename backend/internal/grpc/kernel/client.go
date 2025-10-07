@@ -9,14 +9,16 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 
+	"github.com/GriffinCanCode/AgentOS/backend/internal/infrastructure/resilience"
 	pb "github.com/GriffinCanCode/AgentOS/backend/proto/kernel"
 )
 
-// KernelClient wraps gRPC client for kernel communication
+// KernelClient wraps gRPC client for kernel communication with circuit breaker
 type KernelClient struct {
-	conn   *grpc.ClientConn
-	client pb.KernelServiceClient
-	addr   string
+	conn    *grpc.ClientConn
+	client  pb.KernelServiceClient
+	addr    string
+	breaker *resilience.Breaker
 }
 
 // New creates a new kernel client with proper connection management
@@ -43,10 +45,23 @@ func New(addr string) (*KernelClient, error) {
 		return nil, fmt.Errorf("failed to dial kernel: %w", err)
 	}
 
+	// Create circuit breaker for kernel calls
+	breaker := resilience.New("kernel", resilience.Settings{
+		MaxRequests: 3,
+		Interval:    30 * time.Second,
+		Timeout:     10 * time.Second,
+		ReadyToTrip: func(counts resilience.Counts) bool {
+			// Trip if 5+ consecutive failures or 50% failure rate with 10+ requests
+			return counts.ConsecutiveFailures >= 5 ||
+				(counts.Requests >= 10 && float64(counts.TotalFailures)/float64(counts.Requests) > 0.5)
+		},
+	})
+
 	return &KernelClient{
-		conn:   conn,
-		client: pb.NewKernelServiceClient(conn),
-		addr:   addr,
+		conn:    conn,
+		client:  pb.NewKernelServiceClient(conn),
+		addr:    addr,
+		breaker: breaker,
 	}, nil
 }
 
@@ -58,9 +73,21 @@ func (k *KernelClient) Close() error {
 	return nil
 }
 
-// ExecuteSyscallRaw executes a raw protobuf syscall request
+// ExecuteSyscallRaw executes a raw protobuf syscall request with circuit breaker
 func (k *KernelClient) ExecuteSyscallRaw(ctx context.Context, req *pb.SyscallRequest) (*pb.SyscallResponse, error) {
-	return k.client.ExecuteSyscall(ctx, req)
+	result, err := k.breaker.Execute(func() (interface{}, error) {
+		return k.client.ExecuteSyscall(ctx, req)
+	})
+
+	if err == resilience.ErrCircuitOpen {
+		return nil, fmt.Errorf("kernel service unavailable: circuit breaker open")
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return result.(*pb.SyscallResponse), nil
 }
 
 // CreateProcessOptions optional parameters for process creation
@@ -109,10 +136,20 @@ func (k *KernelClient) CreateProcess(
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	resp, err := k.client.CreateProcess(ctx, req)
+	// Execute through circuit breaker
+	result, err := k.breaker.Execute(func() (interface{}, error) {
+		return k.client.CreateProcess(ctx, req)
+	})
+
+	if err == resilience.ErrCircuitOpen {
+		return nil, nil, fmt.Errorf("kernel service unavailable: circuit breaker open")
+	}
+
 	if err != nil {
 		return nil, nil, fmt.Errorf("create process failed: %w", err)
 	}
+
+	resp := result.(*pb.CreateProcessResponse)
 
 	if !resp.Success {
 		errMsg := "unknown error"

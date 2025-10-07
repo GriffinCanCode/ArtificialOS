@@ -7,16 +7,18 @@ import (
 	"sync"
 	"time"
 
+	"github.com/GriffinCanCode/AgentOS/backend/internal/infrastructure/resilience"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/types"
 	"github.com/go-resty/resty/v2"
 	"github.com/hashicorp/go-retryablehttp"
 	"golang.org/x/time/rate"
 )
 
-// Client wraps resty with rate limiting and advanced features
+// Client wraps resty with rate limiting, circuit breaker, and advanced features
 type Client struct {
 	Resty   *resty.Client
 	Limiter *rate.Limiter
+	Breaker *resilience.Breaker
 	Mu      sync.RWMutex
 }
 
@@ -32,7 +34,7 @@ type HTTPOps struct {
 	Client *Client
 }
 
-// NewClient creates production-ready HTTP client
+// NewClient creates production-ready HTTP client with circuit breaker
 func NewClient() *Client {
 	// Create underlying retryable client
 	retryClient := retryablehttp.NewClient()
@@ -53,9 +55,23 @@ func NewClient() *Client {
 	// Configure transport settings
 	restyClient.SetTransport(retryClient.HTTPClient.Transport)
 
+	// Create circuit breaker for external HTTP calls
+	breaker := resilience.New("http-external", resilience.Settings{
+		MaxRequests: 5,
+		Interval:    60 * time.Second,
+		Timeout:     30 * time.Second,
+		ReadyToTrip: func(counts resilience.Counts) bool {
+			// Be lenient for external APIs - they vary in reliability
+			// Trip if 10+ consecutive failures OR >70% failure rate with 20+ requests
+			return counts.ConsecutiveFailures >= 10 ||
+				(counts.Requests >= 20 && float64(counts.TotalFailures)/float64(counts.Requests) > 0.7)
+		},
+	})
+
 	return &Client{
 		Resty:   restyClient,
 		Limiter: rate.NewLimiter(rate.Inf, 0), // Unlimited by default
+		Breaker: breaker,
 	}
 }
 
@@ -133,8 +149,13 @@ func (c *Client) SetCustomAuth(header string) {
 	c.SetHeader("Authorization", header)
 }
 
-// Request creates new request with rate limiting
+// Request creates new request with rate limiting and circuit breaker protection
 func (c *Client) Request(ctx context.Context) (*resty.Request, error) {
+	// Check circuit breaker state first
+	if c.Breaker.State() == resilience.StateOpen {
+		return nil, resilience.ErrCircuitOpen
+	}
+
 	// Wait for rate limiter
 	if err := c.Limiter.Wait(ctx); err != nil {
 		return nil, fmt.Errorf("rate limit error: %w", err)
@@ -143,6 +164,33 @@ func (c *Client) Request(ctx context.Context) (*resty.Request, error) {
 	c.Mu.RLock()
 	defer c.Mu.RUnlock()
 	return c.Resty.R().SetContext(ctx), nil
+}
+
+// ExecuteWithBreaker executes an HTTP operation with circuit breaker protection
+func (c *Client) ExecuteWithBreaker(fn func() (*resty.Response, error)) (*resty.Response, error) {
+	result, err := c.Breaker.Execute(func() (interface{}, error) {
+		return fn()
+	})
+
+	if err == resilience.ErrCircuitOpen {
+		return nil, fmt.Errorf("external service unavailable: circuit breaker open")
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return result.(*resty.Response), nil
+}
+
+// BreakerState returns the current circuit breaker state
+func (c *Client) BreakerState() resilience.State {
+	return c.Breaker.State()
+}
+
+// BreakerCounts returns circuit breaker statistics
+func (c *Client) BreakerCounts() resilience.Counts {
+	return c.Breaker.Counts()
 }
 
 // Success creates successful result

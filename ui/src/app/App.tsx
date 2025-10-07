@@ -18,6 +18,7 @@ import { useActions } from "../features/windows";
 import { useSessionManager } from "../core/hooks/useSessionManager";
 import { ServerMessage } from "../core/types/api";
 import { useLogger } from "../core/utils/monitoring/useLogger";
+import { formatRelativeTime } from "../core/utils/dates";
 import { useFadeIn, useSlideInUp } from "../ui/hooks/useGSAP";
 import { queryClient } from "../core/lib/queryClient";
 import { shouldIgnoreKeyboardEvent } from "../features/input";
@@ -247,12 +248,7 @@ function AppContent() {
   );
 
   const formatTimeSinceMemo = useCallback((date: Date): string => {
-    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
-    if (seconds < 60) return "just now";
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    return `${hours}h ago`;
+    return formatRelativeTime(date);
   }, []);
 
   return (

@@ -6,6 +6,7 @@ import (
 
 	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/http/client"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/types"
+	"github.com/go-resty/resty/v2"
 )
 
 // RequestsOps handles HTTP request methods
@@ -120,7 +121,10 @@ func (r *RequestsOps) Get(ctx context.Context, params map[string]interface{}, ap
 		}
 	}
 
-	resp, err := req.Get(urlStr)
+	// Execute with circuit breaker protection
+	resp, err := r.Client.ExecuteWithBreaker(func() (*resty.Response, error) {
+		return req.Get(urlStr)
+	})
 	if err != nil {
 		return client.Failure(fmt.Sprintf("request failed: %v", err))
 	}
@@ -168,7 +172,10 @@ func (r *RequestsOps) Post(ctx context.Context, params map[string]interface{}, a
 		}
 	}
 
-	resp, err := req.Post(urlStr)
+	// Execute with circuit breaker protection
+	resp, err := r.Client.ExecuteWithBreaker(func() (*resty.Response, error) {
+		return req.Post(urlStr)
+	})
 	if err != nil {
 		return client.Failure(fmt.Sprintf("request failed: %v", err))
 	}
@@ -201,7 +208,11 @@ func (r *RequestsOps) Put(ctx context.Context, params map[string]interface{}, ap
 	}
 
 	req.SetBody(data)
-	resp, err := req.Put(urlStr)
+
+	// Execute with circuit breaker protection
+	resp, err := r.Client.ExecuteWithBreaker(func() (*resty.Response, error) {
+		return req.Put(urlStr)
+	})
 	if err != nil {
 		return client.Failure(fmt.Sprintf("request failed: %v", err))
 	}
@@ -234,7 +245,11 @@ func (r *RequestsOps) Patch(ctx context.Context, params map[string]interface{}, 
 	}
 
 	req.SetBody(data)
-	resp, err := req.Patch(urlStr)
+
+	// Execute with circuit breaker protection
+	resp, err := r.Client.ExecuteWithBreaker(func() (*resty.Response, error) {
+		return req.Patch(urlStr)
+	})
 	if err != nil {
 		return client.Failure(fmt.Sprintf("request failed: %v", err))
 	}
@@ -261,7 +276,10 @@ func (r *RequestsOps) Delete(ctx context.Context, params map[string]interface{},
 		}
 	}
 
-	resp, err := req.Delete(urlStr)
+	// Execute with circuit breaker protection
+	resp, err := r.Client.ExecuteWithBreaker(func() (*resty.Response, error) {
+		return req.Delete(urlStr)
+	})
 	if err != nil {
 		return client.Failure(fmt.Sprintf("request failed: %v", err))
 	}
@@ -288,7 +306,10 @@ func (r *RequestsOps) Head(ctx context.Context, params map[string]interface{}, a
 		}
 	}
 
-	resp, err := req.Head(urlStr)
+	// Execute with circuit breaker protection
+	resp, err := r.Client.ExecuteWithBreaker(func() (*resty.Response, error) {
+		return req.Head(urlStr)
+	})
 	if err != nil {
 		return client.Failure(fmt.Sprintf("request failed: %v", err))
 	}
@@ -331,7 +352,10 @@ func (r *RequestsOps) Options(ctx context.Context, params map[string]interface{}
 		}
 	}
 
-	resp, err := req.Options(urlStr)
+	// Execute with circuit breaker protection
+	resp, err := r.Client.ExecuteWithBreaker(func() (*resty.Response, error) {
+		return req.Options(urlStr)
+	})
 	if err != nil {
 		return client.Failure(fmt.Sprintf("request failed: %v", err))
 	}

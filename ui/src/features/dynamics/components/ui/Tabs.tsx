@@ -41,15 +41,14 @@ export const Tabs: React.FC<BaseComponentProps> = ({ component, state, executor 
       <div className="tabs-content">
         {component.children?.map((tab) =>
           activeTab === tab.id ? (
-            <div key={tab.id}>
-              {tab.children?.map((child) => (
-                <ComponentRenderer
-                  key={child.id}
-                  component={child}
-                  state={state}
-                  executor={executor}
-                />
-              ))}
+            <div key={tab.id} className="tab-panel">
+              {/* Render the tab container itself, not its children */}
+              <ComponentRenderer
+                key={tab.id}
+                component={tab}
+                state={state}
+                executor={executor}
+              />
             </div>
           ) : null
         )}

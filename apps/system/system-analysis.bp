@@ -110,200 +110,214 @@
         ]
       },
       {
-        "type": "container",
-        "id": "main-content",
+        "type": "tabs",
+        "id": "main-tabs",
         "props": {
-          "layout": "vertical",
-          "spacing": "medium",
-          "padding": "medium",
+          "defaultTab": "overview",
+          "variant": "default",
           "style": {
-            "overflowY": "auto",
             "height": "calc(100vh - 80px)"
           }
         },
         "children": [
           {
             "type": "container",
-            "id": "summary-row",
+            "id": "overview",
             "props": {
-              "layout": "horizontal",
+              "label": "📈 Overview",
+              "layout": "vertical",
               "spacing": "medium",
+              "padding": "medium",
               "style": {
-                "display": "grid",
-                "gridTemplateColumns": "repeat(auto-fit, minmax(220px, 1fr))",
-                "gap": "1rem"
+                "overflowY": "auto",
+                "height": "100%"
               }
             },
             "children": [
               {
-                "type": "card",
-                "id": "uptime-card",
+                "type": "container",
+                "id": "summary-row",
                 "props": {
+                  "layout": "horizontal",
+                  "spacing": "medium",
                   "style": {
-                    "background": "linear-gradient(135deg, rgba(74, 222, 128, 0.1), rgba(34, 197, 94, 0.1))",
-                    "border": "1px solid rgba(74, 222, 128, 0.3)",
-                    "borderRadius": "12px",
-                    "padding": "1.25rem"
+                    "display": "grid",
+                    "gridTemplateColumns": "repeat(auto-fit, minmax(220px, 1fr))",
+                    "gap": "1rem"
                   }
                 },
                 "children": [
                   {
-                    "type": "text",
-                    "id": "uptime-label",
+                    "type": "card",
+                    "id": "uptime-card",
                     "props": {
-                      "content": "⏱️ UPTIME",
-                      "variant": "caption",
-                      "color": "muted",
                       "style": {
-                        "fontSize": "10px",
-                        "textTransform": "uppercase",
-                        "letterSpacing": "0.5px",
-                        "marginBottom": "0.5rem"
+                        "background": "linear-gradient(135deg, rgba(74, 222, 128, 0.1), rgba(34, 197, 94, 0.1))",
+                        "border": "1px solid rgba(74, 222, 128, 0.3)",
+                        "borderRadius": "12px",
+                        "padding": "1.25rem"
                       }
-                    }
+                    },
+                    "children": [
+                      {
+                        "type": "text",
+                        "id": "uptime-label",
+                        "props": {
+                          "content": "⏱️ UPTIME",
+                          "variant": "caption",
+                          "color": "muted",
+                          "style": {
+                            "fontSize": "10px",
+                            "textTransform": "uppercase",
+                            "letterSpacing": "0.5px",
+                            "marginBottom": "0.5rem"
+                          }
+                        }
+                      },
+                      {
+                        "type": "text",
+                        "id": "uptime-value",
+                        "props": {
+                          "content": "0s",
+                          "variant": "h3",
+                          "style": {
+                            "fontSize": "2rem",
+                            "fontWeight": "700",
+                            "color": "#4ade80",
+                            "fontFamily": "monospace"
+                          }
+                        }
+                      }
+                    ]
                   },
                   {
-                    "type": "text",
-                    "id": "uptime-value",
+                    "type": "card",
+                    "id": "requests-card",
                     "props": {
-                      "content": "0s",
-                      "variant": "h3",
                       "style": {
-                        "fontSize": "2rem",
-                        "fontWeight": "700",
-                        "color": "#4ade80",
-                        "fontFamily": "monospace"
+                        "background": "linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1))",
+                        "border": "1px solid rgba(102, 126, 234, 0.3)",
+                        "borderRadius": "12px",
+                        "padding": "1.25rem"
                       }
-                    }
-                  }
-                ]
-              },
-              {
-                "type": "card",
-                "id": "requests-card",
-                "props": {
-                  "style": {
-                    "background": "linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1))",
-                    "border": "1px solid rgba(102, 126, 234, 0.3)",
-                    "borderRadius": "12px",
-                    "padding": "1.25rem"
-                  }
-                },
-                "children": [
-                  {
-                    "type": "text",
-                    "id": "requests-label",
-                    "props": {
-                      "content": "📈 TOTAL REQUESTS",
-                      "variant": "caption",
-                      "color": "muted",
-                      "style": {
-                        "fontSize": "10px",
-                        "textTransform": "uppercase",
-                        "letterSpacing": "0.5px",
-                        "marginBottom": "0.5rem"
+                    },
+                    "children": [
+                      {
+                        "type": "text",
+                        "id": "requests-label",
+                        "props": {
+                          "content": "📈 TOTAL REQUESTS",
+                          "variant": "caption",
+                          "color": "muted",
+                          "style": {
+                            "fontSize": "10px",
+                            "textTransform": "uppercase",
+                            "letterSpacing": "0.5px",
+                            "marginBottom": "0.5rem"
+                          }
+                        }
+                      },
+                      {
+                        "type": "text",
+                        "id": "requests-value",
+                        "props": {
+                          "content": "0",
+                          "variant": "h3",
+                          "style": {
+                            "fontSize": "2rem",
+                            "fontWeight": "700",
+                            "color": "#667eea",
+                            "fontFamily": "monospace"
+                          }
+                        }
                       }
-                    }
+                    ]
                   },
                   {
-                    "type": "text",
-                    "id": "requests-value",
+                    "type": "card",
+                    "id": "latency-card",
                     "props": {
-                      "content": "0",
-                      "variant": "h3",
                       "style": {
-                        "fontSize": "2rem",
-                        "fontWeight": "700",
-                        "color": "#667eea",
-                        "fontFamily": "monospace"
+                        "background": "linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(245, 158, 11, 0.1))",
+                        "border": "1px solid rgba(251, 191, 36, 0.3)",
+                        "borderRadius": "12px",
+                        "padding": "1.25rem"
                       }
-                    }
-                  }
-                ]
-              },
-              {
-                "type": "card",
-                "id": "latency-card",
-                "props": {
-                  "style": {
-                    "background": "linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(245, 158, 11, 0.1))",
-                    "border": "1px solid rgba(251, 191, 36, 0.3)",
-                    "borderRadius": "12px",
-                    "padding": "1.25rem"
-                  }
-                },
-                "children": [
-                  {
-                    "type": "text",
-                    "id": "latency-label",
-                    "props": {
-                      "content": "⚡ AVG LATENCY",
-                      "variant": "caption",
-                      "color": "muted",
-                      "style": {
-                        "fontSize": "10px",
-                        "textTransform": "uppercase",
-                        "letterSpacing": "0.5px",
-                        "marginBottom": "0.5rem"
+                    },
+                    "children": [
+                      {
+                        "type": "text",
+                        "id": "latency-label",
+                        "props": {
+                          "content": "⚡ AVG LATENCY",
+                          "variant": "caption",
+                          "color": "muted",
+                          "style": {
+                            "fontSize": "10px",
+                            "textTransform": "uppercase",
+                            "letterSpacing": "0.5px",
+                            "marginBottom": "0.5rem"
+                          }
+                        }
+                      },
+                      {
+                        "type": "text",
+                        "id": "latency-value",
+                        "props": {
+                          "content": "0ms",
+                          "variant": "h3",
+                          "style": {
+                            "fontSize": "2rem",
+                            "fontWeight": "700",
+                            "color": "#fbbf24",
+                            "fontFamily": "monospace"
+                          }
+                        }
                       }
-                    }
+                    ]
                   },
                   {
-                    "type": "text",
-                    "id": "latency-value",
+                    "type": "card",
+                    "id": "apps-card",
                     "props": {
-                      "content": "0ms",
-                      "variant": "h3",
                       "style": {
-                        "fontSize": "2rem",
-                        "fontWeight": "700",
-                        "color": "#fbbf24",
-                        "fontFamily": "monospace"
+                        "background": "linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(124, 58, 237, 0.1))",
+                        "border": "1px solid rgba(139, 92, 246, 0.3)",
+                        "borderRadius": "12px",
+                        "padding": "1.25rem"
                       }
-                    }
-                  }
-                ]
-              },
-              {
-                "type": "card",
-                "id": "apps-card",
-                "props": {
-                  "style": {
-                    "background": "linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(124, 58, 237, 0.1))",
-                    "border": "1px solid rgba(139, 92, 246, 0.3)",
-                    "borderRadius": "12px",
-                    "padding": "1.25rem"
-                  }
-                },
-                "children": [
-                  {
-                    "type": "text",
-                    "id": "apps-label",
-                    "props": {
-                      "content": "🚀 ACTIVE APPS",
-                      "variant": "caption",
-                      "color": "muted",
-                      "style": {
-                        "fontSize": "10px",
-                        "textTransform": "uppercase",
-                        "letterSpacing": "0.5px",
-                        "marginBottom": "0.5rem"
+                    },
+                    "children": [
+                      {
+                        "type": "text",
+                        "id": "apps-label",
+                        "props": {
+                          "content": "🚀 ACTIVE APPS",
+                          "variant": "caption",
+                          "color": "muted",
+                          "style": {
+                            "fontSize": "10px",
+                            "textTransform": "uppercase",
+                            "letterSpacing": "0.5px",
+                            "marginBottom": "0.5rem"
+                          }
+                        }
+                      },
+                      {
+                        "type": "text",
+                        "id": "apps-value",
+                        "props": {
+                          "content": "0",
+                          "variant": "h3",
+                          "style": {
+                            "fontSize": "2rem",
+                            "fontWeight": "700",
+                            "color": "#8b5cf6",
+                            "fontFamily": "monospace"
+                          }
+                        }
                       }
-                    }
-                  },
-                  {
-                    "type": "text",
-                    "id": "apps-value",
-                    "props": {
-                      "content": "0",
-                      "variant": "h3",
-                      "style": {
-                        "fontSize": "2rem",
-                        "fontWeight": "700",
-                        "color": "#8b5cf6",
-                        "fontFamily": "monospace"
-                      }
-                    }
+                    ]
                   }
                 ]
               }
@@ -311,14 +325,15 @@
           },
           {
             "type": "container",
-            "id": "details-section",
+            "id": "backend",
             "props": {
-              "layout": "horizontal",
+              "label": "🔧 Backend",
+              "layout": "vertical",
               "spacing": "medium",
+              "padding": "medium",
               "style": {
-                "display": "grid",
-                "gridTemplateColumns": "1fr 1fr",
-                "gap": "1rem"
+                "overflowY": "auto",
+                "height": "100%"
               }
             },
             "children": [
@@ -338,7 +353,7 @@
                     "type": "text",
                     "id": "backend-title",
                     "props": {
-                      "content": "🔧 Backend (Go)",
+                      "content": "🔧 Backend (Go) Metrics",
                       "variant": "h3",
                       "style": {
                         "fontSize": "1.1rem",
@@ -357,7 +372,23 @@
                     }
                   }
                 ]
-              },
+              }
+            ]
+          },
+          {
+            "type": "container",
+            "id": "kernel",
+            "props": {
+              "label": "⚙️ Kernel",
+              "layout": "vertical",
+              "spacing": "medium",
+              "padding": "medium",
+              "style": {
+                "overflowY": "auto",
+                "height": "100%"
+              }
+            },
+            "children": [
               {
                 "type": "card",
                 "id": "kernel-metrics",
@@ -374,7 +405,7 @@
                     "type": "text",
                     "id": "kernel-title",
                     "props": {
-                      "content": "⚙️ Kernel (Rust)",
+                      "content": "⚙️ Kernel (Rust) Metrics",
                       "variant": "h3",
                       "style": {
                         "fontSize": "1.1rem",
@@ -397,38 +428,54 @@
             ]
           },
           {
-            "type": "card",
-            "id": "ai-metrics",
+            "type": "container",
+            "id": "ai-service",
             "props": {
+              "label": "🤖 AI Service",
+              "layout": "vertical",
+              "spacing": "medium",
+              "padding": "medium",
               "style": {
-                "background": "rgba(26, 26, 26, 0.8)",
-                "border": "1px solid rgba(255,255,255,0.1)",
-                "borderRadius": "12px",
-                "padding": "1.5rem"
+                "overflowY": "auto",
+                "height": "100%"
               }
             },
             "children": [
               {
-                "type": "text",
-                "id": "ai-title",
+                "type": "card",
+                "id": "ai-metrics",
                 "props": {
-                  "content": "🤖 AI Service (Python)",
-                  "variant": "h3",
                   "style": {
-                    "fontSize": "1.1rem",
-                    "fontWeight": "600",
-                    "marginBottom": "1rem",
-                    "color": "#10b981"
+                    "background": "rgba(26, 26, 26, 0.8)",
+                    "border": "1px solid rgba(255,255,255,0.1)",
+                    "borderRadius": "12px",
+                    "padding": "1.5rem"
                   }
-                }
-              },
-              {
-                "type": "list",
-                "id": "ai-metrics-list",
-                "props": {
-                  "variant": "default",
-                  "spacing": "small"
-                }
+                },
+                "children": [
+                  {
+                    "type": "text",
+                    "id": "ai-title",
+                    "props": {
+                      "content": "🤖 AI Service (Python) Metrics",
+                      "variant": "h3",
+                      "style": {
+                        "fontSize": "1.1rem",
+                        "fontWeight": "600",
+                        "marginBottom": "1rem",
+                        "color": "#10b981"
+                      }
+                    }
+                  },
+                  {
+                    "type": "list",
+                    "id": "ai-metrics-list",
+                    "props": {
+                      "variant": "default",
+                      "spacing": "small"
+                    }
+                  }
+                ]
               }
             ]
           }

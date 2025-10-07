@@ -55,7 +55,7 @@ LAYOUT:
 - sidebar, main, editor, header, footer, content, section: Semantic containers (better readability)
 - card: Card container with header/body
 - list: Styled list (default, bordered, striped)
-- tabs: Tabbed interface
+- tabs: Multi-page tabbed interface (children are complete containers with label prop)
 - modal: Popup dialog
 
 INPUT:
@@ -186,6 +186,37 @@ CRITICAL FOR STREAMING: Use explicit format with type/id/props fields:
 ❌ BAD:   {"button#save": {"text": "Save", "@click": "storage.save"}}
 
 The explicit format enables real-time component rendering as you generate them!
+
+MULTI-PAGE APPS (TABS):
+Use tabs for apps with multiple views/pages. Each tab is a COMPLETE CONTAINER with all its children:
+
+Structure:
+{
+  "type": "tabs",
+  "id": "main-tabs",
+  "props": {"defaultTab": "overview", "variant": "default"},
+  "children": [
+    {
+      "type": "container",
+      "id": "overview",
+      "props": {"label": "📊 Overview", "layout": "vertical", "padding": "medium"},
+      "children": [
+        // Complete page content here
+      ]
+    },
+    {
+      "type": "container",
+      "id": "details",
+      "props": {"label": "🔍 Details", "layout": "vertical", "padding": "medium"},
+      "children": [
+        // Complete page content here
+      ]
+    }
+  ]
+}
+
+CRITICAL: Each page is a COMPLETE container with ALL its children. Stack pages vertically in code.
+This allows you to output one complete page at a time during streaming!
 
 1. CALCULATOR (Utility App)
 {
@@ -375,7 +406,133 @@ The explicit format enables real-time component rendering as you generate them!
   }
 }
 
-4. WEB BROWSER (Utility App)
+4. SYSTEM MONITOR (Multi-Page App with Tabs)
+{
+  "app": {
+    "id": "system-monitor",
+    "name": "System Monitor",
+    "icon": "📊",
+    "category": "system",
+    "tags": ["system", "monitoring", "performance"],
+    "permissions": ["SYSTEM_INFO"]
+  },
+  "services": [{"system": ["info", "time"]}],
+  "ui": {
+    "title": "System Monitor",
+    "layout": "vertical",
+    "lifecycle": {"on_mount": "system.info"},
+    "components": [
+      {
+        "type": "container",
+        "id": "header",
+        "props": {
+          "layout": "horizontal",
+          "padding": "medium",
+          "align": "center",
+          "justify": "between",
+          "style": {"borderBottom": "1px solid rgba(255,255,255,0.1)"}
+        },
+        "children": [
+          {
+            "type": "text",
+            "id": "title",
+            "props": {"content": "📊 System Monitor", "variant": "h2"}
+          },
+          {
+            "type": "button",
+            "id": "refresh-btn",
+            "props": {"text": "🔄 Refresh", "variant": "primary", "size": "small"},
+            "on_event": {"click": "system.info"}
+          }
+        ]
+      },
+      {
+        "type": "tabs",
+        "id": "main-tabs",
+        "props": {"defaultTab": "overview", "variant": "default"},
+        "children": [
+          {
+            "type": "container",
+            "id": "overview",
+            "props": {"label": "📈 Overview", "layout": "vertical", "padding": "medium"},
+            "children": [
+              {
+                "type": "grid",
+                "id": "metrics-grid",
+                "props": {"columns": 3, "gap": 16},
+                "children": [
+                  {
+                    "type": "card",
+                    "id": "cpu-card",
+                    "props": {"style": {"padding": "1rem"}},
+                    "children": [
+                      {"type": "text", "id": "cpu-label", "props": {"content": "CPU Usage", "variant": "caption"}},
+                      {"type": "text", "id": "cpu-value", "props": {"content": "0%", "variant": "h2"}}
+                    ]
+                  },
+                  {
+                    "type": "card",
+                    "id": "memory-card",
+                    "props": {"style": {"padding": "1rem"}},
+                    "children": [
+                      {"type": "text", "id": "memory-label", "props": {"content": "Memory", "variant": "caption"}},
+                      {"type": "text", "id": "memory-value", "props": {"content": "0 MB", "variant": "h2"}}
+                    ]
+                  },
+                  {
+                    "type": "card",
+                    "id": "uptime-card",
+                    "props": {"style": {"padding": "1rem"}},
+                    "children": [
+                      {"type": "text", "id": "uptime-label", "props": {"content": "Uptime", "variant": "caption"}},
+                      {"type": "text", "id": "uptime-value", "props": {"content": "0h", "variant": "h2"}}
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "container",
+            "id": "processes",
+            "props": {"label": "⚙️ Processes", "layout": "vertical", "padding": "medium"},
+            "children": [
+              {
+                "type": "text",
+                "id": "processes-title",
+                "props": {"content": "Running Processes", "variant": "h3"}
+              },
+              {
+                "type": "list",
+                "id": "process-list",
+                "props": {"variant": "bordered"}
+              }
+            ]
+          },
+          {
+            "type": "container",
+            "id": "logs",
+            "props": {"label": "📝 Logs", "layout": "vertical", "padding": "medium"},
+            "children": [
+              {
+                "type": "text",
+                "id": "logs-title",
+                "props": {"content": "System Logs", "variant": "h3"}
+              },
+              {
+                "type": "textarea",
+                "id": "log-content",
+                "props": {"readonly": true, "rows": 20, "style": {"fontFamily": "monospace"}}
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
+
+5. WEB BROWSER (Utility App)
 {
   "app": {
     "id": "browser",
@@ -530,6 +687,19 @@ CRITICAL RULE: Every interactive element (button, input with actions) MUST have 
      * Refresh button: "on_event": {"click": "hub.load_apps"}
      * App cards: "on_event": {"click": "hub.launch_app"}
 
+8. **Multi-Page Apps** (Dashboards, Settings, Complex Tools):
+   - Use tabs for multiple views/sections
+   - Each tab child is a COMPLETE CONTAINER with:
+     * "id": unique tab identifier
+     * "props.label": tab button text (supports emojis like "📊 Overview")
+     * "props.layout": layout for page content
+     * "children": complete page content
+   - Stack pages vertically in code (output one complete page at a time)
+   - Example tabs props: {"defaultTab": "overview", "variant": "default"}
+   - Variants: "default", "pills", "underline", "vertical"
+   - Pattern: Header with tabs, each tab contains full page
+   - Use for: Dashboards with multiple views, settings with categories, monitoring with different metrics
+
 IMPORTANT SERVICE USAGE:
 - storage.get/set/list: For app data (tasks, notes, settings)
 - filesystem.read/write/list: For file operations (editors, file managers)
@@ -599,9 +769,10 @@ Generate a complete, FULLY FUNCTIONAL Blueprint (.bp) file for the user's reques
 Design considerations:
 1. App type? (productivity, utility, business, creative, system, browser)
 2. Services needed? (storage for persistence, filesystem for files)
-3. Layout? (vertical stack, horizontal split, grid, tabs)
+3. Layout? (vertical stack, horizontal split, grid, tabs for multi-page)
 4. Tools? (ui.* for state, service.tool for backend, browser.* for web)
 5. ⚠️ EVERY BUTTON NEEDS A WORKING EVENT HANDLER! ⚠️
+6. Multi-page? Use tabs with complete container children (each with label prop)
 
 MANDATORY RULES:
 ✅ DO: Add specific event handlers to all buttons (calculator digits → ui.append, equals → ui.compute, save → storage.set)

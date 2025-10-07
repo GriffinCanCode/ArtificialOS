@@ -7,6 +7,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { SaveSessionRequest, ListSessionsResponse } from "../types/session";
 import { SessionClient } from "../api/sessionClient";
 import { logger } from "../utils/monitoring/logger";
+import { compareDatesDesc } from "../utils/dates";
 
 // ============================================================================
 // Query Keys - Centralized for consistency
@@ -50,7 +51,7 @@ export function useSessions() {
       return {
         ...data,
         sessions: [...data.sessions].sort(
-          (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+          (a, b) => compareDatesDesc(new Date(a.updated_at), new Date(b.updated_at))
         ),
       };
     },

@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { useMessages, useAppActions } from "../../../core/store/appStore";
 import { useWebSocket } from "../../contexts/WebSocketContext";
 import { useLogger } from "../../../core/utils/monitoring/useLogger";
+import { formatTime } from "../../../core/utils/dates";
 import "./ChatInterface.css";
 
 interface ChatFormData {
@@ -29,13 +30,6 @@ const ChatInterface: React.FC = React.memo(() => {
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, []);
-
-  const formatTime = useCallback((timestamp: number) => {
-    return new Date(timestamp).toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
   }, []);
 
   useEffect(() => {
@@ -115,7 +109,7 @@ const ChatInterface: React.FC = React.memo(() => {
           <div key={idx} className={`message message-${msg.type}`}>
             <div className="message-header">
               <span className="message-type">{msg.type}</span>
-              <span className="message-time">{formatTime(msg.timestamp)}</span>
+              <span className="message-time">{formatTime(new Date(msg.timestamp), false)}</span>
             </div>
             <div className="message-content">{msg.content}</div>
           </div>

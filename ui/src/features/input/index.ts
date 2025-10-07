@@ -22,4 +22,4 @@ export * from "./validation/validators";
 // Formatting
 export * from "./formatting/text";
 export * from "./formatting/number";
-export * from "./formatting/date";
+export * from "./formatting/dates";

@@ -5,6 +5,7 @@
 
 import { logger } from "../../../../../core/utils/monitoring/logger";
 import { generatePrefixedId } from "../../../../../core/utils/id";
+import { formatRelativeTime, compareTimestampsDesc } from "../../../../../core/utils/dates";
 import { ExecutorContext, AsyncExecutor } from "../core/types";
 
 interface Note {
@@ -286,7 +287,7 @@ export class NotesExecutor implements AsyncExecutor {
       }
 
       // Sort by updated time (most recent first)
-      notes.sort((a, b) => b.updatedAt - a.updatedAt);
+      notes.sort((a, b) => compareTimestampsDesc(a.updatedAt, b.updatedAt));
 
       // Update notes list UI
       await this.updateNotesList(notes);
@@ -444,25 +445,6 @@ export class NotesExecutor implements AsyncExecutor {
    * Format date for display
    */
   private formatDate(timestamp: number): string {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
-
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 7) return `${diffDays}d ago`;
-
-    // Format as date
-    return date.toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-      year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
-    });
+    return formatRelativeTime(new Date(timestamp));
   }
 }

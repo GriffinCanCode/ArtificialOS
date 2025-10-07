@@ -4,6 +4,7 @@
  */
 
 import { z } from "zod";
+import { isFuture, isPast } from "../../../core/utils/dates";
 
 // ============================================================================
 // Text Validation
@@ -43,9 +44,9 @@ export const dateSchema = z.date();
 
 export const futureDateSchema = z
   .date()
-  .refine((date) => date > new Date(), "Must be a future date");
+  .refine((date) => isFuture(date), "Must be a future date");
 
-export const pastDateSchema = z.date().refine((date) => date < new Date(), "Must be a past date");
+export const pastDateSchema = z.date().refine((date) => isPast(date), "Must be a past date");
 
 // ============================================================================
 // Form Validation

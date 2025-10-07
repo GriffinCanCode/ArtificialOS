@@ -85,7 +85,7 @@ class UIHandler:
                 # Stream UI spec (in production, this would stream incrementally)
                 ui_spec_str = package.model_dump_json()
                 yield ai_pb2.UIToken(
-                    type=ai_pb2.UIToken.UI_SPEC,
+                    type=ai_pb2.UIToken.TOKEN,
                     content=ui_spec_str,
                     timestamp=int(time.time()),
                 )

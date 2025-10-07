@@ -1,0 +1,18 @@
+GET http://localhost:8000/health
+Content-Type: application/json
+
+GET http://localhost:8000/metrics
+Content-Type: application/json
+
+POST http://localhost:8000/apps
+Content-Type: application/json
+
+{"message": "Create a counter app"}
+
+GET http://localhost:8000/apps
+Content-Type: application/json
+
+POST http://localhost:8000/services/discover
+Content-Type: application/json
+
+{"category": "filesystem"}

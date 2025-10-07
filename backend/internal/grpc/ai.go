@@ -10,14 +10,16 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 
+	"github.com/GriffinCanCode/AgentOS/backend/internal/infrastructure/resilience"
 	pb "github.com/GriffinCanCode/AgentOS/backend/proto/ai"
 )
 
-// AIClient wraps gRPC client for AI service communication
+// AIClient wraps gRPC client for AI service communication with circuit breaker
 type AIClient struct {
-	conn   *grpc.ClientConn
-	client pb.AIServiceClient
-	addr   string
+	conn    *grpc.ClientConn
+	client  pb.AIServiceClient
+	addr    string
+	breaker *resilience.Breaker
 }
 
 // NewAIClient creates a new AI client with proper connection management
@@ -44,10 +46,22 @@ func NewAIClient(addr string) (*AIClient, error) {
 		return nil, fmt.Errorf("failed to dial AI service: %w", err)
 	}
 
+	// Create circuit breaker for AI service calls
+	breaker := resilience.New("ai-service", resilience.Settings{
+		MaxRequests: 2,
+		Interval:    60 * time.Second,
+		Timeout:     30 * time.Second,
+		ReadyToTrip: func(counts resilience.Counts) bool {
+			// AI service is more sensitive - trip after 3 consecutive failures
+			return counts.ConsecutiveFailures >= 3
+		},
+	})
+
 	return &AIClient{
-		conn:   conn,
-		client: pb.NewAIServiceClient(conn),
-		addr:   addr,
+		conn:    conn,
+		client:  pb.NewAIServiceClient(conn),
+		addr:    addr,
+		breaker: breaker,
 	}, nil
 }
 
@@ -59,7 +73,7 @@ func (a *AIClient) Close() error {
 	return nil
 }
 
-// GenerateUI generates a UI specification
+// GenerateUI generates a UI specification with circuit breaker protection
 func (a *AIClient) GenerateUI(ctx context.Context, message string, contextMap map[string]string, parentID *string) (*pb.UIResponse, error) {
 	// Use provided context with timeout
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
@@ -73,7 +87,19 @@ func (a *AIClient) GenerateUI(ctx context.Context, message string, contextMap ma
 		req.ParentId = parentID
 	}
 
-	return a.client.GenerateUI(ctx, req)
+	result, err := a.breaker.Execute(func() (interface{}, error) {
+		return a.client.GenerateUI(ctx, req)
+	})
+
+	if err == resilience.ErrCircuitOpen {
+		return nil, fmt.Errorf("AI service unavailable: circuit breaker open")
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return result.(*pb.UIResponse), nil
 }
 
 // StreamUI streams UI generation with real-time updates

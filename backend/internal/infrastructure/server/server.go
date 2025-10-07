@@ -19,6 +19,7 @@ import (
 	"github.com/GriffinCanCode/AgentOS/backend/internal/infrastructure/config"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/infrastructure/logging"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/infrastructure/monitoring"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/infrastructure/tracing"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/auth"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/filesystem"
 	httpProvider "github.com/GriffinCanCode/AgentOS/backend/internal/providers/http"
@@ -64,6 +65,10 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	// Initialize metrics first (needed by other components)
 	metrics := monitoring.NewMetrics()
 	logger.Info("Performance monitoring initialized")
+
+	// Initialize distributed tracing
+	tracer := tracing.New("backend", logger.Logger)
+	logger.Info("Distributed tracing initialized")
 
 	// Initialize kernel client (optional)
 	var kernelClient *kernel.KernelClient
@@ -130,6 +135,7 @@ func NewServer(cfg *config.Config) (*Server, error) {
 
 	// Add middleware
 	router.Use(gin.Recovery())
+	router.Use(tracing.HTTPMiddleware(tracer)) // Add tracing middleware
 	router.Use(monitoring.Middleware(metrics))
 	router.Use(middleware.CORS(middleware.DefaultCORSConfig()))
 	if cfg.RateLimit.Enabled {

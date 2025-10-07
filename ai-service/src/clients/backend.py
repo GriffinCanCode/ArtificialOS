@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 import httpx
+import pybreaker
 
 from core import get_logger
 
@@ -43,13 +44,13 @@ class ServiceDefinition:
 
 class BackendClient:
     """
-    Client for querying backend services.
+    Client for querying backend services with circuit breaker protection.
     Discovers available service providers and their tools.
     """
 
     def __init__(self, backend_url: str = "http://localhost:8000", timeout: float = 5.0) -> None:
         """
-        Initialize backend client.
+        Initialize backend client with circuit breaker.
 
         Args:
             backend_url: Base URL of the Go backend
@@ -58,11 +59,33 @@ class BackendClient:
         self.backend_url = backend_url.rstrip("/")
         self.timeout = timeout
         self._client = httpx.Client(timeout=timeout)
+
+        # Initialize circuit breaker for backend HTTP calls
+        # Create listener for state change logging
+        class BreakerListener(pybreaker.CircuitBreakerListener):
+            """Listener for circuit breaker state changes."""
+
+            def state_change(self, cb, old_state, new_state):
+                """Called when circuit breaker state changes."""
+                logger.warning(
+                    "breaker_state_change",
+                    breaker=cb.name,
+                    from_state=str(old_state),
+                    to_state=str(new_state),
+                )
+
+        self._breaker = pybreaker.CircuitBreaker(
+            fail_max=5,
+            reset_timeout=30,
+            name="backend-http",
+            listeners=[BreakerListener()],
+        )
+
         logger.info("client_init", url=self.backend_url)
 
     def discover_services(self, category: str | None = None) -> list[ServiceDefinition]:
         """
-        Discover available services from the backend.
+        Discover available services from the backend with circuit breaker protection.
 
         Args:
             category: Optional category filter (storage, auth, system, etc.)
@@ -74,7 +97,11 @@ class BackendClient:
             url = f"{self.backend_url}/services"
             params = {"category": category} if category else {}
 
-            response = self._client.get(url, params=params)
+            # Execute with circuit breaker protection
+            def _make_request():
+                return self._client.get(url, params=params)
+
+            response = self._breaker.call(_make_request)
             response.raise_for_status()
 
             # Parse JSON response (httpx uses orjson if available, otherwise stdlib)
@@ -128,6 +155,9 @@ class BackendClient:
             logger.info("discovered", services=len(result), tools=total_tools)
             return result
 
+        except pybreaker.CircuitBreakerError:
+            logger.error("discover_failed", error="Circuit breaker open - backend unavailable")
+            return []
         except httpx.HTTPError as e:
             logger.warning("http_error", error=str(e))
             return []
@@ -164,12 +194,13 @@ class BackendClient:
 
     def health_check(self) -> bool:
         """
-        Check if backend is reachable.
+        Check if backend is reachable (bypasses circuit breaker).
 
         Returns:
             True if backend is healthy
         """
         try:
+            # Health checks bypass circuit breaker to test actual connectivity
             response = self._client.get(f"{self.backend_url}/health", timeout=2.0)
             return response.status_code == 200
         except Exception:
@@ -181,7 +212,7 @@ class BackendClient:
 
     def schedule_next(self) -> int | None:
         """
-        Schedule the next process.
+        Schedule the next process with circuit breaker protection.
 
         Returns:
             PID of the next scheduled process, or None if no processes available
@@ -191,7 +222,11 @@ class BackendClient:
         """
         try:
             url = f"{self.backend_url}/kernel/schedule-next"
-            response = self._client.post(url)
+
+            def _make_request():
+                return self._client.post(url)
+
+            response = self._breaker.call(_make_request)
             response.raise_for_status()
 
             data = response.json()
@@ -202,6 +237,9 @@ class BackendClient:
             logger.info("schedule_next_success", next_pid=data.get("next_pid"))
             return data.get("next_pid")
 
+        except pybreaker.CircuitBreakerError:
+            logger.error("schedule_next_failed", error="Circuit breaker open")
+            return None
         except httpx.HTTPError as e:
             logger.warning("schedule_next_http_error", error=str(e))
             raise
@@ -211,7 +249,7 @@ class BackendClient:
 
     def get_scheduler_stats(self) -> dict | None:
         """
-        Get scheduler statistics.
+        Get scheduler statistics with circuit breaker protection.
 
         Returns:
             Dictionary with scheduler statistics:
@@ -227,7 +265,11 @@ class BackendClient:
         """
         try:
             url = f"{self.backend_url}/kernel/scheduler/stats"
-            response = self._client.get(url)
+
+            def _make_request():
+                return self._client.get(url)
+
+            response = self._breaker.call(_make_request)
             response.raise_for_status()
 
             data = response.json()
@@ -239,6 +281,9 @@ class BackendClient:
             logger.info("get_scheduler_stats_success", stats=stats)
             return stats
 
+        except pybreaker.CircuitBreakerError:
+            logger.error("get_scheduler_stats_failed", error="Circuit breaker open")
+            return None
         except httpx.HTTPError as e:
             logger.warning("get_scheduler_stats_http_error", error=str(e))
             raise
@@ -248,7 +293,7 @@ class BackendClient:
 
     def set_scheduling_policy(self, policy: str) -> bool:
         """
-        Set the scheduling policy.
+        Set the scheduling policy with circuit breaker protection.
 
         Args:
             policy: Scheduling policy to set (RoundRobin, Priority, or Fair)
@@ -266,7 +311,11 @@ class BackendClient:
 
         try:
             url = f"{self.backend_url}/kernel/scheduler/policy"
-            response = self._client.put(url, json={"policy": policy})
+
+            def _make_request():
+                return self._client.put(url, json={"policy": policy})
+
+            response = self._breaker.call(_make_request)
             response.raise_for_status()
 
             data = response.json()
@@ -279,6 +328,9 @@ class BackendClient:
 
             return success
 
+        except pybreaker.CircuitBreakerError:
+            logger.error("set_scheduling_policy_failed", error="Circuit breaker open")
+            return False
         except httpx.HTTPError as e:
             logger.warning("set_scheduling_policy_http_error", error=str(e))
             raise

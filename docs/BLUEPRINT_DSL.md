@@ -358,6 +358,127 @@ JSON objects for CSS properties:
 }
 ```
 
+### 9. Multi-Page Navigation (Tabs/Pages)
+
+For complex applications with multiple views, use the `tabs` component with container children:
+
+```json
+{
+  "ui": {
+    "title": "System Monitor",
+    "layout": "vertical",
+    "components": [
+      {
+        "type": "tabs",
+        "id": "main-tabs",
+        "props": {
+          "defaultTab": "overview",
+          "variant": "default"
+        },
+        "children": [
+          {
+            "type": "container",
+            "id": "overview",
+            "props": {
+              "label": "📊 Overview",
+              "layout": "vertical",
+              "padding": "medium"
+            },
+            "children": [
+              {
+                "type": "text",
+                "id": "overview-title",
+                "props": {
+                  "content": "System Overview",
+                  "variant": "h2"
+                }
+              }
+            ]
+          },
+          {
+            "type": "container",
+            "id": "details",
+            "props": {
+              "label": "🔍 Details",
+              "layout": "vertical",
+              "padding": "medium"
+            },
+            "children": [
+              {
+                "type": "text",
+                "id": "details-title",
+                "props": {
+                  "content": "Detailed Metrics",
+                  "variant": "h2"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Why This Structure?**
+
+Each page is a complete container with all its children. This structure:
+- ✅ Allows AI to output complete pages sequentially
+- ✅ Pages are stacked vertically in code (natural for generation)
+- ✅ Each page is self-contained with its own layout and styling
+- ✅ Easy to stream incrementally during generation
+
+**Tab Properties:**
+- `defaultTab` - ID of the tab to show initially (in tabs props)
+- `variant` - Tab style: `default`, `pills`, `underline`, `vertical`
+- Each child container must have:
+  - `id` - Unique identifier (used as tab ID)
+  - `props.label` - Display text for the tab (supports emojis)
+  - `children` - Full page content
+
+**Nested Tabs:**
+You can nest tabs within tab pages for complex navigation:
+
+```json
+{
+  "type": "tabs",
+  "id": "main-tabs",
+  "props": { "defaultTab": "metrics" },
+  "children": [
+    {
+      "type": "container",
+      "id": "metrics",
+      "props": { "label": "Metrics", "layout": "vertical" },
+      "children": [
+        {
+          "type": "tabs",
+          "id": "metrics-subtabs",
+          "props": {
+            "variant": "pills",
+            "defaultTab": "cpu"
+          },
+          "children": [
+            {
+              "type": "container",
+              "id": "cpu",
+              "props": { "label": "CPU", "layout": "vertical" },
+              "children": []
+            },
+            {
+              "type": "container",
+              "id": "memory",
+              "props": { "label": "Memory", "layout": "vertical" },
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
 ## Complete Example: File Explorer
 
 ```json

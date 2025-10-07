@@ -3,6 +3,8 @@
  * Provides structured logging across main and renderer processes
  */
 
+import { formatISO } from "../dates";
+
 export enum LogLevel {
   ERROR = "error",
   WARN = "warn",
@@ -115,7 +117,7 @@ class Logger {
     // Use setTimeout to make logging non-blocking
     setTimeout(() => {
       const fullContext = { ...this.context, ...context };
-      const timestamp = new Date().toISOString();
+      const timestamp = formatISO();
 
       // If running in Electron with electron-log available
       if (window.electronLog) {

@@ -42,6 +42,7 @@ class UIGenerationRequest(RequestValidator):
     """Validated UI generation request."""
 
     message: str = Field(min_length=1, max_length=MAX_MESSAGE_LENGTH)
+    context: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("message")
     @classmethod

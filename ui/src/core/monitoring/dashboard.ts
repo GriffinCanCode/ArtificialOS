@@ -5,6 +5,7 @@
 
 import { metricsCollector } from "./metrics";
 import { getWebVitalsMetrics } from "./vitals";
+import { formatDate } from "../utils/dates";
 import type { MetricsSnapshot } from "./types";
 
 export interface SystemMetrics {
@@ -74,7 +75,7 @@ export function downloadMetrics(): void {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `agentos-metrics-${Date.now()}.json`;
+    a.download = `agentos-metrics-${formatDate(new Date(), "yyyy-MM-dd-HHmmss")}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

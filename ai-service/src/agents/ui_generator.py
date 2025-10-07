@@ -82,6 +82,11 @@ class UIGenerator:
 
         logger.info("initialized", mode="llm" if self.use_llm else "rule-based")
 
+    def generate(self, message: str, context: dict[str, Any] | None = None) -> Blueprint:
+        """Generate Blueprint with message and optional context."""
+        # Context is available for future use but currently passed to generate_ui as request
+        return self.generate_ui(message)
+
     def generate_ui(self, request: str) -> Blueprint:
         """Generate Blueprint (non-streaming)."""
         for item in self.generate_ui_stream(request):

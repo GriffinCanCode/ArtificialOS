@@ -9,20 +9,46 @@ import (
 
 	"github.com/GriffinCanCode/AgentOS/backend/internal/grpc/kernel"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/infrastructure/monitoring"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/infrastructure/resilience"
 	"github.com/gin-gonic/gin"
 )
 
-// MetricsAggregator collects metrics from all services
+// MetricsAggregator collects metrics from all services with circuit breaker protection
 type MetricsAggregator struct {
-	metrics *monitoring.Metrics
-	kernel  *kernel.KernelClient
+	metrics    *monitoring.Metrics
+	kernel     *kernel.KernelClient
+	httpClient *http.Client
+	breaker    *resilience.Breaker
 }
 
-// NewMetricsAggregator creates a metrics aggregator
+// NewMetricsAggregator creates a metrics aggregator with circuit breaker
 func NewMetricsAggregator(metrics *monitoring.Metrics, kernel *kernel.KernelClient) *MetricsAggregator {
+	// Create persistent HTTP client for metrics collection
+	httpClient := &http.Client{
+		Timeout: 5 * time.Second,
+		Transport: &http.Transport{
+			MaxIdleConns:        10,
+			MaxIdleConnsPerHost: 2,
+			IdleConnTimeout:     30 * time.Second,
+		},
+	}
+
+	// Create circuit breaker for metrics HTTP calls
+	breaker := resilience.New("metrics-http", resilience.Settings{
+		MaxRequests: 3,
+		Interval:    60 * time.Second,
+		Timeout:     10 * time.Second,
+		ReadyToTrip: func(counts resilience.Counts) bool {
+			// Trip after 3 consecutive failures (metrics are non-critical)
+			return counts.ConsecutiveFailures >= 3
+		},
+	})
+
 	return &MetricsAggregator{
-		metrics: metrics,
-		kernel:  kernel,
+		metrics:    metrics,
+		kernel:     kernel,
+		httpClient: httpClient,
+		breaker:    breaker,
 	}
 }
 
@@ -300,32 +326,39 @@ func (ma *MetricsAggregator) getKernelMetrics() map[string]interface{} {
 	}
 }
 
-// getAIMetrics fetches metrics from AI service
+// getAIMetrics fetches metrics from AI service with circuit breaker protection
 func (ma *MetricsAggregator) getAIMetrics() map[string]interface{} {
-	client := &http.Client{Timeout: 2 * time.Second}
-	// AI service HTTP metrics server runs on port 50053
-	resp, err := client.Get("http://localhost:50053/metrics/json")
+	result, err := ma.breaker.Execute(func() (interface{}, error) {
+		// AI service HTTP metrics server runs on port 50053
+		resp, err := ma.httpClient.Get("http://localhost:50053/metrics/json")
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("AI service returned status %d", resp.StatusCode)
+		}
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		var metrics map[string]interface{}
+		if err := json.Unmarshal(body, &metrics); err != nil {
+			return nil, err
+		}
+
+		return metrics, nil
+	})
+
 	if err != nil {
-		// AI service not available
-		return nil
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
+		// AI service not available or circuit breaker open
 		return nil
 	}
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil
-	}
-
-	var metrics map[string]interface{}
-	if err := json.Unmarshal(body, &metrics); err != nil {
-		return nil
-	}
-
-	return metrics
+	return result.(map[string]interface{})
 }
 
 // calculateSummary computes high-level summary metrics
@@ -369,31 +402,54 @@ func (ma *MetricsAggregator) ProxyKernelMetrics(c *gin.Context) {
 	})
 }
 
-// ProxyAIMetrics proxies AI service metrics
+// ProxyAIMetrics proxies AI service metrics with circuit breaker protection
 func (ma *MetricsAggregator) ProxyAIMetrics(c *gin.Context) {
-	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Get("http://localhost:50052/metrics")
+	result, err := ma.breaker.Execute(func() (interface{}, error) {
+		resp, err := ma.httpClient.Get("http://localhost:50052/metrics")
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		// Try to parse as JSON
+		var jsonData interface{}
+		if err := json.Unmarshal(body, &jsonData); err == nil {
+			return map[string]interface{}{
+				"type": "json",
+				"data": jsonData,
+			}, nil
+		}
+
+		// Return as text if not JSON
+		return map[string]interface{}{
+			"type": "text",
+			"data": string(body),
+		}, nil
+	})
+
+	if err == resilience.ErrCircuitOpen {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": "AI service unavailable: circuit breaker open",
+		})
+		return
+	}
+
 	if err != nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
 			"error": fmt.Sprintf("AI service unavailable: %v", err),
 		})
 		return
 	}
-	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to read AI metrics",
-		})
-		return
-	}
-
-	// Try to parse as JSON, otherwise return as text
-	var jsonData interface{}
-	if err := json.Unmarshal(body, &jsonData); err == nil {
-		c.JSON(http.StatusOK, jsonData)
+	responseData := result.(map[string]interface{})
+	if responseData["type"] == "json" {
+		c.JSON(http.StatusOK, responseData["data"])
 	} else {
-		c.String(http.StatusOK, string(body))
+		c.String(http.StatusOK, responseData["data"].(string))
 	}
 }

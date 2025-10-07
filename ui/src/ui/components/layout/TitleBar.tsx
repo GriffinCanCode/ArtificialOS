@@ -7,6 +7,7 @@ import React, { useState, useCallback } from "react";
 import { X, Trash2 } from "lucide-react";
 import { useSessions, useDeleteSession } from "../../../core/hooks/useSessionQueries";
 import { useLogger } from "../../../core/utils/monitoring/useLogger";
+import { formatRelativeTime } from "../../../core/utils/dates";
 import { SaveSessionDialog } from "../dialogs/SaveSessionDialog";
 import { controlButtonVariants, cn } from "../../../core/utils/animation/componentVariants";
 import "./TitleBar.css";
@@ -180,7 +181,7 @@ const TitleBar: React.FC<TitleBarProps> = React.memo(({ sessionManager }) => {
                       <div className="session-name">{session.name}</div>
                       <div className="session-meta">
                         {session.app_count} apps •{" "}
-                        {new Date(session.updated_at).toLocaleDateString()}
+                        {formatRelativeTime(new Date(session.updated_at))}
                       </div>
                     </div>
                     <button

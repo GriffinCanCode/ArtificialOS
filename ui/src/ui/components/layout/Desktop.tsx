@@ -5,6 +5,7 @@
 
 import React, { useEffect, useState } from "react";
 import { shouldIgnoreKeyboardEvent } from "../../../features/input";
+import { formatDate, formatTime } from "../../../core/utils/dates";
 import "./Desktop.css";
 
 interface DesktopProps {
@@ -46,22 +47,6 @@ export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpen
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onOpenCreator, onOpenHub]);
 
-  const formatTime = () => {
-    return time.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-  };
-
-  const formatDate = () => {
-    return time.toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
   return (
     <div className="desktop">
       {/* Desktop Background */}
@@ -81,9 +66,9 @@ export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpen
         </div>
         <div className="menubar-right">
           <div className="menubar-clock">
-            <div className="clock-time">{formatTime()}</div>
+            <div className="clock-time">{formatTime(time, false)}</div>
             <div className="clock-separator">•</div>
-            <div className="clock-date">{formatDate()}</div>
+            <div className="clock-date">{formatDate(time, "EEE, MMM d")}</div>
           </div>
         </div>
       </div>

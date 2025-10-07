@@ -1,4 +1,4 @@
-.PHONY: build test test-unit test-integration test-race test-coverage test-watch run proto clean deps fmt lint lint-fix check coverage help
+.PHONY: build test test-unit test-integration test-race test-coverage test-watch run proto clean deps fmt lint lint-fix check coverage tools audit load-test help
 
 # Default target
 .DEFAULT_GOAL := help
@@ -114,7 +114,23 @@ tools: ## Install development tools
 	@echo "Installing development tools..."
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	go install golang.org/x/tools/cmd/goimports@latest
+	go install github.com/securego/gosec/v2/cmd/gosec@latest
+	go install golang.org/x/vuln/cmd/govulncheck@latest
+	go install github.com/tsenart/vegeta@latest
 	@echo "Tools installed"
+
+# Security audit
+audit: ## Run security audit
+	@echo "Running security audit..."
+	gosec -quiet ./...
+	govulncheck ./...
+	@echo "Audit complete"
+
+# Load testing
+load-test: ## Run load tests
+	@echo "Running load tests..."
+	cd tests/load && make medium
+	@echo "Load test complete"
 
 # Help target
 help: ## Show this help message

@@ -5,6 +5,7 @@
 
 import { logger } from "../../../../../core/utils/monitoring/logger";
 import { getAllMetrics } from "../../../../../core/monitoring";
+import { formatTime } from "../../../../../core/utils/dates";
 import { ExecutorContext, AsyncExecutor } from "../core/types";
 
 export class AnalysisExecutor implements AsyncExecutor {
@@ -56,7 +57,7 @@ export class AnalysisExecutor implements AsyncExecutor {
       // Update last refresh time
       this.context.componentState.set(
         "last-update",
-        `Updated: ${new Date().toLocaleTimeString()}`
+        `Updated: ${formatTime(new Date(), false)}`
       );
 
       logger.info("Metrics refreshed successfully", { component: "AnalysisExecutor" });

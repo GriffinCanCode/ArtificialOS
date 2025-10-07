@@ -4,6 +4,7 @@
  */
 
 import { logger } from "../../../../../core/utils/monitoring/logger";
+import { compareTimestampsAsc, compareTimestampsDesc } from "../../../../../core/utils/dates";
 import { ExecutorContext, BaseExecutor } from "../core/types";
 
 export class DataExecutor implements BaseExecutor {
@@ -37,6 +38,18 @@ export class DataExecutor implements BaseExecutor {
           const aVal = a[field];
           const bVal = b[field];
 
+          // Smart sorting for timestamps (numeric date fields)
+          if (typeof aVal === "number" && typeof bVal === "number") {
+            // Check if field name suggests it's a timestamp
+            const isTimestampField = /time|date|created|updated|modified/i.test(field);
+            if (isTimestampField) {
+              return order === "asc"
+                ? compareTimestampsAsc(aVal, bVal)
+                : compareTimestampsDesc(aVal, bVal);
+            }
+          }
+
+          // Default comparison for other types
           if (order === "asc") {
             return aVal > bVal ? 1 : -1;
           } else {

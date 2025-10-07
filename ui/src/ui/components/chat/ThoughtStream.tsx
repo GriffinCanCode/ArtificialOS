@@ -8,6 +8,7 @@ import { MessageCircle, Brain, X } from "lucide-react";
 import { useThoughts, useAppActions } from "../../../core/store/appStore";
 import { useWebSocket } from "../../contexts/WebSocketContext";
 import { usePulse, useFadeIn, useStaggerSlideUp } from "../../hooks/useGSAP";
+import { formatTime } from "../../../core/utils/dates";
 import "./ThoughtStream.css";
 
 interface ThoughtStreamProps {
@@ -32,14 +33,6 @@ const ThoughtStream: React.FC<ThoughtStreamProps> = React.memo(({ isVisible, onT
 
   const scrollToBottom = useCallback(() => {
     streamEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, []);
-
-  const formatTime = useCallback((timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
   }, []);
 
   useEffect(() => {
@@ -120,7 +113,7 @@ const ThoughtStream: React.FC<ThoughtStreamProps> = React.memo(({ isVisible, onT
                   <div className="thought-index">{idx + 1}</div>
                   <div className="thought-content">
                     <div className="thought-text">{thought.content}</div>
-                    <div className="thought-time">{formatTime(thought.timestamp)}</div>
+                    <div className="thought-time">{formatTime(new Date(thought.timestamp * 1000), false)}</div>
                   </div>
                 </div>
               ))
