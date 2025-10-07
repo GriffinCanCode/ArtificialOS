@@ -212,10 +212,7 @@ mod tests {
 
     #[test]
     fn test_serializable_error_creation() {
-        let error = SerializableError::new(
-            "test_error".to_string(),
-            "test message".to_string(),
-        );
+        let error = SerializableError::new("test_error".to_string(), "test message".to_string());
         assert_eq!(error.error_type, "test_error");
         assert_eq!(error.message, "test message");
         assert_eq!(error.details, None);
@@ -252,8 +249,16 @@ mod tests {
 
     #[test]
     fn test_process_error_from_memory_error() {
-        let memory_error = MemoryError::OutOfMemory;
+        let memory_error = MemoryError::OutOfMemory {
+            requested: 1024,
+            available: 512,
+            used: 512,
+            total: 1024,
+        };
         let process_error: ProcessError = memory_error.into();
-        assert!(matches!(process_error, ProcessError::MemoryAllocationFailed(_)));
+        assert!(matches!(
+            process_error,
+            ProcessError::MemoryAllocationFailed(_)
+        ));
     }
 }

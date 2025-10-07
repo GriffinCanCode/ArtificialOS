@@ -135,12 +135,16 @@ impl MemFS {
                     return Err(VfsError::OutOfSpace);
                 }
                 // Try to atomically update
-                if self.current_size.compare_exchange(
-                    current,
-                    current + additional,
-                    Ordering::SeqCst,
-                    Ordering::SeqCst
-                ).is_ok() {
+                if self
+                    .current_size
+                    .compare_exchange(
+                        current,
+                        current + additional,
+                        Ordering::SeqCst,
+                        Ordering::SeqCst,
+                    )
+                    .is_ok()
+                {
                     break;
                 }
                 // Retry on failure
@@ -168,10 +172,12 @@ impl MemFS {
                     self.current_size.store(new_size, Ordering::SeqCst);
                 }
             } else {
-                self.current_size.fetch_add(delta as usize, Ordering::SeqCst);
+                self.current_size
+                    .fetch_add(delta as usize, Ordering::SeqCst);
             }
         } else {
-            self.current_size.fetch_sub(delta.unsigned_abs(), Ordering::SeqCst);
+            self.current_size
+                .fetch_sub(delta.unsigned_abs(), Ordering::SeqCst);
         }
     }
 
@@ -435,7 +441,7 @@ impl FileSystem for MemFS {
                 let mut entries = Vec::new();
                 for (name, child_path) in children {
                     if let Some(node) = self.nodes.get(&child_path) {
-                        entries.push(Entry::new(name.clone(), node.file_type()));
+                        entries.push(Entry::new_unchecked(name.clone(), node.file_type()));
                     }
                 }
                 Ok(entries)
@@ -551,7 +557,8 @@ impl FileSystem for MemFS {
         let from = self.normalize(from);
         let to = self.normalize(to);
 
-        let node = self.nodes
+        let node = self
+            .nodes
             .remove(&from)
             .ok_or_else(|| VfsError::NotFound(from.display().to_string()))?
             .1;
@@ -634,18 +641,16 @@ impl FileSystem for MemFS {
         let path = self.normalize(path);
 
         match self.nodes.get_mut(&path) {
-            Some(mut entry) => {
-                match entry.value_mut() {
-                    Node::File { permissions, .. } => {
-                        *permissions = perms;
-                        Ok(())
-                    }
-                    Node::Directory { permissions, .. } => {
-                        *permissions = perms;
-                        Ok(())
-                    }
+            Some(mut entry) => match entry.value_mut() {
+                Node::File { permissions, .. } => {
+                    *permissions = perms;
+                    Ok(())
                 }
-            }
+                Node::Directory { permissions, .. } => {
+                    *permissions = perms;
+                    Ok(())
+                }
+            },
             None => Err(VfsError::NotFound(path.display().to_string())),
         }
     }

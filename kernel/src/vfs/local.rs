@@ -3,7 +3,6 @@
  * Wraps std::fs for host filesystem access
  */
 
-use log::info;
 use std::fs;
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
@@ -237,7 +236,7 @@ impl FileSystem for LocalFS {
                 .file_type()
                 .map_err(|e| Self::io_error(e, format!("get file type for {}", name)))?;
 
-            result.push(Entry::new(name, Self::convert_file_type(file_type)));
+            result.push(Entry::new_unchecked(name, Self::convert_file_type(file_type)));
         }
 
         Ok(result)
