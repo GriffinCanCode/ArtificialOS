@@ -4,32 +4,81 @@
  */
 
 use super::manager::MemoryManager;
+use crate::core::serde::{is_zero_u64, is_zero_usize};
 use crate::core::types::{Pid, Size};
 use log::{info, warn};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use parking_lot::RwLock;
 
 /// Global garbage collection strategy
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum GcStrategy {
     /// Collect from all processes
     Global,
     /// Collect only from processes over threshold
-    Threshold(Size),
+    Threshold { threshold: Size },
     /// Collect from specific processes
-    Targeted(Pid),
+    Targeted { pid: Pid },
     /// Collect unreferenced memory blocks
     Unreferenced,
 }
 
 /// Garbage collection statistics
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct GcStats {
+    #[serde(default, skip_serializing_if = "is_zero_usize")]
     pub freed_bytes: Size,
+    #[serde(default, skip_serializing_if = "is_zero_usize")]
     pub freed_blocks: usize,
+    #[serde(default, skip_serializing_if = "is_zero_usize")]
     pub processes_cleaned: usize,
-    pub duration_ms: u128,
+    #[serde(default, skip_serializing_if = "is_zero_u64")]
+    pub duration_ms: u64,
+}
+
+impl Default for GcStats {
+    fn default() -> Self {
+        Self {
+            freed_bytes: 0,
+            freed_blocks: 0,
+            processes_cleaned: 0,
+            duration_ms: 0,
+        }
+    }
+}
+
+impl GcStats {
+    /// Create new empty GC stats
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Calculate bytes freed per process
+    pub fn bytes_per_process(&self) -> Size {
+        if self.processes_cleaned == 0 {
+            0
+        } else {
+            self.freed_bytes / self.processes_cleaned
+        }
+    }
+
+    /// Calculate blocks freed per process
+    pub fn blocks_per_process(&self) -> f64 {
+        if self.processes_cleaned == 0 {
+            0.0
+        } else {
+            self.freed_blocks as f64 / self.processes_cleaned as f64
+        }
+    }
+
+    /// Check if any memory was freed
+    pub fn freed_any(&self) -> bool {
+        self.freed_bytes > 0 || self.freed_blocks > 0
+    }
 }
 
 /// Global garbage collector
@@ -62,21 +111,16 @@ impl GlobalGarbageCollector {
         let start = std::time::Instant::now();
         info!("Starting global garbage collection with strategy: {:?}", strategy);
 
-        let mut stats = GcStats {
-            freed_bytes: 0,
-            freed_blocks: 0,
-            processes_cleaned: 0,
-            duration_ms: 0,
-        };
+        let mut stats = GcStats::new();
 
         match strategy {
             GcStrategy::Global => {
                 self.collect_global(&mut stats);
             }
-            GcStrategy::Threshold(threshold) => {
+            GcStrategy::Threshold { threshold } => {
                 self.collect_threshold(threshold, &mut stats);
             }
-            GcStrategy::Targeted(pid) => {
+            GcStrategy::Targeted { pid } => {
                 self.collect_targeted(pid, &mut stats);
             }
             GcStrategy::Unreferenced => {
@@ -87,7 +131,7 @@ impl GlobalGarbageCollector {
         // Update last GC time
         *self.last_gc.write() = std::time::Instant::now();
 
-        stats.duration_ms = start.elapsed().as_millis();
+        stats.duration_ms = start.elapsed().as_millis() as u64;
         info!(
             "Global GC completed: freed {} bytes ({} blocks) from {} processes in {}ms",
             stats.freed_bytes, stats.freed_blocks, stats.processes_cleaned, stats.duration_ms
