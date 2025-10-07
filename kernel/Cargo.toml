@@ -39,6 +39,7 @@ dashmap = { version = "5.5", default-features = false }
 ahash = "0.8"
 ringbuf = "0.4"
 flume = "0.11"
+crossbeam-queue = "0.3"  # Lock-free queues for hot paths
 
 # Structured logging
 tracing = { version = "0.1", default-features = false, features = ["std", "attributes"] }

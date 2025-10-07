@@ -3,6 +3,7 @@
  * Process management, execution, and scheduling
  */
 
+pub mod atomic_stats;
 mod cleanup;
 pub mod executor;
 pub mod manager;

@@ -50,7 +50,7 @@ impl Scheduler {
 
         // Update policy
         *self.policy.write() = new_policy;
-        self.stats.write().policy = new_policy;
+        self.stats.set_policy(new_policy);
 
         // Requeue all processes under new policy and update location index
         for entry in all_entries {
@@ -77,7 +77,7 @@ impl Scheduler {
     /// Set time quantum dynamically
     pub fn set_quantum(&self, quantum: Duration) {
         *self.quantum.write() = quantum;
-        self.stats.write().quantum_micros = quantum.as_micros() as u64;
+        self.stats.set_quantum(quantum);
         info!("Time quantum updated to {:?}", quantum);
     }
 

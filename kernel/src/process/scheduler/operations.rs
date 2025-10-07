@@ -53,7 +53,7 @@ impl Scheduler {
             }
         }
 
-        self.stats.write().active_processes += 1;
+        self.stats.inc_active();
         info!(
             "Process {} added to scheduler (priority: {}, vruntime: {})",
             pid, priority, vruntime
@@ -107,9 +107,7 @@ impl Scheduler {
         }
 
         if removed {
-            let mut stats = self.stats.write();
-            stats.active_processes = stats.active_processes.saturating_sub(1);
-            drop(stats);
+            self.stats.dec_active();
             info!("Process {} removed from scheduler", pid);
         } else {
             // Re-insert into index if we didn't actually find it (shouldn't happen)
@@ -169,9 +167,8 @@ impl Scheduler {
                     }
                 }
 
-                let mut stats = self.stats.write();
-                stats.preemptions += 1;
-                stats.context_switches += 1;
+                self.stats.inc_preemptions();
+                self.stats.inc_context_switches();
 
                 info!("Process {} preempted after {:?}", preempted_pid, elapsed);
             } else {
@@ -200,11 +197,8 @@ impl Scheduler {
             // Update location to Current
             self.process_locations.insert(pid, QueueLocation::Current);
 
-            let mut stats = self.stats.write();
-            stats.total_scheduled += 1;
-            if stats.total_scheduled > 0 {
-                stats.context_switches += 1;
-            }
+            self.stats.inc_scheduled();
+            self.stats.inc_context_switches();
 
             info!("Scheduled process {} ({:?})", pid, policy);
             Some(pid)
@@ -242,7 +236,7 @@ impl Scheduler {
                 }
             }
 
-            self.stats.write().context_switches += 1;
+            self.stats.inc_context_switches();
         }
 
         drop(current);

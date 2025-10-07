@@ -8,6 +8,7 @@ mod fd;
 mod fs;
 mod handler;
 mod handlers;
+pub mod iouring; // io_uring-style async syscall completion
 mod ipc;
 pub mod jit; // JIT compilation for hot syscall paths
 mod memory;
@@ -26,6 +27,10 @@ mod vfs_adapter;
 // Re-export public API
 pub use executor::SyscallExecutor;
 pub use handler::{SyscallHandler, SyscallHandlerRegistry};
+pub use iouring::{
+    IoUringExecutor, IoUringManager, SyscallCompletionEntry, SyscallCompletionRing,
+    SyscallCompletionStatus, SyscallOpType, SyscallSubmissionEntry,
+};
 pub use jit::{JitManager, JitStats, SyscallPattern};
 pub use traits::*;
 pub use types::{ProcessOutput, Syscall, SyscallError, SyscallResult, SystemInfo};

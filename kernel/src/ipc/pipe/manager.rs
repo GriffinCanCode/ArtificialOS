@@ -11,16 +11,18 @@ use super::types::{
 };
 use crate::core::types::{Pid, Size};
 use crate::memory::MemoryManager;
-use dashmap::DashMap;
 use ahash::RandomState;
+use crossbeam_queue::SegQueue;
+use dashmap::DashMap;
 use log::{info, warn};
 use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 /// Pipe manager
 ///
 /// # Performance
 /// - Cache-line aligned to prevent false sharing of atomic ID counter
+/// - Lock-free queue for ID recycling (hot path optimization)
 #[repr(C, align(64))]
 pub struct PipeManager {
     pipes: Arc<DashMap<PipeId, Pipe, RandomState>>,
@@ -28,14 +30,14 @@ pub struct PipeManager {
     // Track pipe count per process
     process_pipes: Arc<DashMap<Pid, Size, RandomState>>,
     memory_manager: MemoryManager,
-    // Free IDs for recycling (prevents ID exhaustion)
-    free_ids: Arc<Mutex<Vec<PipeId>>>,
+    // Lock-free queue for ID recycling (prevents ID exhaustion)
+    free_ids: Arc<SegQueue<PipeId>>,
 }
 
 impl PipeManager {
     pub fn new(memory_manager: MemoryManager) -> Self {
         info!(
-            "Pipe manager initialized with ID recycling (capacity: {})",
+            "Pipe manager initialized with lock-free ID recycling (capacity: {})",
             DEFAULT_PIPE_CAPACITY
         );
         Self {
@@ -45,7 +47,7 @@ impl PipeManager {
             // Use 32 shards for process pipe tracking
             process_pipes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 32)),
             memory_manager,
-            free_ids: Arc::new(Mutex::new(Vec::new())),
+            free_ids: Arc::new(SegQueue::new()),
         }
     }
 
@@ -86,15 +88,12 @@ impl PipeManager {
             .allocate(capacity, writer_pid)
             .map_err(|e| PipeError::AllocationFailed(e.to_string()))?;
 
-        // Try to recycle an ID from the free list, otherwise allocate new
-        let pipe_id = {
-            let mut free_ids = self.free_ids.lock().unwrap();
-            if let Some(recycled_id) = free_ids.pop() {
-                info!("Recycled pipe ID {} for PIDs {}/{}", recycled_id, reader_pid, writer_pid);
-                recycled_id
-            } else {
-                self.next_id.fetch_add(1, Ordering::SeqCst)
-            }
+        // Try to recycle an ID from the lock-free free list, otherwise allocate new
+        let pipe_id = if let Some(recycled_id) = self.free_ids.pop() {
+            info!("Recycled pipe ID {} for PIDs {}/{} (lock-free)", recycled_id, reader_pid, writer_pid);
+            recycled_id
+        } else {
+            self.next_id.fetch_add(1, Ordering::SeqCst)
         };
 
         let pipe = Pipe::new(
@@ -202,12 +201,9 @@ impl PipeManager {
             );
         }
 
-        // Add pipe ID to free list for recycling
-        {
-            let mut free_ids = self.free_ids.lock().unwrap();
-            free_ids.push(pipe_id);
-            info!("Added pipe ID {} to free list for recycling", pipe_id);
-        }
+        // Add pipe ID to lock-free free list for recycling
+        self.free_ids.push(pipe_id);
+        info!("Added pipe ID {} to lock-free free list for recycling", pipe_id);
 
         // Update process pipe counts using alter() for atomic decrement
         self.process_pipes.alter(&reader_pid, |_, count| {

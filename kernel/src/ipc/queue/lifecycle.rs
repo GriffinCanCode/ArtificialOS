@@ -47,11 +47,10 @@ impl QueueManager {
         Ok(())
     }
 
-    /// Allocate a queue ID (recycle or create new)
+    /// Allocate a queue ID (recycle or create new, lock-free)
     fn allocate_queue_id(&self, owner_pid: Pid) -> QueueId {
-        let mut free_ids = self.free_ids.lock().unwrap();
-        if let Some(recycled_id) = free_ids.pop() {
-            info!("Recycled queue ID {} for PID {}", recycled_id, owner_pid);
+        if let Some(recycled_id) = self.free_ids.pop() {
+            info!("Recycled queue ID {} for PID {} (lock-free)", recycled_id, owner_pid);
             recycled_id
         } else {
             self.next_id.fetch_add(1, Ordering::SeqCst) as u32
@@ -163,10 +162,9 @@ impl QueueManager {
     fn remove_queue(&self, queue_id: QueueId, pid: Pid) {
         self.queues.remove(&queue_id);
 
-        // Recycle queue ID
-        let mut free_ids = self.free_ids.lock().unwrap();
-        free_ids.push(queue_id);
-        info!("Added queue ID {} to free list for recycling", queue_id);
+        // Recycle queue ID (lock-free)
+        self.free_ids.push(queue_id);
+        info!("Added queue ID {} to lock-free free list for recycling", queue_id);
 
         // Remove from process queues
         self.process_queues.alter(&pid, |_, mut qs| {

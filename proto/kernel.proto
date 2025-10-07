@@ -838,3 +838,29 @@ message BatchSyscallResponse {
   uint32 failure_count = 3;
 }
 
+// ============================================================================
+// io_uring-style Async Syscall Completion Messages
+// ============================================================================
+
+message ReapCompletionsRequest {
+  uint32 pid = 1;
+  uint32 max_completions = 2;  // 0 means all
+}
+
+message ReapCompletionsResponse {
+  repeated IoUringCompletion completions = 1;
+  uint32 count = 2;
+}
+
+message IoUringCompletion {
+  uint64 seq = 1;  // Sequence number
+  uint64 user_data = 2;  // User-provided correlation data
+  SyscallResponse result = 3;  // Result of the operation
+}
+
+message IoUringBatchResponse {
+  repeated uint64 sequences = 1;  // Assigned sequence numbers
+  bool accepted = 2;
+  string error = 3;
+}
+

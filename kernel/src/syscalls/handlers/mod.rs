@@ -28,3 +28,6 @@ pub use scheduler_handler::SchedulerHandler;
 pub use signal_handler::SignalHandler;
 pub use system_handler::SystemHandler;
 pub use time_handler::TimeHandler;
+
+// Re-export io_uring handlers
+pub use crate::syscalls::iouring::handlers::{IoUringHandler, IoUringAsyncHandler};

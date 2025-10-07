@@ -7,9 +7,9 @@ use super::Scheduler;
 use crate::process::types::{SchedulerStats, SchedulingPolicy};
 
 impl Scheduler {
-    /// Get scheduler statistics
+    /// Get scheduler statistics (lock-free snapshot)
     pub fn stats(&self) -> SchedulerStats {
-        self.stats.read().clone()
+        self.stats.snapshot()
     }
 
     /// Get minimum virtual runtime (for fair scheduler normalization)

@@ -4,6 +4,7 @@
  */
 
 pub mod core;
+pub mod lockfree_ring; // Lock-free SPSC ring buffers for IPC hot paths
 pub mod mmap;
 pub mod pipe;
 pub mod queue;

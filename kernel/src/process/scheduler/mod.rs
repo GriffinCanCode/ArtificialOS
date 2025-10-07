@@ -3,6 +3,7 @@
  * Manages process scheduling with multiple policies and preemption
  */
 
+use super::atomic_stats::AtomicSchedulerStats;
 use super::types::{ProcessStats, SchedulerStats, SchedulingPolicy};
 use crate::core::types::{Pid, Priority};
 use dashmap::DashMap;
@@ -32,6 +33,7 @@ enum QueueLocation {
 ///
 /// # Performance
 /// - Cache-line aligned for optimal performance in high-frequency scheduling operations
+/// - Lock-free atomic stats for zero-contention monitoring in hot scheduling paths
 #[repr(C, align(64))]
 pub struct Scheduler {
     policy: Arc<RwLock<SchedulingPolicy>>,
@@ -52,8 +54,8 @@ pub struct Scheduler {
     // Process location index for O(1) lookup
     process_locations: Arc<DashMap<Pid, QueueLocation>>,
 
-    // Statistics
-    stats: Arc<RwLock<SchedulerStats>>,
+    // Statistics - lock-free atomics for hot path updates
+    stats: Arc<AtomicSchedulerStats>,
 }
 
 impl Scheduler {
@@ -65,7 +67,7 @@ impl Scheduler {
     /// Create scheduler with custom quantum
     pub fn with_quantum(policy: SchedulingPolicy, quantum: Duration) -> Self {
         info!(
-            "Scheduler initialized: policy={:?}, quantum={:?}",
+            "Scheduler initialized with lock-free atomic stats: policy={:?}, quantum={:?}",
             policy, quantum
         );
 
@@ -77,14 +79,7 @@ impl Scheduler {
             fair_queue: Arc::new(RwLock::new(BinaryHeap::new())),
             current: Arc::new(RwLock::new(None)),
             process_locations: Arc::new(DashMap::new()),
-            stats: Arc::new(RwLock::new(SchedulerStats {
-                total_scheduled: 0,
-                context_switches: 0,
-                preemptions: 0,
-                active_processes: 0,
-                policy,
-                quantum_micros: quantum.as_micros() as u64,
-            })),
+            stats: Arc::new(AtomicSchedulerStats::new(policy, quantum)),
         }
     }
 }

@@ -14,7 +14,10 @@ use crate::process::ProcessManagerImpl as ProcessManager;
 use crate::security::{SandboxManager};
 use crate::syscalls::{Syscall, SyscallExecutor, SyscallResult};
 
-use crate::api::execution::{AsyncTaskManager, BatchExecutor, StreamingManager};
+use crate::api::execution::{
+    AsyncTaskManager, BatchExecutor, StreamingManager,
+    IoUringExecutor, IoUringManager,
+};
 use crate::api::traits::ServerLifecycle;
 use crate::api::types::{ApiError, ApiResult, ServerConfig};
 use crate::api::conversions::{proto_to_syscall_full, syscall_result_to_proto};
@@ -39,6 +42,7 @@ pub struct KernelServiceImpl {
     async_manager: AsyncTaskManager,
     streaming_manager: StreamingManager,
     batch_executor: BatchExecutor,
+    iouring_manager: Arc<IoUringManager>,
 }
 
 impl KernelServiceImpl {
@@ -52,6 +56,10 @@ impl KernelServiceImpl {
         let streaming_manager = StreamingManager::new(syscall_executor.clone());
         let batch_executor = BatchExecutor::new(syscall_executor.clone());
 
+        // Initialize io_uring manager for efficient I/O syscall completion
+        let iouring_executor = Arc::new(IoUringExecutor::new(syscall_executor.clone()));
+        let iouring_manager = Arc::new(IoUringManager::new(iouring_executor));
+
         Self {
             syscall_executor,
             process_manager,
@@ -59,7 +67,13 @@ impl KernelServiceImpl {
             async_manager,
             streaming_manager,
             batch_executor,
+            iouring_manager,
         }
+    }
+
+    /// Get the io_uring manager
+    pub fn iouring_manager(&self) -> &Arc<IoUringManager> {
+        &self.iouring_manager
     }
 }
 

@@ -10,13 +10,14 @@ use super::pubsub::PubSubQueue;
 use super::types::{QueueMessage, MAX_QUEUE_CAPACITY};
 use crate::core::types::Pid;
 use crate::memory::MemoryManager;
-use dashmap::DashMap;
 use ahash::RandomState;
+use crossbeam_queue::SegQueue;
+use dashmap::DashMap;
 use flume;
 use log::info;
 use std::collections::HashSet;
 use std::sync::atomic::AtomicU64;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 /// Unified queue wrapper
 pub(super) enum Queue {
@@ -55,6 +56,7 @@ impl Queue {
 ///
 /// # Performance
 /// - Cache-line aligned to prevent false sharing of atomic ID generators
+/// - Lock-free queue for ID recycling (hot path optimization)
 #[repr(C, align(64))]
 pub struct QueueManager {
     pub(super) queues: Arc<DashMap<QueueId, Queue, RandomState>>,
@@ -63,13 +65,13 @@ pub struct QueueManager {
     pub(super) process_queues: Arc<DashMap<Pid, HashSet<QueueId>, RandomState>>,
     pub(super) pubsub_receivers: Arc<DashMap<(QueueId, Pid), flume::Receiver<QueueMessage>, RandomState>>,
     pub(super) memory_manager: MemoryManager,
-    pub(super) free_ids: Arc<Mutex<Vec<QueueId>>>,
+    pub(super) free_ids: Arc<SegQueue<QueueId>>,
 }
 
 impl QueueManager {
     pub fn new(memory_manager: MemoryManager) -> Self {
         info!(
-            "Queue manager initialized with ID recycling (capacity: {})",
+            "Queue manager initialized with lock-free ID recycling (capacity: {})",
             MAX_QUEUE_CAPACITY
         );
         Self {
@@ -79,7 +81,7 @@ impl QueueManager {
             process_queues: Arc::new(DashMap::with_hasher(RandomState::new())),
             pubsub_receivers: Arc::new(DashMap::with_hasher(RandomState::new())),
             memory_manager,
-            free_ids: Arc::new(Mutex::new(Vec::new())),
+            free_ids: Arc::new(SegQueue::new()),
         }
     }
 }
