@@ -12,81 +12,73 @@ name = "kernel"
 path = "src/main.rs"
 
 [dependencies]
-# Async runtime
-tokio = { version = "1.35", features = ["full"] }
-tokio-stream = "0.1"
-futures = "0.3"
+# Async runtime - only include features we actually use
+tokio = { version = "1.35", features = ["rt-multi-thread", "macros", "sync", "time", "net", "io-util", "signal", "fs"] }
+tokio-stream = { version = "0.1", default-features = false, features = ["sync"] }
+futures = { version = "0.3", default-features = false, features = ["std"] }
 async-stream = "0.3"
 
 # gRPC
-tonic = "0.11"
+tonic = { version = "0.11", default-features = false, features = ["transport", "codegen", "prost"] }
 prost = "0.12"
 
-# UUID generation
-uuid = { version = "1.6", features = ["v4"] }
+# UUID generation - fast rng only
+uuid = { version = "1.6", features = ["v4", "fast-rng"] }
 
 # Serialization
 serde = { version = "1.0", features = ["derive", "rc"] }
-serde_json = "1.0"
-simd-json = "0.13"
+serde_json = { version = "1.0", default-features = false, features = ["std"] }
+simd-json = { version = "0.13", default-features = false, features = ["serde_impl"] }
 bincode = "1.3"
 serde_with = { version = "3.11", features = ["time_0_3", "macros"] }
-time = { version = "0.3", features = ["serde", "macros"] }
+time = { version = "0.3", default-features = false, features = ["serde", "macros", "std"] }
 
 # Concurrency
 parking_lot = "0.12"
-dashmap = "5.5"
+dashmap = { version = "5.5", default-features = false }
 ahash = "0.8"
 ringbuf = "0.4"
-flume = "0.11"  # High-performance MPSC channel for pub-sub
+flume = "0.11"
 
 # Structured logging
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing = { version = "0.1", default-features = false, features = ["std", "attributes"] }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "json", "fmt", "ansi"] }
 
 # Error handling
 thiserror = "1.0"
-anyhow = "1.0"
+anyhow = { version = "1.0", default-features = false, features = ["std"] }
 
 # Logging
 log = "0.4"
-env_logger = "0.11"
+env_logger = { version = "0.11", default-features = false }
 
 # Network namespace isolation (Linux-specific)
-nix = { version = "0.29", features = ["sched", "net", "user", "signal"] }
+nix = { version = "0.29", default-features = false, features = ["sched", "net", "user", "signal"] }
 
-# HTTP client
-reqwest = { version = "0.12", features = ["blocking", "json", "gzip"] }
+# HTTP client - minimal features
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "gzip", "rustls-tls"] }
 
 # Path utilities
 path-clean = "1.0"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-rtnetlink = "0.14"
-ipnetwork = "0.20"
-netlink-packet-route = "0.19"
+rtnetlink = { version = "0.14", default-features = false }
+ipnetwork = { version = "0.20", default-features = false }
+netlink-packet-route = { version = "0.19", default-features = false }
 
 [build-dependencies]
 tonic-build = "0.11"
 
 [dev-dependencies]
-tokio-test = "0.4"
-# Better assertions with colored diffs
-pretty_assertions = "1.4"
-# Property-based testing
-proptest = "1.4"
-# Mocking framework
-mockall = "0.12"
-# Temporary file/directory creation for tests
+tokio-test = { version = "0.4", default-features = false }
+pretty_assertions = { version = "1.4", default-features = false }
+proptest = { version = "1.4", default-features = false, features = ["std"] }
+mockall = { version = "0.12", default-features = false }
 tempfile = "3.8"
-# Serial test execution for tests that can't run in parallel
-serial_test = "3.0"
-# Async test utilities
-futures = "0.3"
-# Random number generation for stress tests
-rand = "0.8"
-# Benchmarking
-criterion = { version = "0.5", features = ["html_reports"] }
+serial_test = { version = "3.0", default-features = false }
+futures = { version = "0.3", default-features = false, features = ["std"] }
+rand = { version = "0.8", default-features = false, features = ["std", "std_rng"] }
+criterion = { version = "0.5", default-features = false, features = ["html_reports"] }
 
 [[bench]]
 name = "json_benchmark"
@@ -96,7 +88,28 @@ harness = false
 name = "bincode_benchmark"
 harness = false
 
+# Development profile - optimized for build speed
+[profile.dev]
+# Optimize dependencies in dev builds (faster runtime, still fast incremental builds)
+opt-level = 0
+# Split debuginfo for faster linking on macOS
+split-debuginfo = "unpacked"
+# Enable incremental compilation
+incremental = true
+
+# Release profile - optimized for performance
 [profile.release]
 opt-level = 3
 lto = true
 codegen-units = 1
+
+# Fast development profile for quick iterations
+[profile.dev-fast]
+inherits = "dev"
+opt-level = 1
+incremental = true
+debug = 1  # Reduced debug info
+
+# Optimize all dependencies even in dev mode
+[profile.dev.package."*"]
+opt-level = 1

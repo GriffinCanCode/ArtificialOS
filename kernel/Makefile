@@ -135,6 +135,21 @@ install-tools:
 	cargo install cargo-audit cargo-outdated cargo-edit cargo-watch cargo-expand
 	@echo "$(GREEN)Development tools installed successfully!$(NC)"
 
+## setup-fast-build: Install tools for faster compilation
+setup-fast-build:
+	@echo "$(BLUE)Setting up fast build tools...$(NC)"
+	@echo "Installing sccache for compilation caching..."
+	cargo install sccache
+	@if [ "$(shell uname)" = "Darwin" ]; then \
+		echo "$(BLUE)Installing LLVM for lld linker (macOS)...$(NC)"; \
+		brew install llvm; \
+	elif [ "$(shell uname)" = "Linux" ]; then \
+		echo "$(BLUE)Installing mold linker (Linux)...$(NC)"; \
+		cargo install mold; \
+	fi
+	@echo "$(GREEN)Fast build tools installed!$(NC)"
+	@echo "$(YELLOW)To enable sccache, uncomment the rustc-wrapper line in .cargo/config.toml$(NC)"
+
 ## audit: Check for security vulnerabilities
 audit:
 	@echo "$(BLUE)Checking for security vulnerabilities...$(NC)"
