@@ -18,7 +18,7 @@ use log::{debug, info, warn};
 use std::collections::HashSet;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
-use tokio::sync::mpsc;
+use flume;
 
 /// Unified queue wrapper
 pub(super) enum Queue {
@@ -59,7 +59,7 @@ pub struct QueueManager {
     next_id: Arc<AtomicU64>,
     next_msg_id: Arc<AtomicU64>,
     process_queues: Arc<DashMap<Pid, HashSet<QueueId>, RandomState>>,
-    pubsub_receivers: Arc<DashMap<(QueueId, Pid), mpsc::UnboundedReceiver<QueueMessage>, RandomState>>,
+    pubsub_receivers: Arc<DashMap<(QueueId, Pid), flume::Receiver<QueueMessage>, RandomState>>,
     memory_manager: MemoryManager,
     // Free IDs for recycling (prevents ID exhaustion)
     free_ids: Arc<Mutex<Vec<QueueId>>>,
@@ -294,11 +294,11 @@ impl QueueManager {
     pub async fn poll(&self, queue_id: QueueId, pid: Pid) -> IpcResult<QueueMessage> {
         // Check if we have a PubSub receiver
         let receiver_key = (queue_id, pid);
-        if let Some(mut rx) = self.pubsub_receivers.get_mut(&receiver_key) {
+        if let Some(rx) = self.pubsub_receivers.get(&receiver_key) {
             return rx
-                .recv()
+                .recv_async()
                 .await
-                .ok_or_else(|| IpcError::Closed("Subscription closed".into()));
+                .map_err(|_| IpcError::Closed("Subscription closed".into()));
         }
 
         // For FIFO/Priority queues, poll with notify

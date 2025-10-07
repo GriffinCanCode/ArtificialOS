@@ -8,14 +8,14 @@ use super::types::QueueMessage;
 use crate::core::types::Pid;
 use log::debug;
 use ahash::HashMap;
-use tokio::sync::mpsc;
+use flume;
 
 /// PubSub queue implementation
 pub(super) struct PubSubQueue {
     pub id: QueueId,
     pub owner: Pid,
     pub capacity: usize,
-    pub subscribers: HashMap<Pid, mpsc::UnboundedSender<QueueMessage>>,
+    pub subscribers: HashMap<Pid, flume::Sender<QueueMessage>>,
     pub closed: bool,
 }
 
@@ -31,8 +31,8 @@ impl PubSubQueue {
         }
     }
 
-    pub fn subscribe(&mut self, pid: Pid) -> mpsc::UnboundedReceiver<QueueMessage> {
-        let (tx, rx) = mpsc::unbounded_channel();
+    pub fn subscribe(&mut self, pid: Pid) -> flume::Receiver<QueueMessage> {
+        let (tx, rx) = flume::unbounded();
         self.subscribers.insert(pid, tx);
         debug!("PID {} subscribed to queue {}", pid, self.id);
         rx
