@@ -165,19 +165,15 @@ impl SyscallExecutor {
             None => return SyscallResult::error("Process manager not available"),
         };
 
-        // Get process, modify priority, update scheduler
-        match process_manager.get_process(target_pid) {
-            Some(_) => {
-                // Priority is part of Process struct, scheduler tracks it
-                // In full implementation would update the process struct
-                info!(
-                    "PID {} set priority of PID {} to {}",
-                    pid, target_pid, priority
-                );
-                warn!("SetProcessPriority not fully implemented - requires mutable process access");
-                SyscallResult::success()
-            }
-            None => SyscallResult::error(format!("Process {} not found", target_pid)),
+        // Update process priority in process manager, scheduler, and resource limits
+        if process_manager.set_process_priority(target_pid, priority) {
+            info!(
+                "PID {} successfully set priority of PID {} to {}",
+                pid, target_pid, priority
+            );
+            SyscallResult::success()
+        } else {
+            SyscallResult::error(format!("Process {} not found", target_pid))
         }
     }
 

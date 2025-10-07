@@ -408,6 +408,47 @@ impl ProcessManager {
     pub fn current_scheduled(&self) -> Option<u32> {
         self.scheduler.as_ref().and_then(|s| s.read().current())
     }
+
+    /// Set process priority
+    pub fn set_process_priority(&self, pid: Pid, new_priority: Priority) -> bool {
+        // Update process info
+        let mut processes = self.processes.write();
+        let process = match processes.get_mut(&pid) {
+            Some(p) => p,
+            None => return false,
+        };
+
+        let old_priority = process.priority;
+        process.priority = new_priority;
+
+        info!(
+            "Updated priority for PID {}: {} -> {}",
+            pid, old_priority, new_priority
+        );
+
+        // Update scheduler if available
+        if let Some(ref scheduler) = self.scheduler {
+            let scheduler = scheduler.write();
+            // Remove and re-add process to update priority in scheduler queues
+            scheduler.remove(pid);
+            scheduler.add(pid, new_priority);
+            info!("Updated PID {} priority in scheduler", pid);
+        }
+
+        // Update resource limits if executor and limit manager available
+        if let Some(os_pid) = process.os_pid {
+            if let (Some(ref limit_mgr), Some(_)) = (&self.limit_manager, &self.executor) {
+                let new_limits = self.priority_to_limits(new_priority);
+                if let Err(e) = limit_mgr.apply(os_pid, &new_limits) {
+                    log::warn!("Failed to update resource limits for PID {}: {}", pid, e);
+                } else {
+                    info!("Updated resource limits for PID {} (OS PID {})", pid, os_pid);
+                }
+            }
+        }
+
+        true
+    }
 }
 
 impl Clone for ProcessManager {
