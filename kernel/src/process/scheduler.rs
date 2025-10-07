@@ -75,6 +75,35 @@ impl PartialOrd for Entry {
     }
 }
 
+/// Wrapper for Fair scheduling that compares by vruntime (min-heap)
+#[derive(Debug, Clone)]
+struct FairEntry(Entry);
+
+impl PartialEq for FairEntry {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.pid == other.0.pid
+    }
+}
+
+impl Eq for FairEntry {}
+
+impl Ord for FairEntry {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        // Compare by vruntime (lower is better), then by priority (higher is better)
+        other
+            .0
+            .vruntime
+            .cmp(&self.0.vruntime)
+            .then_with(|| self.0.priority.cmp(&other.0.priority))
+    }
+}
+
+impl PartialOrd for FairEntry {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 /// CPU Scheduler
 pub struct Scheduler {
     policy: Arc<RwLock<SchedulingPolicy>>,
@@ -83,8 +112,11 @@ pub struct Scheduler {
     // Round-robin queue
     rr_queue: Arc<RwLock<VecDeque<Entry>>>,
 
-    // Priority queue (min-heap by priority and vruntime)
+    // Priority queue (max-heap by priority)
     priority_queue: Arc<RwLock<BinaryHeap<Entry>>>,
+
+    // Fair queue (min-heap by vruntime) - O(log n) operations
+    fair_queue: Arc<RwLock<BinaryHeap<FairEntry>>>,
 
     // Current running process
     current: Arc<RwLock<Option<Entry>>>,
@@ -111,6 +143,7 @@ impl Scheduler {
             quantum: Arc::new(RwLock::new(quantum)),
             rr_queue: Arc::new(RwLock::new(VecDeque::new())),
             priority_queue: Arc::new(RwLock::new(BinaryHeap::new())),
+            fair_queue: Arc::new(RwLock::new(BinaryHeap::new())),
             current: Arc::new(RwLock::new(None)),
             stats: Arc::new(RwLock::new(SchedulerStats {
                 total_scheduled: 0,
@@ -139,9 +172,9 @@ impl Scheduler {
             }
 
             // Check queued processes vruntime
-            let queue = self.priority_queue.read();
+            let queue = self.fair_queue.read();
             for e in queue.iter() {
-                min_vrt = min_vrt.min(e.vruntime);
+                min_vrt = min_vrt.min(e.0.vruntime);
             }
             drop(queue);
 
@@ -154,8 +187,11 @@ impl Scheduler {
             SchedulingPolicy::RoundRobin => {
                 self.rr_queue.write().push_back(entry);
             }
-            SchedulingPolicy::Priority | SchedulingPolicy::Fair => {
+            SchedulingPolicy::Priority => {
                 self.priority_queue.write().push(entry);
+            }
+            SchedulingPolicy::Fair => {
+                self.fair_queue.write().push(FairEntry(entry));
             }
         }
 
@@ -179,10 +215,19 @@ impl Scheduler {
                     removed = true;
                 }
             }
-            SchedulingPolicy::Priority | SchedulingPolicy::Fair => {
+            SchedulingPolicy::Priority => {
                 let mut queue = self.priority_queue.write();
                 let original_len = queue.len();
                 let entries: Vec<Entry> = queue.drain().filter(|e| e.pid != pid).collect();
+                removed = entries.len() < original_len;
+                for entry in entries {
+                    queue.push(entry);
+                }
+            }
+            SchedulingPolicy::Fair => {
+                let mut queue = self.fair_queue.write();
+                let original_len = queue.len();
+                let entries: Vec<FairEntry> = queue.drain().filter(|e| e.0.pid != pid).collect();
                 removed = entries.len() < original_len;
                 for entry in entries {
                     queue.push(entry);
@@ -244,8 +289,11 @@ impl Scheduler {
                     SchedulingPolicy::RoundRobin => {
                         self.rr_queue.write().push_back(new_entry);
                     }
-                    SchedulingPolicy::Priority | SchedulingPolicy::Fair => {
+                    SchedulingPolicy::Priority => {
                         self.priority_queue.write().push(new_entry);
+                    }
+                    SchedulingPolicy::Fair => {
+                        self.fair_queue.write().push(FairEntry(new_entry));
                     }
                 }
 
@@ -266,25 +314,8 @@ impl Scheduler {
             SchedulingPolicy::RoundRobin => self.rr_queue.write().pop_front(),
             SchedulingPolicy::Priority => self.priority_queue.write().pop(),
             SchedulingPolicy::Fair => {
-                // For Fair scheduling, select process with minimum vruntime
-                let mut queue = self.priority_queue.write();
-                if queue.is_empty() {
-                    None
-                } else {
-                    // Drain all entries, find minimum vruntime, and rebuild heap
-                    let mut entries: Vec<Entry> = queue.drain().collect();
-                    entries.sort_by(|a, b| {
-                        a.vruntime
-                            .cmp(&b.vruntime)
-                            .then_with(|| b.priority.cmp(&a.priority)) // Higher priority as tiebreaker
-                    });
-                    let selected = entries.remove(0);
-                    // Put remaining entries back
-                    for entry in entries {
-                        queue.push(entry);
-                    }
-                    Some(selected)
-                }
+                // For Fair scheduling, select process with minimum vruntime - O(log n)
+                self.fair_queue.write().pop().map(|fe| fe.0)
             }
         };
 
@@ -324,8 +355,11 @@ impl Scheduler {
                 SchedulingPolicy::RoundRobin => {
                     self.rr_queue.write().push_back(new_entry);
                 }
-                SchedulingPolicy::Priority | SchedulingPolicy::Fair => {
+                SchedulingPolicy::Priority => {
                     self.priority_queue.write().push(new_entry);
+                }
+                SchedulingPolicy::Fair => {
+                    self.fair_queue.write().push(FairEntry(new_entry));
                 }
             }
 
@@ -366,6 +400,11 @@ impl Scheduler {
         all_entries.extend(pq.drain());
         drop(pq);
 
+        // Collect from fair queue
+        let mut fq = self.fair_queue.write();
+        all_entries.extend(fq.drain().map(|fe| fe.0));
+        drop(fq);
+
         // Collect current process
         let mut current = self.current.write();
         if let Some(entry) = current.take() {
@@ -383,8 +422,11 @@ impl Scheduler {
                 SchedulingPolicy::RoundRobin => {
                     self.rr_queue.write().push_back(entry);
                 }
-                SchedulingPolicy::Priority | SchedulingPolicy::Fair => {
+                SchedulingPolicy::Priority => {
                     self.priority_queue.write().push(entry);
+                }
+                SchedulingPolicy::Fair => {
+                    self.fair_queue.write().push(FairEntry(entry));
                 }
             }
         }
@@ -431,13 +473,39 @@ impl Scheduler {
                     return true;
                 }
             }
-            SchedulingPolicy::Priority | SchedulingPolicy::Fair => {
+            SchedulingPolicy::Priority => {
                 // For heap, need to rebuild
                 let mut queue = self.priority_queue.write();
                 let mut entries: Vec<Entry> = queue.drain().collect();
                 let found = entries.iter_mut().any(|e| {
                     if e.pid == pid {
                         e.priority = new_priority;
+                        true
+                    } else {
+                        false
+                    }
+                });
+
+                // Rebuild heap
+                for entry in entries {
+                    queue.push(entry);
+                }
+
+                if found {
+                    info!(
+                        "Updated priority for queued process {} to {}",
+                        pid, new_priority
+                    );
+                    return true;
+                }
+            }
+            SchedulingPolicy::Fair => {
+                // For heap, need to rebuild
+                let mut queue = self.fair_queue.write();
+                let mut entries: Vec<FairEntry> = queue.drain().collect();
+                let found = entries.iter_mut().any(|e| {
+                    if e.0.pid == pid {
+                        e.0.priority = new_priority;
                         true
                     } else {
                         false
@@ -477,9 +545,9 @@ impl Scheduler {
         }
 
         // Check queue
-        let queue = self.priority_queue.read();
+        let queue = self.fair_queue.read();
         for entry in queue.iter() {
-            min = min.min(entry.vruntime);
+            min = min.min(entry.0.vruntime);
         }
 
         if min == u64::MAX {
@@ -527,7 +595,7 @@ impl Scheduler {
                         is_current: false,
                     })
             }
-            SchedulingPolicy::Priority | SchedulingPolicy::Fair => {
+            SchedulingPolicy::Priority => {
                 let queue = self.priority_queue.read();
                 queue
                     .iter()
@@ -537,6 +605,19 @@ impl Scheduler {
                         priority: entry.priority,
                         cpu_time_micros: entry.cpu_time_micros,
                         vruntime: entry.vruntime,
+                        is_current: false,
+                    })
+            }
+            SchedulingPolicy::Fair => {
+                let queue = self.fair_queue.read();
+                queue
+                    .iter()
+                    .find(|e| e.0.pid == pid)
+                    .map(|entry| ProcessStats {
+                        pid: entry.0.pid,
+                        priority: entry.0.priority,
+                        cpu_time_micros: entry.0.cpu_time_micros,
+                        vruntime: entry.0.vruntime,
                         is_current: false,
                     })
             }
@@ -573,13 +654,23 @@ impl Scheduler {
                     is_current: false,
                 }));
             }
-            SchedulingPolicy::Priority | SchedulingPolicy::Fair => {
+            SchedulingPolicy::Priority => {
                 let queue = self.priority_queue.read();
                 stats.extend(queue.iter().map(|entry| ProcessStats {
                     pid: entry.pid,
                     priority: entry.priority,
                     cpu_time_micros: entry.cpu_time_micros,
                     vruntime: entry.vruntime,
+                    is_current: false,
+                }));
+            }
+            SchedulingPolicy::Fair => {
+                let queue = self.fair_queue.read();
+                stats.extend(queue.iter().map(|entry| ProcessStats {
+                    pid: entry.0.pid,
+                    priority: entry.0.priority,
+                    cpu_time_micros: entry.0.cpu_time_micros,
+                    vruntime: entry.0.vruntime,
                     is_current: false,
                 }));
             }
@@ -598,7 +689,8 @@ impl Scheduler {
         let policy = *self.policy.read();
         let queue_len = match policy {
             SchedulingPolicy::RoundRobin => self.rr_queue.read().len(),
-            SchedulingPolicy::Priority | SchedulingPolicy::Fair => self.priority_queue.read().len(),
+            SchedulingPolicy::Priority => self.priority_queue.read().len(),
+            SchedulingPolicy::Fair => self.fair_queue.read().len(),
         };
         queue_len + if self.current.read().is_some() { 1 } else { 0 }
     }
@@ -616,6 +708,7 @@ impl Clone for Scheduler {
             quantum: Arc::clone(&self.quantum),
             rr_queue: Arc::clone(&self.rr_queue),
             priority_queue: Arc::clone(&self.priority_queue),
+            fair_queue: Arc::clone(&self.fair_queue),
             current: Arc::clone(&self.current),
             stats: Arc::clone(&self.stats),
         }
