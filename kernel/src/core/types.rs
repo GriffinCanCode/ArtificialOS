@@ -33,6 +33,10 @@ pub type Priority = u8;
 pub type Signal = u32;
 
 /// Common result type for kernel operations
+///
+/// # Must Use
+/// This Result type must be used - ignoring errors can lead to undefined behavior
+#[must_use = "kernel operations can fail and must be handled"]
 pub type KernelResult<T> = Result<T, super::errors::KernelError>;
 
 /// System information
@@ -124,7 +128,9 @@ impl ResourceLimits {
     }
 
     /// Check if this limit allows unlimited resources (0 = unlimited for numeric fields)
-    pub fn is_unlimited_cpu(&self) -> bool {
+    #[inline]
+    #[must_use]
+    pub const fn is_unlimited_cpu(&self) -> bool {
         self.max_cpu_time_ms == 0
     }
 

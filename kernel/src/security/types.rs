@@ -11,12 +11,24 @@ use std::path::PathBuf;
 use thiserror::Error;
 
 /// Security operation result
+///
+/// # Must Use
+/// Security operations can fail and must be handled to prevent vulnerabilities
+#[must_use = "security operations can fail and must be handled"]
 pub type SecurityResult<T> = Result<T, SecurityError>;
 
 /// Sandbox operation result
+///
+/// # Must Use
+/// Sandbox operations can fail and must be handled
+#[must_use = "sandbox operations can fail and must be handled"]
 pub type SandboxResult<T> = Result<T, SandboxError>;
 
 /// Limits operation result
+///
+/// # Must Use
+/// Resource limit operations can fail and must be handled
+#[must_use = "limit operations can fail and must be handled"]
 pub type LimitsResult<T> = Result<T, LimitsError>;
 
 /// Unified security error type

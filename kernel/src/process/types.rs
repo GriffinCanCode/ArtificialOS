@@ -10,6 +10,10 @@ use std::time::Duration;
 use thiserror::Error;
 
 /// Process operation result
+///
+/// # Must Use
+/// Process operations can fail and must be handled to prevent resource leaks
+#[must_use = "process operations can fail and must be handled"]
 pub type ProcessResult<T> = Result<T, ProcessError>;
 
 /// Process errors

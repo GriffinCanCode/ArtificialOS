@@ -10,6 +10,10 @@ use std::time::SystemTime;
 use thiserror::Error;
 
 /// VFS operation result
+///
+/// # Must Use
+/// VFS operations can fail and must be handled to prevent data loss
+#[must_use = "VFS operations can fail and must be handled"]
 pub type VfsResult<T> = Result<T, VfsError>;
 
 /// VFS errors with structured, type-safe error handling
@@ -102,29 +106,39 @@ pub struct Permissions {
 
 impl Permissions {
     /// Create permissions with mode validation (masks to valid bits)
-    pub fn new(mode: u32) -> Self {
+    #[inline]
+    #[must_use]
+    pub const fn new(mode: u32) -> Self {
         Self {
             mode: mode & 0o7777,
         }
     }
 
     /// Create read-only permissions (0o444)
-    pub fn readonly() -> Self {
+    #[inline]
+    #[must_use]
+    pub const fn readonly() -> Self {
         Self { mode: 0o444 }
     }
 
     /// Create read-write permissions (0o644)
-    pub fn readwrite() -> Self {
+    #[inline]
+    #[must_use]
+    pub const fn readwrite() -> Self {
         Self { mode: 0o644 }
     }
 
     /// Create executable permissions (0o755)
-    pub fn executable() -> Self {
+    #[inline]
+    #[must_use]
+    pub const fn executable() -> Self {
         Self { mode: 0o755 }
     }
 
     /// Check if permissions are read-only (no write bits set)
-    pub fn is_readonly(&self) -> bool {
+    #[inline]
+    #[must_use]
+    pub const fn is_readonly(&self) -> bool {
         self.mode & 0o200 == 0
     }
 
@@ -138,22 +152,30 @@ impl Permissions {
     }
 
     /// Check if any execute bit is set
-    pub fn is_executable(&self) -> bool {
+    #[inline]
+    #[must_use]
+    pub const fn is_executable(&self) -> bool {
         self.mode & 0o111 != 0
     }
 
     /// Get user permissions (rwx)
-    pub fn user_permissions(&self) -> u32 {
+    #[inline]
+    #[must_use]
+    pub const fn user_permissions(&self) -> u32 {
         (self.mode >> 6) & 0o7
     }
 
     /// Get group permissions (rwx)
-    pub fn group_permissions(&self) -> u32 {
+    #[inline]
+    #[must_use]
+    pub const fn group_permissions(&self) -> u32 {
         (self.mode >> 3) & 0o7
     }
 
     /// Get other permissions (rwx)
-    pub fn other_permissions(&self) -> u32 {
+    #[inline]
+    #[must_use]
+    pub const fn other_permissions(&self) -> u32 {
         self.mode & 0o7
     }
 }

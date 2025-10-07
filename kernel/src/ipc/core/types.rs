@@ -8,6 +8,10 @@ use crate::core::types::{Pid, Timestamp};
 use serde::{Deserialize, Serialize};
 
 /// IPC operation result
+///
+/// # Must Use
+/// IPC operations can fail and must be handled to prevent resource leaks
+#[must_use = "IPC operations can fail and must be handled"]
 pub type IpcResult<T> = Result<T, IpcError>;
 
 /// Unified IPC error type
@@ -100,6 +104,8 @@ impl Message {
         }
     }
 
+    #[inline]
+    #[must_use]
     pub fn size(&self) -> usize {
         std::mem::size_of::<Self>() + self.data.len()
     }
@@ -108,12 +114,14 @@ impl Message {
     ///
     /// This provides 5-10x better performance than JSON for messages with binary payloads.
     /// Use this for kernel-to-kernel IPC where the data doesn't need to be human-readable.
+    #[must_use = "serialization can fail and must be handled"]
     pub fn to_bincode_bytes(&self) -> Result<Vec<u8>, String> {
         crate::core::bincode::to_vec(self)
             .map_err(|e| format!("Failed to serialize message with bincode: {}", e))
     }
 
     /// Deserialize from bincode format
+    #[must_use = "deserialization can fail and must be handled"]
     pub fn from_bincode_bytes(bytes: &[u8]) -> Result<Self, String> {
         crate::core::bincode::from_slice(bytes)
             .map_err(|e| format!("Failed to deserialize message with bincode: {}", e))
@@ -152,11 +160,15 @@ pub enum Permission {
 }
 
 impl Permission {
-    pub fn can_read(&self) -> bool {
+    #[inline]
+    #[must_use]
+    pub const fn can_read(&self) -> bool {
         matches!(self, Permission::ReadOnly | Permission::ReadWrite)
     }
 
-    pub fn can_write(&self) -> bool {
+    #[inline]
+    #[must_use]
+    pub const fn can_write(&self) -> bool {
         matches!(self, Permission::WriteOnly | Permission::ReadWrite)
     }
 }

@@ -9,6 +9,10 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 /// Memory operation result
+///
+/// # Must Use
+/// Memory operations can fail and must be handled to prevent memory leaks
+#[must_use = "memory operations can fail and must be handled"]
 pub type MemoryResult<T> = Result<T, MemoryError>;
 
 /// Memory errors
@@ -105,18 +109,24 @@ impl MemoryBlock {
     }
 
     /// Check if block is allocated
-    pub fn is_allocated(&self) -> bool {
+    #[inline]
+    #[must_use]
+    pub const fn is_allocated(&self) -> bool {
         self.allocated
     }
 
     /// Get owner PID if any
-    pub fn owner(&self) -> Option<Pid> {
+    #[inline]
+    #[must_use]
+    pub const fn owner(&self) -> Option<Pid> {
         self.owner_pid
     }
 
     /// Check if block is owned by a specific process
-    pub fn is_owned_by(&self, pid: Pid) -> bool {
-        self.owner_pid == Some(pid)
+    #[inline]
+    #[must_use]
+    pub const fn is_owned_by(&self, pid: Pid) -> bool {
+        matches!(self.owner_pid, Some(p) if p == pid)
     }
 }
 
@@ -170,6 +180,8 @@ impl MemoryStats {
     }
 
     /// Get memory pressure level
+    #[inline]
+    #[must_use]
     pub fn memory_pressure(&self) -> MemoryPressure {
         if self.usage_percentage >= 95.0 {
             MemoryPressure::Critical
@@ -183,12 +195,16 @@ impl MemoryStats {
     }
 
     /// Check if memory is low (>=60% usage)
-    pub fn is_low_memory(&self) -> bool {
+    #[inline]
+    #[must_use]
+    pub const fn is_low_memory(&self) -> bool {
         self.usage_percentage >= 60.0
     }
 
     /// Check if memory is critical (>=95% usage)
-    pub fn is_critical(&self) -> bool {
+    #[inline]
+    #[must_use]
+    pub const fn is_critical(&self) -> bool {
         self.usage_percentage >= 95.0
     }
 
