@@ -77,12 +77,14 @@ mod tests {
     impl AsyncSyscallHandler for TestAsyncHandler {
         fn handle_async(&self, _pid: Pid, syscall: &Syscall)
             -> Pin<Box<dyn Future<Output = Option<SyscallResult>> + Send + '_>> {
+            // Clone syscall to move into async block
+            let syscall = syscall.clone();
             Box::pin(async move {
                 match syscall {
                     Syscall::NetworkRequest { .. } => {
                         // Simulate async I/O
                         tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
-                        Some(SyscallResult::success(None))
+                        Some(SyscallResult::success())
                     }
                     _ => None,
                 }

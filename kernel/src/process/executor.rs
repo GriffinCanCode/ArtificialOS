@@ -337,26 +337,26 @@ mod tests {
     #[test]
     fn test_path_traversal_detection() {
         // Test basic .. detection
-        assert!(ProcessExecutor::contains_path_traversal("../etc/passwd"));
-        assert!(ProcessExecutor::contains_path_traversal("../../etc/passwd"));
+        assert!(validation::contains_path_traversal("../etc/passwd"));
+        assert!(validation::contains_path_traversal("../../etc/passwd"));
 
         // Test with ./ sequences (the bypass mentioned)
-        assert!(ProcessExecutor::contains_path_traversal("./../../etc/passwd"));
-        assert!(ProcessExecutor::contains_path_traversal("foo/./bar/../../../etc"));
+        assert!(validation::contains_path_traversal("./../../etc/passwd"));
+        assert!(validation::contains_path_traversal("foo/./bar/../../../etc"));
 
         // Test absolute paths with traversal
-        assert!(ProcessExecutor::contains_path_traversal("/../../../etc/passwd"));
+        assert!(validation::contains_path_traversal("/../../../etc/passwd"));
 
         // Test multiple traversals that escape
-        assert!(ProcessExecutor::contains_path_traversal("a/../../../b"));
+        assert!(validation::contains_path_traversal("a/../../../b"));
 
         // Safe paths - should NOT be detected as traversal
-        assert!(!ProcessExecutor::contains_path_traversal("./valid/path.txt"));
-        assert!(!ProcessExecutor::contains_path_traversal("./subdir/file.txt"));
-        assert!(!ProcessExecutor::contains_path_traversal("dir1/dir2/../file.txt")); // stays within bounds
-        assert!(!ProcessExecutor::contains_path_traversal("dir1/dir2/dir3/../../file.txt")); // stays within bounds
-        assert!(!ProcessExecutor::contains_path_traversal("/absolute/path/file.txt"));
-        assert!(!ProcessExecutor::contains_path_traversal("relative/path/file.txt"));
+        assert!(!validation::contains_path_traversal("./valid/path.txt"));
+        assert!(!validation::contains_path_traversal("./subdir/file.txt"));
+        assert!(!validation::contains_path_traversal("dir1/dir2/../file.txt")); // stays within bounds
+        assert!(!validation::contains_path_traversal("dir1/dir2/dir3/../../file.txt")); // stays within bounds
+        assert!(!validation::contains_path_traversal("/absolute/path/file.txt"));
+        assert!(!validation::contains_path_traversal("relative/path/file.txt"));
     }
 
     #[test]
