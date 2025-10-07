@@ -3,7 +3,7 @@
  * File-backed shared memory operations
  */
 
-use crate::core::json;
+use crate::core::bincode;
 use crate::core::types::Pid;
 use crate::ipc::{MapFlags, ProtFlags};
 use crate::permissions::{PermissionChecker, PermissionRequest};
@@ -67,7 +67,7 @@ impl SyscallExecutor {
                     "PID {} created mmap {} for file '{}' ({} bytes)",
                     pid, mmap_id, path, length
                 );
-                match json::to_vec(&mmap_id) {
+                match bincode::to_vec(&mmap_id) {
                     Ok(data) => SyscallResult::success_with_data(data),
                     Err(e) => {
                         error!("Failed to serialize mmap ID: {}", e);
@@ -182,7 +182,7 @@ impl SyscallExecutor {
         };
 
         match mmap_manager.get_info(mmap_id) {
-            Some(info) => match json::to_vec(&info) {
+            Some(info) => match bincode::to_vec(&info) {
                 Ok(data) => {
                     info!("PID {} retrieved stats for mmap {}", pid, mmap_id);
                     SyscallResult::success_with_data(data)

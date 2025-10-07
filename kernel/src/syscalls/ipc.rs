@@ -4,7 +4,7 @@
 * Inter-process communication (pipes and shared memory)
 */
 
-use crate::core::json;
+use crate::core::{bincode, json};
 use crate::core::types::Pid;
 use crate::permissions::{PermissionChecker, PermissionRequest, Resource, Action};
 
@@ -159,7 +159,7 @@ impl SyscallExecutor {
         };
 
         match pipe_manager.stats(pipe_id) {
-            Ok(stats) => match json::to_vec(&stats) {
+            Ok(stats) => match bincode::to_vec(&stats) {
                 Ok(data) => {
                     info!("PID {} retrieved stats for pipe {}", pid, pipe_id);
                     SyscallResult::success_with_data(data)
@@ -356,7 +356,7 @@ impl SyscallExecutor {
         };
 
         match shm_manager.stats(segment_id) {
-            Ok(stats) => match json::to_vec(&stats) {
+            Ok(stats) => match bincode::to_vec(&stats) {
                 Ok(data) => {
                     info!("PID {} retrieved stats for segment {}", pid, segment_id);
                     SyscallResult::success_with_data(data)
@@ -496,7 +496,7 @@ impl SyscallExecutor {
                             priority: msg.priority,
                         };
 
-                        match json::serialize_ipc_message(&response) {
+                        match bincode::serialize_ipc_message(&response) {
                             Ok(serialized) => SyscallResult::success_with_data(serialized),
                             Err(e) => {
                                 error!("Failed to serialize message: {}", e);
@@ -607,7 +607,7 @@ impl SyscallExecutor {
         };
 
         match queue_manager.stats(queue_id) {
-            Ok(stats) => match json::to_vec(&stats) {
+            Ok(stats) => match bincode::to_vec(&stats) {
                 Ok(data) => {
                     info!("PID {} retrieved stats for queue {}", pid, queue_id);
                     SyscallResult::success_with_data(data)
