@@ -86,19 +86,19 @@ pub struct MetricsCollector {
 impl MetricsCollector {
     pub fn new() -> Self {
         Self {
-            counters: Arc::new(DashMap::new()),
-            gauges: Arc::new(DashMap::new()),
-            histograms: Arc::new(DashMap::new()),
+            // Use 32 shards for metrics - moderate write contention, high read contention
+            // Lower shard count since metrics are typically string-keyed and less numerous
+            counters: Arc::new(DashMap::with_shard_amount(32)),
+            gauges: Arc::new(DashMap::with_shard_amount(32)),
+            histograms: Arc::new(DashMap::with_shard_amount(32)),
             start_time: Instant::now(),
         }
     }
 
     /// Increment a counter
     pub fn inc_counter(&self, name: &str, value: f64) {
-        self.counters
-            .entry(name.to_string())
-            .and_modify(|v| *v += value)
-            .or_insert(value);
+        // Use alter() for atomic counter increment
+        self.counters.alter(name, |_, current| current + value);
     }
 
     /// Set a gauge value
@@ -108,14 +108,11 @@ impl MetricsCollector {
 
     /// Observe a value in a histogram
     pub fn observe_histogram(&self, name: &str, value: f64) {
-        self.histograms
-            .entry(name.to_string())
-            .or_insert_with(|| {
-                Histogram::new(vec![
-                    0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0,
-                ])
-            })
-            .observe(value);
+        // Use alter() for atomic histogram update
+        self.histograms.alter(name, |_, mut hist| {
+            hist.observe(value);
+            hist
+        });
     }
 
     /// Record operation duration

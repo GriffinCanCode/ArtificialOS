@@ -93,7 +93,8 @@ impl SignalManagerImpl {
         let callbacks = Arc::new(CallbackRegistry::new());
         info!("Signal manager initialized");
         Self {
-            processes: Arc::new(DashMap::new()),
+            // Use 128 shards for processes - high contention from signal delivery
+            processes: Arc::new(DashMap::with_shard_amount(128)),
             handler: Arc::new(SignalHandler::new(callbacks.clone())),
             callbacks,
             next_handler_id: Arc::new(AtomicU64::new(1)),

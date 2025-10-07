@@ -12,17 +12,17 @@ use super::types::{
 };
 use crate::core::types::{Pid, Size};
 use crate::memory::MemoryManager;
+use dashmap::DashMap;
 use log::{info, warn};
-use parking_lot::RwLock;
-use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 /// Pipe manager
 pub struct PipeManager {
-    pipes: Arc<RwLock<HashMap<PipeId, Pipe>>>,
-    next_id: Arc<RwLock<PipeId>>,
+    pipes: Arc<DashMap<PipeId, Pipe>>,
+    next_id: AtomicU32,
     // Track pipe count per process
-    process_pipes: Arc<RwLock<HashMap<Pid, Size>>>,
+    process_pipes: Arc<DashMap<Pid, Size>>,
     memory_manager: MemoryManager,
 }
 
@@ -33,9 +33,11 @@ impl PipeManager {
             DEFAULT_PIPE_CAPACITY
         );
         Self {
-            pipes: Arc::new(RwLock::new(HashMap::new())),
-            next_id: Arc::new(RwLock::new(1)),
-            process_pipes: Arc::new(RwLock::new(HashMap::new())),
+            // Use 64 shards for pipes - high I/O contention
+            pipes: Arc::new(DashMap::with_shard_amount(64)),
+            next_id: AtomicU32::new(1),
+            // Use 32 shards for process pipe tracking
+            process_pipes: Arc::new(DashMap::with_shard_amount(32)),
             memory_manager,
         }
     }
@@ -51,17 +53,15 @@ impl PipeManager {
             .min(MAX_PIPE_CAPACITY);
 
         // Check per-process limits
-        let process_pipes = self.process_pipes.read();
-        let reader_count = process_pipes.get(&reader_pid).unwrap_or(&0);
-        let writer_count = process_pipes.get(&writer_pid).unwrap_or(&0);
+        let reader_count = self.process_pipes.get(&reader_pid).map(|r| *r.value()).unwrap_or(0);
+        let writer_count = self.process_pipes.get(&writer_pid).map(|r| *r.value()).unwrap_or(0);
 
-        if *reader_count >= MAX_PIPES_PER_PROCESS || *writer_count >= MAX_PIPES_PER_PROCESS {
+        if reader_count >= MAX_PIPES_PER_PROCESS || writer_count >= MAX_PIPES_PER_PROCESS {
             return Err(PipeError::ProcessLimitExceeded(
-                (*reader_count).max(*writer_count),
+                reader_count.max(writer_count),
                 MAX_PIPES_PER_PROCESS,
             ));
         }
-        drop(process_pipes);
 
         // Allocate memory through MemoryManager (unified memory accounting)
         // Use writer_pid as the owner for accounting purposes
@@ -71,11 +71,7 @@ impl PipeManager {
             .allocate(capacity, writer_pid)
             .map_err(|e| PipeError::AllocationFailed(e.to_string()))?;
 
-        let mut pipes = self.pipes.write();
-        let mut next_id = self.next_id.write();
-
-        let pipe_id = *next_id;
-        *next_id += 1;
+        let pipe_id = self.next_id.fetch_add(1, Ordering::SeqCst);
 
         let pipe = Pipe::new(
             pipe_id,
@@ -85,15 +81,11 @@ impl PipeManager {
             address,
             self.memory_manager.clone(),
         );
-        pipes.insert(pipe_id, pipe);
-        drop(pipes);
-        drop(next_id);
+        self.pipes.insert(pipe_id, pipe);
 
-        // Update process pipe counts
-        let mut process_pipes = self.process_pipes.write();
-        *process_pipes.entry(reader_pid).or_insert(0) += 1;
-        *process_pipes.entry(writer_pid).or_insert(0) += 1;
-        drop(process_pipes);
+        // Update process pipe counts using alter() for atomic increment
+        self.process_pipes.alter(&reader_pid, |_, count| count + 1);
+        self.process_pipes.alter(&writer_pid, |_, count| count + 1);
 
         let (_, used, _) = self.memory_manager.info();
         info!(
@@ -105,8 +97,7 @@ impl PipeManager {
     }
 
     pub fn write(&self, pipe_id: PipeId, pid: Pid, data: &[u8]) -> Result<Size, PipeError> {
-        let mut pipes = self.pipes.write();
-        let pipe = pipes
+        let mut pipe = self.pipes
             .get_mut(&pipe_id)
             .ok_or(PipeError::NotFound(pipe_id))?;
 
@@ -115,20 +106,20 @@ impl PipeManager {
         }
 
         let written = pipe.write(data)?;
+        let buffered = pipe.buffered();
 
         info!(
             "Pipe {} write: {} bytes ({} buffered)",
             pipe_id,
             written,
-            pipe.buffered()
+            buffered
         );
 
         Ok(written)
     }
 
     pub fn read(&self, pipe_id: PipeId, pid: Pid, size: Size) -> Result<Vec<u8>, PipeError> {
-        let mut pipes = self.pipes.write();
-        let pipe = pipes
+        let mut pipe = self.pipes
             .get_mut(&pipe_id)
             .ok_or(PipeError::NotFound(pipe_id))?;
 
@@ -137,20 +128,20 @@ impl PipeManager {
         }
 
         let data = pipe.read(size)?;
+        let buffered = pipe.buffered();
 
         info!(
             "Pipe {} read: {} bytes ({} remaining)",
             pipe_id,
             data.len(),
-            pipe.buffered()
+            buffered
         );
 
         Ok(data)
     }
 
     pub fn close(&self, pipe_id: PipeId, pid: Pid) -> Result<(), PipeError> {
-        let mut pipes = self.pipes.write();
-        let pipe = pipes
+        let mut pipe = self.pipes
             .get_mut(&pipe_id)
             .ok_or(PipeError::NotFound(pipe_id))?;
 
@@ -168,15 +159,12 @@ impl PipeManager {
     }
 
     pub fn destroy(&self, pipe_id: PipeId) -> Result<(), PipeError> {
-        let mut pipes = self.pipes.write();
-        let pipe = pipes.remove(&pipe_id).ok_or(PipeError::NotFound(pipe_id))?;
+        let (_, pipe) = self.pipes.remove(&pipe_id).ok_or(PipeError::NotFound(pipe_id))?;
 
         let capacity = pipe.capacity;
         let address = pipe.address;
         let reader_pid = pipe.reader_pid;
         let writer_pid = pipe.writer_pid;
-
-        drop(pipes);
 
         // Deallocate memory through MemoryManager (unified memory accounting)
         if let Err(e) = self.memory_manager.deallocate(address) {
@@ -186,21 +174,38 @@ impl PipeManager {
             );
         }
 
-        // Update process pipe counts
-        let mut process_pipes = self.process_pipes.write();
-        if let Some(count) = process_pipes.get_mut(&reader_pid) {
-            *count = count.saturating_sub(1);
-            if *count == 0 {
-                process_pipes.remove(&reader_pid);
+        // Update process pipe counts using alter() for atomic decrement
+        self.process_pipes.alter(&reader_pid, |_, count| {
+            let new_count = count.saturating_sub(1);
+            if new_count == 0 {
+                // Signal for removal by returning 0
+                0
+            } else {
+                new_count
+            }
+        });
+        self.process_pipes.alter(&writer_pid, |_, count| {
+            let new_count = count.saturating_sub(1);
+            if new_count == 0 {
+                0
+            } else {
+                new_count
+            }
+        });
+
+        // Remove zero-count entries
+        if let Some(entry) = self.process_pipes.get(&reader_pid) {
+            if *entry.value() == 0 {
+                drop(entry);
+                self.process_pipes.remove(&reader_pid);
             }
         }
-        if let Some(count) = process_pipes.get_mut(&writer_pid) {
-            *count = count.saturating_sub(1);
-            if *count == 0 {
-                process_pipes.remove(&writer_pid);
+        if let Some(entry) = self.process_pipes.get(&writer_pid) {
+            if *entry.value() == 0 {
+                drop(entry);
+                self.process_pipes.remove(&writer_pid);
             }
         }
-        drop(process_pipes);
 
         let (_, used, _) = self.memory_manager.info();
         info!(
@@ -215,8 +220,7 @@ impl PipeManager {
     }
 
     pub fn stats(&self, pipe_id: PipeId) -> Result<PipeStats, PipeError> {
-        let pipes = self.pipes.read();
-        let pipe = pipes.get(&pipe_id).ok_or(PipeError::NotFound(pipe_id))?;
+        let pipe = self.pipes.get(&pipe_id).ok_or(PipeError::NotFound(pipe_id))?;
 
         Ok(PipeStats {
             id: pipe.id,
@@ -229,13 +233,11 @@ impl PipeManager {
     }
 
     pub fn cleanup_process(&self, pid: Pid) -> Size {
-        let pipes = self.pipes.read();
-        let pipe_ids: Vec<u32> = pipes
-            .values()
-            .filter(|p| p.reader_pid == pid || p.writer_pid == pid)
-            .map(|p| p.id)
+        let pipe_ids: Vec<u32> = self.pipes
+            .iter()
+            .filter(|entry| entry.reader_pid == pid || entry.writer_pid == pid)
+            .map(|entry| entry.id)
             .collect();
-        drop(pipes);
 
         let count = pipe_ids.len();
 
@@ -262,7 +264,7 @@ impl Clone for PipeManager {
     fn clone(&self) -> Self {
         Self {
             pipes: Arc::clone(&self.pipes),
-            next_id: Arc::clone(&self.next_id),
+            next_id: AtomicU32::new(self.next_id.load(Ordering::SeqCst)),
             process_pipes: Arc::clone(&self.process_pipes),
             memory_manager: self.memory_manager.clone(),
         }

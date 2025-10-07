@@ -25,8 +25,10 @@ impl SandboxManager {
     pub fn new() -> Self {
         info!("Sandbox manager initialized");
         Self {
-            sandboxes: Arc::new(DashMap::new()),
-            spawned_counts: Arc::new(DashMap::new()),
+            // Use 64 shards for sandboxes - moderate contention
+            sandboxes: Arc::new(DashMap::with_shard_amount(64)),
+            // Use 32 shards for spawn counts - lower contention
+            spawned_counts: Arc::new(DashMap::with_shard_amount(32)),
             namespace_manager: None,
         }
     }
@@ -43,8 +45,10 @@ impl SandboxManager {
             }
         );
         Self {
-            sandboxes: Arc::new(DashMap::new()),
-            spawned_counts: Arc::new(DashMap::new()),
+            // Use 64 shards for sandboxes - moderate contention
+            sandboxes: Arc::new(DashMap::with_shard_amount(64)),
+            // Use 32 shards for spawn counts - lower contention
+            spawned_counts: Arc::new(DashMap::with_shard_amount(32)),
             namespace_manager: Some(ns_manager),
         }
     }
@@ -262,7 +266,7 @@ impl ResourceLimitProvider for SandboxManager {
 
     fn can_spawn_process(&self, pid: Pid) -> bool {
         if let Some(sandbox) = self.sandboxes.get(&pid) {
-            let current_count = *self.spawned_counts.get(&pid).map(|r| r.value()).unwrap_or(&0);
+            let current_count = self.spawned_counts.get(&pid).map(|r| *r.value()).unwrap_or(0);
             current_count < sandbox.resource_limits.max_processes
         } else {
             false
@@ -270,17 +274,17 @@ impl ResourceLimitProvider for SandboxManager {
     }
 
     fn record_spawn(&self, pid: Pid) {
-        self.spawned_counts.entry(pid).and_modify(|count| *count += 1).or_insert(1);
+        // Use alter() for atomic increment
+        self.spawned_counts.alter(&pid, |_, count| count + 1);
     }
 
     fn record_termination(&self, pid: Pid) {
-        if let Some(mut count) = self.spawned_counts.get_mut(&pid) {
-            *count = count.saturating_sub(1);
-        }
+        // Use alter() for atomic decrement
+        self.spawned_counts.alter(&pid, |_, count| count.saturating_sub(1));
     }
 
     fn get_spawn_count(&self, pid: Pid) -> u32 {
-        *self.spawned_counts.get(&pid).map(|r| r.value()).unwrap_or(&0)
+        self.spawned_counts.get(&pid).map(|r| *r.value()).unwrap_or(0)
     }
 }
 

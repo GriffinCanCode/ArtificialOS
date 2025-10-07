@@ -94,11 +94,9 @@ impl ShmManager {
         );
         self.segments.insert(segment_id, segment);
 
-        // Update process segment count
+        // Update process segment count using alter() for atomic operation
         self.process_segments
-            .entry(owner_pid)
-            .and_modify(|v| *v += 1)
-            .or_insert(1);
+            .alter(&owner_pid, |_, count| count + 1);
 
         // Update global memory
         GLOBAL_SHM_MEMORY.fetch_add(size, Ordering::Release);
@@ -235,13 +233,24 @@ impl ShmManager {
             );
         }
 
-        // Update process segment count
-        self.process_segments.entry(owner_pid).and_modify(|count| {
-            *count = count.saturating_sub(1);
-            if *count == 0 {
-                self.process_segments.remove(&owner_pid);
+        // Update process segment count using alter() for atomic operation
+        self.process_segments.alter(&owner_pid, |_, count| {
+            let new_count = count.saturating_sub(1);
+            if new_count == 0 {
+                // Return 0 to signal removal, which we'll handle by checking after
+                0
+            } else {
+                new_count
             }
         });
+
+        // Remove entry if count is 0
+        if let Some(entry) = self.process_segments.get(&owner_pid) {
+            if *entry.value() == 0 {
+                drop(entry);
+                self.process_segments.remove(&owner_pid);
+            }
+        }
 
         // Reclaim global memory
         GLOBAL_SHM_MEMORY.fetch_sub(size, Ordering::Release);

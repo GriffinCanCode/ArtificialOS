@@ -50,7 +50,9 @@ impl MemoryManager {
         let total = 1024 * 1024 * 1024; // 1GB simulated memory
         info!("Memory manager initialized with {} bytes and address recycling enabled", total);
         Self {
-            blocks: Arc::new(DashMap::new()),
+            // Use 128 shards for blocks - high contention data structure (default is 64)
+            // More shards = better concurrent access performance
+            blocks: Arc::new(DashMap::with_shard_amount(128)),
             next_address: Arc::new(AtomicU64::new(0)),
             total_memory: total,
             used_memory: Arc::new(AtomicU64::new(0)),
@@ -58,8 +60,10 @@ impl MemoryManager {
             critical_threshold: 0.95,
             gc_threshold: 1000,
             deallocated_count: Arc::new(AtomicU64::new(0)),
-            process_tracking: Arc::new(DashMap::new()),
-            memory_storage: Arc::new(DashMap::new()),
+            // Use 64 shards for process tracking (moderate contention)
+            process_tracking: Arc::new(DashMap::with_shard_amount(64)),
+            // Use 128 shards for memory storage - high I/O contention
+            memory_storage: Arc::new(DashMap::with_shard_amount(128)),
             free_list: Arc::new(Mutex::new(Vec::new())),
         }
     }
@@ -154,20 +158,15 @@ impl MemoryManager {
 
         self.blocks.insert(address, block);
 
-        // Update per-process tracking
+        // Update per-process tracking using alter() for atomic operation
         self.process_tracking
-            .entry(pid)
-            .and_modify(|track| {
+            .alter(&pid, |_, mut track| {
                 track.current_bytes += size;
                 track.allocation_count += 1;
                 if track.current_bytes > track.peak_bytes {
                     track.peak_bytes = track.current_bytes;
                 }
-            })
-            .or_insert(ProcessMemoryTracking {
-                current_bytes: size,
-                peak_bytes: size,
-                allocation_count: 1,
+                track
             });
 
         // Log allocation with memory pressure warnings
@@ -329,6 +328,11 @@ impl MemoryManager {
             if should_gc {
                 info!("GC threshold reached after process cleanup, running garbage collection...");
                 self.collect();
+            } else if freed_count > 100 {
+                // For large cleanups, shrink maps even without full GC
+                self.blocks.shrink_to_fit();
+                self.process_tracking.shrink_to_fit();
+                info!("Shrunk memory maps after large process cleanup ({} blocks freed)", freed_count);
             }
         }
 
@@ -413,9 +417,13 @@ impl MemoryManager {
         // The free list allows these addresses to be reused in future allocations
 
         if removed_count > 0 {
+            // Shrink DashMap capacity after bulk deletion to reclaim memory
+            self.blocks.shrink_to_fit();
+            self.memory_storage.shrink_to_fit();
+
             let free_list_size = self.free_list.lock().unwrap().len();
             info!(
-                "Garbage collection complete: removed {} deallocated blocks and their storage, {} blocks remain, {} blocks in free list for recycling",
+                "Garbage collection complete: removed {} deallocated blocks and their storage, {} blocks remain, {} blocks in free list for recycling (maps shrunk to fit)",
                 removed_count,
                 initial_count - removed_count,
                 free_list_size
@@ -496,10 +504,9 @@ impl MemoryManager {
             // Calculate offset within the block
             let offset = address - base_addr;
 
-            // Get or create storage for this block
+            // Get or create storage for this block using alter() for atomic operation
             self.memory_storage
-                .entry(base_addr)
-                .and_modify(|block_data| {
+                .alter(&base_addr, |_, mut block_data| {
                     // Ensure block_data is large enough
                     if block_data.len() < block_size {
                         block_data.resize(block_size, 0u8);
@@ -507,12 +514,7 @@ impl MemoryManager {
                     // Write data at the offset
                     let end = offset + data.len();
                     block_data[offset..end].copy_from_slice(data);
-                })
-                .or_insert_with(|| {
-                    let mut vec = vec![0u8; block_size];
-                    let end = offset + data.len();
-                    vec[offset..end].copy_from_slice(data);
-                    vec
+                    block_data
                 });
 
             info!(

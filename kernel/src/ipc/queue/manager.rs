@@ -107,10 +107,13 @@ impl QueueManager {
         };
 
         self.queues.insert(queue_id, queue);
+
+        // Use alter() for atomic insertion - more efficient than entry() for simple updates
         self.process_queues
-            .entry(owner_pid)
-            .or_default()
-            .insert(queue_id);
+            .alter(&owner_pid, |_, mut queues| {
+                queues.insert(queue_id);
+                queues
+            });
 
         info!(
             "PID {} created {:?} queue {} (capacity: {})",
@@ -383,8 +386,10 @@ impl QueueManager {
         drop(queue);
         self.queues.remove(&queue_id);
 
-        self.process_queues.entry(pid).and_modify(|qs| {
+        // Use alter() for atomic removal - more efficient than entry().and_modify()
+        self.process_queues.alter(&pid, |_, mut qs| {
             qs.remove(&queue_id);
+            qs
         });
 
         // Clean up PubSub receivers
@@ -444,10 +449,28 @@ impl QueueManager {
             .map(|qs| qs.iter().copied().collect())
             .unwrap_or_default();
 
-        for queue_id in queue_ids {
-            if self.destroy(queue_id, pid).is_ok() {
+        for queue_id in &queue_ids {
+            if self.destroy(*queue_id, pid).is_ok() {
                 freed += 1;
             }
+        }
+
+        // Batch removal of pubsub receivers for this process - more efficient than per-queue retain
+        if !queue_ids.is_empty() {
+            let before_count = self.pubsub_receivers.len();
+            self.pubsub_receivers.retain(|(qid, subscriber_pid), _| {
+                !queue_ids.contains(qid) || *subscriber_pid != pid
+            });
+            let removed = before_count - self.pubsub_receivers.len();
+            if removed > 0 {
+                info!("Batch removed {} pubsub receivers for PID {}", removed, pid);
+            }
+        }
+
+        // Shrink maps after cleanup if significant
+        if freed > 10 {
+            self.queues.shrink_to_fit();
+            self.process_queues.shrink_to_fit();
         }
 
         if freed > 0 {

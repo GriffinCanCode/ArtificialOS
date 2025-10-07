@@ -130,7 +130,8 @@ impl ProcessManagerBuilder {
         info!("Process manager initialized with: {}", features.join(", "));
 
         ProcessManager {
-            processes: Arc::new(DashMap::new()),
+            // Use 128 shards for processes - high contention from concurrent process operations
+            processes: Arc::new(DashMap::with_shard_amount(128)),
             next_pid: AtomicU32::new(1),
             memory_manager: self.memory_manager,
             executor,
@@ -138,7 +139,8 @@ impl ProcessManagerBuilder {
             ipc_manager: self.ipc_manager,
             scheduler,
             scheduler_task,
-            child_counts: Arc::new(DashMap::new()),
+            // Use 64 shards for child_counts (moderate contention)
+            child_counts: Arc::new(DashMap::with_shard_amount(64)),
         }
     }
 }
@@ -154,7 +156,8 @@ impl ProcessManager {
     pub fn new() -> Self {
         info!("Process manager initialized (basic)");
         Self {
-            processes: Arc::new(DashMap::new()),
+            // Use 128 shards for processes - high contention from concurrent process operations
+            processes: Arc::new(DashMap::with_shard_amount(128)),
             next_pid: AtomicU32::new(1),
             memory_manager: None,
             executor: None,
@@ -162,7 +165,8 @@ impl ProcessManager {
             ipc_manager: None,
             scheduler: None,
             scheduler_task: None,
-            child_counts: Arc::new(DashMap::new()),
+            // Use 64 shards for child_counts (moderate contention)
+            child_counts: Arc::new(DashMap::with_shard_amount(64)),
         }
     }
 
@@ -335,18 +339,14 @@ impl ProcessManager {
 
     /// Increment child count for a PID
     fn increment_child_count(&self, pid: Pid) {
-        self.child_counts.entry(pid).and_modify(|v| *v += 1).or_insert(1);
+        // Use alter() for atomic increment
+        self.child_counts.alter(&pid, |_, count| count + 1);
     }
 
     /// Decrement child count for a PID
     fn decrement_child_count(&self, pid: Pid) {
-        if let Some(mut entry) = self.child_counts.get_mut(&pid) {
-            *entry = entry.saturating_sub(1);
-            if *entry == 0 {
-                drop(entry);
-                self.child_counts.remove(&pid);
-            }
-        }
+        // Use alter() for atomic decrement
+        self.child_counts.alter(&pid, |_, count| count.saturating_sub(1));
     }
 
     /// Get scheduler statistics
