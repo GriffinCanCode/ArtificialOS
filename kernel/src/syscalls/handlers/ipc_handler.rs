@@ -14,12 +14,14 @@ pub struct IpcHandler {
 }
 
 impl IpcHandler {
+    #[inline]
     pub fn new(executor: SyscallExecutor) -> Self {
         Self { executor }
     }
 }
 
 impl SyscallHandler for IpcHandler {
+    #[inline]
     fn handle(&self, pid: Pid, syscall: &Syscall) -> Option<SyscallResult> {
         match syscall {
             // Pipe operations
@@ -95,6 +97,7 @@ impl SyscallHandler for IpcHandler {
         }
     }
 
+    #[inline]
     fn name(&self) -> &'static str {
         "ipc_handler"
     }

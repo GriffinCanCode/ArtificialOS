@@ -14,12 +14,14 @@ pub struct SignalHandler {
 }
 
 impl SignalHandler {
+    #[inline]
     pub fn new(executor: SyscallExecutor) -> Self {
         Self { executor }
     }
 }
 
 impl SyscallHandler for SignalHandler {
+    #[inline]
     fn handle(&self, pid: Pid, syscall: &Syscall) -> Option<SyscallResult> {
         match syscall {
             Syscall::SendSignal { target_pid, signal } => {
@@ -29,6 +31,7 @@ impl SyscallHandler for SignalHandler {
         }
     }
 
+    #[inline]
     fn name(&self) -> &'static str {
         "signal_handler"
     }

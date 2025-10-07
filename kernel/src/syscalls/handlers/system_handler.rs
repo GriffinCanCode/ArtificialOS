@@ -14,12 +14,14 @@ pub struct SystemHandler {
 }
 
 impl SystemHandler {
+    #[inline]
     pub fn new(executor: SyscallExecutor) -> Self {
         Self { executor }
     }
 }
 
 impl SyscallHandler for SystemHandler {
+    #[inline]
     fn handle(&self, pid: Pid, syscall: &Syscall) -> Option<SyscallResult> {
         match syscall {
             Syscall::GetSystemInfo => {
@@ -38,6 +40,7 @@ impl SyscallHandler for SystemHandler {
         }
     }
 
+    #[inline]
     fn name(&self) -> &'static str {
         "system_handler"
     }

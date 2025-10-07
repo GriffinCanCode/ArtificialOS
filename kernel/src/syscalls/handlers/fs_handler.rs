@@ -14,12 +14,14 @@ pub struct FileSystemHandler {
 }
 
 impl FileSystemHandler {
+    #[inline]
     pub fn new(executor: SyscallExecutor) -> Self {
         Self { executor }
     }
 }
 
 impl SyscallHandler for FileSystemHandler {
+    #[inline]
     fn handle(&self, pid: Pid, syscall: &Syscall) -> Option<SyscallResult> {
         match syscall {
             Syscall::ReadFile { ref path } => {
@@ -68,6 +70,7 @@ impl SyscallHandler for FileSystemHandler {
         }
     }
 
+    #[inline]
     fn name(&self) -> &'static str {
         "fs_handler"
     }

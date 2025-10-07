@@ -14,12 +14,14 @@ pub struct FileDescriptorHandler {
 }
 
 impl FileDescriptorHandler {
+    #[inline]
     pub fn new(executor: SyscallExecutor) -> Self {
         Self { executor }
     }
 }
 
 impl SyscallHandler for FileDescriptorHandler {
+    #[inline]
     fn handle(&self, pid: Pid, syscall: &Syscall) -> Option<SyscallResult> {
         match syscall {
             Syscall::Open { ref path, flags, mode } => {
@@ -44,6 +46,7 @@ impl SyscallHandler for FileDescriptorHandler {
         }
     }
 
+    #[inline]
     fn name(&self) -> &'static str {
         "fd_handler"
     }

@@ -14,12 +14,14 @@ pub struct MemoryHandler {
 }
 
 impl MemoryHandler {
+    #[inline]
     pub fn new(executor: SyscallExecutor) -> Self {
         Self { executor }
     }
 }
 
 impl SyscallHandler for MemoryHandler {
+    #[inline]
     fn handle(&self, pid: Pid, syscall: &Syscall) -> Option<SyscallResult> {
         match syscall {
             Syscall::GetMemoryStats => {
@@ -35,6 +37,7 @@ impl SyscallHandler for MemoryHandler {
         }
     }
 
+    #[inline]
     fn name(&self) -> &'static str {
         "memory_handler"
     }

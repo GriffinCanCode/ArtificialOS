@@ -14,12 +14,14 @@ pub struct MmapHandler {
 }
 
 impl MmapHandler {
+    #[inline]
     pub fn new(executor: SyscallExecutor) -> Self {
         Self { executor }
     }
 }
 
 impl SyscallHandler for MmapHandler {
+    #[inline]
     fn handle(&self, pid: Pid, syscall: &Syscall) -> Option<SyscallResult> {
         match syscall {
             Syscall::Mmap { ref path, offset, length, prot, shared } => {
@@ -44,6 +46,7 @@ impl SyscallHandler for MmapHandler {
         }
     }
 
+    #[inline]
     fn name(&self) -> &'static str {
         "mmap_handler"
     }

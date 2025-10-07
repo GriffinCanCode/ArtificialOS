@@ -14,12 +14,14 @@ pub struct SchedulerHandler {
 }
 
 impl SchedulerHandler {
+    #[inline]
     pub fn new(executor: SyscallExecutor) -> Self {
         Self { executor }
     }
 }
 
 impl SyscallHandler for SchedulerHandler {
+    #[inline]
     fn handle(&self, pid: Pid, syscall: &Syscall) -> Option<SyscallResult> {
         match syscall {
             Syscall::ScheduleNext => {
@@ -62,6 +64,7 @@ impl SyscallHandler for SchedulerHandler {
         }
     }
 
+    #[inline]
     fn name(&self) -> &'static str {
         "scheduler_handler"
     }

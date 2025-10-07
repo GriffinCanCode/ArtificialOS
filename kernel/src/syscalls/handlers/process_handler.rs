@@ -14,12 +14,14 @@ pub struct ProcessHandler {
 }
 
 impl ProcessHandler {
+    #[inline]
     pub fn new(executor: SyscallExecutor) -> Self {
         Self { executor }
     }
 }
 
 impl SyscallHandler for ProcessHandler {
+    #[inline]
     fn handle(&self, pid: Pid, syscall: &Syscall) -> Option<SyscallResult> {
         match syscall {
             Syscall::SpawnProcess { ref command, ref args } => {
@@ -50,6 +52,7 @@ impl SyscallHandler for ProcessHandler {
         }
     }
 
+    #[inline]
     fn name(&self) -> &'static str {
         "process_handler"
     }

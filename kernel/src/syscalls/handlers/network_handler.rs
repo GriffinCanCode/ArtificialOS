@@ -14,12 +14,14 @@ pub struct NetworkHandler {
 }
 
 impl NetworkHandler {
+    #[inline]
     pub fn new(executor: SyscallExecutor) -> Self {
         Self { executor }
     }
 }
 
 impl SyscallHandler for NetworkHandler {
+    #[inline]
     fn handle(&self, pid: Pid, syscall: &Syscall) -> Option<SyscallResult> {
         match syscall {
             Syscall::NetworkRequest { ref url } => {
@@ -65,6 +67,7 @@ impl SyscallHandler for NetworkHandler {
         }
     }
 
+    #[inline]
     fn name(&self) -> &'static str {
         "network_handler"
     }
