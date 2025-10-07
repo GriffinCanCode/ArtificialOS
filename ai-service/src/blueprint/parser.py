@@ -1,7 +1,7 @@
 """Blueprint Parser - JSON to Blueprint with validation."""
 
 from typing import Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 from core import get_logger, ValidationError
 from core.json import extract_json, JSONParseError
@@ -55,7 +55,7 @@ class BlueprintParser:
             raise ValidationError("app.name is required")
 
         # Default timestamp
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).isoformat()
 
         # Store templates for reuse
         self.templates = bp.get("templates", {})
