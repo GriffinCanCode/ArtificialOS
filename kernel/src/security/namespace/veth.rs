@@ -27,7 +27,7 @@ impl VethManager {
 
     #[cfg(not(target_os = "linux"))]
     pub fn new() -> Self {
-        Self
+        Self {}
     }
 
     /// Initialize the netlink connection (must be called in async context)
@@ -41,6 +41,13 @@ impl VethManager {
 
         self.handle = Some(handle);
         info!("VethManager initialized with netlink connection");
+        Ok(())
+    }
+
+    /// Initialize for non-Linux platforms (no-op)
+    #[cfg(not(target_os = "linux"))]
+    pub async fn init(&mut self) -> NamespaceResult<()> {
+        info!("VethManager initialized (platform-specific mode)");
         Ok(())
     }
 
@@ -214,7 +221,163 @@ impl VethManager {
         }
     }
 
-    #[cfg(not(target_os = "linux"))]
+    /// Create a feth pair on macOS (alternative to veth)
+    #[cfg(target_os = "macos")]
+    pub async fn create_pair(
+        &self,
+        host_name: &str,
+        ns_name: &str,
+        _ns_id: &NamespaceId,
+    ) -> NamespaceResult<()> {
+        info!(
+            "Creating feth pair on macOS: {} (host) <-> {} (peer)",
+            host_name, ns_name
+        );
+
+        // On macOS, we use feth (fake ethernet) interfaces
+        // Command equivalent: ifconfig feth0 create
+        // Then: ifconfig feth0 peer feth1
+
+        use std::process::Command;
+
+        // Create the first feth interface
+        let output = Command::new("ifconfig")
+            .args(&[host_name, "create"])
+            .output()
+            .map_err(|e| NamespaceError::NetworkError(format!("Failed to execute ifconfig: {}", e)))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(NamespaceError::NetworkError(format!(
+                "Failed to create feth interface {}: {}",
+                host_name, stderr
+            )));
+        }
+
+        // Set the peer
+        let output = Command::new("ifconfig")
+            .args(&[host_name, "peer", ns_name])
+            .output()
+            .map_err(|e| NamespaceError::NetworkError(format!("Failed to execute ifconfig: {}", e)))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            warn!("Failed to set peer for {}: {}", host_name, stderr);
+        }
+
+        debug!("Feth pair created successfully on macOS");
+        Ok(())
+    }
+
+    /// Delete a feth pair on macOS
+    #[cfg(target_os = "macos")]
+    pub async fn delete_pair(&self, host_name: &str) -> NamespaceResult<()> {
+        info!("Deleting feth pair on macOS: {}", host_name);
+
+        use std::process::Command;
+
+        let output = Command::new("ifconfig")
+            .args(&[host_name, "destroy"])
+            .output()
+            .map_err(|e| NamespaceError::NetworkError(format!("Failed to execute ifconfig: {}", e)))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(NamespaceError::NetworkError(format!(
+                "Failed to destroy feth interface {}: {}",
+                host_name, stderr
+            )));
+        }
+
+        debug!("Feth pair deleted successfully");
+        Ok(())
+    }
+
+    /// Configure IP address on interface (macOS)
+    #[cfg(target_os = "macos")]
+    pub async fn set_ip(
+        &self,
+        iface_name: &str,
+        ip_addr: std::net::IpAddr,
+        prefix_len: u8,
+    ) -> NamespaceResult<()> {
+        info!(
+            "Setting IP address on {} (macOS): {}/{}",
+            iface_name, ip_addr, prefix_len
+        );
+
+        use std::process::Command;
+
+        let ip_str = match ip_addr {
+            std::net::IpAddr::V4(addr) => {
+                format!("{} netmask {}", addr, Self::prefix_to_netmask(prefix_len))
+            }
+            std::net::IpAddr::V6(addr) => {
+                format!("{} prefixlen {}", addr, prefix_len)
+            }
+        };
+
+        let output = Command::new("ifconfig")
+            .arg(iface_name)
+            .arg(match ip_addr {
+                std::net::IpAddr::V4(_) => "inet",
+                std::net::IpAddr::V6(_) => "inet6",
+            })
+            .args(ip_str.split_whitespace())
+            .output()
+            .map_err(|e| NamespaceError::NetworkError(format!("Failed to execute ifconfig: {}", e)))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(NamespaceError::NetworkError(format!(
+                "Failed to set IP on {}: {}",
+                iface_name, stderr
+            )));
+        }
+
+        debug!("IP address configured successfully");
+        Ok(())
+    }
+
+    /// Bring interface up or down (macOS)
+    #[cfg(target_os = "macos")]
+    pub async fn set_state(&self, iface_name: &str, up: bool) -> NamespaceResult<()> {
+        let state = if up { "up" } else { "down" };
+        info!("Setting interface {} {} on macOS", iface_name, state);
+
+        use std::process::Command;
+
+        let output = Command::new("ifconfig")
+            .args(&[iface_name, state])
+            .output()
+            .map_err(|e| NamespaceError::NetworkError(format!("Failed to execute ifconfig: {}", e)))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(NamespaceError::NetworkError(format!(
+                "Failed to set interface {} {}: {}",
+                iface_name, state, stderr
+            )));
+        }
+
+        debug!("Interface state changed successfully");
+        Ok(())
+    }
+
+    /// Helper to convert prefix length to netmask (IPv4)
+    #[cfg(target_os = "macos")]
+    fn prefix_to_netmask(prefix: u8) -> String {
+        let mask = !0u32 << (32 - prefix);
+        let octets = [
+            ((mask >> 24) & 0xFF) as u8,
+            ((mask >> 16) & 0xFF) as u8,
+            ((mask >> 8) & 0xFF) as u8,
+            (mask & 0xFF) as u8,
+        ];
+        format!("{}.{}.{}.{}", octets[0], octets[1], octets[2], octets[3])
+    }
+
+    #[cfg(all(not(target_os = "linux"), not(target_os = "macos")))]
     pub async fn create_pair(
         &self,
         _host_name: &str,
@@ -222,18 +385,18 @@ impl VethManager {
         _ns_id: &NamespaceId,
     ) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "veth pairs only supported on Linux".to_string(),
+            "Virtual ethernet pairs not supported on this platform".to_string(),
         ))
     }
 
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(all(not(target_os = "linux"), not(target_os = "macos")))]
     pub async fn delete_pair(&self, _host_name: &str) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "veth pairs only supported on Linux".to_string(),
+            "Virtual ethernet pairs not supported on this platform".to_string(),
         ))
     }
 
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(all(not(target_os = "linux"), not(target_os = "macos")))]
     pub async fn set_ip(
         &self,
         _iface_name: &str,
@@ -241,14 +404,14 @@ impl VethManager {
         _prefix_len: u8,
     ) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "veth pairs only supported on Linux".to_string(),
+            "Virtual ethernet pairs not supported on this platform".to_string(),
         ))
     }
 
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(all(not(target_os = "linux"), not(target_os = "macos")))]
     pub async fn set_state(&self, _iface_name: &str, _up: bool) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "veth pairs only supported on Linux".to_string(),
+            "Virtual ethernet pairs not supported on this platform".to_string(),
         ))
     }
 }
