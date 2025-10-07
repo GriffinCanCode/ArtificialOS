@@ -106,7 +106,7 @@ export function getMetricsSummary() {
   const latencies: number[] = [];
   for (const [key, stats] of Object.entries(metrics.histograms)) {
     if (key.includes("duration") || key.includes("latency")) {
-      latencies.push(stats.avg);
+      latencies.push((stats as { avg: number }).avg);
     }
   }
 

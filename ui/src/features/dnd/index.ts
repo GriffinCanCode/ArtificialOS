@@ -5,7 +5,7 @@
 
 // Types
 export type {
-  SortableItem,
+  SortableItem as SortableItemType,
   SortConfig,
   SortResult,
   FileDropConfig,

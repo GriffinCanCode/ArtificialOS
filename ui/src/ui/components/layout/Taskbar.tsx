@@ -75,18 +75,19 @@ export const Taskbar: React.FC = () => {
     return visible.slice(0, MAX_VISIBLE_ITEMS);
   }, [windows]);
 
+  // Convert windows to sortable items
+  const sortableWindows = useMemo(
+    () => visibleWindows.map((w) => ({ ...w, id: w.id })),
+    [visibleWindows]
+  );
+
+  // Early return AFTER all hooks have been called
   if (windows.length === 0) {
     return null;
   }
 
   const hasMoreWindows = windows.length > MAX_VISIBLE_ITEMS;
   const hiddenCount = windows.length - visibleWindows.length;
-
-  // Convert windows to sortable items
-  const sortableWindows = useMemo(
-    () => visibleWindows.map((w) => ({ ...w, id: w.id })),
-    [visibleWindows]
-  );
 
   return (
     <div className="taskbar">

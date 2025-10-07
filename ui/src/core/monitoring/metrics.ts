@@ -3,7 +3,7 @@
  * Centralized performance metrics tracking with Prometheus-compatible format
  */
 
-import type { MetricType, MetricValue, Histogram } from "./types";
+import type { MetricType, MetricValue, Histogram, MetricsSnapshot, HistogramStats } from "./types";
 
 class MetricsCollector {
   private counters: Map<string, number> = new Map();
@@ -122,8 +122,8 @@ class MetricsCollector {
   /**
    * Get all metrics as JSON
    */
-  getMetricsJSON(): Record<string, any> {
-    const histograms: Record<string, any> = {};
+  getMetricsJSON(): MetricsSnapshot {
+    const histograms: Record<string, HistogramStats> = {};
     for (const [key, histogram] of this.histograms.entries()) {
       const percentiles = this.calculatePercentiles(histogram);
       histograms[key] = {

@@ -19,6 +19,7 @@ interface DropzoneProps extends FileDropConfig {
   className?: string;
   children?: React.ReactNode;
   showPreview?: boolean;
+  generatePreviews?: boolean;
 }
 
 // ============================================================================
