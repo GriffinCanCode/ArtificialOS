@@ -56,14 +56,20 @@ export class FilesystemExecutor implements AsyncExecutor {
     logger.info("Listing directory", { component: "FilesystemExecutor", path });
 
     try {
+      // Build request payload, only include app_id if it's set
+      const payload: any = {
+        tool_id: "filesystem.list",
+        params: { path },
+      };
+
+      if (this.context.appId) {
+        payload.app_id = this.context.appId;
+      }
+
       const response = await fetch("http://localhost:8000/services/execute", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tool_id: "filesystem.list",
-          params: { path },
-          app_id: this.context.appId,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -78,22 +84,23 @@ export class FilesystemExecutor implements AsyncExecutor {
 
       const data = result.data;
       const files = data.files || [];
+      const entries = data.entries || [];
 
       // Update state with current path and file count
       this.context.componentState.set("current-path", path);
       this.context.componentState.set("path-input", path);
-      this.context.componentState.set("item-count", `${files.length} items`);
+      this.context.componentState.set("item-count", `${entries.length} items`);
 
       logger.info("Directory listed successfully", {
         component: "FilesystemExecutor",
         path,
-        fileCount: files.length,
+        fileCount: entries.length,
       });
 
       // Generate file/folder row components dynamically
-      const createFileRow = (file: string) => {
-        const isDirectory = file.endsWith("/");
-        const displayName = isDirectory ? file.slice(0, -1) : file;
+      const createFileRow = (entry: any) => {
+        const isDirectory = entry.is_dir || false;
+        const displayName = entry.name;
 
         return {
           type: "container",
@@ -175,14 +182,22 @@ export class FilesystemExecutor implements AsyncExecutor {
           {
             type: "update_dynamic_lists",
             lists: {
-              "file-list": files.map(createFileRow),
+              "file-list": entries.map(createFileRow),
             },
           },
           "*"
         );
       });
 
-      return { files, path, count: files.length };
+      // Convert entries to format expected by native apps (add full paths)
+      const enrichedEntries = entries.map((entry: any) => ({
+        name: entry.name,
+        path: `${path}/${entry.name}`.replace(/\/+/g, "/"),
+        type: entry.type || (entry.is_dir ? "directory" : "file"),
+        isDirectory: entry.is_dir || false,
+      }));
+
+      return { files, path, count: entries.length, entries: enrichedEntries };
     } catch (error) {
       logger.error("Failed to list directory", error as Error, {
         component: "FilesystemExecutor",
@@ -192,7 +207,7 @@ export class FilesystemExecutor implements AsyncExecutor {
         "error",
         `Failed to list directory: ${error instanceof Error ? error.message : "Unknown error"}`
       );
-      return { files: [], path, count: 0 };
+      return { files: [], path, count: 0, entries: [] };
     }
   }
 }

@@ -302,7 +302,19 @@ impl SyscallExecutor {
         if let Some(ref vfs) = self.vfs {
             match vfs.list_dir(path) {
                 Ok(entries) => {
-                    let files: Vec<String> = entries.into_iter().map(|e| e.name).collect();
+                    // Include file type information in the response
+                    let files: Vec<serde_json::Value> = entries
+                        .into_iter()
+                        .map(|e| {
+                            let is_dir = matches!(e.file_type, crate::vfs::types::FileType::Directory);
+                            serde_json::json!({
+                                "name": e.name,
+                                "is_dir": is_dir,
+                                "type": if is_dir { "directory" } else { "file" }
+                            })
+                        })
+                        .collect();
+
                     info!(
                         "PID {} listed directory via VFS: {:?} ({} entries)",
                         pid,
@@ -332,9 +344,17 @@ impl SyscallExecutor {
         // Fallback to std::fs
         match fs::read_dir(path) {
             Ok(entries) => {
-                let files: Vec<String> = entries
+                let files: Vec<serde_json::Value> = entries
                     .filter_map(|e| e.ok())
-                    .filter_map(|e| e.file_name().into_string().ok())
+                    .filter_map(|entry| {
+                        let name = entry.file_name().into_string().ok()?;
+                        let is_dir = entry.file_type().ok()?.is_dir();
+                        Some(serde_json::json!({
+                            "name": name,
+                            "is_dir": is_dir,
+                            "type": if is_dir { "directory" } else { "file" }
+                        }))
+                    })
                     .collect();
 
                 info!(

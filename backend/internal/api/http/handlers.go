@@ -206,8 +206,8 @@ func (h *Handlers) ExecuteService(c *gin.Context) {
 		return
 	}
 
-	// Validate tool ID
-	if err := utils.ValidateID(req.ToolID, "tool_id", true); err != nil {
+	// Validate tool ID (allows dots for service.tool format)
+	if err := utils.ValidateToolID(req.ToolID, "tool_id", true); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

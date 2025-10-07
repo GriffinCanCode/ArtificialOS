@@ -101,12 +101,26 @@ func (d *DirectoryOps) List(ctx context.Context, params map[string]interface{}, 
 		return Failure(fmt.Sprintf("list failed: %v", err))
 	}
 
-	var files []string
-	if err := json.Unmarshal(data, &files); err != nil {
+	// Kernel now returns entries with metadata (name, is_dir, type)
+	var entries []map[string]interface{}
+	if err := json.Unmarshal(data, &entries); err != nil {
 		return Failure(fmt.Sprintf("parse error: %v", err))
 	}
 
-	return Success(map[string]interface{}{"path": path, "files": files, "count": len(files)})
+	// Build response with both entries and files array for backward compatibility
+	files := make([]string, len(entries))
+	for i, entry := range entries {
+		if name, ok := entry["name"].(string); ok {
+			files[i] = name
+		}
+	}
+
+	return Success(map[string]interface{}{
+		"path":    path,
+		"files":   files,
+		"entries": entries,
+		"count":   len(entries),
+	})
 }
 
 // Create creates a directory

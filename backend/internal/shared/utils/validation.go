@@ -35,6 +35,8 @@ const (
 var (
 	// SafeIDPattern allows alphanumeric, hyphens, underscores
 	SafeIDPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
+	// ToolIDPattern allows alphanumeric, hyphens, underscores, and dots (for service.tool format)
+	ToolIDPattern = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
 	// UsernamePattern allows alphanumeric and underscores
 	UsernamePattern = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
 	// EmailPattern is a basic email validation
@@ -183,6 +185,19 @@ func ValidateID(id, fieldName string, required bool) error {
 
 	if id != "" && !SafeIDPattern.MatchString(id) {
 		return fmt.Errorf("%s contains invalid characters (only alphanumeric, hyphens, and underscores allowed)", fieldName)
+	}
+
+	return nil
+}
+
+// ValidateToolID validates a tool ID field (allows dots for service.tool format)
+func ValidateToolID(id, fieldName string, required bool) error {
+	if err := ValidateString(id, fieldName, 1, MaxIDLength, required); err != nil {
+		return err
+	}
+
+	if id != "" && !ToolIDPattern.MatchString(id) {
+		return fmt.Errorf("%s contains invalid characters (only alphanumeric, dots, hyphens, and underscores allowed)", fieldName)
 	}
 
 	return nil
