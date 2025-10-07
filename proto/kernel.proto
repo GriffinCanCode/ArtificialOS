@@ -9,6 +9,17 @@ service KernelService {
   // Execute a system call
   rpc ExecuteSyscall(SyscallRequest) returns (SyscallResponse);
 
+  // Streaming syscall for large data transfers
+  rpc StreamSyscall(stream StreamSyscallRequest) returns (stream StreamSyscallChunk);
+
+  // Async syscall execution
+  rpc ExecuteSyscallAsync(SyscallRequest) returns (AsyncSyscallResponse);
+  rpc GetAsyncStatus(AsyncStatusRequest) returns (AsyncStatusResponse);
+  rpc CancelAsync(AsyncCancelRequest) returns (AsyncCancelResponse);
+
+  // Batch syscall execution
+  rpc ExecuteSyscallBatch(BatchSyscallRequest) returns (BatchSyscallResponse);
+
   // Create a sandboxed process
   rpc CreateProcess(CreateProcessRequest) returns (CreateProcessResponse);
 
@@ -65,18 +76,18 @@ message SyscallRequest {
     SendSignalCall send_signal = 42;
     NetworkRequestCall network_request = 40;
     // Network - Sockets
-    SocketCall socket = 80;
-    BindCall bind = 81;
-    ListenCall listen = 82;
-    AcceptCall accept = 83;
-    ConnectCall connect = 84;
-    SendCall send = 85;
-    RecvCall recv = 86;
-    SendToCall send_to = 87;
-    RecvFromCall recv_from = 88;
-    CloseSocketCall close_socket = 89;
-    SetSockOptCall set_sock_opt = 90;
-    GetSockOptCall get_sock_opt = 91;
+    SocketCall socket = 120;
+    BindCall bind = 121;
+    ListenCall listen = 122;
+    AcceptCall accept = 123;
+    ConnectCall connect = 124;
+    SendCall send = 125;
+    RecvCall recv = 126;
+    SendToCall send_to = 127;
+    RecvFromCall recv_from = 128;
+    CloseSocketCall close_socket = 129;
+    SetSockOptCall set_sock_opt = 130;
+    GetSockOptCall get_sock_opt = 131;
     // File Descriptors
     OpenCall open = 100;
     CloseCall close = 101;
@@ -113,6 +124,14 @@ message SyscallRequest {
     YieldProcessCall yield_process = 71;
     GetCurrentScheduledCall get_current_scheduled = 72;
     GetSchedulerStatsCall get_scheduler_stats = 73;
+    SetSchedulingPolicyCall set_scheduling_policy = 74;
+    GetSchedulingPolicyCall get_scheduling_policy = 75;
+    SetTimeQuantumCall set_time_quantum = 76;
+    GetTimeQuantumCall get_time_quantum = 77;
+    GetProcessSchedulerStatsCall get_process_scheduler_stats = 78;
+    GetAllProcessSchedulerStatsCall get_all_process_scheduler_stats = 79;
+    BoostPriorityCall boost_priority = 81;
+    LowerPriorityCall lower_priority = 82;
   }
 }
 
@@ -519,6 +538,32 @@ message GetCurrentScheduledCall {}
 
 message GetSchedulerStatsCall {}
 
+message SetSchedulingPolicyCall {
+  string policy = 1; // "round_robin", "priority", "fair"
+}
+
+message GetSchedulingPolicyCall {}
+
+message SetTimeQuantumCall {
+  uint64 quantum_micros = 1;
+}
+
+message GetTimeQuantumCall {}
+
+message GetProcessSchedulerStatsCall {
+  uint32 target_pid = 1;
+}
+
+message GetAllProcessSchedulerStatsCall {}
+
+message BoostPriorityCall {
+  uint32 target_pid = 1;
+}
+
+message LowerPriorityCall {
+  uint32 target_pid = 1;
+}
+
 // ============================================================================
 // Process Management
 // ============================================================================
@@ -662,5 +707,91 @@ message SetSchedulingPolicyRequest {
 message SetSchedulingPolicyResponse {
   bool success = 1;
   string error = 2;
+}
+
+// ============================================================================
+// Streaming Syscall Messages
+// ============================================================================
+
+message StreamSyscallRequest {
+  uint32 pid = 1;
+  oneof request {
+    StreamFileRead read = 2;
+    StreamFileWrite write = 3;
+  }
+}
+
+message StreamFileRead {
+  string path = 1;
+  uint32 chunk_size = 2;  // bytes per chunk, default 64KB
+}
+
+message StreamFileWrite {
+  string path = 1;
+  bytes chunk = 2;
+  bool finish = 3;  // true on last chunk
+}
+
+message StreamSyscallChunk {
+  oneof chunk {
+    bytes data = 1;
+    string error = 2;
+    StreamComplete complete = 3;
+  }
+}
+
+message StreamComplete {
+  uint64 total_bytes = 1;
+}
+
+// ============================================================================
+// Async Syscall Messages
+// ============================================================================
+
+message AsyncSyscallResponse {
+  string task_id = 1;
+  bool accepted = 2;
+  string error = 3;
+}
+
+message AsyncStatusRequest {
+  string task_id = 1;
+}
+
+message AsyncStatusResponse {
+  enum Status {
+    PENDING = 0;
+    RUNNING = 1;
+    COMPLETED = 2;
+    FAILED = 3;
+    CANCELLED = 4;
+  }
+  Status status = 1;
+  SyscallResponse result = 2;
+  float progress = 3;  // 0.0 to 1.0
+}
+
+message AsyncCancelRequest {
+  string task_id = 1;
+}
+
+message AsyncCancelResponse {
+  bool cancelled = 1;
+  string error = 2;
+}
+
+// ============================================================================
+// Batch Syscall Messages
+// ============================================================================
+
+message BatchSyscallRequest {
+  repeated SyscallRequest requests = 1;
+  bool parallel = 2;  // execute in parallel if true
+}
+
+message BatchSyscallResponse {
+  repeated SyscallResponse responses = 1;
+  uint32 success_count = 2;
+  uint32 failure_count = 3;
 }
 
