@@ -6,6 +6,8 @@
 mod cleanup;
 pub mod executor;
 pub mod manager;
+pub mod manager_builder;
+pub mod manager_scheduler;
 pub mod preemption;
 mod priority;
 pub mod scheduler;
@@ -19,7 +21,8 @@ pub use types::*;
 
 // Re-export implementations
 pub use executor::ProcessExecutor as ProcessExecutorImpl;
-pub use manager::{ProcessManager as ProcessManagerImpl, ProcessManagerBuilder};
+pub use manager::ProcessManager as ProcessManagerImpl;
+pub use manager_builder::ProcessManagerBuilder;
 pub use preemption::PreemptionController;
 pub use scheduler::Scheduler;
 pub use scheduler_task::{SchedulerCommand, SchedulerTask};
