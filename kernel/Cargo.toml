@@ -47,6 +47,8 @@ env_logger = "0.11"
 
 # Network namespace isolation (Linux-specific)
 nix = { version = "0.29", features = ["sched", "net", "user"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
 rtnetlink = "0.14"
 ipnetwork = "0.20"
 netlink-packet-route = "0.19"
@@ -68,6 +70,8 @@ tempfile = "3.8"
 serial_test = "3.0"
 # Async test utilities
 futures = "0.3"
+# Random number generation for stress tests
+rand = "0.8"
 
 [profile.release]
 opt-level = 3
