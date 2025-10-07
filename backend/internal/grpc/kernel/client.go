@@ -209,6 +209,9 @@ func (k *KernelClient) ExecuteSyscall(ctx context.Context, pid uint32, syscallTy
 	// IPC - Shared Memory
 	case "create_shm", "attach_shm", "detach_shm", "write_shm", "read_shm", "destroy_shm", "shm_stats":
 		k.buildIPCSyscall(req, syscallType, params)
+	// IPC - Memory-Mapped Files
+	case "mmap", "mmap_read", "mmap_write", "msync", "munmap", "mmap_stats":
+		k.buildIPCSyscall(req, syscallType, params)
 	// Scheduler operations
 	case "schedule_next", "yield_process", "get_current_scheduled", "get_scheduler_stats":
 		k.buildSchedulerSyscall(req, syscallType, params)

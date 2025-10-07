@@ -3,6 +3,7 @@
  * Handles process creation, scheduling, and lifecycle
  */
 
+use super::preemption::PreemptionController;
 use super::types::{ExecutionConfig, ProcessInfo, ProcessState, SchedulingPolicy};
 use crate::core::types::{Pid, Priority};
 use crate::ipc::IPCManager;
@@ -29,6 +30,7 @@ pub struct ProcessManager {
     ipc_manager: Option<IPCManager>,
     scheduler: Option<Arc<RwLock<Scheduler>>>,
     scheduler_task: Option<Arc<SchedulerTask>>,
+    preemption: Option<Arc<PreemptionController>>,
     // Track child processes per parent PID for limit enforcement
     child_counts: Arc<DashMap<Pid, u32>>,
 }
@@ -102,10 +104,24 @@ impl ProcessManagerBuilder {
             .scheduler_policy
             .map(|policy| Arc::new(RwLock::new(Scheduler::new(policy))));
 
+        // Create preemption controller if both scheduler and executor are available
+        let preemption = match (&scheduler, &executor) {
+            (Some(sched), Some(exec)) => {
+                Some(Arc::new(PreemptionController::new(
+                    Arc::clone(sched),
+                    Arc::new(exec.clone()),
+                )))
+            }
+            _ => None,
+        };
+
         // Spawn autonomous scheduler task if scheduler is enabled
-        let scheduler_task = scheduler
-            .as_ref()
-            .map(|sched| Arc::new(SchedulerTask::spawn(Arc::clone(sched))));
+        let scheduler_task = scheduler.as_ref().map(|sched| {
+            Arc::new(SchedulerTask::spawn_with_preemption(
+                Arc::clone(sched),
+                preemption.clone(),
+            ))
+        });
 
         let mut features = Vec::new();
         if self.memory_manager.is_some() {
@@ -123,8 +139,11 @@ impl ProcessManagerBuilder {
         if scheduler.is_some() {
             features.push("scheduler");
         }
+        if preemption.is_some() {
+            features.push("OS-preemption");
+        }
         if scheduler_task.is_some() {
-            features.push("preemptive-scheduling");
+            features.push("autonomous-scheduling");
         }
 
         info!("Process manager initialized with: {}", features.join(", "));
@@ -139,6 +158,7 @@ impl ProcessManagerBuilder {
             ipc_manager: self.ipc_manager,
             scheduler,
             scheduler_task,
+            preemption,
             // Use 64 shards for child_counts (moderate contention)
             child_counts: Arc::new(DashMap::with_shard_amount(64)),
         }
@@ -165,6 +185,7 @@ impl ProcessManager {
             ipc_manager: None,
             scheduler: None,
             scheduler_task: None,
+            preemption: None,
             // Use 64 shards for child_counts (moderate contention)
             child_counts: Arc::new(DashMap::with_shard_amount(64)),
         }
@@ -312,6 +333,11 @@ impl ProcessManager {
             // Remove from scheduler if available
             if let Some(ref scheduler) = self.scheduler {
                 scheduler.read().remove(pid);
+            }
+
+            // Notify preemption controller if available
+            if let Some(ref preemption) = self.preemption {
+                preemption.cleanup_process(pid);
             }
 
             true
@@ -538,6 +564,7 @@ impl Clone for ProcessManager {
             ipc_manager: self.ipc_manager.clone(),
             scheduler: self.scheduler.clone(),
             scheduler_task: self.scheduler_task.clone(),
+            preemption: self.preemption.clone(),
             child_counts: Arc::clone(&self.child_counts),
         }
     }

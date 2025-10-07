@@ -26,7 +26,8 @@ pub use core::*;
 
 // IPC
 pub use ipc::{
-    IPCManager, PipeError, PipeManager, PipeStats, ShmError, ShmManager, ShmPermission, ShmStats,
+    IPCManager, MapFlags, MmapEntry, MmapId, MmapManager, PipeError, PipeManager, PipeStats,
+    ProtFlags, ShmError, ShmManager, ShmPermission, ShmStats,
 };
 
 // Memory

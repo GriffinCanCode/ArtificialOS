@@ -6,6 +6,7 @@
  * behavior by running independently and adapting to system state.
  */
 
+use super::preemption::PreemptionController;
 use super::scheduler::Scheduler;
 use log::{info, warn};
 use parking_lot::RwLock;
@@ -35,15 +36,29 @@ pub struct SchedulerTask {
 }
 
 impl SchedulerTask {
-    /// Spawn a new scheduler task that runs independently
+    /// Spawn a new scheduler task that runs independently (basic mode)
     pub fn spawn(scheduler: Arc<RwLock<Scheduler>>) -> Self {
+        Self::spawn_with_preemption(scheduler, None)
+    }
+
+    /// Spawn a scheduler task with optional OS-level preemption
+    pub fn spawn_with_preemption(
+        scheduler: Arc<RwLock<Scheduler>>,
+        preemption: Option<Arc<PreemptionController>>,
+    ) -> Self {
         let (command_tx, command_rx) = mpsc::unbounded_channel();
 
+        let mode = if preemption.is_some() {
+            "OS-level preemption"
+        } else {
+            "logical scheduling"
+        };
+
         let handle = tokio::spawn(async move {
-            run_scheduler_loop(scheduler, command_rx).await;
+            run_scheduler_loop(scheduler, preemption, command_rx).await;
         });
 
-        info!("Scheduler task spawned - autonomous preemptive scheduling enabled");
+        info!("Scheduler task spawned - autonomous {} enabled", mode);
 
         Self {
             command_tx,
@@ -90,6 +105,7 @@ impl SchedulerTask {
 /// Core scheduler loop - intelligent and adaptive
 async fn run_scheduler_loop(
     scheduler: Arc<RwLock<Scheduler>>,
+    preemption: Option<Arc<PreemptionController>>,
     mut command_rx: mpsc::UnboundedReceiver<SchedulerCommand>,
 ) {
     let mut active = true;
@@ -101,17 +117,27 @@ async fn run_scheduler_loop(
     let mut interval = tokio::time::interval(Duration::from_micros(initial_quantum));
     interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
-    info!("Scheduler loop started with {}μs quantum", initial_quantum);
+    let mode = if preemption.is_some() {
+        "with OS preemption"
+    } else {
+        "logical only"
+    };
+    info!("Scheduler loop started with {}μs quantum ({})", initial_quantum, mode);
 
     loop {
         tokio::select! {
             // Periodic scheduling tick (fires at quantum rate)
             _ = interval.tick() => {
                 if active && !scheduler.read().is_empty() {
-                    // Trigger scheduling decision - this enforces preemption
-                    if let Some(next_pid) = scheduler.read().schedule() {
-                        // Process was scheduled or preempted
-                        log::trace!("Scheduler tick: PID {} active", next_pid);
+                    // Use preemption controller if available, otherwise use basic scheduler
+                    let next_pid = if let Some(ref ctrl) = preemption {
+                        ctrl.schedule()
+                    } else {
+                        scheduler.read().schedule()
+                    };
+
+                    if let Some(pid) = next_pid {
+                        log::trace!("Scheduler tick: PID {} active", pid);
                     }
                 }
             }
@@ -142,7 +168,11 @@ async fn run_scheduler_loop(
 
                     SchedulerCommand::Trigger => {
                         if !scheduler.read().is_empty() {
-                            scheduler.read().schedule();
+                            if let Some(ref ctrl) = preemption {
+                                ctrl.schedule();
+                            } else {
+                                scheduler.read().schedule();
+                            }
                             log::trace!("Manual scheduler trigger");
                         }
                     }

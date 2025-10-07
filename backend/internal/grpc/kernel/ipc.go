@@ -89,5 +89,58 @@ func (k *KernelClient) buildIPCSyscall(req *pb.SyscallRequest, syscallType strin
 		req.Syscall = &pb.SyscallRequest_ShmStats{
 			ShmStats: &pb.ShmStatsCall{SegmentId: segmentId},
 		}
+	// IPC - Memory-Mapped Files
+	case "mmap":
+		path, _ := params["path"].(string)
+		offset, _ := params["offset"].(uint32)
+		length, _ := params["length"].(uint32)
+		prot, _ := params["prot"].(uint32)
+		shared, _ := params["shared"].(bool)
+		req.Syscall = &pb.SyscallRequest_Mmap{
+			Mmap: &pb.MmapCall{
+				Path:   path,
+				Offset: offset,
+				Length: length,
+				Prot:   prot,
+				Shared: shared,
+			},
+		}
+	case "mmap_read":
+		mmapId, _ := params["mmap_id"].(uint32)
+		offset, _ := params["offset"].(uint32)
+		length, _ := params["length"].(uint32)
+		req.Syscall = &pb.SyscallRequest_MmapRead{
+			MmapRead: &pb.MmapReadCall{
+				MmapId: mmapId,
+				Offset: offset,
+				Length: length,
+			},
+		}
+	case "mmap_write":
+		mmapId, _ := params["mmap_id"].(uint32)
+		offset, _ := params["offset"].(uint32)
+		data, _ := params["data"].([]byte)
+		req.Syscall = &pb.SyscallRequest_MmapWrite{
+			MmapWrite: &pb.MmapWriteCall{
+				MmapId: mmapId,
+				Offset: offset,
+				Data:   data,
+			},
+		}
+	case "msync":
+		mmapId, _ := params["mmap_id"].(uint32)
+		req.Syscall = &pb.SyscallRequest_Msync{
+			Msync: &pb.MsyncCall{MmapId: mmapId},
+		}
+	case "munmap":
+		mmapId, _ := params["mmap_id"].(uint32)
+		req.Syscall = &pb.SyscallRequest_Munmap{
+			Munmap: &pb.MunmapCall{MmapId: mmapId},
+		}
+	case "mmap_stats":
+		mmapId, _ := params["mmap_id"].(uint32)
+		req.Syscall = &pb.SyscallRequest_MmapStats{
+			MmapStats: &pb.MmapStatsCall{MmapId: mmapId},
+		}
 	}
 }

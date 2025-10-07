@@ -139,6 +139,13 @@ impl SyscallExecutor {
         self
     }
 
+    /// Add mmap manager support (requires VFS)
+    pub fn with_mmap(mut self, mmap_manager: crate::ipc::MmapManager) -> Self {
+        self.mmap_manager = Some(mmap_manager);
+        info!("Mmap support enabled for syscall executor");
+        self
+    }
+
     /// Execute a system call with sandboxing
     pub fn execute(&self, pid: Pid, syscall: Syscall) -> SyscallResult {
         info!("Executing syscall for PID {}: {:?}", pid, syscall);

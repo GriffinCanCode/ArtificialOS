@@ -49,10 +49,13 @@ log = "0.4"
 env_logger = "0.11"
 
 # Network namespace isolation (Linux-specific)
-nix = { version = "0.29", features = ["sched", "net", "user"] }
+nix = { version = "0.29", features = ["sched", "net", "user", "signal"] }
 
 # HTTP client
 reqwest = { version = "0.12", features = ["blocking", "json", "gzip"] }
+
+# Path utilities
+path-clean = "1.0"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 rtnetlink = "0.14"

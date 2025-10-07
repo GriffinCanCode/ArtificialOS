@@ -311,6 +311,33 @@ impl KernelService for KernelServiceImpl {
             Some(syscall_request::Syscall::ShmStats(call)) => Syscall::ShmStats {
                 segment_id: call.segment_id,
             },
+            // IPC - Memory-Mapped Files
+            Some(syscall_request::Syscall::Mmap(call)) => Syscall::Mmap {
+                path: call.path,
+                offset: call.offset as usize,
+                length: call.length as usize,
+                prot: call.prot as u8,
+                shared: call.shared,
+            },
+            Some(syscall_request::Syscall::MmapRead(call)) => Syscall::MmapRead {
+                mmap_id: call.mmap_id,
+                offset: call.offset as usize,
+                length: call.length as usize,
+            },
+            Some(syscall_request::Syscall::MmapWrite(call)) => Syscall::MmapWrite {
+                mmap_id: call.mmap_id,
+                offset: call.offset as usize,
+                data: call.data,
+            },
+            Some(syscall_request::Syscall::Msync(call)) => Syscall::Msync {
+                mmap_id: call.mmap_id,
+            },
+            Some(syscall_request::Syscall::Munmap(call)) => Syscall::Munmap {
+                mmap_id: call.mmap_id,
+            },
+            Some(syscall_request::Syscall::MmapStats(call)) => Syscall::MmapStats {
+                mmap_id: call.mmap_id,
+            },
             // IPC - Async Queues
             Some(syscall_request::Syscall::CreateQueue(call)) => Syscall::CreateQueue {
                 queue_type: call.queue_type,

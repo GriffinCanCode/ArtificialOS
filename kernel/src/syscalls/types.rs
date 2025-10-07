@@ -470,6 +470,66 @@ pub enum Syscall {
     },
 
     // ========================================================================
+    // IPC - Memory-Mapped Files
+    // ========================================================================
+
+    /// Memory-map a file
+    Mmap {
+        /// File path to map
+        path: String,
+        /// Offset in file
+        #[serde(default)]
+        offset: usize,
+        /// Length to map
+        length: Size,
+        /// Protection flags (read, write, exec as bit flags)
+        prot: u8,
+        /// Shared (1) or Private (0) mapping
+        #[serde(default)]
+        shared: bool,
+    },
+
+    /// Read from memory-mapped region
+    MmapRead {
+        /// Mapping ID
+        mmap_id: u32,
+        /// Offset in mapping
+        #[serde(default)]
+        offset: usize,
+        /// Length to read
+        length: Size,
+    },
+
+    /// Write to memory-mapped region
+    MmapWrite {
+        /// Mapping ID
+        mmap_id: u32,
+        /// Offset in mapping
+        #[serde(default)]
+        offset: usize,
+        /// Data to write
+        data: Vec<u8>,
+    },
+
+    /// Synchronize mmap to file
+    Msync {
+        /// Mapping ID
+        mmap_id: u32,
+    },
+
+    /// Unmap a memory-mapped region
+    Munmap {
+        /// Mapping ID
+        mmap_id: u32,
+    },
+
+    /// Get mmap statistics
+    MmapStats {
+        /// Mapping ID
+        mmap_id: u32,
+    },
+
+    // ========================================================================
     // IPC - Async Queues
     // ========================================================================
 

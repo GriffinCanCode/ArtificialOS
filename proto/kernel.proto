@@ -110,6 +110,13 @@ message SyscallRequest {
     ReadShmCall read_shm = 64;
     DestroyShmCall destroy_shm = 65;
     ShmStatsCall shm_stats = 66;
+    // IPC - Memory-Mapped Files
+    MmapCall mmap = 67;
+    MmapReadCall mmap_read = 68;
+    MmapWriteCall mmap_write = 69;
+    MsyncCall msync = 140;
+    MunmapCall munmap = 141;
+    MmapStatsCall mmap_stats = 142;
     // IPC - Async Queues
     CreateQueueCall create_queue = 110;
     SendQueueCall send_queue = 111;
@@ -485,6 +492,42 @@ message DestroyShmCall {
 
 message ShmStatsCall {
   uint32 segment_id = 1;
+}
+
+// ============================================================================
+// IPC Calls - Memory-Mapped Files
+// ============================================================================
+
+message MmapCall {
+  string path = 1;
+  uint32 offset = 2;
+  uint32 length = 3;
+  uint32 prot = 4;  // Protection flags: READ=1, WRITE=2, EXEC=4
+  bool shared = 5;  // true=Shared, false=Private
+}
+
+message MmapReadCall {
+  uint32 mmap_id = 1;
+  uint32 offset = 2;
+  uint32 length = 3;
+}
+
+message MmapWriteCall {
+  uint32 mmap_id = 1;
+  uint32 offset = 2;
+  bytes data = 3;
+}
+
+message MsyncCall {
+  uint32 mmap_id = 1;
+}
+
+message MunmapCall {
+  uint32 mmap_id = 1;
+}
+
+message MmapStatsCall {
+  uint32 mmap_id = 1;
 }
 
 // ============================================================================

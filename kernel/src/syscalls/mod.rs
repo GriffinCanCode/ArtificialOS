@@ -8,6 +8,7 @@ mod fd;
 mod fs;
 mod ipc;
 mod memory;
+mod mmap;
 mod network;
 mod process;
 mod scheduler;

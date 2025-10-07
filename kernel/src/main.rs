@@ -12,8 +12,8 @@ use log::info;
 use std::error::Error;
 
 use ai_os_kernel::{
-    start_grpc_server, IPCManager, LocalFS, MemFS, MemoryManager, MountManager, Policy,
-    ProcessManager, SandboxManager, SyscallExecutor,
+    start_grpc_server, IPCManager, LocalFS, MemFS, MemoryManager, MmapManager, MountManager,
+    Policy, ProcessManager, SandboxManager, SyscallExecutor,
 };
 use std::sync::Arc;
 
@@ -72,7 +72,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     vfs.mount("/cache", Arc::new(MemFS::with_capacity(50 * 1024 * 1024)))
         .expect("Failed to mount /cache");
 
-    info!("Initializing syscall executor with IPC and VFS support...");
+    info!("Initializing mmap manager with VFS support...");
+    let mmap_manager = MmapManager::with_vfs(Arc::new(vfs.clone()));
+
+    info!("Initializing syscall executor with IPC, VFS, and mmap support...");
     let syscall_executor = SyscallExecutor::with_ipc(
         sandbox_manager.clone(),
         ipc_manager.pipes().clone(),
@@ -80,6 +83,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     )
     .with_queues(ipc_manager.queues().clone())
     .with_vfs(vfs)
+    .with_mmap(mmap_manager)
     .with_metrics(metrics_collector.clone());
 
     info!("Kernel initialization complete");
