@@ -5,7 +5,7 @@
 
 use super::errors::*;
 use super::types::*;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 /// Process lifecycle management
 pub trait ProcessLifecycle: Send + Sync {
@@ -144,6 +144,39 @@ pub trait Statistics {
 
     /// Get current statistics
     fn stats(&self) -> Self::Stats;
+}
+
+/// Binary serialization trait for internal IPC operations
+///
+/// Types that implement this trait can be efficiently serialized using bincode
+/// for internal kernel-to-kernel communication, providing 5-10x better performance
+/// than JSON for binary payloads.
+///
+/// This trait is separate from the standard Serialize/Deserialize traits to allow
+/// types to choose different serialization strategies for internal vs external APIs:
+/// - Use `BincodeSerializable` for internal kernel IPC (fast, compact binary)
+/// - Use JSON for external APIs and debugging (human-readable)
+pub trait BincodeSerializable: Serialize + DeserializeOwned + Send + Sync {
+    /// Serialize to binary format using bincode
+    fn to_bincode(&self) -> std::result::Result<Vec<u8>, String> {
+        crate::core::bincode::to_vec(self)
+            .map_err(|e| format!("Bincode serialization failed: {}", e))
+    }
+
+    /// Deserialize from binary format using bincode
+    fn from_bincode(bytes: &[u8]) -> std::result::Result<Self, String>
+    where
+        Self: Sized,
+    {
+        crate::core::bincode::from_slice(bytes)
+            .map_err(|e| format!("Bincode deserialization failed: {}", e))
+    }
+
+    /// Get the serialized size without actually serializing
+    fn bincode_size(&self) -> std::result::Result<u64, String> {
+        crate::core::bincode::serialized_size(self)
+            .map_err(|e| format!("Failed to calculate bincode size: {}", e))
+    }
 }
 
 #[cfg(test)]

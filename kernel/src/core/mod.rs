@@ -3,6 +3,7 @@
  * Fundamental kernel types and error handling
  */
 
+pub mod bincode;
 pub mod errors;
 pub mod json;
 pub mod serde;

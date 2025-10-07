@@ -29,12 +29,14 @@ uuid = { version = "1.6", features = ["v4"] }
 serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = "1.0"
 simd-json = "0.13"
+bincode = "1.3"
 serde_with = { version = "3.11", features = ["time_0_3", "macros"] }
 time = { version = "0.3", features = ["serde", "macros"] }
 
 # Concurrency
 parking_lot = "0.12"
 dashmap = "5.5"
+ahash = "0.8"
 
 # Structured logging
 tracing = "0.1"
@@ -86,6 +88,10 @@ criterion = { version = "0.5", features = ["html_reports"] }
 
 [[bench]]
 name = "json_benchmark"
+harness = false
+
+[[bench]]
+name = "bincode_benchmark"
 harness = false
 
 [profile.release]

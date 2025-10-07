@@ -6,6 +6,7 @@
 use crate::core::types::Pid;
 use crate::vfs::{FileSystem, MountManager};
 use dashmap::DashMap;
+use ahash::RandomState;
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -22,6 +23,9 @@ pub struct ProtFlags {
     pub write: bool,
     pub exec: bool,
 }
+
+// Implement BincodeSerializable for efficient internal transfers
+impl crate::core::traits::BincodeSerializable for ProtFlags {}
 
 impl ProtFlags {
     pub const PROT_READ: Self = Self {
@@ -74,6 +78,9 @@ pub enum MapFlags {
     Private,
 }
 
+// Implement BincodeSerializable for efficient internal transfers
+impl crate::core::traits::BincodeSerializable for MapFlags {}
+
 /// Memory-mapped file entry
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MmapEntry {
@@ -89,7 +96,7 @@ pub struct MmapEntry {
 
 /// Memory-mapped file manager
 pub struct MmapManager {
-    mappings: Arc<DashMap<MmapId, MmapEntry>>,
+    mappings: Arc<DashMap<MmapId, MmapEntry, RandomState>>,
     next_id: AtomicU32,
     vfs: Option<Arc<MountManager>>,
 }
@@ -99,7 +106,7 @@ impl MmapManager {
     pub fn new() -> Self {
         info!("Mmap manager initialized");
         Self {
-            mappings: Arc::new(DashMap::with_shard_amount(32)),
+            mappings: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 32)),
             next_id: AtomicU32::new(1),
             vfs: None,
         }
@@ -109,7 +116,7 @@ impl MmapManager {
     pub fn with_vfs(vfs: Arc<MountManager>) -> Self {
         info!("Mmap manager initialized with VFS support");
         Self {
-            mappings: Arc::new(DashMap::with_shard_amount(32)),
+            mappings: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 32)),
             next_id: AtomicU32::new(1),
             vfs: Some(vfs),
         }

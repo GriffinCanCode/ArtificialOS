@@ -85,3 +85,22 @@ pub struct PipeStats {
     #[serde(skip_serializing_if = "is_false")]
     pub closed: bool,
 }
+
+impl PipeStats {
+    /// Serialize using bincode for internal pipe operations
+    ///
+    /// This provides better performance than JSON for pipe metadata transfers.
+    pub fn to_bincode_bytes(&self) -> Result<Vec<u8>, String> {
+        crate::core::bincode::to_vec(self)
+            .map_err(|e| format!("Failed to serialize pipe stats with bincode: {}", e))
+    }
+
+    /// Deserialize from bincode format
+    pub fn from_bincode_bytes(bytes: &[u8]) -> Result<Self, String> {
+        crate::core::bincode::from_slice(bytes)
+            .map_err(|e| format!("Failed to deserialize pipe stats with bincode: {}", e))
+    }
+}
+
+// Implement BincodeSerializable for PipeStats
+impl crate::core::traits::BincodeSerializable for PipeStats {}

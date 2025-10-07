@@ -103,6 +103,25 @@ pub struct ShmStats {
     pub read_only_pids: Vec<Pid>,
 }
 
+impl ShmStats {
+    /// Serialize using bincode for internal shared memory operations
+    ///
+    /// This provides better performance than JSON for shared memory metadata.
+    pub fn to_bincode_bytes(&self) -> Result<Vec<u8>, String> {
+        crate::core::bincode::to_vec(self)
+            .map_err(|e| format!("Failed to serialize shm stats with bincode: {}", e))
+    }
+
+    /// Deserialize from bincode format
+    pub fn from_bincode_bytes(bytes: &[u8]) -> Result<Self, String> {
+        crate::core::bincode::from_slice(bytes)
+            .map_err(|e| format!("Failed to deserialize shm stats with bincode: {}", e))
+    }
+}
+
+// Implement BincodeSerializable for ShmStats
+impl crate::core::traits::BincodeSerializable for ShmStats {}
+
 /// Shared memory permission types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -112,6 +131,9 @@ pub enum ShmPermission {
     /// Read-only access
     ReadOnly,
 }
+
+// Implement BincodeSerializable for ShmPermission
+impl crate::core::traits::BincodeSerializable for ShmPermission {}
 
 impl ShmPermission {
     /// Check if this permission allows reading

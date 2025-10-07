@@ -67,7 +67,26 @@ impl QueueMessage {
             .read_bytes(self.data_address, self.data_length)
             .map_err(|e| format!("Failed to read message data: {}", e))
     }
+
+    /// Serialize metadata using bincode for internal queue operations
+    ///
+    /// This provides much better performance than JSON for queue metadata.
+    /// Note: data_address is skipped in JSON serialization but included in bincode
+    /// since it's needed for internal operations.
+    pub fn to_bincode_bytes(&self) -> Result<Vec<u8>, String> {
+        crate::core::bincode::to_vec(self)
+            .map_err(|e| format!("Failed to serialize queue message with bincode: {}", e))
+    }
+
+    /// Deserialize metadata from bincode format
+    pub fn from_bincode_bytes(bytes: &[u8]) -> Result<Self, String> {
+        crate::core::bincode::from_slice(bytes)
+            .map_err(|e| format!("Failed to deserialize queue message with bincode: {}", e))
+    }
 }
+
+// Implement BincodeSerializable trait for QueueMessage
+impl crate::core::traits::BincodeSerializable for QueueMessage {}
 
 // Priority wrapper for heap ordering
 #[derive(Debug)]
@@ -114,3 +133,6 @@ pub struct QueueStats {
     #[serde(skip_serializing_if = "is_false")]
     pub closed: bool,
 }
+
+// Implement BincodeSerializable for QueueStats
+impl crate::core::traits::BincodeSerializable for QueueStats {}
