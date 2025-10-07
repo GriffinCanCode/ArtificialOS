@@ -62,4 +62,44 @@ pub enum SystemSyscall {
         /// Signal number
         signal: u32,
     },
+
+    /// Register signal handler
+    RegisterSignalHandler {
+        /// Signal number
+        signal: u32,
+        /// Handler ID
+        handler_id: u64,
+    },
+
+    /// Block signal
+    BlockSignal {
+        /// Signal number
+        signal: u32,
+    },
+
+    /// Unblock signal
+    UnblockSignal {
+        /// Signal number
+        signal: u32,
+    },
+
+    /// Get pending signals
+    GetPendingSignals,
+
+    /// Get signal statistics
+    GetSignalStats,
+
+    /// Wait for signal
+    WaitForSignal {
+        /// Signals to wait for
+        signals: Vec<u32>,
+        /// Optional timeout in milliseconds
+        timeout_ms: Option<u64>,
+    },
+
+    /// Get signal state
+    GetSignalState {
+        /// Optional target PID (None = current process)
+        target_pid: Option<Pid>,
+    },
 }

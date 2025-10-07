@@ -142,5 +142,60 @@ func (k *KernelClient) buildIPCSyscall(req *pb.SyscallRequest, syscallType strin
 		req.Syscall = &pb.SyscallRequest_MmapStats{
 			MmapStats: &pb.MmapStatsCall{MmapId: mmapId},
 		}
+	// IPC - Async Queues
+	case "create_queue":
+		queueType, _ := params["queue_type"].(string)
+		createQueueCall := &pb.CreateQueueCall{
+			QueueType: queueType,
+		}
+		if capacity, hasCapacity := params["capacity"].(uint32); hasCapacity {
+			createQueueCall.Capacity = &capacity
+		}
+		req.Syscall = &pb.SyscallRequest_CreateQueue{
+			CreateQueue: createQueueCall,
+		}
+	case "send_queue":
+		queueId, _ := params["queue_id"].(uint32)
+		data, _ := params["data"].([]byte)
+		sendQueueCall := &pb.SendQueueCall{
+			QueueId: queueId,
+			Data:    data,
+		}
+		if priority, hasPriority := params["priority"].(uint32); hasPriority {
+			sendQueueCall.Priority = &priority
+		}
+		req.Syscall = &pb.SyscallRequest_SendQueue{
+			SendQueue: sendQueueCall,
+		}
+	case "receive_queue":
+		queueId, _ := params["queue_id"].(uint32)
+		req.Syscall = &pb.SyscallRequest_ReceiveQueue{
+			ReceiveQueue: &pb.ReceiveQueueCall{QueueId: queueId},
+		}
+	case "subscribe_queue":
+		queueId, _ := params["queue_id"].(uint32)
+		req.Syscall = &pb.SyscallRequest_SubscribeQueue{
+			SubscribeQueue: &pb.SubscribeQueueCall{QueueId: queueId},
+		}
+	case "unsubscribe_queue":
+		queueId, _ := params["queue_id"].(uint32)
+		req.Syscall = &pb.SyscallRequest_UnsubscribeQueue{
+			UnsubscribeQueue: &pb.UnsubscribeQueueCall{QueueId: queueId},
+		}
+	case "close_queue":
+		queueId, _ := params["queue_id"].(uint32)
+		req.Syscall = &pb.SyscallRequest_CloseQueue{
+			CloseQueue: &pb.CloseQueueCall{QueueId: queueId},
+		}
+	case "destroy_queue":
+		queueId, _ := params["queue_id"].(uint32)
+		req.Syscall = &pb.SyscallRequest_DestroyQueue{
+			DestroyQueue: &pb.DestroyQueueCall{QueueId: queueId},
+		}
+	case "queue_stats":
+		queueId, _ := params["queue_id"].(uint32)
+		req.Syscall = &pb.SyscallRequest_QueueStats{
+			QueueStats: &pb.QueueStatsCall{QueueId: queueId},
+		}
 	}
 }

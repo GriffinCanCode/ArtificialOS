@@ -80,6 +80,14 @@ message SyscallRequest {
     TriggerGCCall trigger_gc = 41;
     SendSignalCall send_signal = 42;
     NetworkRequestCall network_request = 40;
+    // Signal operations
+    RegisterSignalHandlerCall register_signal_handler = 150;
+    BlockSignalCall block_signal = 151;
+    UnblockSignalCall unblock_signal = 152;
+    GetPendingSignalsCall get_pending_signals = 153;
+    GetSignalStatsCall get_signal_stats = 154;
+    WaitForSignalCall wait_for_signal = 155;
+    GetSignalStateCall get_signal_state = 156;
     // Network - Sockets
     SocketCall socket = 120;
     BindCall bind = 121;
@@ -314,6 +322,32 @@ message TriggerGCCall {
 message SendSignalCall {
   uint32 target_pid = 1;
   uint32 signal = 2;
+}
+
+message RegisterSignalHandlerCall {
+  uint32 signal = 1;
+  uint32 handler_id = 2;  // Handler identifier
+}
+
+message BlockSignalCall {
+  uint32 signal = 1;
+}
+
+message UnblockSignalCall {
+  uint32 signal = 1;
+}
+
+message GetPendingSignalsCall {}
+
+message GetSignalStatsCall {}
+
+message WaitForSignalCall {
+  repeated uint32 signals = 1;
+  optional uint64 timeout_ms = 2;
+}
+
+message GetSignalStateCall {
+  optional uint32 target_pid = 1;  // If not provided, returns current process state
 }
 
 // ============================================================================

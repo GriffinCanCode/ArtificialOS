@@ -112,14 +112,10 @@
                      executor.open(pid, &path, flags, mode)
                  }
                 SyscallOpType::Close { fd } => {
-                    // Close via vfs_close or direct fd operations
-                    use crate::syscalls::types::SyscallResult;
-                    SyscallResult::success() // TODO: Implement proper close
+                    executor.close_fd(pid, fd)
                 }
                 SyscallOpType::Fsync { fd } => {
-                    // Fsync via vfs or fd operations
-                    use crate::syscalls::types::SyscallResult;
-                    SyscallResult::success() // TODO: Implement proper fsync
+                    executor.fsync_fd(pid, fd)
                 }
                  SyscallOpType::Lseek { fd, offset, whence } => {
                      executor.lseek(pid, fd, offset, whence)

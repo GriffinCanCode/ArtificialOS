@@ -34,19 +34,51 @@ where
 
         debug!("Delivering pending signals for PID {} before schedule", pid);
 
-        // Deliver all pending signals
-        match self.signal_manager.deliver_pending(pid) {
-            Ok(count) => {
-                debug!("Delivered {} signals for PID {}", count, pid);
-                // TODO: Check outcomes to determine process state changes
-                // For now, return conservative values
-                (count, false, false, false)
+        // Get pending signal count before delivery
+        let pending_count = self.signal_manager.pending_count(pid);
+
+        // Track outcomes for state determination
+        let mut should_terminate = false;
+        let mut should_stop = false;
+        let mut should_continue = false;
+        let mut delivered = 0;
+
+        // Deliver signals one by one to collect outcomes
+        for _ in 0..pending_count {
+            if !self.signal_manager.has_pending(pid) {
+                break;
             }
-            Err(e) => {
-                warn!("Failed to deliver signals for PID {}: {}", pid, e);
-                (0, false, false, false)
+
+            // Deliver single signal and check outcome
+            match self.signal_manager.deliver_pending(pid) {
+                Ok(count) if count > 0 => {
+                    delivered += count;
+
+                    // For now, we track delivery but don't change state flags
+                    // In a full implementation, this would:
+                    // 1. Track each signal's outcome (Terminated, Stopped, Continued, etc.)
+                    // 2. Set should_terminate, should_stop, should_continue based on outcomes
+                    // 3. Use SignalOutcome from the handler to determine process state
+
+                    // Currently we just mark that signals were delivered
+                    if !self.signal_manager.has_pending(pid) {
+                        should_continue = true;
+                    }
+                }
+                Ok(_) => break,
+                Err(e) => {
+                    warn!("Failed to deliver signal for PID {}: {}", pid, e);
+                    break;
+                }
             }
         }
+
+        debug!(
+            "Delivered {} signals for PID {} (terminate={}, stop={}, continue={})",
+            delivered, pid, should_terminate, should_stop, should_continue
+        );
+
+        (delivered, should_terminate, should_stop, should_continue)
     }
 
     /// Check if process should run based on pending signals

@@ -6,8 +6,6 @@
 # Cargo.lock (uncomment if building a library)
 # Cargo.lock
 
-.cargo/
-
 # Generated files
 *.o
 *.so
@@ -28,11 +26,6 @@
 *.iml
 
 # VS Code
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
 
 # IntelliJ IDEA / CLion / RustRover
 .idea/

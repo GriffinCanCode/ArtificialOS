@@ -191,7 +191,8 @@ func (k *KernelClient) ExecuteSyscall(ctx context.Context, pid uint32, syscallTy
 	case "get_memory_stats", "get_process_memory_stats", "trigger_gc":
 		k.buildMemorySyscall(req, syscallType, params)
 	// Signal operations
-	case "send_signal":
+	case "send_signal", "register_signal_handler", "block_signal", "unblock_signal",
+		"get_pending_signals", "get_signal_stats", "wait_for_signal", "get_signal_state":
 		k.buildSignalSyscall(req, syscallType, params)
 	// Network operations
 	case "network_request":
@@ -212,8 +213,15 @@ func (k *KernelClient) ExecuteSyscall(ctx context.Context, pid uint32, syscallTy
 	// IPC - Memory-Mapped Files
 	case "mmap", "mmap_read", "mmap_write", "msync", "munmap", "mmap_stats":
 		k.buildIPCSyscall(req, syscallType, params)
+	// IPC - Async Queues
+	case "create_queue", "send_queue", "receive_queue", "subscribe_queue",
+		"unsubscribe_queue", "close_queue", "destroy_queue", "queue_stats":
+		k.buildIPCSyscall(req, syscallType, params)
 	// Scheduler operations
-	case "schedule_next", "yield_process", "get_current_scheduled", "get_scheduler_stats":
+	case "schedule_next", "yield_process", "get_current_scheduled", "get_scheduler_stats",
+		"set_scheduling_policy", "get_scheduling_policy", "set_time_quantum", "get_time_quantum",
+		"get_process_scheduler_stats", "get_all_process_scheduler_stats",
+		"boost_priority", "lower_priority":
 		k.buildSchedulerSyscall(req, syscallType, params)
 	default:
 		return nil, fmt.Errorf("unsupported syscall type: %s", syscallType)
@@ -243,4 +251,43 @@ func (k *KernelClient) ExecuteSyscall(ctx context.Context, pid uint32, syscallTy
 	default:
 		return nil, fmt.Errorf("unknown response type")
 	}
+}
+
+// extractError extracts error from syscall response
+func extractError(resp *pb.SyscallResponse) error {
+	if resp == nil {
+		return fmt.Errorf("nil response")
+	}
+
+	switch result := resp.Result.(type) {
+	case *pb.SyscallResponse_Success:
+		return nil
+	case *pb.SyscallResponse_Error:
+		if result.Error != nil {
+			return fmt.Errorf("%s", result.Error.Message)
+		}
+		return fmt.Errorf("unknown error")
+	case *pb.SyscallResponse_PermissionDenied:
+		if result.PermissionDenied != nil {
+			return fmt.Errorf("permission denied: %s", result.PermissionDenied.Reason)
+		}
+		return fmt.Errorf("permission denied")
+	default:
+		return fmt.Errorf("unknown response type")
+	}
+}
+
+// extractData extracts data from successful syscall response
+func extractData(resp *pb.SyscallResponse) []byte {
+	if resp == nil {
+		return nil
+	}
+
+	switch result := resp.Result.(type) {
+	case *pb.SyscallResponse_Success:
+		if result.Success != nil {
+			return result.Success.Data
+		}
+	}
+	return nil
 }

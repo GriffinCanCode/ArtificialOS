@@ -62,7 +62,7 @@ impl SyscallExecutor {
     }
 
     /// Register signal handler
-    fn register_signal_handler(&self, pid: Pid, signal: u32, handler_id: u64) -> SyscallResult {
+    pub(super) fn register_signal_handler(&self, pid: Pid, signal: u32, handler_id: u64) -> SyscallResult {
         let signal_manager = match &self.signal_manager {
             Some(mgr) => mgr,
             None => return SyscallResult::error("Signal manager not available"),
@@ -86,7 +86,7 @@ impl SyscallExecutor {
     }
 
     /// Block signal
-    fn block_signal(&self, pid: Pid, signal: u32) -> SyscallResult {
+    pub(super) fn block_signal(&self, pid: Pid, signal: u32) -> SyscallResult {
         let signal_manager = match &self.signal_manager {
             Some(mgr) => mgr,
             None => return SyscallResult::error("Signal manager not available"),
@@ -107,7 +107,7 @@ impl SyscallExecutor {
     }
 
     /// Unblock signal
-    fn unblock_signal(&self, pid: Pid, signal: u32) -> SyscallResult {
+    pub(super) fn unblock_signal(&self, pid: Pid, signal: u32) -> SyscallResult {
         let signal_manager = match &self.signal_manager {
             Some(mgr) => mgr,
             None => return SyscallResult::error("Signal manager not available"),
@@ -128,7 +128,7 @@ impl SyscallExecutor {
     }
 
     /// Get pending signals
-    fn get_pending_signals(&self, pid: Pid) -> SyscallResult {
+    pub(super) fn get_pending_signals(&self, pid: Pid) -> SyscallResult {
         let signal_manager = match &self.signal_manager {
             Some(mgr) => mgr,
             None => return SyscallResult::error("Signal manager not available"),
@@ -145,27 +145,79 @@ impl SyscallExecutor {
             }
         }
     }
-}
 
-// Implement SignalSyscalls trait
-impl SignalSyscalls for SyscallExecutor {
-    fn send_signal(&self, pid: Pid, target_pid: Pid, signal: u32) -> SyscallResult {
-        self.send_signal(pid, target_pid, signal)
+    /// Get signal statistics
+    pub(super) fn get_signal_stats(&self, _pid: Pid) -> SyscallResult {
+        let signal_manager = match &self.signal_manager {
+            Some(mgr) => mgr,
+            None => return SyscallResult::error("Signal manager not available"),
+        };
+
+        use crate::signals::SignalStateManager;
+        let stats = signal_manager.stats();
+
+        match json::to_vec(&stats) {
+            Ok(data) => SyscallResult::success_with_data(data),
+            Err(e) => {
+                error!("Failed to serialize signal stats: {}", e);
+                SyscallResult::error("Failed to serialize signal stats")
+            }
+        }
     }
 
-    fn register_signal_handler(&self, pid: Pid, signal: u32, handler_id: u64) -> SyscallResult {
-        self.register_signal_handler(pid, signal, handler_id)
+    /// Wait for signal
+    pub(super) fn wait_for_signal(&self, pid: Pid, signals: &[u32], _timeout_ms: Option<u64>) -> SyscallResult {
+        let signal_manager = match &self.signal_manager {
+            Some(mgr) => mgr,
+            None => return SyscallResult::error("Signal manager not available"),
+        };
+
+        // Get pending signals and check if any match requested signals
+        let pending = signal_manager.pending_signals(pid);
+
+        for pending_signal in pending {
+            let sig_num = pending_signal.number();
+            if signals.contains(&sig_num) {
+                info!("PID {} found matching signal: {}", pid, sig_num);
+                match json::to_vec(&sig_num) {
+                    Ok(data) => return SyscallResult::success_with_data(data),
+                    Err(e) => {
+                        error!("Failed to serialize signal: {}", e);
+                        return SyscallResult::error("Failed to serialize signal");
+                    }
+                }
+            }
+        }
+
+        // No matching signals found (timeout or no signals)
+        SyscallResult::error("No matching signals pending")
     }
 
-    fn block_signal(&self, pid: Pid, signal: u32) -> SyscallResult {
-        self.block_signal(pid, signal)
-    }
+    /// Get signal state
+    pub(super) fn get_signal_state(&self, pid: Pid, target_pid: Option<Pid>) -> SyscallResult {
+        let signal_manager = match &self.signal_manager {
+            Some(mgr) => mgr,
+            None => return SyscallResult::error("Signal manager not available"),
+        };
 
-    fn unblock_signal(&self, pid: Pid, signal: u32) -> SyscallResult {
-        self.unblock_signal(pid, signal)
-    }
+        use crate::signals::SignalStateManager;
+        let query_pid = target_pid.unwrap_or(pid);
 
-    fn get_pending_signals(&self, pid: Pid) -> SyscallResult {
-        self.get_pending_signals(pid)
+        match signal_manager.get_state(query_pid) {
+            Some(state) => match json::to_vec(&state) {
+                Ok(data) => {
+                    info!("Retrieved signal state for PID {}", query_pid);
+                    SyscallResult::success_with_data(data)
+                }
+                Err(e) => {
+                    error!("Failed to serialize signal state: {}", e);
+                    SyscallResult::error("Failed to serialize signal state")
+                }
+            },
+            None => {
+                info!("No signal state found for PID {}", query_pid);
+                SyscallResult::error(format!("Process {} not found or has no signal state", query_pid))
+            }
+        }
     }
 }

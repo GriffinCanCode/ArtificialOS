@@ -141,6 +141,13 @@ pub enum Syscall {
     GetProcessMemoryStats { target_pid: Pid },
     TriggerGC { target_pid: Option<u32> },
     SendSignal { target_pid: Pid, signal: u32 },
+    RegisterSignalHandler { signal: u32, handler_id: u64 },
+    BlockSignal { signal: u32 },
+    UnblockSignal { signal: u32 },
+    GetPendingSignals,
+    GetSignalStats,
+    WaitForSignal { signals: Vec<u32>, timeout_ms: Option<u64> },
+    GetSignalState { target_pid: Option<Pid> },
 }
 
 #[cfg(test)]

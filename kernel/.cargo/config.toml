@@ -1,0 +1,25 @@
+# Cargo configuration
+
+[build]
+# Use all available CPU cores for compilation
+jobs = -1
+# Use sccache for compilation caching (install: cargo install sccache)
+rustc-wrapper = "sccache"
+
+# Uncomment for Linux with mold installed:
+# [target.x86_64-unknown-linux-gnu]
+# linker = "clang"
+# rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+
+# Development profile optimizations
+[profile.dev]
+incremental = true
+split-debuginfo = "unpacked"  # or "packed" on macOS
+
+# Optimize dependencies in dev mode (compile once, faster runtime)
+[profile.dev.package."*"]
+opt-level = 1
+
+# Keep release optimizations but improve build time
+[profile.release]
+incremental = true  # Enable for iterative release builds

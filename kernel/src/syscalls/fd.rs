@@ -31,6 +31,8 @@ use super::types::SyscallResult;
 pub struct FdManager {
     next_fd: Arc<AtomicU32>,
     open_files: Arc<DashMap<u32, Arc<RwLock<File>>, RandomState>>,
+    /// Track which FDs belong to which process for cleanup
+    process_fds: Arc<DashMap<Pid, Vec<u32>, RandomState>>,
 }
 
 impl FdManager {
@@ -38,11 +40,45 @@ impl FdManager {
         Self {
             next_fd: Arc::new(AtomicU32::new(3)), // Start at 3 (0, 1, 2 are stdin, stdout, stderr)
             open_files: Arc::new(DashMap::with_hasher(RandomState::new())),
+            process_fds: Arc::new(DashMap::with_hasher(RandomState::new())),
         }
     }
 
     fn allocate_fd(&self) -> u32 {
         self.next_fd.fetch_add(1, Ordering::SeqCst)
+    }
+
+    /// Track that a process owns an FD
+    fn track_fd(&self, pid: Pid, fd: u32) {
+        self.process_fds
+            .entry(pid)
+            .or_insert_with(Vec::new)
+            .push(fd);
+    }
+
+    /// Untrack an FD from a process
+    fn untrack_fd(&self, pid: Pid, fd: u32) {
+        if let Some(mut fds) = self.process_fds.get_mut(&pid) {
+            fds.retain(|&x| x != fd);
+        }
+    }
+
+    /// Cleanup all file descriptors for a terminated process
+    pub fn cleanup_process_fds(&self, pid: Pid) -> usize {
+        let fds_to_close = if let Some((_, fds)) = self.process_fds.remove(&pid) {
+            fds
+        } else {
+            return 0;
+        };
+
+        let mut closed_count = 0;
+        for fd in fds_to_close {
+            if self.open_files.remove(&fd).is_some() {
+                closed_count += 1;
+            }
+        }
+
+        closed_count
     }
 }
 
@@ -51,6 +87,7 @@ impl Clone for FdManager {
         Self {
             next_fd: Arc::clone(&self.next_fd),
             open_files: Arc::clone(&self.open_files),
+            process_fds: Arc::clone(&self.process_fds),
         }
     }
 }
@@ -128,6 +165,9 @@ impl SyscallExecutor {
                     .open_files
                     .insert(fd, Arc::new(RwLock::new(file)));
 
+                // Track FD ownership for cleanup
+                self.fd_manager.track_fd(pid, fd);
+
                 info!(
                     "PID {} opened {:?} with FD {}, flags: 0x{:x}, mode: 0o{:o}",
                     pid, path, fd, flags, mode
@@ -152,6 +192,8 @@ impl SyscallExecutor {
 
         // Remove file from fd_manager
         if self.fd_manager.open_files.remove(&fd).is_some() {
+            // Untrack FD from process
+            self.fd_manager.untrack_fd(pid, fd);
             info!("PID {} closed FD {}", pid, fd);
             SyscallResult::success()
         } else {
@@ -172,6 +214,9 @@ impl SyscallExecutor {
             // Allocate new FD pointing to same file via Arc
             let new_fd = self.fd_manager.allocate_fd();
             self.fd_manager.open_files.insert(new_fd, cloned_file);
+
+            // Track the new FD for this process
+            self.fd_manager.track_fd(pid, new_fd);
 
             info!(
                 "PID {} duplicated FD {} to {} (Arc reference count incremented)",
@@ -201,11 +246,15 @@ impl SyscallExecutor {
             // If newfd is already open, close it first (Arc will auto-drop)
             if self.fd_manager.open_files.contains_key(&newfd) {
                 self.fd_manager.open_files.remove(&newfd);
+                self.fd_manager.untrack_fd(pid, newfd);
                 info!("PID {} closed existing FD {} before dup2", pid, newfd);
             }
 
             // Insert the cloned Arc reference at newfd
             self.fd_manager.open_files.insert(newfd, cloned_file);
+
+            // Track the new FD for this process
+            self.fd_manager.track_fd(pid, newfd);
 
             info!(
                 "PID {} duplicated FD {} to {} (Arc reference count incremented)",
@@ -283,5 +332,47 @@ impl SyscallExecutor {
         .unwrap();
 
         SyscallResult::success_with_data(data)
+    }
+
+    pub(super) fn fsync_fd(&self, pid: Pid, fd: u32) -> SyscallResult {
+        // Fsync synchronizes file data and metadata to disk
+
+        if let Some(file_arc) = self.fd_manager.open_files.get(&fd) {
+            let file = file_arc.read();
+
+            match file.sync_all() {
+                Ok(_) => {
+                    info!("PID {} synchronized FD {} to disk", pid, fd);
+                    SyscallResult::success()
+                }
+                Err(e) => {
+                    error!("Fsync failed for FD {}: {}", fd, e);
+                    SyscallResult::error(format!("Fsync failed: {}", e))
+                }
+            }
+        } else {
+            SyscallResult::error("Invalid file descriptor")
+        }
+    }
+
+    pub(super) fn fdatasync_fd(&self, pid: Pid, fd: u32) -> SyscallResult {
+        // Fdatasync synchronizes file data (not metadata) to disk
+
+        if let Some(file_arc) = self.fd_manager.open_files.get(&fd) {
+            let file = file_arc.read();
+
+            match file.sync_data() {
+                Ok(_) => {
+                    info!("PID {} synchronized FD {} data to disk", pid, fd);
+                    SyscallResult::success()
+                }
+                Err(e) => {
+                    error!("Fdatasync failed for FD {}: {}", fd, e);
+                    SyscallResult::error(format!("Fdatasync failed: {}", e))
+                }
+            }
+        } else {
+            SyscallResult::error("Invalid file descriptor")
+        }
     }
 }
