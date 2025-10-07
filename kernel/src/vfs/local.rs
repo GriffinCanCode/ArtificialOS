@@ -37,11 +37,38 @@ impl LocalFS {
     }
 
     /// Resolve path relative to root with proper normalization
-    /// Prevents directory traversal attacks by handling .. and . components
+    /// Prevents directory traversal attacks by using canonicalization
     fn resolve(&self, path: &Path) -> PathBuf {
-        // Normalize the path by resolving . and .. components
-        let mut components = Vec::new();
+        // First, build the path relative to root
+        let mut preliminary = self.root.clone();
 
+        // Add path components (handling relative paths)
+        if path.is_absolute() {
+            // For absolute paths, strip leading / and append to root
+            if let Ok(stripped) = path.strip_prefix("/") {
+                preliminary.push(stripped);
+            } else {
+                preliminary.push(path);
+            }
+        } else {
+            preliminary.push(path);
+        }
+
+        // Try to canonicalize the full path
+        // This resolves symlinks and removes . and .. components
+        if let Ok(canonical) = preliminary.canonicalize() {
+            // Ensure the canonical path is still within root
+            if let Ok(canonical_root) = self.root.canonicalize() {
+                if canonical.starts_with(&canonical_root) {
+                    return canonical;
+                }
+            }
+            // If we can't verify it's within root, fall back to safe normalization
+        }
+
+        // Fallback: manual normalization if canonicalization fails (e.g., path doesn't exist yet)
+        // This is safe for non-existent paths where we're about to create something
+        let mut components = Vec::new();
         for component in path.components() {
             match component {
                 std::path::Component::Normal(c) => {
@@ -60,12 +87,10 @@ impl LocalFS {
             }
         }
 
-        // Build the final path relative to root
         let mut result = self.root.clone();
         for component in components {
             result.push(component);
         }
-
         result
     }
 

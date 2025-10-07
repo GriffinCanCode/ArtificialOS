@@ -197,7 +197,7 @@ pub struct SandboxConfig {
 impl SandboxConfig {
     /// Create a minimal sandbox (most restrictive)
     pub fn minimal(pid: Pid) -> Self {
-        Self {
+        let mut config = Self {
             pid,
             capabilities: HashSet::new(),
             resource_limits: ResourceLimits::minimal(),
@@ -211,7 +211,10 @@ impl SandboxConfig {
             ],
             network_rules: vec![],
             environment_vars: vec![],
-        }
+        };
+        // Canonicalize all paths for security
+        config.canonicalize_paths();
+        config
     }
 
     /// Create a standard sandbox (balanced)
@@ -222,7 +225,7 @@ impl SandboxConfig {
         capabilities.insert(Capability::SystemInfo);
         capabilities.insert(Capability::TimeAccess);
 
-        Self {
+        let mut config = Self {
             pid,
             capabilities,
             resource_limits: ResourceLimits::default(),
@@ -230,7 +233,10 @@ impl SandboxConfig {
             blocked_paths: vec![PathBuf::from("/etc/passwd"), PathBuf::from("/etc/shadow")],
             network_rules: vec![],
             environment_vars: vec![],
-        }
+        };
+        // Canonicalize all paths for security
+        config.canonicalize_paths();
+        config
     }
 
     /// Create a privileged sandbox (for trusted apps)
@@ -249,7 +255,7 @@ impl SandboxConfig {
         capabilities.insert(Capability::SendMessage);
         capabilities.insert(Capability::ReceiveMessage);
 
-        Self {
+        let mut config = Self {
             pid,
             capabilities,
             resource_limits: ResourceLimits {
@@ -263,7 +269,10 @@ impl SandboxConfig {
             blocked_paths: vec![],
             network_rules: vec![NetworkRule::AllowAll],
             environment_vars: vec![],
-        }
+        };
+        // Canonicalize all paths for security
+        config.canonicalize_paths();
+        config
     }
 }
 
