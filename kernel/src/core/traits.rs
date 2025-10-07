@@ -5,6 +5,7 @@
 
 use super::errors::*;
 use super::types::*;
+use serde::{Deserialize, Serialize};
 
 /// Process lifecycle management
 pub trait ProcessLifecycle: Send + Sync {
@@ -71,13 +72,55 @@ pub trait Scheduler: Send + Sync {
     fn statistics(&self) -> SchedulerStatistics;
 }
 
-/// Scheduler statistics
-#[derive(Debug, Clone)]
+/// Scheduler statistics (now serializable for monitoring)
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
 pub struct SchedulerStatistics {
     pub total_scheduled: u64,
     pub context_switches: u64,
     pub preemptions: u64,
     pub active_processes: usize,
+}
+
+impl Default for SchedulerStatistics {
+    fn default() -> Self {
+        Self {
+            total_scheduled: 0,
+            context_switches: 0,
+            preemptions: 0,
+            active_processes: 0,
+        }
+    }
+}
+
+impl SchedulerStatistics {
+    /// Create new empty statistics
+    pub const fn new() -> Self {
+        Self {
+            total_scheduled: 0,
+            context_switches: 0,
+            preemptions: 0,
+            active_processes: 0,
+        }
+    }
+
+    /// Calculate the average context switches per process
+    pub fn avg_context_switches_per_process(&self) -> f64 {
+        if self.active_processes == 0 {
+            0.0
+        } else {
+            self.context_switches as f64 / self.active_processes as f64
+        }
+    }
+
+    /// Calculate preemption ratio
+    pub fn preemption_ratio(&self) -> f64 {
+        if self.total_scheduled == 0 {
+            0.0
+        } else {
+            self.preemptions as f64 / self.total_scheduled as f64
+        }
+    }
 }
 
 /// Event notification trait
@@ -101,4 +144,50 @@ pub trait Statistics {
 
     /// Get current statistics
     fn stats(&self) -> Self::Stats;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_scheduler_statistics_default() {
+        let stats = SchedulerStatistics::default();
+        assert_eq!(stats.total_scheduled, 0);
+        assert_eq!(stats.active_processes, 0);
+    }
+
+    #[test]
+    fn test_scheduler_statistics_calculations() {
+        let stats = SchedulerStatistics {
+            total_scheduled: 100,
+            context_switches: 50,
+            preemptions: 10,
+            active_processes: 5,
+        };
+
+        assert_eq!(stats.avg_context_switches_per_process(), 10.0);
+        assert_eq!(stats.preemption_ratio(), 0.1);
+    }
+
+    #[test]
+    fn test_scheduler_statistics_edge_cases() {
+        let empty_stats = SchedulerStatistics::new();
+        assert_eq!(empty_stats.avg_context_switches_per_process(), 0.0);
+        assert_eq!(empty_stats.preemption_ratio(), 0.0);
+    }
+
+    #[test]
+    fn test_scheduler_statistics_serialization() {
+        let stats = SchedulerStatistics {
+            total_scheduled: 100,
+            context_switches: 50,
+            preemptions: 10,
+            active_processes: 5,
+        };
+
+        let json = serde_json::to_string(&stats).unwrap();
+        let deserialized: SchedulerStatistics = serde_json::from_str(&json).unwrap();
+        assert_eq!(stats, deserialized);
+    }
 }
