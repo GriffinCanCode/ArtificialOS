@@ -10,6 +10,7 @@ import { useActions, useSnap, fadeIn, syncWindow, State } from "../../../feature
 import type { Window as WindowType } from "../../../features/windows";
 import { useLogger } from "../../../core/utils/monitoring/useLogger";
 import { Tooltip } from "../../../features/floating";
+import { toRgbaString, THEME_COLORS, ALPHA_VALUES } from "../../../core/utils/color";
 import "./Window.css";
 
 interface WindowProps {
@@ -245,8 +246,8 @@ export const Window: React.FC<WindowProps> = ({ window, children }) => {
             height: `${preview.bounds.size.height}px`,
             pointerEvents: "none",
             zIndex: 9999,
-            background: "rgba(139, 92, 246, 0.15)",
-            border: "2px solid rgba(139, 92, 246, 0.5)",
+            background: `var(--color-primary-alpha-15, ${toRgbaString(THEME_COLORS.primary, ALPHA_VALUES.verySubtle)})`,
+            border: `2px solid var(--color-primary-alpha-50, ${toRgbaString(THEME_COLORS.primary, ALPHA_VALUES.low)})`,
             borderRadius: "8px",
           }}
         />

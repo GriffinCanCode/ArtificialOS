@@ -7,22 +7,22 @@
 }
 
 .dropzone {
-  border: 2px dashed rgb(64, 64, 64);
+  border: 2px dashed var(--color-border);
   border-radius: 0.5rem;
   padding: 2rem;
   transition: all 0.2s;
   cursor: pointer;
-  background: rgba(23, 23, 23, 0.5);
+  background: var(--color-surface);
 }
 
 .dropzone:hover {
-  border-color: rgb(115, 115, 115);
-  background: rgba(38, 38, 38, 0.5);
+  border-color: var(--color-border-focus);
+  background: var(--color-surface-hover);
 }
 
 .dropzone.dragging {
-  border-color: rgb(139, 92, 246);
-  background: rgba(139, 92, 246, 0.1);
+  border-color: var(--color-secondary-500);
+  background: var(--color-secondary-alpha-10);
   transform: scale(1.02);
 }
 
@@ -43,23 +43,23 @@
 .dropzone-text {
   font-size: 0.875rem;
   line-height: 1.25rem;
-  color: rgb(212, 212, 212);
+  color: var(--color-text-primary);
   margin-bottom: 0.5rem;
 }
 
 .dropzone-hint {
   font-size: 0.75rem;
   line-height: 1rem;
-  color: rgb(115, 115, 115);
+  color: var(--color-text-secondary);
 }
 
 .dropzone-error {
   margin-top: 0.5rem;
   padding: 0.75rem;
   border-radius: 0.25rem;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  color: rgb(248, 113, 113);
+  background: var(--color-error-alpha-10);
+  border: 1px solid var(--color-error-alpha-30);
+  color: var(--color-error-400);
   font-size: 0.875rem;
   line-height: 1.25rem;
 }
@@ -68,8 +68,8 @@
 .dropzone-preview {
   margin-top: 1rem;
   border-radius: 0.5rem;
-  background: rgba(23, 23, 23, 0.5);
-  border: 1px solid rgb(64, 64, 64);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   overflow: hidden;
 }
 
@@ -78,28 +78,28 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem;
-  border-bottom: 1px solid rgb(64, 64, 64);
+  border-bottom: 1px solid var(--color-border);
   font-size: 0.875rem;
   line-height: 1.25rem;
   font-weight: 500;
-  color: rgb(212, 212, 212);
+  color: var(--color-text-primary);
 }
 
 .preview-clear {
   padding: 0.25rem 0.75rem;
   border-radius: 0.25rem;
-  background: rgb(38, 38, 38);
+  background: var(--color-surface);
   font-size: 0.75rem;
   line-height: 1rem;
-  color: rgb(163, 163, 163);
+  color: var(--color-text-secondary);
   transition: all 0.2s;
   border: none;
   cursor: pointer;
 }
 
 .preview-clear:hover {
-  background: rgb(64, 64, 64);
-  color: rgb(229, 229, 229);
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
 }
 
 .preview-list {
@@ -117,12 +117,12 @@
   gap: 0.75rem;
   padding: 0.5rem;
   border-radius: 0.25rem;
-  background: rgba(38, 38, 38, 0.5);
+  background: var(--color-surface);
   transition: all 0.2s;
 }
 
 .preview-item:hover {
-  background: rgb(38, 38, 38);
+  background: var(--color-surface-hover);
 }
 
 .preview-image {
@@ -130,7 +130,7 @@
   height: 3rem;
   object-fit: cover;
   border-radius: 0.25rem;
-  background: rgb(64, 64, 64);
+  background: var(--color-border);
 }
 
 .preview-info {
@@ -141,7 +141,7 @@
 .preview-name {
   font-size: 0.875rem;
   line-height: 1.25rem;
-  color: rgb(229, 229, 229);
+  color: var(--color-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -150,15 +150,15 @@
 .preview-size {
   font-size: 0.75rem;
   line-height: 1rem;
-  color: rgb(115, 115, 115);
+  color: var(--color-text-secondary);
 }
 
 .preview-remove {
   width: 1.5rem;
   height: 1.5rem;
   border-radius: 0.25rem;
-  background: rgb(64, 64, 64);
-  color: rgb(163, 163, 163);
+  background: var(--color-border);
+  color: var(--color-text-secondary);
   transition: all 0.2s;
   display: flex;
   align-items: center;
@@ -170,6 +170,6 @@
 }
 
 .preview-remove:hover {
-  background: rgb(239, 68, 68);
-  color: white;
+  background: var(--color-error-500);
+  color: var(--color-foreground);
 }

@@ -3,7 +3,8 @@
  * Theme-aware styling for charts and graphs
  */
 
-import { CHART_COLORS, withOpacity } from "./colors";
+import { CHART_COLORS } from "./colors";
+import { withAlpha, UI_COLORS } from "@/core/utils/color";
 
 // ============================================================================
 // Theme Types
@@ -44,17 +45,17 @@ export const LIGHT_THEME: ChartTheme = {
 };
 
 export const DARK_THEME: ChartTheme = {
-  text: "#f7fafc",
-  grid: withOpacity("#ffffff", 0.1),
+  text: UI_COLORS.text.primary,
+  grid: withAlpha(UI_COLORS.text.primary, 0.1),
   axis: "#a0aec0",
-  background: "#1a202c",
+  background: UI_COLORS.background.primary,
   tooltip: {
-    background: "#2d3748",
-    border: "#4a5568",
-    text: "#f7fafc",
+    background: UI_COLORS.background.secondary,
+    border: UI_COLORS.border.default,
+    text: UI_COLORS.text.primary,
   },
   legend: {
-    text: "#f7fafc",
+    text: UI_COLORS.text.primary,
   },
 };
 
@@ -94,7 +95,7 @@ export function getRechartsTheme(theme: "light" | "dark" = "dark") {
         borderRadius: "8px",
         color: t.tooltip.text,
       },
-      cursor: { fill: withOpacity(CHART_COLORS.primary[0], 0.1) },
+      cursor: { fill: withAlpha(CHART_COLORS.primary[0], 0.1) },
     },
     legend: {
       iconType: "circle" as const,
@@ -112,16 +113,16 @@ export function getReactFlowTheme(theme: "light" | "dark" = "dark") {
   return {
     background: t.background,
     node: {
-      background: theme === "dark" ? "#2d3748" : "#ffffff",
-      border: theme === "dark" ? "#4a5568" : "#e2e8f0",
+      background: theme === "dark" ? UI_COLORS.background.secondary : "#ffffff",
+      border: theme === "dark" ? UI_COLORS.border.default : "#e2e8f0",
       text: t.text,
     },
     edge: {
-      stroke: theme === "dark" ? "#4a5568" : "#cbd5e0",
+      stroke: theme === "dark" ? UI_COLORS.border.default : "#cbd5e0",
     },
     minimap: {
-      background: theme === "dark" ? "#1a202c" : "#f7fafc",
-      maskColor: withOpacity(t.background, 0.8),
+      background: theme === "dark" ? UI_COLORS.background.primary : "#f7fafc",
+      maskColor: withAlpha(t.background, 0.8),
     },
   };
 }

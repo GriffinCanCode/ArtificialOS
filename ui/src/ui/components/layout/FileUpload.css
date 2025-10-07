@@ -10,8 +10,8 @@
 .upload-list-container {
   margin-top: 1rem;
   border-radius: 0.5rem;
-  background: rgba(23, 23, 23, 0.5);
-  border: 1px solid rgb(64, 64, 64);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   overflow: hidden;
 }
 
@@ -20,14 +20,14 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem;
-  border-bottom: 1px solid rgb(64, 64, 64);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .upload-list-title {
   font-size: 0.875rem;
   line-height: 1.25rem;
   font-weight: 500;
-  color: rgb(212, 212, 212);
+  color: var(--color-text-secondary);
 }
 
 .upload-list-actions {
@@ -47,12 +47,12 @@
 }
 
 .upload-all-btn {
-  background: rgb(139, 92, 246);
-  color: white;
+  background: var(--color-secondary-500);
+  color: var(--color-text-on-primary);
 }
 
 .upload-all-btn:hover:not(:disabled) {
-  background: rgb(124, 58, 237);
+  background: var(--color-secondary-600);
 }
 
 .upload-all-btn:disabled {
@@ -61,13 +61,13 @@
 }
 
 .clear-all-btn {
-  background: rgb(38, 38, 38);
-  color: rgb(163, 163, 163);
+  background: var(--color-surface);
+  color: var(--color-text-tertiary);
 }
 
 .clear-all-btn:hover {
-  background: rgb(64, 64, 64);
-  color: rgb(229, 229, 229);
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
 }
 
 /* Upload List */
@@ -87,28 +87,28 @@
   gap: 0.75rem;
   padding: 0.75rem;
   border-radius: 0.375rem;
-  background: rgba(38, 38, 38, 0.5);
+  background: var(--color-surface);
   transition: all 0.2s;
   border: 1px solid transparent;
 }
 
 .upload-item:hover {
-  background: rgb(38, 38, 38);
+  background: var(--color-surface-hover);
 }
 
 .upload-item.status-uploading {
-  border-color: rgb(139, 92, 246);
-  background: rgba(139, 92, 246, 0.05);
+  border-color: var(--color-secondary-500);
+  background: var(--color-secondary-alpha-10);
 }
 
 .upload-item.status-completed {
-  border-color: rgba(34, 197, 94, 0.3);
-  background: rgba(34, 197, 94, 0.05);
+  border-color: var(--color-success-500);
+  background: var(--color-success-alpha-10);
 }
 
 .upload-item.status-error {
-  border-color: rgba(239, 68, 68, 0.3);
-  background: rgba(239, 68, 68, 0.05);
+  border-color: var(--color-error-500);
+  background: var(--color-error-alpha-10);
 }
 
 .upload-item-icon {
@@ -134,7 +134,7 @@
 .upload-item-name {
   font-size: 0.875rem;
   line-height: 1.25rem;
-  color: rgb(229, 229, 229);
+  color: var(--color-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -150,23 +150,23 @@
 }
 
 .upload-item-size {
-  color: rgb(115, 115, 115);
+  color: var(--color-text-tertiary);
 }
 
 .upload-item-status {
-  color: rgb(163, 163, 163);
+  color: var(--color-text-secondary);
 }
 
 .upload-item.status-uploading .upload-item-status {
-  color: rgb(139, 92, 246);
+  color: var(--color-secondary-500);
 }
 
 .upload-item.status-completed .upload-item-status {
-  color: rgb(34, 197, 94);
+  color: var(--color-success-500);
 }
 
 .upload-item.status-error .upload-item-status {
-  color: rgb(239, 68, 68);
+  color: var(--color-error-500);
 }
 
 /* Progress Bar */
@@ -180,13 +180,13 @@
   flex: 1;
   height: 0.375rem;
   border-radius: 9999px;
-  background: rgb(64, 64, 64);
+  background: var(--color-neutral-700);
   overflow: hidden;
 }
 
 .upload-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, rgb(139, 92, 246), rgb(124, 58, 237));
+  background: var(--gradient-progress);
   transition: width 0.3s ease;
   border-radius: 9999px;
 }
@@ -194,7 +194,7 @@
 .upload-progress-text {
   font-size: 0.75rem;
   line-height: 1rem;
-  color: rgb(163, 163, 163);
+  color: var(--color-text-secondary);
   font-weight: 500;
   min-width: 2.5rem;
   text-align: right;
@@ -204,11 +204,11 @@
 .upload-error-message {
   font-size: 0.75rem;
   line-height: 1rem;
-  color: rgb(248, 113, 113);
+  color: var(--color-error-400);
   padding: 0.5rem;
   border-radius: 0.25rem;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  background: var(--color-error-alpha-10);
+  border: 1px solid var(--color-error-alpha-20);
 }
 
 /* Action Buttons */
@@ -223,8 +223,8 @@
   width: 1.75rem;
   height: 1.75rem;
   border-radius: 0.25rem;
-  background: rgb(64, 64, 64);
-  color: rgb(163, 163, 163);
+  background: var(--color-neutral-700);
+  color: var(--color-text-secondary);
   transition: all 0.2s;
   display: flex;
   align-items: center;
@@ -236,23 +236,23 @@
 }
 
 .upload-item-actions button:hover {
-  background: rgb(82, 82, 82);
-  color: rgb(229, 229, 229);
+  background: var(--color-neutral-600);
+  color: var(--color-text-primary);
 }
 
 .upload-item-actions .upload-btn:hover {
-  background: rgb(139, 92, 246);
-  color: white;
+  background: var(--color-secondary-500);
+  color: var(--color-text-on-primary);
 }
 
 .upload-item-actions .retry-btn:hover {
-  background: rgb(234, 179, 8);
-  color: white;
+  background: var(--color-warning-500);
+  color: var(--color-text-on-primary);
 }
 
 .upload-item-actions .cancel-btn:hover {
-  background: rgb(249, 115, 22);
-  color: white;
+  background: var(--color-warning-600);
+  color: var(--color-text-on-primary);
 }
 
 .upload-item-actions .remove-btn {
@@ -260,6 +260,6 @@
 }
 
 .upload-item-actions .remove-btn:hover {
-  background: rgb(239, 68, 68);
-  color: white;
+  background: var(--color-error-500);
+  color: var(--color-text-on-primary);
 }

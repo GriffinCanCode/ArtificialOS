@@ -6,7 +6,7 @@
 .launcher {
   min-height: 100%;
   padding: 2rem;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+  background: var(--color-background);
 }
 
 .launcher-header {
@@ -18,14 +18,14 @@
   font-size: 2.25rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
-  background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+  background: var(--gradient-text-primary);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .launcher-subtitle {
-  color: #94a3b8;
+  color: var(--color-text-secondary);
   font-size: 0.875rem;
 }
 
@@ -42,48 +42,48 @@
   border-radius: 0.5rem;
   font-size: 0.875rem;
   font-weight: 500;
-  background: rgba(30, 41, 59, 0.5);
-  color: #cbd5e1;
-  border: 1px solid rgba(51, 65, 85, 0.5);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .category-btn:hover {
-  background: rgba(51, 65, 85, 0.5);
-  color: #ffffff;
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
 }
 
 .category-btn.active {
-  background: rgba(59, 130, 246, 0.2);
-  color: #60a5fa;
-  border-color: rgba(59, 130, 246, 0.5);
+  background: var(--color-info-alpha-20);
+  color: var(--color-info-400);
+  border-color: var(--color-info-alpha-50);
 }
 
 .launcher-error {
   margin-bottom: 1.5rem;
   padding: 1rem;
   border-radius: 0.5rem;
-  background: rgba(127, 29, 29, 0.2);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: var(--color-error-alpha-10);
+  border: 1px solid var(--color-error-alpha-30);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: #f87171;
+  color: var(--color-error-400);
 }
 
 .launcher-error button {
   padding: 0.25rem 0.75rem;
   border-radius: 0.375rem;
-  background: rgba(220, 38, 38, 0.3);
+  background: var(--color-error-alpha-30);
   border: none;
-  color: #f87171;
+  color: var(--color-error-400);
   cursor: pointer;
   transition: background 0.2s;
 }
 
 .launcher-error button:hover {
-  background: rgba(220, 38, 38, 0.5);
+  background: var(--color-error-alpha-50);
 }
 
 .launcher-loading {
@@ -92,14 +92,14 @@
   align-items: center;
   justify-content: center;
   padding: 5rem 0;
-  color: #94a3b8;
+  color: var(--color-text-secondary);
 }
 
 .spinner {
   width: 2rem;
   height: 2rem;
-  border: 4px solid #334155;
-  border-top-color: #3b82f6;
+  border: 4px solid var(--color-neutral-700);
+  border-top-color: var(--color-info-500);
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
   margin-bottom: 1rem;
@@ -121,29 +121,29 @@
   position: relative;
   padding: 1.5rem;
   border-radius: 0.75rem;
-  background: rgba(30, 41, 59, 0.4);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(51, 65, 85, 0.5);
+  background: var(--bg-glass-light);
+  backdrop-filter: var(--backdrop-blur-medium);
+  border: 1px solid var(--color-border);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .app-card:hover {
-  background: rgba(51, 65, 85, 0.4);
-  border-color: rgba(100, 116, 139, 0.5);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border);
   transform: scale(1.05);
-  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.1);
+  box-shadow: var(--shadow-glow-primary);
 }
 
 .app-card-new {
   border-style: dashed;
-  border-color: rgba(100, 116, 139, 0.5);
-  background: rgba(30, 41, 59, 0.2);
+  border-color: var(--color-border);
+  background: var(--color-surface);
 }
 
 .app-card-new:hover {
-  border-color: rgba(59, 130, 246, 0.5);
-  background: rgba(30, 41, 59, 0.3);
+  border-color: var(--color-info-alpha-50);
+  background: var(--color-surface-hover);
 }
 
 .app-delete {
@@ -153,8 +153,8 @@
   width: 1.5rem;
   height: 1.5rem;
   border-radius: 50%;
-  background: rgba(127, 29, 29, 0.3);
-  color: #f87171;
+  background: var(--color-error-alpha-30);
+  color: var(--color-error-400);
   border: none;
   cursor: pointer;
   opacity: 0;
@@ -172,8 +172,8 @@
 }
 
 .app-delete:hover {
-  background: rgba(127, 29, 29, 0.5);
-  color: #fca5a5;
+  background: var(--color-error-alpha-50);
+  color: var(--color-error-300);
 }
 
 .app-icon {
@@ -183,20 +183,20 @@
   font-size: 2.5rem;
   margin-bottom: 0.75rem;
   text-align: center;
-  color: var(--primary-color, #8b5cf6);
+  color: var(--color-secondary-500);
 }
 
 .app-name {
   font-size: 1.125rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
-  color: #ffffff;
+  color: var(--color-text-primary);
   text-align: center;
 }
 
 .app-description {
   font-size: 0.875rem;
-  color: #94a3b8;
+  color: var(--color-text-secondary);
   margin-bottom: 0.75rem;
   text-align: center;
   min-height: 2.5rem;
@@ -211,20 +211,20 @@
   align-items: center;
   justify-content: space-between;
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--color-text-tertiary);
   padding-top: 0.75rem;
-  border-top: 1px solid rgba(51, 65, 85, 0.5);
+  border-top: 1px solid var(--color-border);
 }
 
 .app-category {
   padding: 0.25rem 0.5rem;
   border-radius: 0.25rem;
-  background: rgba(51, 65, 85, 0.3);
-  color: #94a3b8;
+  background: var(--color-neutral-800);
+  color: var(--color-text-secondary);
 }
 
 .app-version {
-  color: #64748b;
+  color: var(--color-text-tertiary);
 }
 
 /* ============================================================================
@@ -238,24 +238,24 @@
 }
 
 .card-default {
-  background: rgba(30, 41, 59, 0.4);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(51, 65, 85, 0.5);
+  background: var(--bg-glass-light);
+  backdrop-filter: var(--backdrop-blur-medium);
+  border: 1px solid var(--color-border);
   border-radius: 0.75rem;
 }
 
 .card-elevated {
-  background: rgba(30, 41, 59, 0.6);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(51, 65, 85, 0.6);
+  background: var(--color-surface-elevated);
+  backdrop-filter: var(--backdrop-blur-medium);
+  border: 1px solid var(--color-border);
   border-radius: 0.75rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-medium);
 }
 
 .card-outlined {
   background: transparent;
-  backdrop-filter: blur(8px);
-  border: 2px solid rgba(51, 65, 85, 0.6);
+  backdrop-filter: var(--backdrop-blur-light);
+  border: 2px solid var(--color-border);
   border-radius: 0.75rem;
 }
 
@@ -281,7 +281,7 @@
 
 .card-hoverable:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-small);
 }
 
 .card-interactive {
@@ -289,10 +289,10 @@
 }
 
 .card-interactive:hover {
-  background: rgba(51, 65, 85, 0.4);
-  border-color: rgba(100, 116, 139, 0.5);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border);
   transform: scale(1.05);
-  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.1);
+  box-shadow: var(--shadow-glow-primary);
 }
 
 /* Category Button Variants */
@@ -307,20 +307,20 @@
 }
 
 .category-btn-inactive {
-  background: rgba(30, 41, 59, 0.5);
-  color: #cbd5e1;
-  border-color: rgba(51, 65, 85, 0.5);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  border-color: var(--color-border);
 }
 
 .category-btn-inactive:hover {
-  background: rgba(51, 65, 85, 0.5);
-  color: #ffffff;
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
 }
 
 .category-btn-active {
-  background: rgba(59, 130, 246, 0.2);
-  color: #60a5fa;
-  border-color: rgba(59, 130, 246, 0.5);
+  background: var(--color-info-alpha-20);
+  color: var(--color-info-400);
+  border-color: var(--color-info-alpha-50);
 }
 
 .category-btn-sm {

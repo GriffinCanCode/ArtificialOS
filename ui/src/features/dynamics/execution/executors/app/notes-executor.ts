@@ -6,7 +6,9 @@
 import { logger } from "../../../../../core/utils/monitoring/logger";
 import { generatePrefixedId } from "../../../../../core/utils/id";
 import { formatRelativeTime, compareTimestampsDesc } from "../../../../../core/utils/dates";
+import { toRgbaString } from "../../../../../core/utils/color";
 import { ExecutorContext, AsyncExecutor } from "../core/types";
+import { UI_COLORS, ALPHA_VALUES } from "../../../../../core/utils/color";
 
 interface Note {
   id: string;
@@ -367,7 +369,7 @@ export class NotesExecutor implements AsyncExecutor {
         style: {
           cursor: "pointer",
           padding: "0.75rem",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          borderBottom: `1px solid ${toRgbaString("#ffffff", 0.06)}`,
           transition: "all 0.2s ease",
         },
       },
@@ -381,7 +383,7 @@ export class NotesExecutor implements AsyncExecutor {
             style: {
               fontWeight: "600",
               fontSize: "13px",
-              color: "rgba(255,255,255,0.95)",
+              color: toRgbaString(UI_COLORS.text.primary, ALPHA_VALUES.high),
               marginBottom: "0.25rem",
             },
           },

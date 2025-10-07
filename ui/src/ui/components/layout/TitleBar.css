@@ -19,9 +19,9 @@
 }
 
 .title-bar.minimal:hover {
-  background: rgba(10, 10, 15, 0.15);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: var(--color-black-alpha-15);
+  backdrop-filter: var(--backdrop-blur-medium);
+  -webkit-backdrop-filter: var(--backdrop-blur-medium);
 }
 
 .title-bar-drag {
@@ -58,14 +58,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 3px var(--color-black-alpha-30);
   pointer-events: auto;
 }
 
 .control-btn span {
   display: none;
   font-size: 8px;
-  color: rgba(0, 0, 0, 0.7);
+  color: var(--color-black-alpha-70);
   font-weight: bold;
 }
 
@@ -88,12 +88,12 @@
 .control-btn:hover {
   filter: brightness(1.15);
   transform: scale(1.15);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-small);
 }
 
 .control-btn:active {
   transform: scale(0.98);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-xs);
 }
 
 /* Floating Session Controls */
@@ -118,24 +118,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--color-text-primary);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: white;
+  background: var(--color-white-alpha-10);
+  backdrop-filter: var(--backdrop-blur-medium);
+  -webkit-backdrop-filter: var(--backdrop-blur-medium);
+  border: 1px solid var(--color-border-subtle);
   font-size: 1.125rem;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .session-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.15);
+  background: var(--color-white-alpha-15);
+  border-color: var(--color-border);
   transform: scale(1.05);
 }
 
@@ -155,9 +151,9 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: var(--color-black-alpha-50);
+  backdrop-filter: var(--backdrop-blur-light);
+  -webkit-backdrop-filter: var(--backdrop-blur-light);
   z-index: 1001;
   display: flex;
   align-items: center;
@@ -168,12 +164,12 @@
 .session-menu {
   width: 500px;
   max-height: 600px;
-  background: rgba(20, 20, 20, 0.95);
-  backdrop-filter: blur(40px) saturate(150%);
-  -webkit-backdrop-filter: blur(40px) saturate(150%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-glass);
+  backdrop-filter: var(--backdrop-blur-strong);
+  -webkit-backdrop-filter: var(--backdrop-blur-strong);
+  border: 1px solid var(--color-border-subtle);
   border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-elevated);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -193,7 +189,7 @@
 
 .session-menu-header {
   padding: 1.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--color-border-subtle);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -208,7 +204,7 @@
 .session-menu-header button {
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--color-text-tertiary);
   font-size: 1.5rem;
   cursor: pointer;
   width: 32px;
@@ -221,8 +217,8 @@
 }
 
 .session-menu-header button:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: var(--color-white-alpha-10);
+  color: var(--color-text-primary);
 }
 
 .session-list {
@@ -236,14 +232,14 @@
 
 .no-sessions {
   text-align: center;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--color-text-tertiary);
   padding: 2rem;
 }
 
 .session-item {
   padding: 1rem;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--color-white-alpha-5);
+  border: 1px solid var(--color-border-subtle);
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -254,8 +250,8 @@
 }
 
 .session-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: var(--color-white-alpha-10);
+  border-color: var(--color-border);
   transform: translateY(-2px);
 }
 
@@ -275,16 +271,16 @@
 
 .session-meta {
   font-size: 0.875rem;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--color-text-tertiary);
 }
 
 .session-delete {
   flex-shrink: 0;
   padding: 0.5rem;
-  background: rgba(255, 59, 48, 0.1);
-  border: 1px solid rgba(255, 59, 48, 0.2);
+  background: var(--color-error-alpha-10);
+  border: 1px solid var(--color-error-alpha-20);
   border-radius: 8px;
-  color: rgba(255, 59, 48, 0.9);
+  color: var(--color-error-500);
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
@@ -298,9 +294,9 @@
 }
 
 .session-delete:hover {
-  background: rgba(255, 59, 48, 0.2);
-  border-color: rgba(255, 59, 48, 0.4);
-  color: #ff3b30;
+  background: var(--color-error-alpha-20);
+  border-color: var(--color-error-alpha-40);
+  color: var(--color-error-400);
   transform: scale(1.05);
 }
 

@@ -4,8 +4,12 @@
  */
 
 import { logger } from "../../../../../core/utils/monitoring/logger";
+import { THEME_COLORS } from "../../../../../core/utils/color";
 import { ExecutorContext, BaseExecutor } from "../core/types";
 import type { GraphNode, GraphEdge } from "../../../../visualization/types";
+
+// Centralized color from visualization palette
+const GRAPH_HIGHLIGHT_COLOR = THEME_COLORS.primary;
 
 export class GraphExecutor implements BaseExecutor {
   private context: ExecutorContext;
@@ -176,7 +180,7 @@ export class GraphExecutor implements BaseExecutor {
 
     const currentNodes: GraphNode[] = this.context.componentState.get(`${graphId}.nodes`) || [];
     const newNodes = currentNodes.map((n) =>
-      n.id === nodeId ? { ...n, style: { ...n.style, ...style, border: "2px solid #667eea" } } : n
+      n.id === nodeId ? { ...n, style: { ...n.style, ...style, border: `2px solid ${GRAPH_HIGHLIGHT_COLOR}` } } : n
     );
 
     this.context.componentState.set(`${graphId}.nodes`, newNodes);
@@ -205,7 +209,7 @@ export class GraphExecutor implements BaseExecutor {
     const newEdges = currentEdges.map((e) => {
       const key = `${e.source}-${e.target}`;
       return pathEdges.has(key)
-        ? { ...e, style: { ...e.style, stroke: "#667eea", strokeWidth: 3 }, animated: true }
+        ? { ...e, style: { ...e.style, stroke: GRAPH_HIGHLIGHT_COLOR, strokeWidth: 3 }, animated: true }
         : e;
     });
 

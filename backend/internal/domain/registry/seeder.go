@@ -104,6 +104,11 @@ func (s *Seeder) loadApp(path string) error {
 		return filepath.SkipDir
 	}
 
+	// Set default type to blueprint if not specified
+	if pkg.Type == "" {
+		pkg.Type = types.AppTypeBlueprint
+	}
+
 	// Save to registry (this will update if already exists)
 	ctx := context.Background()
 	return s.manager.Save(ctx, &pkg)
@@ -122,6 +127,7 @@ func (s *Seeder) SeedDefaultApps() error {
 			Category:    "system",
 			Version:     "1.0.0",
 			Author:      "system",
+			Type:        types.AppTypeBlueprint,
 			Services:    []string{},
 			Permissions: []string{"STANDARD"},
 			Tags:        []string{"launcher", "apps", "system"},
@@ -166,6 +172,7 @@ func (s *Seeder) SeedDefaultApps() error {
 			Category:    "system",
 			Version:     "1.0.0",
 			Author:      "system",
+			Type:        types.AppTypeBlueprint,
 			Services:    []string{"storage", "system"},
 			Permissions: []string{"STANDARD"},
 			Tags:        []string{"settings", "config", "system"},
@@ -229,6 +236,7 @@ func (s *Seeder) SeedDefaultApps() error {
 			Category:    "productivity",
 			Version:     "1.0.0",
 			Author:      "system",
+			Type:        types.AppTypeBlueprint,
 			Services:    []string{},
 			Permissions: []string{"STANDARD"},
 			Tags:        []string{"calculator", "math", "utility"},

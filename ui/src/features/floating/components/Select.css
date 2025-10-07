@@ -12,9 +12,9 @@
   min-width: 12rem;
   padding: 0.625rem 0.75rem;
   border-radius: 0.5rem;
-  background: rgba(30, 30, 45, 0.6);
-  border: 1px solid rgba(139, 92, 246, 0.25);
-  color: rgba(255, 255, 255, 0.85);
+  background: var(--color-surface);
+  border: 1px solid var(--color-secondary-alpha-20);
+  color: var(--color-text-primary);
   font-size: 0.875rem;
   line-height: 1.25rem;
   font-weight: 500;
@@ -23,18 +23,18 @@
 }
 
 .select-trigger:hover:not(.disabled) {
-  background: rgba(30, 30, 45, 0.8);
-  border-color: rgba(139, 92, 246, 0.4);
+  background: var(--color-surface-hover);
+  border-color: var(--color-secondary-alpha-40);
 }
 
 .select-trigger:focus-visible {
-  outline: 2px solid rgba(139, 92, 246, 0.5);
+  outline: 2px solid var(--color-secondary-alpha-50);
   outline-offset: 2px;
 }
 
 .select-trigger.open {
-  background: rgba(30, 30, 45, 0.9);
-  border-color: rgba(139, 92, 246, 0.5);
+  background: var(--color-surface-elevated);
+  border-color: var(--color-secondary-alpha-50);
 }
 
 .select-trigger.disabled {
@@ -69,25 +69,21 @@
   display: flex;
   flex-direction: column;
   outline: none;
-  background: linear-gradient(
-    135deg,
-    rgba(30, 30, 45, 0.95) 0%,
-    rgba(25, 25, 40, 0.98) 100%
-  );
+  background: var(--bg-glass);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
-  color: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(139, 92, 246, 0.3);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-secondary-alpha-30);
   box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.4),
-    0 6px 20px rgba(139, 92, 246, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    var(--shadow-large),
+    var(--shadow-glow-secondary),
+    var(--shadow-inset-light);
   animation: select-slide-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .select-search {
   padding: 0 0 0.5rem 0;
-  border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+  border-bottom: 1px solid var(--color-secondary-alpha-20);
   margin-bottom: 0.5rem;
 }
 
@@ -95,9 +91,9 @@
   width: 100%;
   padding: 0.5rem;
   border-radius: 0.375rem;
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(139, 92, 246, 0.2);
-  color: rgba(255, 255, 255, 0.95);
+  background: var(--color-black-alpha-20);
+  border: 1px solid var(--color-secondary-alpha-20);
+  color: var(--color-text-primary);
   font-size: 0.875rem;
   line-height: 1.25rem;
   outline: none;
@@ -105,12 +101,12 @@
 }
 
 .select-search-input:focus {
-  border-color: rgba(139, 92, 246, 0.5);
-  background: rgba(0, 0, 0, 0.3);
+  border-color: var(--color-secondary-alpha-50);
+  background: var(--color-black-alpha-30);
 }
 
 .select-search-input::placeholder {
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--color-text-tertiary);
 }
 
 .select-options {
@@ -128,7 +124,7 @@
   border-radius: 0.5rem;
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--color-text-primary);
   font-size: 0.875rem;
   line-height: 1.25rem;
   font-weight: 500;
@@ -138,19 +134,19 @@
 }
 
 .select-option:hover:not(.disabled) {
-  background: rgba(139, 92, 246, 0.2);
-  color: rgba(255, 255, 255, 1);
+  background: var(--color-secondary-alpha-20);
+  color: var(--color-text-primary);
 }
 
 .select-option:focus-visible {
-  background: rgba(139, 92, 246, 0.25);
-  outline: 2px solid rgba(139, 92, 246, 0.5);
+  background: var(--color-secondary-alpha-20);
+  outline: 2px solid var(--color-secondary-alpha-50);
   outline-offset: -2px;
 }
 
 .select-option.selected {
-  background: rgba(139, 92, 246, 0.3);
-  color: rgba(255, 255, 255, 1);
+  background: var(--color-secondary-alpha-30);
+  color: var(--color-text-primary);
 }
 
 .select-option.disabled {
@@ -164,13 +160,13 @@
 
 .select-option-check {
   flex-shrink: 0;
-  color: rgba(139, 92, 246, 1);
+  color: var(--color-secondary-500);
 }
 
 .select-empty {
   padding: 1rem;
   text-align: center;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--color-text-secondary);
   font-size: 0.875rem;
 }
 

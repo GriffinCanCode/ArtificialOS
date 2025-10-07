@@ -4,6 +4,7 @@
  */
 
 import { logger } from "../../../../../core/utils/monitoring/logger";
+import { toRgbaString, UI_COLORS, ALPHA_VALUES } from "../../../../../core/utils/color";
 import { ExecutorContext, AsyncExecutor } from "../core/types";
 
 export class FilesystemExecutor implements AsyncExecutor {
@@ -103,7 +104,7 @@ export class FilesystemExecutor implements AsyncExecutor {
             padding: "small",
             align: "center",
             style: {
-              borderBottom: "1px solid rgba(255,255,255,0.05)",
+              borderBottom: `1px solid ${toRgbaString(UI_COLORS.text.primary, ALPHA_VALUES.ghost)}`,
               cursor: "pointer",
               transition: "background-color 0.2s",
             },

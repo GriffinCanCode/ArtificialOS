@@ -1,0 +1,353 @@
+/**
+ * CSS Custom Properties - OKLCH Color System
+ * Modern, perceptually uniform colors for better gradients and accessibility
+ *
+ * Generated from @/core/utils/color utilities
+ * Fallbacks provided for browsers without OKLCH support
+ */
+
+:root {
+  /* ============================================================================
+     PRIMARY COLORS - Purple/Indigo Theme
+     ============================================================================ */
+
+  /* Primary Scale - oklch(lightness chroma hue) */
+  --color-primary-50: oklch(98% 0.02 270);
+  --color-primary-100: oklch(95% 0.04 270);
+  --color-primary-200: oklch(88% 0.08 270);
+  --color-primary-300: oklch(78% 0.12 270);
+  --color-primary-400: oklch(68% 0.15 270);
+  --color-primary-500: oklch(60% 0.18 270); /* Base purple #667eea */
+  --color-primary-600: oklch(52% 0.18 270);
+  --color-primary-700: oklch(44% 0.17 270);
+  --color-primary-800: oklch(36% 0.14 270);
+  --color-primary-900: oklch(28% 0.12 270);
+  --color-primary-950: oklch(20% 0.10 270);
+
+  /* Secondary Scale - Deep Purple */
+  --color-secondary-50: oklch(98% 0.02 300);
+  --color-secondary-100: oklch(95% 0.04 300);
+  --color-secondary-200: oklch(88% 0.08 300);
+  --color-secondary-300: oklch(78% 0.12 300);
+  --color-secondary-400: oklch(68% 0.15 300);
+  --color-secondary-500: oklch(58% 0.17 300); /* Base #764ba2 */
+  --color-secondary-600: oklch(50% 0.17 300);
+  --color-secondary-700: oklch(42% 0.16 300);
+  --color-secondary-800: oklch(34% 0.14 300);
+  --color-secondary-900: oklch(26% 0.12 300);
+  --color-secondary-950: oklch(18% 0.10 300);
+
+  /* Accent Scale - Light Purple/Pink */
+  --color-accent-50: oklch(98% 0.03 330);
+  --color-accent-100: oklch(95% 0.05 330);
+  --color-accent-200: oklch(90% 0.10 330);
+  --color-accent-300: oklch(85% 0.14 330);
+  --color-accent-400: oklch(78% 0.17 330);
+  --color-accent-500: oklch(75% 0.18 330); /* Base #f093fb */
+  --color-accent-600: oklch(68% 0.18 330);
+  --color-accent-700: oklch(60% 0.17 330);
+  --color-accent-800: oklch(52% 0.15 330);
+  --color-accent-900: oklch(44% 0.13 330);
+  --color-accent-950: oklch(36% 0.11 330);
+
+  /* ============================================================================
+     SEMANTIC COLORS
+     ============================================================================ */
+
+  /* Success - Green */
+  --color-success-50: oklch(98% 0.02 145);
+  --color-success-100: oklch(95% 0.04 145);
+  --color-success-200: oklch(90% 0.08 145);
+  --color-success-300: oklch(85% 0.12 145);
+  --color-success-400: oklch(75% 0.16 145);
+  --color-success-500: oklch(70% 0.18 145); /* Bright green */
+  --color-success-600: oklch(62% 0.18 145);
+  --color-success-700: oklch(54% 0.16 145);
+  --color-success-800: oklch(46% 0.14 145);
+  --color-success-900: oklch(38% 0.12 145);
+  --color-success-950: oklch(30% 0.10 145);
+
+  /* Warning - Yellow/Orange */
+  --color-warning-50: oklch(98% 0.02 85);
+  --color-warning-100: oklch(95% 0.04 85);
+  --color-warning-200: oklch(92% 0.08 85);
+  --color-warning-300: oklch(88% 0.12 85);
+  --color-warning-400: oklch(82% 0.16 85);
+  --color-warning-500: oklch(78% 0.18 85); /* Bright yellow */
+  --color-warning-600: oklch(70% 0.18 85);
+  --color-warning-700: oklch(62% 0.16 85);
+  --color-warning-800: oklch(54% 0.14 85);
+  --color-warning-900: oklch(46% 0.12 85);
+  --color-warning-950: oklch(38% 0.10 85);
+
+  /* Error/Danger - Red/Pink */
+  --color-error-50: oklch(98% 0.02 25);
+  --color-error-100: oklch(95% 0.04 25);
+  --color-error-200: oklch(90% 0.08 25);
+  --color-error-300: oklch(85% 0.12 25);
+  --color-error-400: oklch(78% 0.16 25);
+  --color-error-500: oklch(72% 0.18 25); /* Bright pink/red */
+  --color-error-600: oklch(64% 0.18 25);
+  --color-error-700: oklch(56% 0.16 25);
+  --color-error-800: oklch(48% 0.14 25);
+  --color-error-900: oklch(40% 0.12 25);
+  --color-error-950: oklch(32% 0.10 25);
+
+  /* Info - Blue */
+  --color-info-50: oklch(98% 0.02 240);
+  --color-info-100: oklch(95% 0.04 240);
+  --color-info-200: oklch(90% 0.08 240);
+  --color-info-300: oklch(85% 0.12 240);
+  --color-info-400: oklch(75% 0.16 240);
+  --color-info-500: oklch(68% 0.18 240); /* Bright blue */
+  --color-info-600: oklch(60% 0.18 240);
+  --color-info-700: oklch(52% 0.16 240);
+  --color-info-800: oklch(44% 0.14 240);
+  --color-info-900: oklch(36% 0.12 240);
+  --color-info-950: oklch(28% 0.10 240);
+
+  /* ============================================================================
+     NEUTRAL/GRAY SCALE
+     ============================================================================ */
+
+  --color-neutral-50: oklch(98% 0.005 270);
+  --color-neutral-100: oklch(96% 0.005 270);
+  --color-neutral-200: oklch(92% 0.005 270);
+  --color-neutral-300: oklch(86% 0.005 270);
+  --color-neutral-400: oklch(72% 0.005 270);
+  --color-neutral-500: oklch(58% 0.005 270);
+  --color-neutral-600: oklch(48% 0.005 270);
+  --color-neutral-700: oklch(38% 0.005 270);
+  --color-neutral-800: oklch(28% 0.005 270);
+  --color-neutral-900: oklch(18% 0.005 270);
+  --color-neutral-950: oklch(10% 0.005 270);
+
+  /* ============================================================================
+     THEME COLORS - Dark Mode
+     ============================================================================ */
+
+  --color-background: oklch(8% 0.005 270); /* Very dark background */
+  --color-foreground: oklch(98% 0.005 270); /* Near white text */
+
+  --color-surface: oklch(14% 0.008 270); /* Cards/panels */
+  --color-surface-elevated: oklch(18% 0.01 270); /* Modals/popovers */
+  --color-surface-hover: oklch(20% 0.01 270); /* Hover state */
+
+  --color-border: oklch(22% 0.01 270); /* Default borders */
+  --color-border-focus: var(--color-primary-500); /* Focused borders */
+  --color-border-subtle: oklch(16% 0.008 270); /* Subtle dividers */
+
+  --color-text-primary: oklch(98% 0.005 270); /* Primary text */
+  --color-text-secondary: oklch(72% 0.005 270); /* Secondary text */
+  --color-text-tertiary: oklch(58% 0.005 270); /* Disabled/placeholder */
+  --color-text-on-primary: oklch(98% 0.005 270); /* Text on primary color */
+
+  /* ============================================================================
+     ALPHA VARIANTS - With Opacity
+     ============================================================================ */
+
+  --color-primary-alpha-10: oklch(60% 0.18 270 / 0.1);
+  --color-primary-alpha-20: oklch(60% 0.18 270 / 0.2);
+  --color-primary-alpha-30: oklch(60% 0.18 270 / 0.3);
+  --color-primary-alpha-40: oklch(60% 0.18 270 / 0.4);
+  --color-primary-alpha-50: oklch(60% 0.18 270 / 0.5);
+  --color-primary-alpha-60: oklch(60% 0.18 270 / 0.6);
+  --color-primary-alpha-70: oklch(60% 0.18 270 / 0.7);
+  --color-primary-alpha-80: oklch(60% 0.18 270 / 0.8);
+  --color-primary-alpha-90: oklch(60% 0.18 270 / 0.9);
+
+  --color-secondary-alpha-10: oklch(58% 0.17 300 / 0.1);
+  --color-secondary-alpha-20: oklch(58% 0.17 300 / 0.2);
+  --color-secondary-alpha-30: oklch(58% 0.17 300 / 0.3);
+  --color-secondary-alpha-35: oklch(58% 0.17 300 / 0.35);
+  --color-secondary-alpha-40: oklch(58% 0.17 300 / 0.4);
+  --color-secondary-alpha-50: oklch(58% 0.17 300 / 0.5);
+  --color-secondary-alpha-80: oklch(58% 0.17 300 / 0.8);
+
+  --color-accent-alpha-10: oklch(75% 0.18 330 / 0.1);
+  --color-accent-alpha-20: oklch(75% 0.18 330 / 0.2);
+  --color-accent-alpha-25: oklch(75% 0.18 330 / 0.25);
+  --color-accent-alpha-30: oklch(75% 0.18 330 / 0.3);
+  --color-accent-alpha-40: oklch(75% 0.18 330 / 0.4);
+  --color-accent-alpha-60: oklch(75% 0.18 330 / 0.6);
+
+  --color-success-alpha-10: oklch(70% 0.18 145 / 0.1);
+  --color-success-alpha-20: oklch(70% 0.18 145 / 0.2);
+  --color-success-alpha-30: oklch(70% 0.18 145 / 0.3);
+
+  --color-warning-alpha-10: oklch(78% 0.18 85 / 0.1);
+  --color-warning-alpha-30: oklch(78% 0.18 85 / 0.3);
+
+  --color-error-alpha-10: oklch(72% 0.18 25 / 0.1);
+  --color-error-alpha-20: oklch(72% 0.18 25 / 0.2);
+  --color-error-alpha-30: oklch(72% 0.18 25 / 0.3);
+
+  --color-info-alpha-10: oklch(68% 0.18 240 / 0.1);
+  --color-info-alpha-20: oklch(68% 0.18 240 / 0.2);
+  --color-info-alpha-30: oklch(68% 0.18 240 / 0.3);
+  --color-info-alpha-40: oklch(68% 0.18 240 / 0.4);
+
+  --color-white-alpha-5: oklch(100% 0 0 / 0.05);
+  --color-white-alpha-10: oklch(100% 0 0 / 0.1);
+  --color-white-alpha-15: oklch(100% 0 0 / 0.15);
+  --color-white-alpha-20: oklch(100% 0 0 / 0.2);
+  --color-white-alpha-30: oklch(100% 0 0 / 0.3);
+  --color-white-alpha-40: oklch(100% 0 0 / 0.4);
+  --color-white-alpha-50: oklch(100% 0 0 / 0.5);
+  --color-white-alpha-60: oklch(100% 0 0 / 0.6);
+  --color-white-alpha-70: oklch(100% 0 0 / 0.7);
+  --color-white-alpha-80: oklch(100% 0 0 / 0.8);
+
+  --color-black-alpha-10: oklch(0% 0 0 / 0.1);
+  --color-black-alpha-20: oklch(0% 0 0 / 0.2);
+  --color-black-alpha-30: oklch(0% 0 0 / 0.3);
+  --color-black-alpha-40: oklch(0% 0 0 / 0.4);
+  --color-black-alpha-50: oklch(0% 0 0 / 0.5);
+  --color-black-alpha-60: oklch(0% 0 0 / 0.6);
+  --color-black-alpha-70: oklch(0% 0 0 / 0.7);
+  --color-black-alpha-80: oklch(0% 0 0 / 0.8);
+
+  /* ============================================================================
+     GRADIENTS - Using OKLCH for Smooth Transitions
+     ============================================================================ */
+
+  --gradient-primary: linear-gradient(
+    140deg,
+    var(--color-primary-alpha-20) 0%,
+    var(--color-secondary-alpha-30) 50%,
+    var(--color-accent-alpha-20) 100%
+  );
+
+  --gradient-primary-hover: linear-gradient(
+    140deg,
+    var(--color-primary-alpha-30) 0%,
+    var(--color-secondary-alpha-40) 50%,
+    var(--color-accent-alpha-30) 100%
+  );
+
+  --gradient-text-primary: linear-gradient(
+    120deg,
+    var(--color-foreground) 0%,
+    var(--color-accent-300) 50%,
+    var(--color-accent-400) 100%
+  );
+
+  --gradient-border: linear-gradient(
+    135deg,
+    var(--color-primary-alpha-40) 0%,
+    var(--color-secondary-alpha-35) 25%,
+    var(--color-accent-alpha-30) 50%,
+    var(--color-accent-alpha-25) 75%,
+    var(--color-info-alpha-30) 100%
+  );
+
+  --gradient-progress: linear-gradient(
+    90deg,
+    var(--color-primary-500) 0%,
+    var(--color-secondary-500) 25%,
+    var(--color-accent-500) 50%,
+    var(--color-accent-400) 75%,
+    var(--color-info-500) 100%
+  );
+
+  /* Glass morphism backgrounds */
+  --bg-glass: linear-gradient(
+    145deg,
+    oklch(14% 0.01 270 / 0.85) 0%,
+    oklch(10% 0.008 270 / 0.9) 100%
+  );
+
+  --bg-glass-light: linear-gradient(
+    135deg,
+    var(--color-white-alpha-10) 0%,
+    var(--color-primary-alpha-10) 100%
+  );
+
+  /* ============================================================================
+     SHADOWS - Using OKLCH Black for Natural Shadows
+     ============================================================================ */
+
+  --shadow-elevated: 0 30px 90px oklch(0% 0 0 / 0.5);
+  --shadow-large: 0 20px 60px oklch(0% 0 0 / 0.4);
+  --shadow-medium: 0 8px 24px oklch(0% 0 0 / 0.3);
+  --shadow-small: 0 4px 12px oklch(0% 0 0 / 0.2);
+  --shadow-xs: 0 2px 8px oklch(0% 0 0 / 0.15);
+
+  /* Colored glows */
+  --shadow-glow-primary: 0 0 20px var(--color-primary-alpha-50);
+  --shadow-glow-secondary: 0 0 40px var(--color-secondary-alpha-40);
+  --shadow-glow-accent: 0 0 30px var(--color-accent-alpha-40);
+
+  /* Inset shadows */
+  --shadow-inset-light: inset 0 1px 0 var(--color-white-alpha-10);
+  --shadow-inset-dark: inset 0 1px 3px oklch(0% 0 0 / 0.2);
+
+  /* ============================================================================
+     EFFECTS
+     ============================================================================ */
+
+  --backdrop-blur-strong: blur(80px) saturate(200%);
+  --backdrop-blur-medium: blur(60px) saturate(180%);
+  --backdrop-blur-light: blur(20px) saturate(150%);
+
+  /* ============================================================================
+     CHART/VISUALIZATION COLORS
+     ============================================================================ */
+
+  --chart-primary-1: oklch(60% 0.18 270); /* Purple */
+  --chart-primary-2: oklch(68% 0.18 240); /* Blue */
+  --chart-primary-3: oklch(70% 0.18 145); /* Green */
+  --chart-primary-4: oklch(78% 0.18 85); /* Yellow */
+  --chart-primary-5: oklch(72% 0.18 25); /* Pink */
+  --chart-primary-6: oklch(58% 0.17 300); /* Deep purple */
+  --chart-primary-7: oklch(70% 0.18 170); /* Teal */
+  --chart-primary-8: oklch(75% 0.18 330); /* Light purple */
+
+  --chart-success: var(--color-success-500);
+  --chart-warning: var(--color-warning-500);
+  --chart-error: var(--color-error-500);
+  --chart-info: var(--color-info-500);
+  --chart-neutral: var(--color-neutral-400);
+}
+
+/* ============================================================================
+   RGB FALLBACKS - For browsers without OKLCH support
+   ============================================================================ */
+
+@supports not (color: oklch(0% 0 0)) {
+  :root {
+    /* Primary fallbacks */
+    --color-primary-50: #f5f3ff;
+    --color-primary-100: #ede9fe;
+    --color-primary-200: #ddd6fe;
+    --color-primary-300: #c4b5fd;
+    --color-primary-400: #a78bfa;
+    --color-primary-500: #667eea; /* Base */
+    --color-primary-600: #7c3aed;
+    --color-primary-700: #6d28d9;
+    --color-primary-800: #5b21b6;
+    --color-primary-900: #4c1d95;
+    --color-primary-950: #2e1065;
+
+    /* Alpha variants */
+    --color-primary-alpha-10: rgba(102, 126, 234, 0.1);
+    --color-primary-alpha-20: rgba(102, 126, 234, 0.2);
+    --color-primary-alpha-30: rgba(102, 126, 234, 0.3);
+    --color-primary-alpha-40: rgba(102, 126, 234, 0.4);
+    --color-primary-alpha-50: rgba(102, 126, 234, 0.5);
+
+    --color-white-alpha-10: rgba(255, 255, 255, 0.1);
+    --color-white-alpha-20: rgba(255, 255, 255, 0.2);
+    --color-white-alpha-30: rgba(255, 255, 255, 0.3);
+
+    --color-black-alpha-20: rgba(0, 0, 0, 0.2);
+    --color-black-alpha-30: rgba(0, 0, 0, 0.3);
+    --color-black-alpha-50: rgba(0, 0, 0, 0.5);
+
+    /* Core theme colors */
+    --color-background: #0a0a0a;
+    --color-foreground: #ffffff;
+    --color-surface: #1a1a1a;
+    --color-border: #2a2a2a;
+  }
+}

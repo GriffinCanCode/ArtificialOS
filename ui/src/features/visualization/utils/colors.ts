@@ -1,7 +1,26 @@
 /**
  * Color Utilities
  * Theme-aware color management for visualizations
+ * Now powered by core color utilities (colord)
  */
+
+import {
+  toHex,
+  toRgb,
+  toRgbaString,
+  gradient as createGradient,
+  contrast,
+  isWcagAA,
+  type ColorInput,
+} from "@/core/utils/color";
+
+export {
+  generateDataPalette as generateCategoricalPalette,
+  generateSequentialPalette,
+  generateDivergingPalette,
+  generateHeatmapColors as generateHeatmapPalette,
+  generateTimeSeriesPalette,
+} from "./palettes";
 
 // ============================================================================
 // Color Palettes
@@ -76,59 +95,34 @@ export function getSemanticColor(type: keyof typeof CHART_COLORS.semantic): stri
 
 /**
  * Generate gradient from two colors
+ * Now uses core gradient utility
  */
 export function generateGradient(from: string, to: string, stops = 10): string[] {
-  // Simple linear interpolation for hex colors
-  const fromRgb = hexToRgb(from);
-  const toRgb = hexToRgb(to);
-
-  const gradient: string[] = [];
-  for (let i = 0; i < stops; i++) {
-    const ratio = i / (stops - 1);
-    const r = Math.round(fromRgb.r + (toRgb.r - fromRgb.r) * ratio);
-    const g = Math.round(fromRgb.g + (toRgb.g - fromRgb.g) * ratio);
-    const b = Math.round(fromRgb.b + (toRgb.b - fromRgb.b) * ratio);
-    gradient.push(rgbToHex(r, g, b));
-  }
-
-  return gradient;
+  return createGradient(from, to, stops);
 }
 
 /**
  * Convert hex color to RGB
+ * Now uses core color utility
  */
 export function hexToRgb(hex: string): { r: number; g: number; b: number } {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result
-    ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16),
-      }
-    : { r: 0, g: 0, b: 0 };
+  return toRgb(hex);
 }
 
 /**
  * Convert RGB to hex color
+ * Now uses core color utility
  */
 export function rgbToHex(r: number, g: number, b: number): string {
-  return (
-    "#" +
-    [r, g, b]
-      .map((x) => {
-        const hex = x.toString(16);
-        return hex.length === 1 ? "0" + hex : hex;
-      })
-      .join("")
-  );
+  return toHex({ r, g, b });
 }
 
 /**
  * Adjust color opacity
+ * Now uses core color utility
  */
-export function withOpacity(color: string, opacity: number): string {
-  const rgb = hexToRgb(color);
-  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`;
+export function withOpacity(color: ColorInput, opacity: number): string {
+  return toRgbaString(color, opacity);
 }
 
 /**
@@ -143,4 +137,34 @@ export function colorFromValue(
   const normalized = Math.max(0, Math.min(1, (value - min) / (max - min)));
   const index = Math.floor(normalized * (palette.length - 1));
   return palette[index];
+}
+
+/**
+ * Validate color contrast for accessibility
+ * Ensures text is readable on given background
+ */
+export function validateColorContrast(foreground: string, background: string): {
+  ratio: number;
+  isAccessible: boolean;
+  recommendation: string;
+} {
+  const ratio = contrast(foreground, background);
+  const isAccessible = isWcagAA(foreground, background);
+
+  let recommendation = "";
+  if (ratio >= 7) {
+    recommendation = "Excellent contrast (AAA)";
+  } else if (ratio >= 4.5) {
+    recommendation = "Good contrast (AA)";
+  } else if (ratio >= 3) {
+    recommendation = "Acceptable for large text only";
+  } else {
+    recommendation = "Poor contrast - not recommended";
+  }
+
+  return {
+    ratio: Math.round(ratio * 100) / 100,
+    isAccessible,
+    recommendation,
+  };
 }

@@ -217,19 +217,19 @@
   0%,
   100% {
     box-shadow:
-      0 0 0 4px rgba(139, 92, 246, 0.12),
-      0 0 30px rgba(139, 92, 246, 0.2),
-      0 4px 12px rgba(99, 102, 241, 0.15),
-      inset 0 1px 3px rgba(0, 0, 0, 0.15),
-      0 0 0 1px rgba(139, 92, 246, 0.3) inset;
+      0 0 0 4px var(--color-secondary-alpha-10),
+      var(--shadow-glow-primary),
+      var(--shadow-small),
+      inset 0 1px 3px var(--color-black-alpha-20),
+      0 0 0 1px var(--color-secondary-alpha-30) inset;
   }
   50% {
     box-shadow:
-      0 0 0 6px rgba(139, 92, 246, 0.08),
-      0 0 40px rgba(168, 85, 247, 0.25),
-      0 6px 16px rgba(99, 102, 241, 0.2),
-      inset 0 1px 3px rgba(0, 0, 0, 0.15),
-      0 0 0 1px rgba(168, 85, 247, 0.4) inset;
+      0 0 0 6px var(--color-accent-alpha-10),
+      var(--shadow-glow-secondary),
+      var(--shadow-medium),
+      inset 0 1px 3px var(--color-black-alpha-20),
+      0 0 0 1px var(--color-accent-alpha-40) inset;
   }
 }
 
@@ -365,23 +365,23 @@
 @keyframes assembly-pulse {
   0%,
   100% {
-    border-color: color-mix(in srgb, var(--color-electric-blue) 40%, transparent);
-    background: color-mix(in srgb, var(--color-electric-blue) 5%, transparent);
+    border-color: var(--color-info-alpha-40);
+    background: var(--color-info-alpha-10);
   }
   50% {
-    border-color: color-mix(in srgb, var(--color-neon-purple) 40%, transparent);
-    background: color-mix(in srgb, var(--color-neon-purple) 5%, transparent);
+    border-color: var(--color-secondary-alpha-40);
+    background: var(--color-secondary-alpha-10);
   }
 }
 
 @keyframes completion-flash {
   0% {
-    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+    box-shadow: 0 0 0 0 var(--color-white-alpha-70);
   }
   50% {
-    box-shadow: 0 0 40px 10px rgba(138, 101, 255, 0.6);
+    box-shadow: 0 0 40px 10px var(--color-primary-alpha-60);
   }
   100% {
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--shadow-medium);
   }
 }

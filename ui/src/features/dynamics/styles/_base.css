@@ -69,10 +69,10 @@
   width: 200%;
   height: 200%;
   background:
-    radial-gradient(circle at 20% 50%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.12) 0%, transparent 50%),
-    radial-gradient(circle at 40% 20%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
-    radial-gradient(circle at 60% 70%, rgba(192, 132, 252, 0.08) 0%, transparent 50%);
+    radial-gradient(circle at 20% 50%, var(--color-primary-alpha-10) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, var(--color-accent-alpha-10) 0%, transparent 50%),
+    radial-gradient(circle at 40% 20%, var(--color-secondary-alpha-10) 0%, transparent 50%),
+    radial-gradient(circle at 60% 70%, var(--color-accent-alpha-10) 0%, transparent 50%);
   animation: mesh-float 20s ease-in-out infinite;
   opacity: 0.7;
   filter: blur(80px);
@@ -124,10 +124,10 @@
   border-radius: 50%;
   background: radial-gradient(
     circle,
-    rgba(99, 102, 241, 0.5) 0%,
-    rgba(139, 92, 246, 0.4) 33%,
-    rgba(168, 85, 247, 0.3) 50%,
-    rgba(192, 132, 252, 0.2) 66%,
+    var(--color-primary-alpha-50) 0%,
+    var(--color-secondary-alpha-40) 33%,
+    var(--color-accent-alpha-30) 50%,
+    var(--color-accent-alpha-20) 66%,
     transparent 100%
   );
   filter: blur(40px);
@@ -148,9 +148,9 @@
   letter-spacing: -0.02em;
   background: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.95) 0%,
-    rgba(192, 132, 252, 0.9) 50%,
-    rgba(255, 255, 255, 0.7) 100%
+    var(--color-foreground) 0%,
+    var(--color-accent-300) 50%,
+    var(--color-text-primary) 100%
   );
   background-size: 200% 200%;
   animation: gradient-shift 6s ease-in-out infinite;
@@ -171,9 +171,9 @@
   height: 100%;
   background: linear-gradient(
     135deg,
-    rgba(192, 132, 252, 0.3) 0%,
-    rgba(168, 85, 247, 0.2) 50%,
-    rgba(139, 92, 246, 0.1) 100%
+    var(--color-accent-alpha-30) 0%,
+    var(--color-accent-alpha-20) 50%,
+    var(--color-secondary-alpha-10) 100%
   );
   filter: blur(20px);
   -webkit-background-clip: text;
@@ -187,7 +187,7 @@
 
 .desktop-message p {
   font-size: 1rem;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--color-text-tertiary);
   margin: 0;
   font-weight: 400;
 }
@@ -200,14 +200,14 @@
 .renderer-error {
   max-width: 600px;
   padding: 1.5rem;
-  background: rgba(239, 68, 68, 0.08);
+  background: var(--color-error-alpha-10);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  border: 1px solid var(--color-error-alpha-30);
   border-radius: 12px;
-  color: rgba(248, 113, 113, 1);
+  color: var(--color-error-400);
   margin: 2rem;
-  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.2);
+  box-shadow: 0 8px 24px var(--color-error-alpha-20);
   animation: shake 0.5s ease;
 }
 
@@ -284,18 +284,9 @@
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(99, 102, 241, 0.3) 10%,
-    rgba(139, 92, 246, 0.5) 30%,
-    rgba(168, 85, 247, 0.6) 50%,
-    rgba(192, 132, 252, 0.5) 70%,
-    rgba(96, 165, 250, 0.3) 90%,
-    transparent 100%
-  );
+  background: var(--gradient-border);
   border-radius: 1px;
-  box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+  box-shadow: var(--shadow-glow-secondary);
 }
 
 .app-header h2 {
@@ -303,18 +294,11 @@
   font-size: 1.875rem;
   font-weight: 700;
   letter-spacing: -0.03em;
-  background: linear-gradient(
-    120deg,
-    rgba(255, 255, 255, 1) 0%,
-    rgba(192, 132, 252, 1) 40%,
-    rgba(139, 92, 246, 1) 60%,
-    rgba(168, 85, 247, 0.95) 80%,
-    rgba(217, 70, 239, 0.9) 100%
-  );
+  background: var(--gradient-text-primary);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  filter: drop-shadow(0 2px 12px rgba(139, 92, 246, 0.4));
+  filter: drop-shadow(0 2px 12px var(--color-secondary-alpha-40));
 }
 
 .save-app-btn {
@@ -325,9 +309,9 @@
   border-radius: 10px;
   font-size: 0.875rem;
   font-weight: 500;
-  background: rgba(99, 102, 241, 0.15);
-  color: rgb(167, 169, 255);
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  background: var(--color-primary-alpha-10);
+  color: var(--color-primary-300);
+  border: 1px solid var(--color-primary-alpha-30);
   cursor: pointer;
   transition:
     transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
@@ -343,10 +327,10 @@
 }
 
 .save-app-btn:hover {
-  background: rgba(99, 102, 241, 0.25);
-  border-color: rgba(99, 102, 241, 0.5);
+  background: var(--color-primary-alpha-20);
+  border-color: var(--color-primary-alpha-50);
   transform: translate3d(0, -2px, 0);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+  box-shadow: var(--shadow-small);
 }
 
 .save-app-btn:active {
@@ -365,10 +349,10 @@
   display: inline-flex;
   align-items: center;
   padding: 8px 16px;
-  border: 1px solid rgba(139, 92, 246, 0.3);
+  border: 1px solid var(--color-secondary-alpha-30);
   border-radius: 8px;
-  background: rgba(139, 92, 246, 0.1);
-  color: rgba(139, 92, 246, 1);
+  background: var(--color-secondary-alpha-10);
+  color: var(--color-secondary-500);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -376,8 +360,8 @@
 }
 
 .app-action-btn:hover {
-  background: rgba(139, 92, 246, 0.2);
-  border-color: rgba(139, 92, 246, 0.5);
+  background: var(--color-secondary-alpha-20);
+  border-color: var(--color-secondary-alpha-50);
   transform: translateY(-1px);
 }
 

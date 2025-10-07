@@ -6,7 +6,11 @@
 import { metricsCollector } from "./metrics";
 import { getWebVitalsMetrics } from "./vitals";
 import { formatDate } from "../utils/dates";
+import { THEME_COLORS } from "../utils/color";
 import type { MetricsSnapshot } from "./types";
+
+// Brand color for console styling
+const BRAND_COLOR = THEME_COLORS.primary;
 
 export interface SystemMetrics {
   timestamp: number;
@@ -134,7 +138,7 @@ if (typeof window !== "undefined") {
 
   console.log(
     "%c🚀 AgentOS Metrics",
-    "font-size: 16px; font-weight: bold; color: #667eea;",
+    `font-size: 16px; font-weight: bold; color: ${BRAND_COLOR};`,
     "\n\nAccess metrics via:\n" +
       "  • agentOSMetrics.getAll() - Get all metrics\n" +
       "  • agentOSMetrics.getSummary() - Get summary\n" +

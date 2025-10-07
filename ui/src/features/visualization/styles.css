@@ -13,14 +13,14 @@
   overflow: hidden;
   border-radius: 0.5rem;
   /* Chart background glow effect */
-  background: linear-gradient(to bottom right, rgba(17, 24, 39, 0.5), rgba(3, 7, 18, 0.5));
+  background: var(--bg-glass);
 }
 
 .chart-container::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom right, rgba(168, 85, 247, 0.05), rgba(59, 130, 246, 0.05));
+  background: linear-gradient(to bottom right, var(--color-accent-alpha-10), var(--color-info-alpha-10));
   pointer-events: none;
   border-radius: 0.5rem;
 }
@@ -41,7 +41,7 @@
   width: 100%;
   overflow: hidden;
   border-radius: 0.5rem;
-  border: 1px solid rgb(31, 41, 55);
+  border: 1px solid var(--color-border);
 }
 
 /* ReactFlow specific styles */
@@ -49,22 +49,18 @@
   border-radius: 0.5rem;
   border-width: 2px;
   padding: 0.5rem 1rem;
-  box-shadow:
-    0 10px 15px -3px rgba(0, 0, 0, 0.1),
-    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-small);
   transition: all 0.2s;
 }
 
 .graph-container .react-flow__node:hover {
-  box-shadow:
-    0 20px 25px -5px rgba(0, 0, 0, 0.1),
-    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-medium);
   transform: scale(1.05);
 }
 
 .graph-container .react-flow__node.selected {
-  border-color: rgb(168, 85, 247);
-  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.5);
+  border-color: var(--color-accent-500);
+  box-shadow: 0 0 0 3px var(--color-accent-alpha-50);
 }
 
 .graph-container .react-flow__edge {
@@ -81,35 +77,31 @@
 
 /* Controls styling */
 .graph-container .react-flow__controls {
-  border: 1px solid rgb(31, 41, 55);
+  border: 1px solid var(--color-border);
   border-radius: 0.5rem;
-  box-shadow:
-    0 10px 15px -3px rgba(0, 0, 0, 0.1),
-    0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  background: rgba(17, 24, 39, 0.9);
+  box-shadow: var(--shadow-small);
+  background: var(--bg-glass);
   backdrop-filter: blur(8px);
 }
 
 .graph-container .react-flow__controls-button {
-  background: rgb(31, 41, 55);
-  border-color: rgb(55, 65, 81);
-  color: rgb(209, 213, 219);
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text-primary);
   transition: all 0.2s;
 }
 
 .graph-container .react-flow__controls-button:hover {
-  background: rgb(55, 65, 81);
-  color: white;
+  background: var(--color-surface-hover);
+  color: var(--color-foreground);
 }
 
 /* Minimap styling */
 .graph-container .react-flow__minimap {
-  border: 1px solid rgb(31, 41, 55);
+  border: 1px solid var(--color-border);
   border-radius: 0.5rem;
-  box-shadow:
-    0 10px 15px -3px rgba(0, 0, 0, 0.1),
-    0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  background: rgba(17, 24, 39, 0.9);
+  box-shadow: var(--shadow-small);
+  background: var(--bg-glass);
   backdrop-filter: blur(8px);
 }
 
@@ -124,9 +116,7 @@
 
 .recharts-default-tooltip {
   border-radius: 0.5rem !important;
-  box-shadow:
-    0 20px 25px -5px rgba(0, 0, 0, 0.1),
-    0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+  box-shadow: var(--shadow-medium) !important;
   border-width: 2px !important;
   backdrop-filter: blur(8px) !important;
 }
@@ -166,14 +156,14 @@
   justify-content: center;
   width: 100%;
   height: 100%;
-  background: rgba(17, 24, 39, 0.5);
+  background: var(--bg-glass);
   backdrop-filter: blur(8px);
   border-radius: 0.5rem;
 }
 
 .chart-loading::after {
   content: "Loading chart...";
-  color: rgb(156, 163, 175);
+  color: var(--color-text-secondary);
   font-size: 0.875rem;
   line-height: 1.25rem;
 }
@@ -188,9 +178,9 @@
   justify-content: center;
   width: 100%;
   height: 100%;
-  border: 2px dashed rgb(31, 41, 55);
+  border: 2px dashed var(--color-border);
   border-radius: 0.5rem;
-  color: rgb(107, 114, 128);
+  color: var(--color-text-secondary);
 }
 
 .chart-empty::after {

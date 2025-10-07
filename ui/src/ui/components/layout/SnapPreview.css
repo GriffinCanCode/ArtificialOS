@@ -6,8 +6,8 @@
   position: fixed;
   pointer-events: none;
   z-index: 9999;
-  background: rgba(139, 92, 246, 0.15);
-  border: 2px solid rgba(139, 92, 246, 0.5);
+  background: var(--color-secondary-alpha-20);
+  border: 2px solid var(--color-secondary-alpha-50);
   border-radius: 8px;
   animation: snap-preview-appear 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }

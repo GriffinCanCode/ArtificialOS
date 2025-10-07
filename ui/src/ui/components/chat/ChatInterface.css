@@ -6,7 +6,7 @@
 
 .chat-header {
   padding: 1rem;
-  border-bottom: 1px solid var(--color-dark-border);
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -24,11 +24,11 @@
 }
 
 .connection-status.connected {
-  color: var(--color-success-green-light);
+  color: var(--color-success-400);
 }
 
 .connection-status.disconnected {
-  color: var(--color-error-red-light);
+  color: var(--color-error-400);
 }
 
 .messages-container {
@@ -43,21 +43,21 @@
 .message {
   padding: 0.75rem;
   border-radius: 0.5rem;
-  background: var(--color-dark-hover);
+  background: var(--color-surface-hover);
 }
 
 .message-user {
   margin-left: 20%;
-  background: var(--color-primary-blue);
+  background: var(--color-info-600);
 }
 
 .message-assistant {
   margin-right: 20%;
-  background: var(--color-dark-hover);
+  background: var(--color-surface-hover);
 }
 
 .message-system {
-  background: var(--color-dark-accent);
+  background: var(--color-surface);
   font-size: 0.75rem;
   text-align: center;
   opacity: 0.7;
@@ -87,7 +87,7 @@
 
 .chat-input-form {
   padding: 1rem;
-  border-top: 1px solid var(--color-dark-border);
+  border-top: 1px solid var(--color-border);
   display: flex;
   gap: 0.5rem;
 }
@@ -95,17 +95,17 @@
 .chat-input {
   flex: 1;
   padding: 0.625rem 0.75rem;
-  background: var(--color-dark-hover);
-  border: 1px solid var(--color-dark-accent);
+  background: var(--color-surface-hover);
+  border: 1px solid var(--color-border);
   border-radius: 0.375rem;
-  color: #ffffff;
+  color: var(--color-text-primary);
   font-size: 0.875rem;
   outline: none;
   transition: border-color 0.15s ease;
 }
 
 .chat-input:focus {
-  border-color: var(--color-primary-blue);
+  border-color: var(--color-border-focus);
 }
 
 .chat-input:disabled {
@@ -115,10 +115,10 @@
 
 .send-button {
   padding: 0.625rem 1.25rem;
-  background: var(--color-primary-blue);
+  background: var(--color-info-600);
   border: none;
   border-radius: 0.375rem;
-  color: #ffffff;
+  color: var(--color-text-on-primary);
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
@@ -126,7 +126,7 @@
 }
 
 .send-button:hover:not(:disabled) {
-  background: var(--color-primary-blue-hover);
+  background: var(--color-info-700);
 }
 
 .send-button:disabled {

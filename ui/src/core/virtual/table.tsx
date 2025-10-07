@@ -5,6 +5,7 @@
 
 import { useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { toRgbaString } from "@/core/utils/color";
 import type { VirtualTableConfig, VirtualTableColumn } from "./types";
 
 // ============================================================================
@@ -99,8 +100,8 @@ export const VirtualTable = <T,>({
           position: "sticky",
           top: 0,
           zIndex: 1,
-          background: "var(--bg-secondary, #1a1a1a)",
-          borderBottom: "1px solid var(--border-color, #333)",
+          background: "var(--color-surface, #1a1a1a)",
+          borderBottom: "1px solid var(--color-border, #2a2a2a)",
         }}
       >
         {enableRowSelection && (
@@ -184,12 +185,12 @@ export const VirtualTable = <T,>({
                 display: "flex",
                 alignItems: "center",
                 background: isSelected
-                  ? "var(--bg-selected, rgba(59, 130, 246, 0.1))"
+                  ? `var(--color-primary-alpha-10, ${toRgbaString("#667eea", 0.1)})`
                   : virtualRow.index % 2 === 0
-                    ? "var(--bg-primary, #0a0a0a)"
-                    : "var(--bg-secondary, #1a1a1a)",
+                    ? "var(--color-background, #0a0a0a)"
+                    : "var(--color-surface, #1a1a1a)",
                 cursor: onRowClick ? "pointer" : "default",
-                borderBottom: "1px solid var(--border-color, #333)",
+                borderBottom: "1px solid var(--color-border, #2a2a2a)",
               }}
               onClick={() => handleRowClick(virtualRow.index)}
             >

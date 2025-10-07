@@ -67,11 +67,11 @@
 }
 
 .virtual-table-row:hover {
-  background: var(--bg-hover, rgba(255, 255, 255, 0.05)) !important;
+  background: var(--bg-hover, var(--color-white-alpha-5)) !important;
 }
 
 .virtual-table-row-selected {
-  background: var(--bg-selected, rgba(59, 130, 246, 0.15)) !important;
+  background: var(--bg-selected, var(--color-info-alpha-10)) !important;
 }
 
 .virtual-table-cell {

@@ -47,3 +47,6 @@ export type { HashAlgorithm } from "./hash";
 
 // Date utilities
 export * from "./dates";
+
+// Color utilities
+export * from "./color";

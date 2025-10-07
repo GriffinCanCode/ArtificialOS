@@ -10,6 +10,7 @@
 
 import gsap from "gsap";
 import { ANIMATION_TIMING, EASING, STAGGER } from "./animationConfig";
+import { toRgbaString, THEME_COLORS, UI_COLORS } from "../color";
 
 // Global GSAP performance settings
 gsap.config({
@@ -235,7 +236,7 @@ export const appAppear = (element: gsap.TweenTarget, options: { delay?: number }
   ).to(
     element,
     {
-      boxShadow: "0 30px 90px rgba(0, 0, 0, 0.5), 0 0 1px rgba(255, 255, 255, 0.1) inset",
+      boxShadow: `0 30px 90px ${toRgbaString("#000000", 0.5)}, 0 0 1px ${toRgbaString(UI_COLORS.text.primary, 0.1)} inset`,
       duration: 0.3,
       ease: "power2.inOut",
     },
@@ -343,16 +344,16 @@ export const completionFlash = (element: gsap.TweenTarget) => {
   const tl = gsap.timeline();
 
   tl.to(element, {
-    boxShadow: "0 0 0 0 rgba(255, 255, 255, 0.7)",
+    boxShadow: `0 0 0 0 ${toRgbaString(UI_COLORS.text.primary, 0.7)}`,
     duration: 0,
   })
     .to(element, {
-      boxShadow: "0 0 40px 10px rgba(138, 101, 255, 0.6)",
+      boxShadow: `0 0 40px 10px ${toRgbaString(THEME_COLORS.secondary, 0.6)}`,
       duration: 0.4,
       ease: EASING.ease,
     })
     .to(element, {
-      boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
+      boxShadow: `0 8px 32px ${toRgbaString("#000000", 0.3)}`,
       duration: 0.4,
       ease: EASING.ease,
     });
@@ -510,13 +511,13 @@ export const assemblyPulseAnimation = (element: gsap.TweenTarget) => {
   const tl = gsap.timeline({ repeat: -1 });
 
   tl.to(element, {
-    borderColor: "rgba(99, 102, 241, 0.4)",
-    backgroundColor: "rgba(99, 102, 241, 0.05)",
+    borderColor: toRgbaString(THEME_COLORS.primary, 0.4),
+    backgroundColor: toRgbaString(THEME_COLORS.primary, 0.05),
     duration: 0.5,
     ease: "sine.inOut",
   }).to(element, {
-    borderColor: "rgba(168, 85, 247, 0.4)",
-    backgroundColor: "rgba(168, 85, 247, 0.05)",
+    borderColor: toRgbaString(THEME_COLORS.accent, 0.4),
+    backgroundColor: toRgbaString(THEME_COLORS.accent, 0.05),
     duration: 0.5,
     ease: "sine.inOut",
   });
@@ -711,7 +712,7 @@ export const particleBurst = (
   } = {}
 ) => {
   const count = options.count ?? 12;
-  const colors = options.colors ?? ["#6366f1", "#8b5cf6", "#a855f7", "#c084fc"];
+  const colors = options.colors ?? [THEME_COLORS.primary, THEME_COLORS.secondary, THEME_COLORS.accent, "#c084fc"];
   const duration = options.duration ?? 1.2;
 
   const tl = gsap.timeline({
@@ -779,7 +780,7 @@ export const rippleEffect = (element: gsap.TweenTarget) => {
   ).to(
     element,
     {
-      boxShadow: "0 0 0 20px rgba(99, 102, 241, 0)",
+      boxShadow: `0 0 0 20px ${toRgbaString(THEME_COLORS.primary, 0)}`,
       duration: 0.6,
       ease: "power2.out",
     },
@@ -1042,17 +1043,17 @@ export const chromaticAberration = (
   const tl = gsap.timeline();
 
   tl.to(element, {
-    filter: `drop-shadow(${intensity}px 0 0 rgba(255, 0, 0, 0.8)) drop-shadow(-${intensity}px 0 0 rgba(0, 255, 255, 0.8))`,
+    filter: `drop-shadow(${intensity}px 0 0 ${toRgbaString("#ff0000", 0.8)}) drop-shadow(-${intensity}px 0 0 ${toRgbaString("#00ffff", 0.8)})`,
     duration: 0.1,
     ease: "power2.in",
   })
     .to(element, {
-      filter: `drop-shadow(${intensity * 1.5}px 0 0 rgba(255, 0, 0, 0.6)) drop-shadow(-${intensity * 1.5}px 0 0 rgba(0, 255, 255, 0.6))`,
+      filter: `drop-shadow(${intensity * 1.5}px 0 0 ${toRgbaString("#ff0000", 0.6)}) drop-shadow(-${intensity * 1.5}px 0 0 ${toRgbaString("#00ffff", 0.6)})`,
       duration: 0.08,
       ease: "none",
     })
     .to(element, {
-      filter: "drop-shadow(0px 0 0 rgba(255, 0, 0, 0)) drop-shadow(0px 0 0 rgba(0, 255, 255, 0))",
+      filter: `drop-shadow(0px 0 0 ${toRgbaString("#ff0000", 0)}) drop-shadow(0px 0 0 ${toRgbaString("#00ffff", 0)})`,
       duration: options.duration ?? 0.4,
       ease: "power3.out",
     });
@@ -1316,10 +1317,10 @@ export const energyPulse = (
   tl.fromTo(
     element,
     {
-      boxShadow: `0 0 0 0 rgba(${color}, 0.7)`,
+      boxShadow: `0 0 0 0 ${toRgbaString(`rgb(${color})`, 0.7)}`,
     },
     {
-      boxShadow: `0 0 0 40px rgba(${color}, 0), 0 0 0 80px rgba(${color}, 0)`,
+      boxShadow: `0 0 0 40px ${toRgbaString(`rgb(${color})`, 0)}, 0 0 0 80px ${toRgbaString(`rgb(${color})`, 0)}`,
       duration: 1.5,
       ease: "power2.out",
     }

@@ -8,6 +8,16 @@ import { logger } from "../../../../../core/utils/monitoring/logger";
 import { getAllMetrics } from "../../../../../core/monitoring";
 import { formatTime } from "../../../../../core/utils/dates";
 import { ExecutorContext, AsyncExecutor } from "../core/types";
+import { toRgbaString, UI_COLORS, ALPHA_VALUES } from "../../../../../core/utils/color";
+
+// Centralized color constants from core utilities
+const METRIC_COLORS = {
+  success: "#4ade80",  // green-400
+  warning: "#fbbf24",  // yellow-400
+  error: "#f87171",    // red-400
+  info: "#60a5fa",     // blue-400
+  neutral: "#ffffff",  // white
+} as const;
 
 export class AnalysisExecutor implements AsyncExecutor {
   private context: ExecutorContext;
@@ -344,7 +354,7 @@ export class AnalysisExecutor implements AsyncExecutor {
         justify: "between",
         style: {
           padding: "0.75rem",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          borderBottom: `1px solid ${toRgbaString(UI_COLORS.text.primary, ALPHA_VALUES.ghost)}`,
         },
       },
       children: [
@@ -356,7 +366,7 @@ export class AnalysisExecutor implements AsyncExecutor {
             variant: "body",
             style: {
               fontSize: "13px",
-              color: "rgba(255,255,255,0.7)",
+              color: UI_COLORS.text.secondary,
             },
           },
         },
@@ -436,34 +446,34 @@ export class AnalysisExecutor implements AsyncExecutor {
   }
 
   /**
-   * Get color for metric value
+   * Get color for metric value using centralized color system
    */
   private getMetricColor(key: string, value: any): string {
     if (typeof value !== "number") {
-      return "#fff";
+      return METRIC_COLORS.neutral;
     }
 
     // Error metrics (red if > 0)
     if (key.includes("error") || key.includes("denied") || key.includes("failed")) {
-      return value > 0 ? "#f87171" : "#4ade80";
+      return value > 0 ? METRIC_COLORS.error : METRIC_COLORS.success;
     }
 
     // Latency metrics (green < 100ms, yellow < 1s, red >= 1s)
     if (key.includes("latency") || key.includes("duration")) {
-      if (value < 100) return "#4ade80";
-      if (value < 1000) return "#fbbf24";
-      return "#f87171";
+      if (value < 100) return METRIC_COLORS.success;
+      if (value < 1000) return METRIC_COLORS.warning;
+      return METRIC_COLORS.error;
     }
 
     // Success rate (green > 95%, yellow > 90%, red otherwise)
     if (key.includes("rate") && !key.includes("error")) {
       const percent = value * 100;
-      if (percent > 95) return "#4ade80";
-      if (percent > 90) return "#fbbf24";
-      return "#f87171";
+      if (percent > 95) return METRIC_COLORS.success;
+      if (percent > 90) return METRIC_COLORS.warning;
+      return METRIC_COLORS.error;
     }
 
-    return "#fff";
+    return METRIC_COLORS.neutral;
   }
 
   /**
