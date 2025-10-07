@@ -4,6 +4,7 @@
  */
 
 use parking_lot::RwLock;
+use crate::core::serde::is_zero_u64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -11,6 +12,7 @@ use std::time::{Duration, Instant};
 
 /// Metric types
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum MetricType {
     Counter,
     Gauge,
@@ -168,7 +170,9 @@ impl Default for MetricsCollector {
 
 /// Histogram statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct HistogramStats {
+    #[serde(skip_serializing_if = "is_zero_u64")]
     pub count: u64,
     pub sum: f64,
     pub avg: f64,
@@ -179,9 +183,13 @@ pub struct HistogramStats {
 
 /// Snapshot of all metrics at a point in time
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct MetricsSnapshot {
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub counters: HashMap<String, f64>,
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub gauges: HashMap<String, f64>,
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub histograms: HashMap<String, HistogramStats>,
     pub uptime_secs: u64,
 }

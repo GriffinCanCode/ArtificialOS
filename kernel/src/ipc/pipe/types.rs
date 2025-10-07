@@ -4,6 +4,7 @@
  */
 
 use super::super::types::{IpcError, PipeId};
+use crate::core::serde::{is_false, is_zero_usize};
 use crate::core::types::{Pid, Size};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -73,11 +74,14 @@ impl From<PipeError> for IpcError {
 
 /// Pipe statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct PipeStats {
     pub id: PipeId,
     pub reader_pid: Pid,
     pub writer_pid: Pid,
     pub capacity: Size,
+    #[serde(skip_serializing_if = "is_zero_usize")]
     pub buffered: Size,
+    #[serde(skip_serializing_if = "is_false")]
     pub closed: bool,
 }

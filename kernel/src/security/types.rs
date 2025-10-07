@@ -3,6 +3,7 @@
  * Common types for security and sandboxing
  */
 
+use crate::core::serde::{is_empty_vec, is_none, is_zero_u64, is_zero_usize};
 use crate::core::types::{Pid, ResourceLimits};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -20,6 +21,7 @@ pub type LimitsResult<T> = Result<T, LimitsError>;
 
 /// Unified security error type
 #[derive(Error, Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "error", content = "details")]
 pub enum SecurityError {
     #[error("Permission denied: {0}")]
     PermissionDenied(String),
@@ -48,6 +50,7 @@ pub enum SecurityError {
 
 /// Sandbox-specific errors
 #[derive(Error, Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "error", content = "details")]
 pub enum SandboxError {
     #[error("Permission denied: {0}")]
     PermissionDenied(String),
@@ -67,6 +70,7 @@ pub enum SandboxError {
 
 /// Resource limits errors
 #[derive(Error, Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "error", content = "details")]
 pub enum LimitsError {
     #[error("IO error: {0}")]
     IoError(String),
@@ -90,6 +94,7 @@ impl From<std::io::Error> for LimitsError {
 
 /// Network access rules
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "rule")]
 pub enum NetworkRule {
     /// Allow all network access
     AllowAll,
@@ -103,6 +108,7 @@ pub enum NetworkRule {
 
 /// Capabilities that can be granted to sandboxed processes
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "capability", content = "scope")]
 pub enum Capability {
     // File system - granular per-path
     ReadFile(Option<PathBuf>),    // None = all files
@@ -172,13 +178,19 @@ impl std::fmt::Display for Capability {
 
 /// Sandbox configuration for a process
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct SandboxConfig {
     pub pid: Pid,
+    #[serde(skip_serializing_if = "HashSet::is_empty")]
     pub capabilities: HashSet<Capability>,
     pub resource_limits: ResourceLimits,
+    #[serde(skip_serializing_if = "is_empty_vec")]
     pub allowed_paths: Vec<PathBuf>,
+    #[serde(skip_serializing_if = "is_empty_vec")]
     pub blocked_paths: Vec<PathBuf>,
+    #[serde(skip_serializing_if = "is_empty_vec")]
     pub network_rules: Vec<NetworkRule>,
+    #[serde(skip_serializing_if = "is_empty_vec")]
     pub environment_vars: Vec<(String, String)>,
 }
 
@@ -257,10 +269,15 @@ impl SandboxConfig {
 
 /// Resource limits to enforce at OS level
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct Limits {
+    #[serde(skip_serializing_if = "is_none")]
     pub memory_bytes: Option<u64>,
+    #[serde(skip_serializing_if = "is_none")]
     pub cpu_shares: Option<u32>, // Linux: 1-10000, higher = more CPU
+    #[serde(skip_serializing_if = "is_none")]
     pub max_pids: Option<u32>,
+    #[serde(skip_serializing_if = "is_none")]
     pub max_open_files: Option<u32>,
 }
 
@@ -308,15 +325,21 @@ impl Default for Limits {
 
 /// Sandbox statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct SandboxStats {
+    #[serde(skip_serializing_if = "is_zero_usize")]
     pub total_sandboxes: usize,
+    #[serde(skip_serializing_if = "is_zero_usize")]
     pub active_processes: usize,
+    #[serde(skip_serializing_if = "is_zero_u64")]
     pub permission_denials: u64,
+    #[serde(skip_serializing_if = "is_zero_u64")]
     pub capability_checks: u64,
 }
 
 /// Security audit event
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "event")]
 pub enum SecurityEvent {
     PermissionDenied {
         pid: Pid,

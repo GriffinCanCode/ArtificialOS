@@ -3,6 +3,7 @@
  * Shared types for filesystem operations
  */
 
+use crate::core::serde::{is_false, system_time_micros};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::time::SystemTime;
@@ -13,6 +14,7 @@ pub type VfsResult<T> = Result<T, VfsError>;
 
 /// VFS errors
 #[derive(Error, Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "error", content = "details")]
 pub enum VfsError {
     #[error("Not found: {0}")]
     NotFound(String),
@@ -56,6 +58,7 @@ pub enum VfsError {
 
 /// File type enumeration
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum FileType {
     File,
     Directory,
@@ -107,12 +110,16 @@ impl Default for Permissions {
 
 /// File metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct Metadata {
     pub file_type: FileType,
     pub size: u64,
     pub permissions: Permissions,
+    #[serde(with = "system_time_micros")]
     pub modified: SystemTime,
+    #[serde(with = "system_time_micros")]
     pub accessed: SystemTime,
+    #[serde(with = "system_time_micros")]
     pub created: SystemTime,
 }
 
@@ -144,7 +151,8 @@ impl Entry {
 }
 
 /// File open flags
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", default)]
 pub struct OpenFlags {
     pub read: bool,
     pub write: bool,

@@ -3,6 +3,7 @@
  * Common types for inter-process communication
  */
 
+use crate::core::serde::{is_zero_u64, is_zero_usize};
 use crate::core::types::{Pid, Timestamp};
 use serde::{Deserialize, Serialize};
 
@@ -11,6 +12,7 @@ pub type IpcResult<T> = Result<T, IpcError>;
 
 /// Unified IPC error type
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "error", content = "details")]
 pub enum IpcError {
     /// Resource not found
     NotFound(String),
@@ -63,6 +65,7 @@ pub type MessageTimestamp = Timestamp;
 
 /// Queue type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum QueueType {
     /// First-in-first-out queue
     Fifo,
@@ -101,16 +104,23 @@ impl Message {
 
 /// IPC statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct IpcStats {
+    #[serde(skip_serializing_if = "is_zero_u64")]
     pub messages_sent: u64,
+    #[serde(skip_serializing_if = "is_zero_u64")]
     pub messages_received: u64,
+    #[serde(skip_serializing_if = "is_zero_u64")]
     pub pipes_created: u64,
+    #[serde(skip_serializing_if = "is_zero_u64")]
     pub shm_segments_created: u64,
+    #[serde(skip_serializing_if = "is_zero_usize")]
     pub global_memory_usage: usize,
 }
 
 /// Permission for shared resources
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Permission {
     ReadOnly,
     WriteOnly,

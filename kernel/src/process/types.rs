@@ -3,6 +3,7 @@
  * Common types for process management
  */
 
+use crate::core::serde::{is_false, is_none, is_zero_u64, is_zero_usize};
 use crate::core::types::{Pid, Priority};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -41,6 +42,7 @@ pub enum ProcessError {
 
 /// Process state
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ProcessState {
     /// Process is ready to run
     Ready,
@@ -54,6 +56,7 @@ pub enum ProcessState {
 
 /// Scheduling policy
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum SchedulingPolicy {
     /// Round-robin with fixed time quantum
     RoundRobin,
@@ -65,12 +68,13 @@ pub enum SchedulingPolicy {
 
 /// Process metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct ProcessInfo {
     pub pid: Pid,
     pub name: String,
     pub state: ProcessState,
     pub priority: Priority,
-    #[serde(skip)]
+    #[serde(skip_serializing_if = "is_none")]
     pub os_pid: Option<u32>,
 }
 
@@ -93,11 +97,16 @@ impl ProcessInfo {
 
 /// Configuration for process execution
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct ExecutionConfig {
     pub command: String,
+    #[serde(skip_serializing_if = "crate::core::serde::is_empty_vec")]
     pub args: Vec<String>,
+    #[serde(skip_serializing_if = "crate::core::serde::is_empty_vec")]
     pub env_vars: Vec<(String, String)>,
+    #[serde(skip_serializing_if = "is_none")]
     pub working_dir: Option<String>,
+    #[serde(skip_serializing_if = "is_false")]
     pub capture_output: bool,
 }
 
@@ -135,10 +144,15 @@ impl ExecutionConfig {
 
 /// Scheduler statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct SchedulerStats {
+    #[serde(skip_serializing_if = "is_zero_u64")]
     pub total_scheduled: u64,
+    #[serde(skip_serializing_if = "is_zero_u64")]
     pub context_switches: u64,
+    #[serde(skip_serializing_if = "is_zero_u64")]
     pub preemptions: u64,
+    #[serde(skip_serializing_if = "is_zero_usize")]
     pub active_processes: usize,
     pub policy: SchedulingPolicy,
     pub quantum_micros: u64,
@@ -146,11 +160,15 @@ pub struct SchedulerStats {
 
 /// Per-process CPU usage statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct ProcessStats {
     pub pid: Pid,
     pub priority: Priority,
+    #[serde(skip_serializing_if = "is_zero_u64")]
     pub cpu_time_micros: u64,
+    #[serde(skip_serializing_if = "is_zero_u64")]
     pub vruntime: u64,
+    #[serde(skip_serializing_if = "is_false")]
     pub is_current: bool,
 }
 
@@ -166,11 +184,16 @@ impl ProcessStats {
 
 /// Process execution statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct ExecutionStats {
     pub pid: Pid,
+    #[serde(skip_serializing_if = "is_none")]
     pub os_pid: Option<u32>,
+    #[serde(skip_serializing_if = "is_zero_u64")]
     pub cpu_time_micros: u64,
+    #[serde(skip_serializing_if = "is_zero_u64")]
     pub wall_time_micros: u64,
+    #[serde(skip_serializing_if = "is_zero_u64")]
     pub context_switches: u64,
 }
 
@@ -196,11 +219,16 @@ impl ExecutionStats {
 
 /// Process resource usage
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct ProcessResources {
     pub pid: Pid,
+    #[serde(skip_serializing_if = "is_zero_usize")]
     pub memory_bytes: usize,
+    #[serde(skip_serializing_if = "is_zero_u64")]
     pub cpu_time_micros: u64,
+    #[serde(skip_serializing_if = "crate::core::serde::is_default")]
     pub open_files: u32,
+    #[serde(skip_serializing_if = "crate::core::serde::is_default")]
     pub child_processes: u32,
 }
 

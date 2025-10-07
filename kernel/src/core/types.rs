@@ -3,6 +3,7 @@
  * Common types used across the kernel
  */
 
+use crate::core::serde::system_time_micros;
 use serde::{Deserialize, Serialize};
 use std::time::SystemTime;
 
@@ -35,12 +36,14 @@ pub type KernelResult<T> = Result<T, super::errors::KernelError>;
 
 /// System information
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct SystemInfo {
     pub os_name: String,
     pub os_version: String,
     pub architecture: String,
     pub hostname: String,
     pub uptime_secs: u64,
+    #[serde(with = "system_time_micros")]
     pub boot_time: SystemTime,
 }
 

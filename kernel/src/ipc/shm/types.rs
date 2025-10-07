@@ -4,6 +4,7 @@
  */
 
 use super::super::types::{IpcError, ShmId};
+use crate::core::serde::is_empty_vec;
 use crate::core::types::{Pid, Size};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -81,11 +82,14 @@ impl From<ShmError> for IpcError {
 
 /// Shared memory segment statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct ShmStats {
     pub id: ShmId,
     pub size: Size,
     pub owner_pid: Pid,
+    #[serde(skip_serializing_if = "is_empty_vec")]
     pub attached_pids: Vec<Pid>,
+    #[serde(skip_serializing_if = "is_empty_vec")]
     pub read_only_pids: Vec<Pid>,
 }
 

@@ -3,6 +3,7 @@
  * Common types for kernel API layer
  */
 
+use crate::core::serde::{is_zero_u64, is_zero_usize};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 
@@ -11,6 +12,7 @@ pub type ApiResult<T> = Result<T, ApiError>;
 
 /// API errors
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "error", content = "details")]
 pub enum ApiError {
     /// Invalid request
     InvalidRequest(String),
@@ -127,10 +129,15 @@ pub enum ResponseStatus {
 
 /// API statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct ApiStats {
+    #[serde(skip_serializing_if = "is_zero_u64")]
     pub total_requests: u64,
+    #[serde(skip_serializing_if = "is_zero_u64")]
     pub successful_requests: u64,
+    #[serde(skip_serializing_if = "is_zero_u64")]
     pub failed_requests: u64,
     pub average_latency_ms: f64,
+    #[serde(skip_serializing_if = "is_zero_usize")]
     pub active_connections: usize,
 }

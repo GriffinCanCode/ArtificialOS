@@ -3,6 +3,7 @@
  * Common types for memory management
  */
 
+use crate::core::serde::is_zero_usize;
 use crate::core::types::{Address, Pid, Size};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -43,10 +44,12 @@ pub enum MemoryError {
 
 /// Memory block metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct MemoryBlock {
     pub address: Address,
     pub size: Size,
     pub allocated: bool,
+    #[serde(skip_serializing_if = "crate::core::serde::is_none")]
     pub owner_pid: Option<Pid>,
 }
 
@@ -71,12 +74,16 @@ impl MemoryBlock {
 
 /// Memory statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct MemoryStats {
     pub total_memory: usize,
+    #[serde(skip_serializing_if = "is_zero_usize")]
     pub used_memory: usize,
     pub available_memory: usize,
     pub usage_percentage: f64,
+    #[serde(skip_serializing_if = "is_zero_usize")]
     pub allocated_blocks: usize,
+    #[serde(skip_serializing_if = "is_zero_usize")]
     pub fragmented_blocks: usize,
 }
 
@@ -96,6 +103,7 @@ impl MemoryStats {
 
 /// Memory pressure levels
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum MemoryPressure {
     Low,
     Medium,
@@ -139,9 +147,13 @@ impl AllocationRequest {
 
 /// Process memory statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct ProcessMemoryStats {
     pub pid: Pid,
+    #[serde(skip_serializing_if = "is_zero_usize")]
     pub allocated_bytes: Size,
+    #[serde(skip_serializing_if = "is_zero_usize")]
     pub peak_bytes: Size,
+    #[serde(skip_serializing_if = "is_zero_usize")]
     pub allocation_count: usize,
 }

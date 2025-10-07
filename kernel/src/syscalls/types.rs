@@ -3,6 +3,7 @@
  * Defines syscall enum and result types
  */
 
+use crate::core::serde::{is_false, is_none};
 use crate::core::types::{Fd, Pid, Priority, Size, SockFd};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -10,6 +11,7 @@ use thiserror::Error;
 
 /// Syscall operation errors
 #[derive(Error, Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "error", content = "message")]
 pub enum SyscallError {
     #[error("Permission denied: {0}")]
     PermissionDenied(String),
@@ -41,10 +43,18 @@ pub enum SyscallError {
 
 /// System call result (keeping for backward compatibility)
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "status")]
 pub enum SyscallResult {
-    Success { data: Option<Vec<u8>> },
-    Error { message: String },
-    PermissionDenied { reason: String },
+    Success {
+        #[serde(skip_serializing_if = "is_none")]
+        data: Option<Vec<u8>>,
+    },
+    Error {
+        message: String,
+    },
+    PermissionDenied {
+        reason: String,
+    },
 }
 
 impl SyscallResult {
@@ -106,6 +116,7 @@ impl From<SyscallError> for SyscallResult {
 
 /// System call types
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "syscall")]
 pub enum Syscall {
     // File system operations
     ReadFile {

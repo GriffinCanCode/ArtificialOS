@@ -3,10 +3,10 @@
  * Domain types for scheduler operations
  */
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Scheduler policy configuration
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SchedulerPolicy {
     /// Round-robin with fixed time quantum
     RoundRobin,
@@ -40,8 +40,27 @@ impl SchedulerPolicy {
     }
 }
 
+impl Serialize for SchedulerPolicy {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for SchedulerPolicy {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Self::from_str(&s).map_err(serde::de::Error::custom)
+    }
+}
+
 /// Time quantum configuration
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize)]
 pub struct TimeQuantum {
     pub micros: u64,
 }
@@ -66,6 +85,21 @@ impl TimeQuantum {
     /// Get milliseconds
     pub fn as_millis(&self) -> f64 {
         self.micros as f64 / 1000.0
+    }
+}
+
+impl<'de> Deserialize<'de> for TimeQuantum {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct Inner {
+            micros: u64,
+        }
+
+        let inner = Inner::deserialize(deserializer)?;
+        Self::new(inner.micros).map_err(serde::de::Error::custom)
     }
 }
 

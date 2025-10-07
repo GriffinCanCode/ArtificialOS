@@ -3,7 +3,8 @@
  * Common types and constants for message queues
  */
 
-use super::super::types::{IpcError, IpcResult, QueueId, QueueType};
+use super::super::types::{QueueId, QueueType};
+use crate::core::serde::{is_false, is_zero_usize, system_time_micros};
 use crate::core::types::{Pid, Size};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
@@ -17,6 +18,7 @@ pub const GLOBAL_QUEUE_MEMORY_LIMIT: usize = 100 * 1024 * 1024; // 100MB
 
 /// Queue message with metadata (data stored in MemoryManager)
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct QueueMessage {
     pub id: u64,
     pub from: Pid,
@@ -24,8 +26,11 @@ pub struct QueueMessage {
     #[serde(skip)]
     pub data_address: usize,
     /// Length of data stored at data_address
+    #[serde(skip_serializing_if = "is_zero_usize")]
     pub data_length: usize,
+    #[serde(skip_serializing_if = "crate::core::serde::is_default")]
     pub priority: u8,
+    #[serde(with = "system_time_micros")]
     pub timestamp: SystemTime,
 }
 
@@ -93,12 +98,16 @@ impl Ord for PriorityMessage {
 
 /// Queue statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct QueueStats {
     pub id: QueueId,
     pub queue_type: QueueType,
     pub owner_pid: Pid,
     pub capacity: Size,
+    #[serde(skip_serializing_if = "is_zero_usize")]
     pub length: Size,
+    #[serde(skip_serializing_if = "is_zero_usize")]
     pub subscriber_count: Size,
+    #[serde(skip_serializing_if = "is_false")]
     pub closed: bool,
 }
