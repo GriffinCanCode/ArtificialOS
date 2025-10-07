@@ -9,6 +9,11 @@ use crate::api::server::grpc_server::kernel_proto::*;
 
 /// Convert protobuf SyscallRequest to internal Syscall enum
 /// Returns Err if syscall type is unsupported or missing
+///
+/// # Performance
+/// Hot path - called for every incoming syscall request
+#[inline]
+#[must_use]
 pub fn proto_to_syscall_full(req: &SyscallRequest) -> Result<Syscall, String> {
     match &req.syscall {
         Some(syscall_request::Syscall::ReadFile(call)) => Ok(Syscall::ReadFile {
@@ -321,6 +326,11 @@ pub fn proto_to_syscall_full(req: &SyscallRequest) -> Result<Syscall, String> {
 }
 
 /// Simplified conversion for async/batch operations (supports subset of syscalls)
+///
+/// # Performance
+/// Hot path - called for every async/batch syscall request
+#[inline]
+#[must_use]
 pub fn proto_to_syscall_simple(req: &SyscallRequest) -> Result<Syscall, String> {
     match &req.syscall {
         Some(syscall_request::Syscall::ReadFile(call)) => Ok(Syscall::ReadFile {

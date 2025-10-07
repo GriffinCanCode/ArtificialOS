@@ -264,6 +264,10 @@ impl From<KernelError> for SerializableError {
 }
 
 /// Result type for kernel operations
+///
+/// # Must Use
+/// Kernel operations can fail and must be handled to prevent undefined behavior
+#[must_use = "kernel operations can fail and must be handled"]
 pub type Result<T> = std::result::Result<T, KernelError>;
 
 #[cfg(test)]

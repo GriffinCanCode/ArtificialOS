@@ -273,7 +273,12 @@ impl ProcessManager {
         pid
     }
 
-    /// Convert priority to resource limits
+    /// Get process by PID
+    ///
+    /// # Performance
+    /// Hot path - frequently called for process lookups
+    #[inline]
+    #[must_use]
     pub fn get_process(&self, pid: Pid) -> Option<ProcessInfo> {
         self.processes.get(&pid).map(|r| r.value().clone())
     }
@@ -299,16 +304,31 @@ impl ProcessManager {
     }
 
     /// Get memory manager reference
+    ///
+    /// # Performance
+    /// Hot path - frequently accessed for memory operations
+    #[inline(always)]
+    #[must_use]
     pub fn memory_manager(&self) -> Option<&MemoryManager> {
         self.memory_manager.as_ref()
     }
 
     /// Get executor reference
+    ///
+    /// # Performance
+    /// Hot path - frequently accessed for process execution
+    #[inline(always)]
+    #[must_use]
     pub fn executor(&self) -> Option<&ProcessExecutor> {
         self.executor.as_ref()
     }
 
     /// Check if process has OS execution
+    ///
+    /// # Performance
+    /// Hot path - frequently checked during process operations
+    #[inline]
+    #[must_use]
     pub fn has_os_process(&self, pid: Pid) -> bool {
         self.processes
             .get(&pid)
@@ -317,6 +337,11 @@ impl ProcessManager {
     }
 
     /// Get child process count for a PID
+    ///
+    /// # Performance
+    /// Hot path - frequently checked for resource limits
+    #[inline]
+    #[must_use]
     pub fn get_child_count(&self, pid: Pid) -> u32 {
         self.child_counts.get(&pid).map(|r| *r.value()).unwrap_or(0)
     }

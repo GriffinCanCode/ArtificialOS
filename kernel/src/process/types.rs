@@ -105,6 +105,33 @@ impl ProcessInfo {
         self.os_pid = Some(os_pid);
         self
     }
+
+    /// Check if process is running
+    ///
+    /// # Performance
+    /// Hot path - frequently checked by scheduler
+    #[inline(always)]
+    #[must_use]
+    pub const fn is_running(&self) -> bool {
+        matches!(self.state, ProcessState::Running)
+    }
+
+    /// Check if process is ready
+    ///
+    /// # Performance
+    /// Hot path - frequently checked by scheduler
+    #[inline(always)]
+    #[must_use]
+    pub const fn is_ready(&self) -> bool {
+        matches!(self.state, ProcessState::Ready)
+    }
+
+    /// Check if process is terminated
+    #[inline(always)]
+    #[must_use]
+    pub const fn is_terminated(&self) -> bool {
+        matches!(self.state, ProcessState::Terminated)
+    }
 }
 
 /// Configuration for process execution
@@ -213,6 +240,19 @@ pub struct ProcessStats {
 }
 
 impl ProcessStats {
+    /// Create new process stats
+    #[inline]
+    #[must_use]
+    pub const fn new(pid: Pid, priority: Priority) -> Self {
+        Self {
+            pid,
+            priority,
+            cpu_time_micros: 0,
+            vruntime: 0,
+            is_current: false,
+        }
+    }
+
     /// Get CPU time as Duration
     ///
     /// # Performance
@@ -299,5 +339,17 @@ impl ProcessResources {
             open_files: 0,
             child_processes: 0,
         }
+    }
+
+    /// Check if process is using significant resources
+    ///
+    /// # Performance
+    /// Hot path - frequently checked for resource management decisions
+    #[inline(always)]
+    #[must_use]
+    pub const fn is_high_usage(&self) -> bool {
+        self.memory_bytes > 100 * 1024 * 1024 || // > 100MB
+        self.open_files > 100 ||
+        self.child_processes > 10
     }
 }

@@ -30,19 +30,31 @@ pub enum SyscallResult {
 }
 
 impl SyscallResult {
-    #[inline]
+    /// Create a successful result with no data
+    ///
+    /// # Performance
+    /// Hot path - frequently called for simple syscall success
+    #[inline(always)]
     #[must_use]
     pub fn success() -> Self {
         Self::Success { data: None }
     }
 
-    #[inline]
+    /// Create a successful result with data payload
+    ///
+    /// # Performance
+    /// Hot path - frequently called for syscalls returning data
+    #[inline(always)]
     #[must_use]
     pub fn success_with_data(data: Vec<u8>) -> Self {
         Self::Success { data: Some(data) }
     }
 
-    #[inline]
+    /// Create an error result
+    ///
+    /// # Performance
+    /// Hot path - frequently called for syscall errors
+    #[inline(always)]
     #[must_use]
     pub fn error(message: impl Into<String>) -> Self {
         Self::Error {
@@ -50,7 +62,11 @@ impl SyscallResult {
         }
     }
 
-    #[inline]
+    /// Create a permission denied result
+    ///
+    /// # Performance
+    /// Hot path - frequently called for permission checks
+    #[inline(always)]
     #[must_use]
     pub fn permission_denied(reason: impl Into<String>) -> Self {
         Self::PermissionDenied {
@@ -59,28 +75,40 @@ impl SyscallResult {
     }
 
     /// Check if result is successful
-    #[inline]
+    ///
+    /// # Performance
+    /// Hot path - frequently called in result handling
+    #[inline(always)]
     #[must_use]
     pub const fn is_success(&self) -> bool {
         matches!(self, Self::Success { .. })
     }
 
     /// Check if result is error
-    #[inline]
+    ///
+    /// # Performance
+    /// Hot path - frequently called in error handling
+    #[inline(always)]
     #[must_use]
     pub const fn is_error(&self) -> bool {
         matches!(self, Self::Error { .. })
     }
 
     /// Check if result is permission denied
-    #[inline]
+    ///
+    /// # Performance
+    /// Hot path - frequently called in permission checks
+    #[inline(always)]
     #[must_use]
     pub const fn is_permission_denied(&self) -> bool {
         matches!(self, Self::PermissionDenied { .. })
     }
 
     /// Extract data if successful
-    #[inline]
+    ///
+    /// # Performance
+    /// Hot path - frequently called to extract syscall results
+    #[inline(always)]
     #[must_use]
     pub const fn data(&self) -> Option<&Vec<u8>> {
         match self {

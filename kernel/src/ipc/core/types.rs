@@ -5,7 +5,9 @@
 
 use crate::core::serde::{is_zero_u64, is_zero_usize};
 use crate::core::types::{Pid, Timestamp};
+use miette::Diagnostic;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 /// IPC operation result
 ///
@@ -14,43 +16,58 @@ use serde::{Deserialize, Serialize};
 #[must_use = "IPC operations can fail and must be handled"]
 pub type IpcResult<T> = Result<T, IpcError>;
 
-/// Unified IPC error type
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Unified IPC error type with miette diagnostics
+#[derive(Error, Debug, Clone, Serialize, Deserialize, Diagnostic)]
 #[serde(rename_all = "snake_case", tag = "error", content = "details")]
 pub enum IpcError {
     /// Resource not found
+    #[error("IPC resource not found: {0}")]
+    #[diagnostic(
+        code(ipc::not_found),
+        help("The requested IPC resource (pipe, queue, or shared memory) does not exist. Verify the resource ID.")
+    )]
     NotFound(String),
 
     /// Permission denied
+    #[error("IPC permission denied: {0}")]
+    #[diagnostic(
+        code(ipc::permission_denied),
+        help("Insufficient permissions to access this IPC resource. Check process capabilities.")
+    )]
     PermissionDenied(String),
 
     /// Resource limit exceeded
+    #[error("IPC resource limit exceeded: {0}")]
+    #[diagnostic(
+        code(ipc::limit_exceeded),
+        help("IPC resource limit reached. Close unused resources or increase limits.")
+    )]
     LimitExceeded(String),
 
     /// Operation would block
+    #[error("IPC operation would block: {0}")]
+    #[diagnostic(
+        code(ipc::would_block),
+        help("Operation cannot complete without blocking. Use non-blocking mode or wait for resource availability.")
+    )]
     WouldBlock(String),
 
     /// Invalid operation or argument
+    #[error("Invalid IPC operation: {0}")]
+    #[diagnostic(
+        code(ipc::invalid_operation),
+        help("The requested operation is invalid for this IPC resource or in its current state.")
+    )]
     InvalidOperation(String),
 
     /// Resource closed
+    #[error("IPC resource closed: {0}")]
+    #[diagnostic(
+        code(ipc::closed),
+        help("The IPC resource has been closed and can no longer be used.")
+    )]
     Closed(String),
 }
-
-impl std::fmt::Display for IpcError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            IpcError::NotFound(msg) => write!(f, "Not found: {}", msg),
-            IpcError::PermissionDenied(msg) => write!(f, "Permission denied: {}", msg),
-            IpcError::LimitExceeded(msg) => write!(f, "Limit exceeded: {}", msg),
-            IpcError::WouldBlock(msg) => write!(f, "Would block: {}", msg),
-            IpcError::InvalidOperation(msg) => write!(f, "Invalid operation: {}", msg),
-            IpcError::Closed(msg) => write!(f, "Closed: {}", msg),
-        }
-    }
-}
-
-impl std::error::Error for IpcError {}
 
 /// IPC channel identifier
 pub type ChannelId = u32;
@@ -97,6 +114,8 @@ pub struct Message {
 }
 
 impl Message {
+    #[inline]
+    #[must_use]
     pub fn new(from: Pid, to: Pid, data: Vec<u8>) -> Self {
         Self {
             from,
