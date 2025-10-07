@@ -176,7 +176,7 @@ impl SyscallExecutor {
     }
 
     pub(super) fn get_working_directory(&self, pid: Pid) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::System("cwd".to_string()), Action::Inspect);
+        let request = PermissionRequest::new(pid, Resource::System { name: "cwd".to_string() }, Action::Inspect);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {

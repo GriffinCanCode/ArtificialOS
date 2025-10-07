@@ -16,7 +16,7 @@ use super::types::SyscallResult;
 impl SyscallExecutor {
     /// Schedule next process (internal implementation)
     pub(super) fn schedule_next(&self, pid: Pid) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::System("scheduler".to_string()), Action::Inspect);
+        let request = PermissionRequest::new(pid, Resource::System { name: "scheduler".to_string() }, Action::Inspect);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -67,7 +67,7 @@ impl SyscallExecutor {
 
     /// Get currently scheduled process (internal implementation)
     pub(super) fn get_current_scheduled(&self, pid: Pid) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::System("scheduler".to_string()), Action::Inspect);
+        let request = PermissionRequest::new(pid, Resource::System { name: "scheduler".to_string() }, Action::Inspect);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -92,7 +92,7 @@ impl SyscallExecutor {
 
     /// Set scheduling policy (internal implementation)
     pub(super) fn set_scheduling_policy(&self, pid: Pid, policy_str: &str) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::System("scheduler".to_string()), Action::Write);
+        let request = PermissionRequest::new(pid, Resource::System { name: "scheduler".to_string() }, Action::Write);
         let response = self.permission_manager.check_and_audit(&request);
 
         if !response.is_allowed() {
@@ -133,7 +133,7 @@ impl SyscallExecutor {
 
     /// Get current scheduling policy (internal implementation)
     pub(super) fn get_scheduling_policy(&self, pid: Pid) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::System("scheduler".to_string()), Action::Inspect);
+        let request = PermissionRequest::new(pid, Resource::System { name: "scheduler".to_string() }, Action::Inspect);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -170,7 +170,7 @@ impl SyscallExecutor {
 
     /// Set time quantum (internal implementation)
     pub(super) fn set_time_quantum(&self, pid: Pid, quantum_micros: u64) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::System("scheduler".to_string()), Action::Write);
+        let request = PermissionRequest::new(pid, Resource::System { name: "scheduler".to_string() }, Action::Write);
         let response = self.permission_manager.check_and_audit(&request);
 
         if !response.is_allowed() {
@@ -201,7 +201,7 @@ impl SyscallExecutor {
 
     /// Get current time quantum (internal implementation)
     pub(super) fn get_time_quantum(&self, pid: Pid) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::System("scheduler".to_string()), Action::Inspect);
+        let request = PermissionRequest::new(pid, Resource::System { name: "scheduler".to_string() }, Action::Inspect);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -228,7 +228,7 @@ impl SyscallExecutor {
 
     /// Get global scheduler statistics (internal implementation)
     pub(super) fn get_scheduler_stats(&self, pid: Pid) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::System("scheduler".to_string()), Action::Inspect);
+        let request = PermissionRequest::new(pid, Resource::System { name: "scheduler".to_string() }, Action::Inspect);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -256,7 +256,7 @@ impl SyscallExecutor {
 
     /// Get process scheduler statistics (internal implementation)
     pub(super) fn get_process_scheduler_stats(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::Process(target_pid), Action::Inspect);
+        let request = PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Inspect);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -291,7 +291,7 @@ impl SyscallExecutor {
 
     /// Get all process scheduler statistics (internal implementation)
     pub(super) fn get_all_process_scheduler_stats(&self, pid: Pid) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::System("scheduler".to_string()), Action::Inspect);
+        let request = PermissionRequest::new(pid, Resource::System { name: "scheduler".to_string() }, Action::Inspect);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -322,7 +322,7 @@ impl SyscallExecutor {
 
     /// Boost process priority (internal implementation)
     pub(super) fn boost_priority(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::Process(target_pid), Action::Write);
+        let request = PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Write);
         let response = self.permission_manager.check_and_audit(&request);
 
         if !response.is_allowed() {
@@ -355,7 +355,7 @@ impl SyscallExecutor {
 
     /// Lower process priority (internal implementation)
     pub(super) fn lower_priority(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::Process(target_pid), Action::Write);
+        let request = PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Write);
         let response = self.permission_manager.check_and_audit(&request);
 
         if !response.is_allowed() {

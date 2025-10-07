@@ -25,7 +25,7 @@ impl SyscallExecutor {
         capacity: Option<usize>,
     ) -> SyscallResult {
         // Check permission using centralized manager
-        let request = PermissionRequest::new(pid, Resource::IpcChannel(0), Action::Create);
+        let request = PermissionRequest::new(pid, Resource::IpcChannel { channel_id: 0 }, Action::Create);
         let response = self.permission_manager.check_and_audit(&request);
 
         if !response.is_allowed() {
@@ -56,7 +56,7 @@ impl SyscallExecutor {
     }
 
     pub(super) fn write_pipe(&self, pid: Pid, pipe_id: u32, data: &[u8]) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::IpcChannel(pipe_id), Action::Send);
+        let request = PermissionRequest::new(pid, Resource::IpcChannel { channel_id: pipe_id }, Action::Send);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -87,7 +87,7 @@ impl SyscallExecutor {
     }
 
     pub(super) fn read_pipe(&self, pid: Pid, pipe_id: u32, size: usize) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::IpcChannel(pipe_id), Action::Receive);
+        let request = PermissionRequest::new(pid, Resource::IpcChannel { channel_id: pipe_id }, Action::Receive);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -178,7 +178,7 @@ impl SyscallExecutor {
 
     // Shared memory operations
     pub(super) fn create_shm(&self, pid: Pid, size: usize) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::IpcChannel(0), Action::Create);
+        let request = PermissionRequest::new(pid, Resource::IpcChannel { channel_id: 0 }, Action::Create);
         let response = self.permission_manager.check_and_audit(&request);
 
         if !response.is_allowed() {
@@ -212,7 +212,7 @@ impl SyscallExecutor {
     }
 
     pub(super) fn attach_shm(&self, pid: Pid, segment_id: u32, read_only: bool) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::IpcChannel(segment_id), Action::Read);
+        let request = PermissionRequest::new(pid, Resource::IpcChannel { channel_id: segment_id }, Action::Read);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -264,7 +264,7 @@ impl SyscallExecutor {
         offset: usize,
         data: &[u8],
     ) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::IpcChannel(segment_id), Action::Write);
+        let request = PermissionRequest::new(pid, Resource::IpcChannel { channel_id: segment_id }, Action::Write);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -301,7 +301,7 @@ impl SyscallExecutor {
         offset: usize,
         size: usize,
     ) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::IpcChannel(segment_id), Action::Read);
+        let request = PermissionRequest::new(pid, Resource::IpcChannel { channel_id: segment_id }, Action::Read);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -380,7 +380,7 @@ impl SyscallExecutor {
         queue_type: &str,
         capacity: Option<usize>,
     ) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::IpcChannel(0), Action::Create);
+        let request = PermissionRequest::new(pid, Resource::IpcChannel { channel_id: 0 }, Action::Create);
         let response = self.permission_manager.check_and_audit(&request);
 
         if !response.is_allowed() {
@@ -426,7 +426,7 @@ impl SyscallExecutor {
         data: &[u8],
         priority: Option<u8>,
     ) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::IpcChannel(queue_id), Action::Send);
+        let request = PermissionRequest::new(pid, Resource::IpcChannel { channel_id: queue_id }, Action::Send);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -456,7 +456,7 @@ impl SyscallExecutor {
     }
 
     pub(super) fn receive_queue(&self, pid: Pid, queue_id: u32) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::IpcChannel(queue_id), Action::Receive);
+        let request = PermissionRequest::new(pid, Resource::IpcChannel { channel_id: queue_id }, Action::Receive);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {

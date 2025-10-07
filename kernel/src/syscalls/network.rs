@@ -63,7 +63,7 @@ impl SyscallExecutor {
     ) -> SyscallResult {
         // Check network capability via permission manager
         use crate::permissions::{Resource, Action};
-        let request = PermissionRequest::new(pid, Resource::System("network".to_string()), Action::Create);
+        let request = PermissionRequest::new(pid, Resource::System { name: "network".to_string() }, Action::Create);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -133,7 +133,7 @@ impl SyscallExecutor {
     pub(super) fn listen(&self, pid: Pid, sockfd: u32, backlog: u32) -> SyscallResult {
         // Listen requires network access (socket already bound)
         use crate::permissions::{Resource, Action};
-        let request = PermissionRequest::new(pid, Resource::System("network".to_string()), Action::Bind);
+        let request = PermissionRequest::new(pid, Resource::System { name: "network".to_string() }, Action::Bind);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -155,7 +155,7 @@ impl SyscallExecutor {
     pub(super) fn accept(&self, pid: Pid, sockfd: u32) -> SyscallResult {
         // Accept requires network access
         use crate::permissions::{Resource, Action};
-        let request = PermissionRequest::new(pid, Resource::System("network".to_string()), Action::Receive);
+        let request = PermissionRequest::new(pid, Resource::System { name: "network".to_string() }, Action::Receive);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {

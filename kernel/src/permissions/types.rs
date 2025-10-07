@@ -6,6 +6,7 @@
 use crate::core::types::Pid;
 use crate::security::types::Capability;
 use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, TimestampSeconds};
 use std::path::PathBuf;
 use std::time::SystemTime;
 use thiserror::Error;
@@ -29,20 +30,34 @@ pub enum PermissionError {
 
 /// Resource type being accessed
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case", tag = "type", content = "resource")]
+#[serde(rename_all = "snake_case", tag = "type")]
 pub enum Resource {
     /// File system path
-    File(PathBuf),
+    File {
+        path: PathBuf,
+    },
     /// Directory path
-    Directory(PathBuf),
+    Directory {
+        path: PathBuf,
+    },
     /// Network host/port
-    Network { host: String, port: Option<u16> },
+    Network {
+        host: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        port: Option<u16>,
+    },
     /// IPC channel
-    IpcChannel(u32),
+    IpcChannel {
+        channel_id: u32,
+    },
     /// Process
-    Process(Pid),
+    Process {
+        pid: Pid,
+    },
     /// System resource
-    System(String),
+    System {
+        name: String,
+    },
 }
 
 /// Action being performed
@@ -64,7 +79,9 @@ pub enum Action {
 }
 
 /// Permission request
+#[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct PermissionRequest {
     /// Process making the request
     pub pid: Pid,
@@ -73,6 +90,7 @@ pub struct PermissionRequest {
     /// Action being performed
     pub action: Action,
     /// When the request was made
+    #[serde_as(as = "TimestampSeconds<i64>")]
     pub timestamp: SystemTime,
 }
 
@@ -89,27 +107,27 @@ impl PermissionRequest {
 
     /// File read request
     pub fn file_read(pid: Pid, path: PathBuf) -> Self {
-        Self::new(pid, Resource::File(path), Action::Read)
+        Self::new(pid, Resource::File { path }, Action::Read)
     }
 
     /// File write request
     pub fn file_write(pid: Pid, path: PathBuf) -> Self {
-        Self::new(pid, Resource::File(path), Action::Write)
+        Self::new(pid, Resource::File { path }, Action::Write)
     }
 
     /// File create request
     pub fn file_create(pid: Pid, path: PathBuf) -> Self {
-        Self::new(pid, Resource::File(path), Action::Create)
+        Self::new(pid, Resource::File { path }, Action::Create)
     }
 
     /// File delete request
     pub fn file_delete(pid: Pid, path: PathBuf) -> Self {
-        Self::new(pid, Resource::File(path), Action::Delete)
+        Self::new(pid, Resource::File { path }, Action::Delete)
     }
 
     /// Directory list request
     pub fn dir_list(pid: Pid, path: PathBuf) -> Self {
-        Self::new(pid, Resource::Directory(path), Action::List)
+        Self::new(pid, Resource::Directory { path }, Action::List)
     }
 
     /// Network connect request
@@ -119,37 +137,39 @@ impl PermissionRequest {
 
     /// Process kill request
     pub fn proc_kill(pid: Pid, target: Pid) -> Self {
-        Self::new(pid, Resource::Process(target), Action::Kill)
+        Self::new(pid, Resource::Process { pid: target }, Action::Kill)
     }
 
     /// Convert to capability for backward compatibility
     pub fn to_capability(&self) -> Option<Capability> {
         match (&self.resource, self.action) {
-            (Resource::File(path), Action::Read) => {
+            (Resource::File { path }, Action::Read) => {
                 Some(Capability::ReadFile(Some(path.clone())))
             }
-            (Resource::File(path), Action::Write) => {
+            (Resource::File { path }, Action::Write) => {
                 Some(Capability::WriteFile(Some(path.clone())))
             }
-            (Resource::File(path), Action::Create) => {
+            (Resource::File { path }, Action::Create) => {
                 Some(Capability::CreateFile(Some(path.clone())))
             }
-            (Resource::File(path), Action::Delete) => {
+            (Resource::File { path }, Action::Delete) => {
                 Some(Capability::DeleteFile(Some(path.clone())))
             }
-            (Resource::Directory(path), Action::List) => {
+            (Resource::Directory { path }, Action::List) => {
                 Some(Capability::ListDirectory(Some(path.clone())))
             }
-            (Resource::Process(_), Action::Kill) => Some(Capability::KillProcess),
-            (Resource::Process(_), Action::Create) => Some(Capability::SpawnProcess),
-            (Resource::System(_), Action::Inspect) => Some(Capability::SystemInfo),
+            (Resource::Process { .. }, Action::Kill) => Some(Capability::KillProcess),
+            (Resource::Process { .. }, Action::Create) => Some(Capability::SpawnProcess),
+            (Resource::System { .. }, Action::Inspect) => Some(Capability::SystemInfo),
             _ => None,
         }
     }
 }
 
 /// Permission response/decision
+#[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct PermissionResponse {
     /// Request that was evaluated
     pub request: PermissionRequest,
@@ -158,8 +178,10 @@ pub struct PermissionResponse {
     /// Reason for decision
     pub reason: String,
     /// Decision time
+    #[serde_as(as = "TimestampSeconds<i64>")]
     pub decided_at: SystemTime,
     /// Whether result was cached
+    #[serde(default)]
     pub cached: bool,
 }
 
@@ -218,11 +240,11 @@ impl Resource {
     /// Get resource type
     pub fn resource_type(&self) -> ResourceType {
         match self {
-            Resource::File(_) | Resource::Directory(_) => ResourceType::FileSystem,
+            Resource::File { .. } | Resource::Directory { .. } => ResourceType::FileSystem,
             Resource::Network { .. } => ResourceType::Network,
-            Resource::IpcChannel(_) => ResourceType::Ipc,
-            Resource::Process(_) => ResourceType::Process,
-            Resource::System(_) => ResourceType::System,
+            Resource::IpcChannel { .. } => ResourceType::Ipc,
+            Resource::Process { .. } => ResourceType::Process,
+            Resource::System { .. } => ResourceType::System,
         }
     }
 }
@@ -236,7 +258,7 @@ mod tests {
         let req = PermissionRequest::file_read(100, PathBuf::from("/tmp/test.txt"));
         assert_eq!(req.pid, 100);
         assert_eq!(req.action, Action::Read);
-        assert!(matches!(req.resource, Resource::File(_)));
+        assert!(matches!(req.resource, Resource::File { .. }));
     }
 
     #[test]

@@ -7,6 +7,7 @@ use super::types::{PermissionRequest, PermissionResponse};
 use crate::core::types::Pid;
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, TimestampSeconds};
 use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::SystemTime;
@@ -25,11 +26,14 @@ pub enum AuditSeverity {
 }
 
 /// Permission audit event
+#[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct AuditEvent {
     pub request: PermissionRequest,
     pub response: PermissionResponse,
     pub severity: AuditSeverity,
+    #[serde_as(as = "TimestampSeconds<i64>")]
     pub logged_at: SystemTime,
 }
 
@@ -40,8 +44,8 @@ impl AuditEvent {
         } else {
             // Denied requests are more severe
             match &request.resource {
-                super::types::Resource::System(_) => AuditSeverity::Critical,
-                super::types::Resource::Process(_) => AuditSeverity::Critical,
+                super::types::Resource::System { .. } => AuditSeverity::Critical,
+                super::types::Resource::Process { .. } => AuditSeverity::Critical,
                 _ => AuditSeverity::Warning,
             }
         };

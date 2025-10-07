@@ -33,7 +33,7 @@ impl Policy for DefaultPolicy {
     fn evaluate(&self, request: &PermissionRequest, context: &EvaluationContext) -> PolicyDecision {
         match (&request.resource, request.action) {
             // File system operations
-            (Resource::File(path), Action::Read) => {
+            (Resource::File { path }, Action::Read) => {
                 if can_access_file(&context.sandbox.capabilities, FileOperation::Read, path)
                     && context.sandbox.can_access_path(path)
                 {
@@ -42,7 +42,7 @@ impl Policy for DefaultPolicy {
                     PolicyDecision::Deny
                 }
             }
-            (Resource::File(path), Action::Write) => {
+            (Resource::File { path }, Action::Write) => {
                 if can_access_file(&context.sandbox.capabilities, FileOperation::Write, path)
                     && context.sandbox.can_access_path(path)
                 {
@@ -51,7 +51,7 @@ impl Policy for DefaultPolicy {
                     PolicyDecision::Deny
                 }
             }
-            (Resource::File(path), Action::Create) => {
+            (Resource::File { path }, Action::Create) => {
                 if can_access_file(&context.sandbox.capabilities, FileOperation::Create, path)
                     && context.sandbox.can_access_path(path)
                 {
@@ -60,7 +60,7 @@ impl Policy for DefaultPolicy {
                     PolicyDecision::Deny
                 }
             }
-            (Resource::File(path), Action::Delete) => {
+            (Resource::File { path }, Action::Delete) => {
                 if can_access_file(&context.sandbox.capabilities, FileOperation::Delete, path)
                     && context.sandbox.can_access_path(path)
                 {
@@ -69,7 +69,7 @@ impl Policy for DefaultPolicy {
                     PolicyDecision::Deny
                 }
             }
-            (Resource::Directory(path), Action::List) => {
+            (Resource::Directory { path }, Action::List) => {
                 if can_access_file(&context.sandbox.capabilities, FileOperation::List, path)
                     && context.sandbox.can_access_path(path)
                 {
@@ -89,7 +89,7 @@ impl Policy for DefaultPolicy {
             }
 
             // Process operations
-            (Resource::Process(_), Action::Kill) => {
+            (Resource::Process { .. }, Action::Kill) => {
                 use crate::security::types::Capability;
                 if context.sandbox.has_capability(&Capability::KillProcess) {
                     PolicyDecision::Allow
@@ -98,7 +98,7 @@ impl Policy for DefaultPolicy {
                 }
             }
 
-            (Resource::Process(_), Action::Create) => {
+            (Resource::Process { .. }, Action::Create) => {
                 use crate::security::types::Capability;
                 if context.sandbox.has_capability(&Capability::SpawnProcess) {
                     PolicyDecision::Allow
@@ -108,7 +108,7 @@ impl Policy for DefaultPolicy {
             }
 
             // System operations
-            (Resource::System(_), Action::Inspect) => {
+            (Resource::System { .. }, Action::Inspect) => {
                 use crate::security::types::Capability;
                 if context.sandbox.has_capability(&Capability::SystemInfo) {
                     PolicyDecision::Allow
@@ -118,7 +118,7 @@ impl Policy for DefaultPolicy {
             }
 
             // IPC operations - check SendMessage/ReceiveMessage
-            (Resource::IpcChannel(_), Action::Send) => {
+            (Resource::IpcChannel { .. }, Action::Send) => {
                 use crate::security::types::Capability;
                 if context.sandbox.has_capability(&Capability::SendMessage) {
                     PolicyDecision::Allow
@@ -127,7 +127,7 @@ impl Policy for DefaultPolicy {
                 }
             }
 
-            (Resource::IpcChannel(_), Action::Receive) => {
+            (Resource::IpcChannel { .. }, Action::Receive) => {
                 use crate::security::types::Capability;
                 if context.sandbox.has_capability(&Capability::ReceiveMessage) {
                     PolicyDecision::Allow

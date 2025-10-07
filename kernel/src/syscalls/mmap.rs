@@ -169,7 +169,7 @@ impl SyscallExecutor {
     pub(super) fn mmap_stats(&self, pid: Pid, mmap_id: u32) -> SyscallResult {
         // Check permission using centralized manager
         use crate::permissions::{Resource, Action};
-        let request = PermissionRequest::new(pid, Resource::System("mmap".to_string()), Action::Inspect);
+        let request = PermissionRequest::new(pid, Resource::System { name: "mmap".to_string() }, Action::Inspect);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {

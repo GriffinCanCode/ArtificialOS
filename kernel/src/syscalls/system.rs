@@ -17,7 +17,7 @@ use super::types::{SyscallResult, SystemInfo};
 
 impl SyscallExecutor {
     pub(super) fn get_system_info(&self, pid: Pid) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::System("info".to_string()), Action::Inspect);
+        let request = PermissionRequest::new(pid, Resource::System { name: "info".to_string() }, Action::Inspect);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -37,7 +37,7 @@ impl SyscallExecutor {
     }
 
     pub(super) fn get_current_time(&self, pid: Pid) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::System("time".to_string()), Action::Inspect);
+        let request = PermissionRequest::new(pid, Resource::System { name: "time".to_string() }, Action::Inspect);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -59,7 +59,7 @@ impl SyscallExecutor {
     }
 
     pub(super) fn get_env_var(&self, pid: Pid, key: &str) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::System("env".to_string()), Action::Read);
+        let request = PermissionRequest::new(pid, Resource::System { name: "env".to_string() }, Action::Read);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -76,7 +76,7 @@ impl SyscallExecutor {
     }
 
     pub(super) fn set_env_var(&self, pid: Pid, key: &str, value: &str) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::System("env".to_string()), Action::Write);
+        let request = PermissionRequest::new(pid, Resource::System { name: "env".to_string() }, Action::Write);
         let response = self.permission_manager.check_and_audit(&request);
 
         if !response.is_allowed() {

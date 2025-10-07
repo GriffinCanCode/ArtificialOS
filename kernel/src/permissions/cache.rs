@@ -22,15 +22,15 @@ impl CacheKey {
     fn new(pid: Pid, resource: &Resource, action: super::types::Action) -> Self {
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
         match resource {
-            Resource::File(p) => p.hash(&mut hasher),
-            Resource::Directory(p) => p.hash(&mut hasher),
+            Resource::File { path } => path.hash(&mut hasher),
+            Resource::Directory { path } => path.hash(&mut hasher),
             Resource::Network { host, port } => {
                 host.hash(&mut hasher);
                 port.hash(&mut hasher);
             }
-            Resource::IpcChannel(id) => id.hash(&mut hasher),
-            Resource::Process(pid) => pid.hash(&mut hasher),
-            Resource::System(s) => s.hash(&mut hasher),
+            Resource::IpcChannel { channel_id } => channel_id.hash(&mut hasher),
+            Resource::Process { pid } => pid.hash(&mut hasher),
+            Resource::System { name } => name.hash(&mut hasher),
         }
 
         Self {
