@@ -124,6 +124,8 @@ pub enum Capability {
     // Network - with rules
     NetworkAccess(NetworkRule),
     BindPort(Option<u16>), // None = any port
+    /// Network namespace isolation capability
+    NetworkNamespace,
 
     // System
     SystemInfo,
@@ -168,6 +170,7 @@ impl std::fmt::Display for Capability {
             Capability::KillProcess => write!(f, "KillProcess"),
             Capability::NetworkAccess(r) => write!(f, "NetworkAccess({:?})", r),
             Capability::BindPort(p) => write!(f, "BindPort({:?})", p),
+            Capability::NetworkNamespace => write!(f, "NetworkNamespace"),
             Capability::SystemInfo => write!(f, "SystemInfo"),
             Capability::TimeAccess => write!(f, "TimeAccess"),
             Capability::SendMessage => write!(f, "SendMessage"),

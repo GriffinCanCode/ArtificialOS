@@ -686,7 +686,10 @@ wscat -c ws://localhost:8000/stream
 - **Structured Storage**: JSON-based storage with metadata support
 
 ### Security Model
-- **Capability-Based Sandboxing**: Process-level capability enforcement (14 types: filesystem, network, process, IPC, memory, scheduler)
+- **Capability-Based Sandboxing**: Process-level capability enforcement (15 types: filesystem, network, process, IPC, memory, scheduler, network namespace)
+- **Network Namespace Isolation**: True network isolation with cross-platform support (Linux network namespaces, macOS packet filters, simulation fallback)
+- **Isolation Modes**: 4 configurable modes (Full, Private with NAT, Shared, Bridged) for granular network control
+- **Virtual Network Infrastructure**: veth pairs, bridge networking, and port forwarding for inter-namespace communication
 - **Resource Limits**: Per-process limits enforced via cgroups v2 on Linux (memory, CPU shares, max PIDs)
 - **OS Process Isolation**: Process isolation via std::process::Command with security validation
 - **Shell Injection Prevention**: Command validation blocks dangerous characters (;, |, &, `, $, etc.)
@@ -696,7 +699,7 @@ wscat -c ws://localhost:8000/stream
 - **Rate Limiting**: Per-IP token bucket algorithm at HTTP layer (configurable RPS and burst)
 - **CORS Configuration**: Configurable cross-origin policies
 - **No Arbitrary Code Execution**: UI specs are pure data, tools are pre-defined functions
-- **Automatic Cleanup**: Zombie processes cleaned up, IPC resources freed on process termination
+- **Automatic Cleanup**: Zombie processes cleaned up, IPC resources freed on process termination, network namespaces destroyed on exit
 
 ### Extensibility
 - **Blueprint DSL**: Extensible component and service definitions via `.bp` files

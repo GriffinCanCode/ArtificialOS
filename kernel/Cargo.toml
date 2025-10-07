@@ -45,6 +45,12 @@ anyhow = "1.0"
 log = "0.4"
 env_logger = "0.11"
 
+# Network namespace isolation (Linux-specific)
+nix = { version = "0.29", features = ["sched", "net", "user"] }
+rtnetlink = "0.14"
+ipnetwork = "0.20"
+netlink-packet-route = "0.19"
+
 [build-dependencies]
 tonic-build = "0.11"
 
