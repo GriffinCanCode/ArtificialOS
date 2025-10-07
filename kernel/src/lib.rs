@@ -28,10 +28,14 @@ pub use core::*;
 pub use ipc::{
     IPCManager, MapFlags, MmapEntry, MmapId, MmapManager, PipeError, PipeManager, PipeStats,
     ProtFlags, ShmError, ShmManager, ShmPermission, ShmStats,
+    ZeroCopyIpc, ZeroCopyRing, ZeroCopyStats,
 };
 
 // Memory
-pub use memory::{MemoryBlock, MemoryError, MemoryManager, MemoryStats, ProcessMemoryStats};
+pub use memory::{
+    MemoryBlock, MemoryError, MemoryManager, MemoryStats, ProcessMemoryStats,
+    init_simd, simd_capabilities, simd_memcpy, simd_memmove, simd_memcmp, simd_memset, SimdCapabilities,
+};
 
 // Monitoring
 pub use monitoring::{init_tracing, MetricsCollector, MetricsSnapshot};
@@ -73,9 +77,9 @@ pub use signals::{
 
 // Syscalls
 pub use syscalls::{
-    FileDescriptorSyscalls, FileSystemSyscalls, IpcSyscalls, MemorySyscalls, NetworkSyscalls,
-    ProcessSyscalls, SchedulerSyscalls, SignalSyscalls, Syscall, SyscallError, SyscallExecutor,
-    SyscallExecutorTrait, SyscallResult, SystemInfoSyscalls, TimeSyscalls,
+    FileDescriptorSyscalls, FileSystemSyscalls, IpcSyscalls, JitManager, JitStats, MemorySyscalls,
+    NetworkSyscalls, ProcessSyscalls, SchedulerSyscalls, SignalSyscalls, Syscall, SyscallError,
+    SyscallExecutor, SyscallExecutorTrait, SyscallPattern, SyscallResult, SystemInfoSyscalls, TimeSyscalls,
 };
 
 // VFS

@@ -72,7 +72,6 @@ tonic-build = "0.11"
 
 [dev-dependencies]
 tokio-test = { version = "0.4", default-features = false }
-pretty_assertions = { version = "1.4", default-features = false }
 proptest = { version = "1.4", default-features = false, features = ["std"] }
 mockall = { version = "0.12", default-features = false }
 tempfile = "3.8"

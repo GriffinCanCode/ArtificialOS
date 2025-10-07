@@ -9,6 +9,7 @@ mod fs;
 mod handler;
 mod handlers;
 mod ipc;
+pub mod jit; // JIT compilation for hot syscall paths
 mod memory;
 mod mmap;
 mod network;
@@ -25,6 +26,7 @@ mod vfs_adapter;
 // Re-export public API
 pub use executor::SyscallExecutor;
 pub use handler::{SyscallHandler, SyscallHandlerRegistry};
+pub use jit::{JitManager, JitStats, SyscallPattern};
 pub use traits::*;
 pub use types::{ProcessOutput, Syscall, SyscallError, SyscallResult, SystemInfo};
 
