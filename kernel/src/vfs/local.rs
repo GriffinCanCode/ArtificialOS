@@ -65,32 +65,10 @@ impl LocalFS {
             // If we can't verify it's within root, fall back to safe normalization
         }
 
-        // Fallback: manual normalization if canonicalization fails (e.g., path doesn't exist yet)
-        // This is safe for non-existent paths where we're about to create something
-        let mut components = Vec::new();
-        for component in path.components() {
-            match component {
-                std::path::Component::Normal(c) => {
-                    components.push(c);
-                }
-                std::path::Component::ParentDir => {
-                    // Only pop if we have components (prevents escaping root)
-                    components.pop();
-                }
-                std::path::Component::RootDir | std::path::Component::CurDir => {
-                    // Ignore root and current dir markers
-                }
-                std::path::Component::Prefix(_) => {
-                    // Ignore Windows prefixes for security
-                }
-            }
-        }
-
-        let mut result = self.root.clone();
-        for component in components {
-            result.push(component);
-        }
-        result
+        // Fallback: use battle-tested path cleaning if canonicalization fails
+        // (e.g., path doesn't exist yet). This is safe for non-existent paths
+        // where we're about to create something.
+        PathBuf::from(path_clean::clean(&preliminary))
     }
 
     /// Check write permission

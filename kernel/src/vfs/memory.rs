@@ -106,24 +106,8 @@ impl MemFS {
             Path::new("/").join(path)
         };
 
-        // Simplify path by removing . and ..
-        let mut components = Vec::new();
-        for comp in path.components() {
-            match comp {
-                std::path::Component::Normal(c) => components.push(c),
-                std::path::Component::ParentDir => {
-                    components.pop();
-                }
-                std::path::Component::RootDir => components.clear(),
-                _ => {}
-            }
-        }
-
-        let mut result = PathBuf::from("/");
-        for comp in components {
-            result.push(comp);
-        }
-        result
+        // Use battle-tested path cleaning (handles ., .., multiple /)
+        PathBuf::from(path_clean::clean(&path))
     }
 
     /// Check if space is available and reserve it atomically
