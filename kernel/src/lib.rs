@@ -9,6 +9,7 @@ pub mod core;
 pub mod ipc;
 pub mod memory;
 pub mod monitoring;
+pub mod permissions;
 pub mod process;
 pub mod scheduler;
 pub mod security;
@@ -38,7 +39,7 @@ pub use monitoring::{MetricsCollector, MetricsSnapshot};
 pub use process::{
     ExecutionConfig, ProcessExecutorImpl as ProcessExecutor, ProcessInfo as Process,
     ProcessManagerBuilder, ProcessManagerImpl as ProcessManager, ProcessState, ProcessStats,
-    Scheduler, SchedulerCommand, SchedulerStats, SchedulerTask, SchedulingPolicy as Policy,
+    Scheduler, SchedulerCommand, SchedulerStats, SchedulerTask, SchedulingPolicy,
 };
 
 // Scheduler
@@ -46,6 +47,14 @@ pub use scheduler::{
     apply_priority_op, validate_priority, Policy as SchedulerPolicy, PriorityControl, PriorityOp,
     SchedulerControl, SchedulerStats as SchedulerStatsTrait, TimeQuantum, DEFAULT_PRIORITY,
     MAX_PRIORITY, MIN_PRIORITY,
+};
+
+// Permissions
+pub use permissions::{
+    Action, AuditEvent, AuditLogger, AuditSeverity, EvaluationContext, PermissionCache,
+    PermissionChecker, PermissionManager, PermissionProvider, PermissionRequest,
+    PermissionResponse, PolicyDecision as PermissionPolicyDecision,
+    PolicyEngine, RequestContext, Resource, ResourceType,
 };
 
 // Security
