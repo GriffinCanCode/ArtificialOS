@@ -5,10 +5,12 @@
 
 import React, { useRef, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
+import { Send } from "lucide-react";
 import { useMessages, useAppActions } from "../../../core/store/appStore";
 import { useWebSocket } from "../../contexts/WebSocketContext";
 import { useLogger } from "../../../core/utils/monitoring/useLogger";
 import { formatTime } from "../../../core/utils/dates";
+import { Tooltip } from "../../../features/floating";
 import "./ChatInterface.css";
 
 interface ChatFormData {
@@ -99,9 +101,14 @@ const ChatInterface: React.FC = React.memo(() => {
     <div className="chat-interface">
       <div className="chat-header">
         <h3>Chat</h3>
-        <div className={`connection-status ${isConnected ? "connected" : "disconnected"}`}>
-          {isConnected ? "● Connected" : "○ Disconnected"}
-        </div>
+        <Tooltip
+          content={isConnected ? "Connected to AI service" : "Disconnected - reconnecting..."}
+          delay={500}
+        >
+          <div className={`connection-status ${isConnected ? "connected" : "disconnected"}`}>
+            {isConnected ? "● Connected" : "○ Disconnected"}
+          </div>
+        </Tooltip>
       </div>
 
       <div className="messages-container">
@@ -128,13 +135,16 @@ const ChatInterface: React.FC = React.memo(() => {
             validate: (value) => value.trim().length > 0,
           })}
         />
-        <button
-          type="submit"
-          disabled={!isConnected || !inputValue?.trim()}
-          className="send-button"
-        >
-          Send
-        </button>
+        <Tooltip content={!isConnected ? "Waiting for connection..." : "Send message (Enter)"} delay={700}>
+          <button
+            type="submit"
+            disabled={!isConnected || !inputValue?.trim()}
+            className="send-button"
+            aria-label="Send message"
+          >
+            <Send size={16} />
+          </button>
+        </Tooltip>
       </form>
     </div>
   );

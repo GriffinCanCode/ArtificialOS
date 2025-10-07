@@ -4,13 +4,15 @@
  */
 
 import React, { useState, useCallback } from "react";
-import { Rocket, Plus, AlertTriangle } from "lucide-react";
+import { Rocket, Plus, AlertTriangle, Trash2, Play } from "lucide-react";
 import { useRegistryApps, useRegistryMutations } from "../../../core/hooks/useRegistryQueries";
 import {
   cardVariants,
   categoryButtonVariants,
   cn,
 } from "../../../core/utils/animation/componentVariants";
+import { Tooltip, ContextMenu, HoverCard } from "../../../features/floating";
+import type { DropdownItem } from "../../../features/floating";
 import "./Launcher.css";
 
 interface LauncherProps {
@@ -49,8 +51,10 @@ export const Launcher: React.FC<LauncherProps> = React.memo(({ onAppLaunch, onCr
   );
 
   const handleDeleteApp = useCallback(
-    async (packageId: string, event: React.MouseEvent) => {
-      event.stopPropagation();
+    async (packageId: string, event?: React.MouseEvent) => {
+      if (event) {
+        event.stopPropagation();
+      }
 
       if (!confirm("Are you sure you want to delete this app?")) {
         return;
@@ -59,6 +63,29 @@ export const Launcher: React.FC<LauncherProps> = React.memo(({ onAppLaunch, onCr
       deleteApp.mutate(packageId);
     },
     [deleteApp]
+  );
+
+  const getAppContextMenuItems = useCallback(
+    (packageId: string): DropdownItem[] => [
+      { value: "launch", label: "Launch", icon: <Play size={16} /> },
+      { divider: true },
+      { value: "delete", label: "Delete", icon: <Trash2 size={16} /> },
+    ],
+    []
+  );
+
+  const handleAppContextMenu = useCallback(
+    (packageId: string, action: string) => {
+      switch (action) {
+        case "launch":
+          handleLaunchApp(packageId);
+          break;
+        case "delete":
+          handleDeleteApp(packageId);
+          break;
+      }
+    },
+    [handleLaunchApp, handleDeleteApp]
   );
 
   const categories = ["all", "productivity", "utilities", "games", "creative", "general"];
@@ -112,33 +139,58 @@ export const Launcher: React.FC<LauncherProps> = React.memo(({ onAppLaunch, onCr
       ) : (
         <div className="app-grid">
           {apps.map((app) => (
-            <div
+            <ContextMenu
               key={app.id}
-              className={cn(
-                "app-card",
-                cardVariants({
-                  variant: "default",
-                  padding: "medium",
-                  interactive: true,
-                })
-              )}
-              onClick={() => handleLaunchApp(app.id)}
+              items={getAppContextMenuItems(app.id)}
+              onSelect={(action) => handleAppContextMenu(app.id, action)}
             >
-              <button
-                className="app-delete"
-                onClick={(e) => handleDeleteApp(app.id, e)}
-                title="Delete app"
+              <HoverCard
+                content={
+                  <div style={{ padding: "0.5rem" }}>
+                    <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "1rem" }}>{app.name}</h4>
+                    <p style={{ margin: "0 0 0.5rem 0", fontSize: "0.875rem", opacity: 0.8 }}>
+                      {app.description}
+                    </p>
+                    <div style={{ fontSize: "0.75rem", opacity: 0.6 }}>
+                      <div>Category: {app.category}</div>
+                      <div>Version: v{app.version}</div>
+                      {app.author && <div>Author: {app.author}</div>}
+                    </div>
+                  </div>
+                }
+                openDelay={700}
+                closeDelay={300}
               >
-                ×
-              </button>
-              <div className="app-icon">{app.icon}</div>
-              <div className="app-name">{app.name}</div>
-              <div className="app-description">{app.description}</div>
-              <div className="app-meta">
-                <span className="app-category">{app.category}</span>
-                <span className="app-version">v{app.version}</span>
-              </div>
-            </div>
+                <div
+                  className={cn(
+                    "app-card",
+                    cardVariants({
+                      variant: "default",
+                      padding: "medium",
+                      interactive: true,
+                    })
+                  )}
+                  onClick={() => handleLaunchApp(app.id)}
+                >
+                  <Tooltip content="Delete app" delay={500}>
+                    <button
+                      className="app-delete"
+                      onClick={(e) => handleDeleteApp(app.id, e)}
+                      aria-label="Delete app"
+                    >
+                      ×
+                    </button>
+                  </Tooltip>
+                  <div className="app-icon">{app.icon}</div>
+                  <div className="app-name">{app.name}</div>
+                  <div className="app-description">{app.description}</div>
+                  <div className="app-meta">
+                    <span className="app-category">{app.category}</span>
+                    <span className="app-version">v{app.version}</span>
+                  </div>
+                </div>
+              </HoverCard>
+            </ContextMenu>
           ))}
 
           <div

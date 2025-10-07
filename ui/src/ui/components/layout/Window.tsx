@@ -9,6 +9,7 @@ import { X, Minus, Maximize2, Minimize2 } from "lucide-react";
 import { useActions, useSnap, fadeIn, syncWindow, State } from "../../../features/windows";
 import type { Window as WindowType } from "../../../features/windows";
 import { useLogger } from "../../../core/utils/monitoring/useLogger";
+import { Tooltip } from "../../../features/floating";
 import "./Window.css";
 
 interface WindowProps {
@@ -197,23 +198,33 @@ export const Window: React.FC<WindowProps> = ({ window, children }) => {
               <span className="window-title">{window.title}</span>
             </div>
             <div className="window-titlebar-right">
-              <button
-                className="window-control-btn minimize"
-                onClick={handleMinimize}
-                title="Minimize (⌘M)"
-              >
-                <Minus size={14} />
-              </button>
-              <button
-                className="window-control-btn maximize"
-                onClick={handleMaximize}
-                title={isMaximized ? "Restore" : "Maximize"}
-              >
-                {isMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-              </button>
-              <button className="window-control-btn close" onClick={handleClose} title="Close (⌘W)">
-                <X size={14} />
-              </button>
+              <Tooltip content="Minimize (⌘M)" delay={700}>
+                <button
+                  className="window-control-btn minimize"
+                  onClick={handleMinimize}
+                  aria-label="Minimize"
+                >
+                  <Minus size={14} />
+                </button>
+              </Tooltip>
+              <Tooltip content={isMaximized ? "Restore" : "Maximize"} delay={700}>
+                <button
+                  className="window-control-btn maximize"
+                  onClick={handleMaximize}
+                  aria-label={isMaximized ? "Restore" : "Maximize"}
+                >
+                  {isMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                </button>
+              </Tooltip>
+              <Tooltip content="Close (⌘W)" delay={700}>
+                <button
+                  className="window-control-btn close"
+                  onClick={handleClose}
+                  aria-label="Close"
+                >
+                  <X size={14} />
+                </button>
+              </Tooltip>
             </div>
           </div>
 

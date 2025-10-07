@@ -1,0 +1,44 @@
+/**
+ * Popover Styles
+ * Smart positioning popover with arrow
+ */
+
+.popover {
+  border-radius: 0.75rem;
+  padding: 1rem;
+  z-index: 9998;
+  max-width: 28rem;
+  outline: none;
+  background: var(--bg-glass);
+  backdrop-filter: var(--backdrop-blur-medium);
+  -webkit-backdrop-filter: var(--backdrop-blur-medium);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-primary-alpha-40);
+  box-shadow:
+    var(--shadow-medium),
+    var(--shadow-glow-primary),
+    var(--shadow-inset-light);
+  animation: popover-scale-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.popover-arrow {
+  position: absolute;
+  width: 0.75rem;
+  height: 0.75rem;
+  transform: rotate(45deg);
+  background: var(--bg-glass);
+  border: 1px solid var(--color-primary-alpha-40);
+  border-top: none;
+  border-left: none;
+}
+
+@keyframes popover-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

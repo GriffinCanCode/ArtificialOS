@@ -9,6 +9,7 @@ import { useThoughts, useAppActions } from "../../../core/store/appStore";
 import { useWebSocket } from "../../contexts/WebSocketContext";
 import { usePulse, useFadeIn, useStaggerSlideUp } from "../../hooks/useGSAP";
 import { formatTime } from "../../../core/utils/dates";
+import { Tooltip } from "../../../features/floating";
 import "./ThoughtStream.css";
 
 interface ThoughtStreamProps {
@@ -68,17 +69,19 @@ const ThoughtStream: React.FC<ThoughtStreamProps> = React.memo(({ isVisible, onT
   return (
     <>
       {/* Toggle Button - Fixed in top-right corner */}
-      <button
-        ref={toggleButtonRef}
-        className={`thought-toggle ${thoughts.length > 0 ? "has-thoughts" : ""}`}
-        onClick={onToggle}
-        title="Toggle thought stream"
-      >
-        <span className="thought-icon">
-          <MessageCircle size={20} />
-        </span>
-        {thoughts.length > 0 && <span className="thought-badge">{thoughts.length}</span>}
-      </button>
+      <Tooltip content="Toggle thought stream" delay={500}>
+        <button
+          ref={toggleButtonRef}
+          className={`thought-toggle ${thoughts.length > 0 ? "has-thoughts" : ""}`}
+          onClick={onToggle}
+          aria-label="Toggle thought stream"
+        >
+          <span className="thought-icon">
+            <MessageCircle size={20} />
+          </span>
+          {thoughts.length > 0 && <span className="thought-badge">{thoughts.length}</span>}
+        </button>
+      </Tooltip>
 
       {/* Slide-out Panel */}
       <div className={`thought-stream-panel ${isVisible ? "visible" : ""}`}>

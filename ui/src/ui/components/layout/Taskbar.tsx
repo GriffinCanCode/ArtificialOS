@@ -8,6 +8,7 @@ import React, { useMemo, useCallback } from "react";
 import { useStore, useActions } from "../../../features/windows";
 import { Sortable } from "../../../features/dnd";
 import type { SortResult } from "../../../features/dnd";
+import { Tooltip } from "../../../features/floating";
 import "./Taskbar.css";
 
 // Maximum number of taskbar items to show before truncating
@@ -21,15 +22,17 @@ const TaskbarItem = React.memo<{
   isMinimized: boolean;
   onClick: () => void;
 }>(({ title, icon, isFocused, isMinimized, onClick }) => (
-  <button
-    className={`taskbar-item ${isFocused ? "active" : ""} ${isMinimized ? "minimized" : ""}`}
-    onClick={onClick}
-    title={title}
-  >
-    {icon && <span className="taskbar-item-icon">{icon}</span>}
-    <span className="taskbar-item-title">{title}</span>
-    {isMinimized && <span className="taskbar-item-indicator">●</span>}
-  </button>
+  <Tooltip content={isMinimized ? `${title} (minimized)` : title} delay={500}>
+    <button
+      className={`taskbar-item ${isFocused ? "active" : ""} ${isMinimized ? "minimized" : ""}`}
+      onClick={onClick}
+      aria-label={title}
+    >
+      {icon && <span className="taskbar-item-icon">{icon}</span>}
+      <span className="taskbar-item-title">{title}</span>
+      {isMinimized && <span className="taskbar-item-indicator">●</span>}
+    </button>
+  </Tooltip>
 ));
 
 TaskbarItem.displayName = "TaskbarItem";
@@ -106,12 +109,11 @@ export const Taskbar: React.FC = () => {
         className="taskbar-container"
       />
       {hasMoreWindows && (
-        <div
-          className="taskbar-overflow"
-          title={`${hiddenCount} more window${hiddenCount > 1 ? "s" : ""}`}
-        >
-          +{hiddenCount}
-        </div>
+        <Tooltip content={`${hiddenCount} more window${hiddenCount > 1 ? "s" : ""}`} delay={300}>
+          <div className="taskbar-overflow" aria-label={`${hiddenCount} more windows`}>
+            +{hiddenCount}
+          </div>
+        </Tooltip>
       )}
     </div>
   );

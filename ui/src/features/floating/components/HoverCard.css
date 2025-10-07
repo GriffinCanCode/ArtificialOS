@@ -1,0 +1,36 @@
+/**
+ * Hover Card Styles
+ * Rich hover card with delayed display
+ */
+
+.hover-card {
+  border-radius: 0.75rem;
+  padding: 1rem;
+  z-index: 9996;
+  max-width: 24rem;
+  background: linear-gradient(
+    135deg,
+    rgba(30, 30, 45, 0.95) 0%,
+    rgba(25, 25, 40, 0.98) 100%
+  );
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  color: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.4),
+    0 6px 20px rgba(139, 92, 246, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  animation: hover-card-fade-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes hover-card-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}

@@ -9,6 +9,7 @@ import { useSessions, useDeleteSession } from "../../../core/hooks/useSessionQue
 import { useLogger } from "../../../core/utils/monitoring/useLogger";
 import { formatRelativeTime } from "../../../core/utils/dates";
 import { SaveSessionDialog } from "../dialogs/SaveSessionDialog";
+import { Tooltip } from "../../../features/floating";
 import { controlButtonVariants, cn } from "../../../core/utils/animation/componentVariants";
 import "./TitleBar.css";
 
@@ -131,27 +132,33 @@ const TitleBar: React.FC<TitleBarProps> = React.memo(({ sessionManager }) => {
         <div className="title-bar-drag" />
 
         <div className="window-controls">
-          <button
-            className={cn("control-btn", controlButtonVariants({ type: "minimize" }))}
-            onClick={handleMinimize}
-            aria-label="Minimize"
-          >
-            <span></span>
-          </button>
-          <button
-            className={cn("control-btn", controlButtonVariants({ type: "maximize" }))}
-            onClick={handleMaximize}
-            aria-label="Maximize"
-          >
-            <span></span>
-          </button>
-          <button
-            className={cn("control-btn", controlButtonVariants({ type: "close" }))}
-            onClick={handleClose}
-            aria-label="Close"
-          >
-            <span></span>
-          </button>
+          <Tooltip content="Minimize" delay={500}>
+            <button
+              className={cn("control-btn", controlButtonVariants({ type: "minimize" }))}
+              onClick={handleMinimize}
+              aria-label="Minimize"
+            >
+              <span></span>
+            </button>
+          </Tooltip>
+          <Tooltip content="Maximize" delay={500}>
+            <button
+              className={cn("control-btn", controlButtonVariants({ type: "maximize" }))}
+              onClick={handleMaximize}
+              aria-label="Maximize"
+            >
+              <span></span>
+            </button>
+          </Tooltip>
+          <Tooltip content="Close" delay={500}>
+            <button
+              className={cn("control-btn", controlButtonVariants({ type: "close" }))}
+              onClick={handleClose}
+              aria-label="Close"
+            >
+              <span></span>
+            </button>
+          </Tooltip>
         </div>
       </div>
 
@@ -184,14 +191,16 @@ const TitleBar: React.FC<TitleBarProps> = React.memo(({ sessionManager }) => {
                         {formatRelativeTime(new Date(session.updated_at))}
                       </div>
                     </div>
-                    <button
-                      className="session-delete"
-                      onClick={(e) => handleDeleteSession(session.id, e)}
-                      title="Delete session"
-                      disabled={deleteSessionMutation.isPending}
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    <Tooltip content="Delete session" delay={300}>
+                      <button
+                        className="session-delete"
+                        onClick={(e) => handleDeleteSession(session.id, e)}
+                        aria-label="Delete session"
+                        disabled={deleteSessionMutation.isPending}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </Tooltip>
                   </div>
                 ))
               )}

@@ -3,9 +3,10 @@
  * Form dialog for saving apps to registry using React Hook Form
  */
 
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Modal } from "./Modal";
+import { Select } from "../../../features/floating";
 import "./SaveAppDialog.css";
 
 interface SaveAppFormData {
@@ -34,6 +35,8 @@ const SUGGESTED_ICONS = ["📦", "⚡", "🎯", "🎨", "🎮", "🛠️", "📊
 
 export const SaveAppDialog: React.FC<SaveAppDialogProps> = React.memo(
   ({ isOpen, onClose, onSave, isLoading = false }) => {
+    const [selectedCategory, setSelectedCategory] = useState("general");
+
     const {
       register,
       handleSubmit,
@@ -81,8 +84,17 @@ export const SaveAppDialog: React.FC<SaveAppDialogProps> = React.memo(
 
     const handleClose = useCallback(() => {
       reset();
+      setSelectedCategory("general");
       onClose();
     }, [reset, onClose]);
+
+    const handleCategoryChange = useCallback(
+      (value: string) => {
+        setSelectedCategory(value);
+        setValue("category", value);
+      },
+      [setValue]
+    );
 
     const handleIconSelect = useCallback(
       (icon: string) => {
@@ -123,17 +135,13 @@ export const SaveAppDialog: React.FC<SaveAppDialogProps> = React.memo(
             <label htmlFor="app-category" className="form-label">
               Category <span className="required">*</span>
             </label>
-            <select
-              id="app-category"
-              className={`form-select ${errors.category ? "error" : ""}`}
-              {...register("category", { required: "Category is required" })}
-            >
-              {CATEGORIES.map((cat) => (
-                <option key={cat.value} value={cat.value}>
-                  {cat.label}
-                </option>
-              ))}
-            </select>
+            <Select
+              options={CATEGORIES}
+              value={selectedCategory}
+              onChange={handleCategoryChange}
+              placeholder="Select category"
+            />
+            <input type="hidden" {...register("category", { required: "Category is required" })} />
             {errors.category && <span className="form-error">{errors.category.message}</span>}
           </div>
 

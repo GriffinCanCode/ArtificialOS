@@ -8,6 +8,7 @@ import { randomId } from "../../../core/utils/math";
 import { Dropzone } from "../../../features/dnd/components/Dropzone";
 import type { FileDropConfig, DropResult, FileValidator } from "../../../features/dnd/core/types";
 import { formatFileSize } from "../../../features/dnd/core/utils";
+import { Tooltip } from "../../../features/floating";
 import "./FileUpload.css";
 
 // ============================================================================
@@ -312,43 +313,51 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
                 <div className="upload-item-actions">
                   {uploadFile.status === "pending" && !autoUpload && (
-                    <button
-                      onClick={() => handleUploadFile(uploadFile.id)}
-                      className="upload-btn"
-                      title="Upload"
-                    >
-                      ⬆️
-                    </button>
+                    <Tooltip content="Upload file" delay={500}>
+                      <button
+                        onClick={() => handleUploadFile(uploadFile.id)}
+                        className="upload-btn"
+                        aria-label="Upload"
+                      >
+                        ⬆️
+                      </button>
+                    </Tooltip>
                   )}
 
                   {uploadFile.status === "uploading" && (
-                    <button
-                      onClick={() => cancelUpload(uploadFile.id)}
-                      className="cancel-btn"
-                      title="Cancel"
-                    >
-                      ⏸️
-                    </button>
+                    <Tooltip content="Cancel upload" delay={500}>
+                      <button
+                        onClick={() => cancelUpload(uploadFile.id)}
+                        className="cancel-btn"
+                        aria-label="Cancel"
+                      >
+                        ⏸️
+                      </button>
+                    </Tooltip>
                   )}
 
                   {uploadFile.status === "error" && (
-                    <button
-                      onClick={() => retryUpload(uploadFile.id)}
-                      className="retry-btn"
-                      title="Retry"
-                    >
-                      🔄
-                    </button>
+                    <Tooltip content="Retry upload" delay={500}>
+                      <button
+                        onClick={() => retryUpload(uploadFile.id)}
+                        className="retry-btn"
+                        aria-label="Retry"
+                      >
+                        🔄
+                      </button>
+                    </Tooltip>
                   )}
 
                   {allowRemove && uploadFile.status !== "uploading" && (
-                    <button
-                      onClick={() => removeFile(uploadFile.id)}
-                      className="remove-btn"
-                      title="Remove"
-                    >
-                      ×
-                    </button>
+                    <Tooltip content="Remove file" delay={500}>
+                      <button
+                        onClick={() => removeFile(uploadFile.id)}
+                        className="remove-btn"
+                        aria-label="Remove"
+                      >
+                        ×
+                      </button>
+                    </Tooltip>
                   )}
                 </div>
               </div>

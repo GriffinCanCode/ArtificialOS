@@ -327,9 +327,11 @@ function AppContent() {
                   autoFocus
                 />
                 {inputValue && (
-                  <button type="submit" className="spotlight-send" aria-label="Send message">
-                    →
-                  </button>
+                  <Tooltip content={!client ? "Connecting..." : "Generate app (Enter)"} delay={700}>
+                    <button type="submit" className="spotlight-send" aria-label="Generate app">
+                      →
+                    </button>
+                  </Tooltip>
                 )}
               </form>
               {inputFocused && (

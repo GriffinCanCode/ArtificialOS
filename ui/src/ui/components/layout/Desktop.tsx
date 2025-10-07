@@ -104,9 +104,11 @@ export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpen
           className="dock-container"
         />
         <div className="dock-separator" />
-        <button className="dock-item dock-creator" onClick={onOpenCreator} title="Create (⌘K)">
-          <span className="dock-icon">✨</span>
-        </button>
+        <Tooltip content="Create (⌘K)" delay={500}>
+          <button className="dock-item dock-creator" onClick={onOpenCreator} aria-label="Create">
+            <span className="dock-icon">✨</span>
+          </button>
+        </Tooltip>
       </div>
 
       {/* Hint Overlay */}
