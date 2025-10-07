@@ -8,11 +8,12 @@ use super::handler::{SignalHandler, SignalOutcome};
 use super::traits::*;
 use super::types::*;
 use crate::core::types::Pid;
+use ahash::{HashMap, RandomState};
 use dashmap::DashMap;
 use log::{debug, info, warn};
 use parking_lot::RwLock;
 use std::cmp::Ordering;
-use std::collections::{BinaryHeap, HashMap, HashSet};
+use std::collections::{BinaryHeap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering as AtomicOrdering};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -66,7 +67,7 @@ impl ProcessSignals {
             pid,
             pending: BinaryHeap::new(),
             blocked: HashSet::new(),
-            handlers: HashMap::new(),
+            handlers: HashMap::default(),
         }
     }
 
@@ -82,7 +83,7 @@ impl ProcessSignals {
 /// Signal manager implementation
 #[derive(Clone)]
 pub struct SignalManagerImpl {
-    processes: Arc<DashMap<Pid, ProcessSignals>>,
+    processes: Arc<DashMap<Pid, ProcessSignals, RandomState>>,
     handler: Arc<SignalHandler>,
     callbacks: Arc<CallbackRegistry>,
     next_handler_id: Arc<AtomicU64>,
@@ -95,7 +96,7 @@ impl SignalManagerImpl {
         info!("Signal manager initialized");
         Self {
             // Use 128 shards for processes - high contention from signal delivery
-            processes: Arc::new(DashMap::with_shard_amount(128)),
+            processes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 128)),
             handler: Arc::new(SignalHandler::new(callbacks.clone())),
             callbacks,
             next_handler_id: Arc::new(AtomicU64::new(1)),

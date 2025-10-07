@@ -12,16 +12,17 @@ use super::types::{
 use crate::core::types::{Pid, Size};
 use crate::memory::MemoryManager;
 use dashmap::DashMap;
+use ahash::RandomState;
 use log::{info, warn};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 
 /// Pipe manager
 pub struct PipeManager {
-    pipes: Arc<DashMap<PipeId, Pipe>>,
+    pipes: Arc<DashMap<PipeId, Pipe, RandomState>>,
     next_id: AtomicU32,
     // Track pipe count per process
-    process_pipes: Arc<DashMap<Pid, Size>>,
+    process_pipes: Arc<DashMap<Pid, Size, RandomState>>,
     memory_manager: MemoryManager,
     // Free IDs for recycling (prevents ID exhaustion)
     free_ids: Arc<Mutex<Vec<PipeId>>>,
@@ -35,10 +36,10 @@ impl PipeManager {
         );
         Self {
             // Use 64 shards for pipes - high I/O contention
-            pipes: Arc::new(DashMap::with_shard_amount(64)),
+            pipes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 64)),
             next_id: AtomicU32::new(1),
             // Use 32 shards for process pipe tracking
-            process_pipes: Arc::new(DashMap::with_shard_amount(32)),
+            process_pipes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 32)),
             memory_manager,
             free_ids: Arc::new(Mutex::new(Vec::new())),
         }

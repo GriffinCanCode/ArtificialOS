@@ -13,6 +13,7 @@ use crate::ipc::queue::QueueManager;
 use crate::ipc::shm::ShmManager;
 use crate::memory::MemoryManager;
 use dashmap::DashMap;
+use ahash::RandomState;
 use log::info;
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -23,7 +24,7 @@ const MAX_MESSAGE_SIZE: usize = 1024 * 1024; // 1MB
 
 #[derive(Clone)]
 pub struct IPCManager {
-    message_queues: Arc<DashMap<Pid, VecDeque<Message>>>,
+    message_queues: Arc<DashMap<Pid, VecDeque<Message>, RandomState>>,
     pipe_manager: PipeManager,
     shm_manager: ShmManager,
     queue_manager: QueueManager,
@@ -37,7 +38,7 @@ impl IPCManager {
             MAX_QUEUE_SIZE
         );
         Self {
-            message_queues: Arc::new(DashMap::new()),
+            message_queues: Arc::new(DashMap::with_hasher(RandomState::new())),
             pipe_manager: PipeManager::new(memory_manager.clone()),
             shm_manager: ShmManager::new(memory_manager.clone()),
             queue_manager: QueueManager::new(memory_manager.clone()),

@@ -7,6 +7,7 @@ use super::types::{ExecutionConfig, ProcessError, ProcessResult};
 use crate::core::types::Pid;
 use crate::security::types::Limits;
 use dashmap::DashMap;
+use ahash::RandomState;
 use log::{error, info, warn};
 use std::process::{Child, Command, Stdio};
 use std::sync::Arc;
@@ -26,14 +27,14 @@ pub struct ExecutingProcess {
 
 /// Manages OS process execution
 pub struct ProcessExecutor {
-    processes: Arc<DashMap<u32, ExecutingProcess>>,
+    processes: Arc<DashMap<u32, ExecutingProcess, RandomState>>,
 }
 
 impl ProcessExecutor {
     pub fn new() -> Self {
         info!("Process executor initialized");
         Self {
-            processes: Arc::new(DashMap::new()),
+            processes: Arc::new(DashMap::with_hasher(RandomState::new())),
         }
     }
 

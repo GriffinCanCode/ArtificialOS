@@ -12,6 +12,7 @@ use crate::process::executor::ProcessExecutor;
 use crate::process::scheduler::Scheduler;
 use crate::process::scheduler_task::SchedulerTask;
 use crate::security::{LimitManager, Limits};
+use ahash::RandomState;
 use dashmap::DashMap;
 use log::info;
 use parking_lot::RwLock;
@@ -22,7 +23,7 @@ use std::sync::Arc;
 pub type Process = ProcessInfo;
 
 pub struct ProcessManager {
-    processes: Arc<DashMap<Pid, ProcessInfo>>,
+    processes: Arc<DashMap<Pid, ProcessInfo, RandomState>>,
     next_pid: AtomicU32,
     memory_manager: Option<MemoryManager>,
     executor: Option<ProcessExecutor>,
@@ -32,7 +33,7 @@ pub struct ProcessManager {
     scheduler_task: Option<Arc<SchedulerTask>>,
     preemption: Option<Arc<PreemptionController>>,
     // Track child processes per parent PID for limit enforcement
-    child_counts: Arc<DashMap<Pid, u32>>,
+    child_counts: Arc<DashMap<Pid, u32, RandomState>>,
 }
 
 /// Builder for ProcessManager
@@ -150,7 +151,7 @@ impl ProcessManagerBuilder {
 
         ProcessManager {
             // Use 128 shards for processes - high contention from concurrent process operations
-            processes: Arc::new(DashMap::with_shard_amount(128)),
+            processes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 128)),
             next_pid: AtomicU32::new(1),
             memory_manager: self.memory_manager,
             executor,
@@ -160,7 +161,7 @@ impl ProcessManagerBuilder {
             scheduler_task,
             preemption,
             // Use 64 shards for child_counts (moderate contention)
-            child_counts: Arc::new(DashMap::with_shard_amount(64)),
+            child_counts: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 64)),
         }
     }
 }
@@ -177,7 +178,7 @@ impl ProcessManager {
         info!("Process manager initialized (basic)");
         Self {
             // Use 128 shards for processes - high contention from concurrent process operations
-            processes: Arc::new(DashMap::with_shard_amount(128)),
+            processes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 128)),
             next_pid: AtomicU32::new(1),
             memory_manager: None,
             executor: None,
@@ -187,7 +188,7 @@ impl ProcessManager {
             scheduler_task: None,
             preemption: None,
             // Use 64 shards for child_counts (moderate contention)
-            child_counts: Arc::new(DashMap::with_shard_amount(64)),
+            child_counts: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 64)),
         }
     }
 

@@ -7,6 +7,7 @@ use super::traits::*;
 use super::types::*;
 use crate::core::types::Pid;
 use dashmap::DashMap;
+use ahash::RandomState;
 use parking_lot::RwLock;
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -15,20 +16,20 @@ use std::time::{SystemTime, UNIX_EPOCH};
 /// Simulation-based eBPF provider
 #[derive(Clone)]
 pub struct SimulationEbpfProvider {
-    programs: Arc<DashMap<String, ProgramInfo>>,
+    programs: Arc<DashMap<String, ProgramInfo, RandomState>>,
     filters: Arc<RwLock<Vec<SyscallFilter>>>,
     events: Arc<RwLock<VecDeque<EbpfEvent>>>,
-    monitored_pids: Arc<DashMap<Pid, u64>>,
+    monitored_pids: Arc<DashMap<Pid, u64, RandomState>>,
     event_count: Arc<RwLock<(u64, u64, u64)>>, // (syscall, network, file)
 }
 
 impl SimulationEbpfProvider {
     pub fn new() -> Self {
         Self {
-            programs: Arc::new(DashMap::new()),
+            programs: Arc::new(DashMap::with_hasher(RandomState::new())),
             filters: Arc::new(RwLock::new(Vec::new())),
             events: Arc::new(RwLock::new(VecDeque::with_capacity(1000))),
-            monitored_pids: Arc::new(DashMap::new()),
+            monitored_pids: Arc::new(DashMap::with_hasher(RandomState::new())),
             event_count: Arc::new(RwLock::new((0, 0, 0))),
         }
     }

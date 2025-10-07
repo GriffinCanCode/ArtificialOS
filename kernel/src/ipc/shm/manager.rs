@@ -12,6 +12,7 @@ use super::types::{
 use crate::core::types::{Pid, Size};
 use crate::memory::MemoryManager;
 use dashmap::DashMap;
+use ahash::RandomState;
 use log::{info, warn};
 use parking_lot::RwLock;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -22,10 +23,10 @@ static GLOBAL_SHM_MEMORY: AtomicUsize = AtomicUsize::new(0);
 
 /// Shared memory manager
 pub struct ShmManager {
-    segments: Arc<DashMap<ShmId, SharedSegment>>,
+    segments: Arc<DashMap<ShmId, SharedSegment, RandomState>>,
     next_id: Arc<RwLock<ShmId>>,
     // Track segment count per process
-    process_segments: Arc<DashMap<Pid, Size>>,
+    process_segments: Arc<DashMap<Pid, Size, RandomState>>,
     memory_manager: MemoryManager,
     // Free IDs for recycling (prevents ID exhaustion)
     free_ids: Arc<Mutex<Vec<ShmId>>>,
@@ -39,9 +40,9 @@ impl ShmManager {
             GLOBAL_SHM_MEMORY_LIMIT / (1024 * 1024)
         );
         Self {
-            segments: Arc::new(DashMap::new()),
+            segments: Arc::new(DashMap::with_hasher(RandomState::new())),
             next_id: Arc::new(RwLock::new(1)),
-            process_segments: Arc::new(DashMap::new()),
+            process_segments: Arc::new(DashMap::with_hasher(RandomState::new())),
             memory_manager,
             free_ids: Arc::new(Mutex::new(Vec::new())),
         }

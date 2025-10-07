@@ -4,6 +4,7 @@
  */
 
 use crate::core::serde::is_zero_u64;
+use ahash::RandomState;
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -77,9 +78,9 @@ impl Histogram {
 
 /// Metrics collector
 pub struct MetricsCollector {
-    counters: Arc<DashMap<String, f64>>,
-    gauges: Arc<DashMap<String, f64>>,
-    histograms: Arc<DashMap<String, Histogram>>,
+    counters: Arc<DashMap<String, f64, RandomState>>,
+    gauges: Arc<DashMap<String, f64, RandomState>>,
+    histograms: Arc<DashMap<String, Histogram, RandomState>>,
     start_time: Instant,
 }
 
@@ -87,10 +88,9 @@ impl MetricsCollector {
     pub fn new() -> Self {
         Self {
             // Use 32 shards for metrics - moderate write contention, high read contention
-            // Lower shard count since metrics are typically string-keyed and less numerous
-            counters: Arc::new(DashMap::with_shard_amount(32)),
-            gauges: Arc::new(DashMap::with_shard_amount(32)),
-            histograms: Arc::new(DashMap::with_shard_amount(32)),
+            counters: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 32)),
+            gauges: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 32)),
+            histograms: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 32)),
             start_time: Instant::now(),
         }
     }

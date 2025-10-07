@@ -6,6 +6,7 @@
 use super::types::{Signal, SignalError, SignalResult};
 use crate::core::types::Pid;
 use dashmap::DashMap;
+use ahash::RandomState;
 use log::{debug, info};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -16,14 +17,14 @@ pub type HandlerFn = Arc<dyn Fn(Pid, Signal) -> SignalResult<()> + Send + Sync>;
 /// Handler registry for executable callbacks
 #[derive(Clone)]
 pub struct CallbackRegistry {
-    handlers: Arc<DashMap<u64, HandlerFn>>,
+    handlers: Arc<DashMap<u64, HandlerFn, RandomState>>,
     next_id: Arc<AtomicU64>,
 }
 
 impl CallbackRegistry {
     pub fn new() -> Self {
         Self {
-            handlers: Arc::new(DashMap::new()),
+            handlers: Arc::new(DashMap::with_hasher(RandomState::new())),
             next_id: Arc::new(AtomicU64::new(1)),
         }
     }

@@ -5,6 +5,7 @@
 
 use super::types::{PermissionRequest, PermissionResponse};
 use crate::core::types::Pid;
+use ahash::RandomState;
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, TimestampSeconds};
@@ -69,17 +70,17 @@ pub struct AuditLogger {
     /// Global event log (ring buffer)
     events: parking_lot::RwLock<VecDeque<AuditEvent>>,
     /// Per-PID event logs
-    pid_events: Arc<DashMap<Pid, VecDeque<AuditEvent>>>,
+    pid_events: Arc<DashMap<Pid, VecDeque<AuditEvent>, RandomState>>,
     /// Denial counters for monitoring
-    denial_counts: Arc<DashMap<Pid, u64>>,
+    denial_counts: Arc<DashMap<Pid, u64, RandomState>>,
 }
 
 impl AuditLogger {
     pub fn new() -> Self {
         Self {
             events: parking_lot::RwLock::new(VecDeque::with_capacity(MAX_AUDIT_EVENTS)),
-            pid_events: Arc::new(DashMap::new()),
-            denial_counts: Arc::new(DashMap::new()),
+            pid_events: Arc::new(DashMap::with_hasher(RandomState::new())),
+            denial_counts: Arc::new(DashMap::with_hasher(RandomState::new())),
         }
     }
 

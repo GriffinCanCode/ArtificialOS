@@ -8,6 +8,7 @@ use crate::core::types::{Pid, ResourceLimits};
 use crate::security::namespace::{IsolationMode, NamespaceConfig, NamespaceManager};
 use crate::security::traits::*;
 use crate::security::types::*;
+use ahash::RandomState;
 use dashmap::DashMap;
 use log::{info, warn};
 use std::path::{Path, PathBuf};
@@ -16,8 +17,8 @@ use std::sync::Arc;
 /// Sandbox manager that enforces security policies
 #[derive(Clone)]
 pub struct SandboxManager {
-    sandboxes: Arc<DashMap<Pid, SandboxConfig>>,
-    spawned_counts: Arc<DashMap<Pid, u32>>,
+    sandboxes: Arc<DashMap<Pid, SandboxConfig, RandomState>>,
+    spawned_counts: Arc<DashMap<Pid, u32, RandomState>>,
     namespace_manager: Option<NamespaceManager>,
 }
 
@@ -26,9 +27,9 @@ impl SandboxManager {
         info!("Sandbox manager initialized");
         Self {
             // Use 64 shards for sandboxes - moderate contention
-            sandboxes: Arc::new(DashMap::with_shard_amount(64)),
+            sandboxes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 64)),
             // Use 32 shards for spawn counts - lower contention
-            spawned_counts: Arc::new(DashMap::with_shard_amount(32)),
+            spawned_counts: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 32)),
             namespace_manager: None,
         }
     }
@@ -46,9 +47,9 @@ impl SandboxManager {
         );
         Self {
             // Use 64 shards for sandboxes - moderate contention
-            sandboxes: Arc::new(DashMap::with_shard_amount(64)),
+            sandboxes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 64)),
             // Use 32 shards for spawn counts - lower contention
-            spawned_counts: Arc::new(DashMap::with_shard_amount(32)),
+            spawned_counts: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 32)),
             namespace_manager: Some(ns_manager),
         }
     }

@@ -5,6 +5,7 @@
 
 use super::types::{PermissionRequest, PermissionResponse, Resource};
 use crate::core::types::Pid;
+use ahash::RandomState;
 use dashmap::DashMap;
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -49,7 +50,7 @@ struct CachedDecision {
 
 /// Permission cache with LRU eviction
 pub struct PermissionCache {
-    cache: DashMap<CacheKey, CachedDecision>,
+    cache: DashMap<CacheKey, CachedDecision, RandomState>,
     max_size: usize,
     ttl: Duration,
     hits: AtomicU64,
@@ -60,7 +61,7 @@ impl PermissionCache {
     /// Create new cache
     pub fn new(max_size: usize, ttl: Duration) -> Self {
         Self {
-            cache: DashMap::with_capacity(max_size),
+            cache: DashMap::with_capacity_and_hasher(max_size, RandomState::new()),
             max_size,
             ttl,
             hits: AtomicU64::new(0),

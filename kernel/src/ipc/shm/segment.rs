@@ -6,7 +6,8 @@
 use super::types::{ShmError, ShmPermission};
 use crate::core::types::{Address, Pid, Size};
 use crate::memory::MemoryManager;
-use std::collections::{HashMap, HashSet};
+use ahash::HashMap;
+use std::collections::HashSet;
 
 use super::super::types::ShmId;
 
@@ -32,7 +33,7 @@ impl SharedSegment {
         let mut attached_pids = HashSet::new();
         attached_pids.insert(owner_pid);
 
-        let mut permissions = HashMap::new();
+        let mut permissions = HashMap::default();
         permissions.insert(owner_pid, ShmPermission::ReadWrite);
 
         Self {

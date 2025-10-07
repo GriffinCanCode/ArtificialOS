@@ -5,7 +5,7 @@
 
 use crate::core::types::Pid;
 use crate::syscalls::{Syscall, SyscallExecutor, SyscallResult};
-use std::collections::HashMap;
+use ahash::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::sync::oneshot;
 use uuid::Uuid;
@@ -34,7 +34,7 @@ pub struct AsyncTaskManager {
 impl AsyncTaskManager {
     pub fn new(executor: SyscallExecutor) -> Self {
         Self {
-            tasks: Arc::new(Mutex::new(HashMap::new())),
+            tasks: Arc::new(Mutex::new(HashMap::default())),
             executor,
         }
     }

@@ -7,7 +7,7 @@ use super::super::types::{IpcError, IpcResult, QueueId};
 use super::types::QueueMessage;
 use crate::core::types::Pid;
 use log::debug;
-use std::collections::HashMap;
+use ahash::HashMap;
 use tokio::sync::mpsc;
 
 /// PubSub queue implementation
@@ -26,7 +26,7 @@ impl PubSubQueue {
             id,
             owner,
             capacity: capacity.min(MAX_QUEUE_CAPACITY),
-            subscribers: HashMap::new(),
+            subscribers: HashMap::default(),
             closed: false,
         }
     }

@@ -4,6 +4,7 @@
  */
 
 use dashmap::DashMap;
+use ahash::RandomState;
 use std::collections::HashMap;
 use std::io::{Cursor, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
@@ -64,7 +65,7 @@ impl Node {
 /// In-memory filesystem implementation
 #[derive(Debug, Clone)]
 pub struct MemFS {
-    nodes: Arc<DashMap<PathBuf, Node>>,
+    nodes: Arc<DashMap<PathBuf, Node, RandomState>>,
     max_size: Option<usize>,
     current_size: Arc<AtomicUsize>,
 }
@@ -72,13 +73,13 @@ pub struct MemFS {
 impl MemFS {
     /// Create new in-memory filesystem
     pub fn new() -> Self {
-        let nodes = DashMap::new();
+        let nodes = DashMap::with_hasher(RandomState::new());
 
         // Create root directory
         nodes.insert(
             PathBuf::from("/"),
             Node::Directory {
-                children: HashMap::new(),
+                children: HashMap::default(),
                 permissions: Permissions::new(0o755),
                 created: SystemTime::now(),
             },
@@ -522,7 +523,7 @@ impl FileSystem for MemFS {
                 self.nodes.insert(
                     current.clone(),
                     Node::Directory {
-                        children: HashMap::new(),
+                        children: HashMap::default(),
                         permissions: Permissions::new(0o755),
                         created: SystemTime::now(),
                     },

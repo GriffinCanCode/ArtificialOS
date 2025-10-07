@@ -9,6 +9,7 @@ use crate::core::types::Pid;
 use crate::permissions::{PermissionChecker, PermissionRequest};
 
 use dashmap::DashMap;
+use ahash::RandomState;
 use log::{error, info, warn};
 use parking_lot::RwLock;
 use std::fs::{File, OpenOptions};
@@ -25,14 +26,14 @@ use super::types::SyscallResult;
 /// File descriptor manager
 pub struct FdManager {
     next_fd: Arc<AtomicU32>,
-    open_files: Arc<DashMap<u32, Arc<RwLock<File>>>>,
+    open_files: Arc<DashMap<u32, Arc<RwLock<File>>, RandomState>>,
 }
 
 impl FdManager {
     pub fn new() -> Self {
         Self {
             next_fd: Arc::new(AtomicU32::new(3)), // Start at 3 (0, 1, 2 are stdin, stdout, stderr)
-            open_files: Arc::new(DashMap::new()),
+            open_files: Arc::new(DashMap::with_hasher(RandomState::new())),
         }
     }
 

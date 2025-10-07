@@ -13,6 +13,7 @@ use super::types::{
 use crate::core::types::{Pid, Priority, Size};
 use crate::memory::MemoryManager;
 use dashmap::DashMap;
+use ahash::RandomState;
 use log::{debug, info, warn};
 use std::collections::HashSet;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -54,11 +55,11 @@ impl Queue {
 
 /// Async queue manager
 pub struct QueueManager {
-    queues: Arc<DashMap<QueueId, Queue>>,
+    queues: Arc<DashMap<QueueId, Queue, RandomState>>,
     next_id: Arc<AtomicU64>,
     next_msg_id: Arc<AtomicU64>,
-    process_queues: Arc<DashMap<Pid, HashSet<QueueId>>>,
-    pubsub_receivers: Arc<DashMap<(QueueId, Pid), mpsc::UnboundedReceiver<QueueMessage>>>,
+    process_queues: Arc<DashMap<Pid, HashSet<QueueId>, RandomState>>,
+    pubsub_receivers: Arc<DashMap<(QueueId, Pid), mpsc::UnboundedReceiver<QueueMessage>, RandomState>>,
     memory_manager: MemoryManager,
     // Free IDs for recycling (prevents ID exhaustion)
     free_ids: Arc<Mutex<Vec<QueueId>>>,
@@ -71,11 +72,11 @@ impl QueueManager {
             MAX_QUEUE_CAPACITY
         );
         Self {
-            queues: Arc::new(DashMap::new()),
+            queues: Arc::new(DashMap::with_hasher(RandomState::new())),
             next_id: Arc::new(AtomicU64::new(1)),
             next_msg_id: Arc::new(AtomicU64::new(1)),
-            process_queues: Arc::new(DashMap::new()),
-            pubsub_receivers: Arc::new(DashMap::new()),
+            process_queues: Arc::new(DashMap::with_hasher(RandomState::new())),
+            pubsub_receivers: Arc::new(DashMap::with_hasher(RandomState::new())),
             memory_manager,
             free_ids: Arc::new(Mutex::new(Vec::new())),
         }

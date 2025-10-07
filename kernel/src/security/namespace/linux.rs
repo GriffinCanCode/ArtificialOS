@@ -7,6 +7,7 @@ use super::traits::*;
 use super::types::*;
 use crate::core::types::Pid;
 use dashmap::DashMap;
+use ahash::RandomState;
 use log::info;
 use std::sync::Arc;
 
@@ -19,16 +20,16 @@ use std::os::unix::io::AsRawFd;
 
 /// Linux network namespace manager
 pub struct LinuxNamespaceManager {
-    namespaces: Arc<DashMap<NamespaceId, NamespaceInfo>>,
-    pid_to_ns: Arc<DashMap<Pid, NamespaceId>>,
+    namespaces: Arc<DashMap<NamespaceId, NamespaceInfo, RandomState>>,
+    pid_to_ns: Arc<DashMap<Pid, NamespaceId, RandomState>>,
 }
 
 impl LinuxNamespaceManager {
     pub fn new() -> Self {
         info!("Linux network namespace manager initialized");
         Self {
-            namespaces: Arc::new(DashMap::new()),
-            pid_to_ns: Arc::new(DashMap::new()),
+            namespaces: Arc::new(DashMap::with_hasher(RandomState::new())),
+            pid_to_ns: Arc::new(DashMap::with_hasher(RandomState::new())),
         }
     }
 

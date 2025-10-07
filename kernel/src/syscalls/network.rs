@@ -8,6 +8,7 @@ use crate::core::json;
 use crate::core::types::Pid;
 use crate::permissions::{PermissionChecker, PermissionRequest};
 
+use ahash::RandomState;
 use dashmap::DashMap;
 use log::{info, warn};
 use std::net::{TcpListener, TcpStream, UdpSocket};
@@ -22,18 +23,18 @@ use super::types::SyscallResult;
 /// Socket manager for tracking open sockets
 pub struct SocketManager {
     next_fd: Arc<AtomicU32>,
-    tcp_listeners: Arc<DashMap<u32, TcpListener>>,
-    tcp_streams: Arc<DashMap<u32, TcpStream>>,
-    udp_sockets: Arc<DashMap<u32, UdpSocket>>,
+    tcp_listeners: Arc<DashMap<u32, TcpListener, RandomState>>,
+    tcp_streams: Arc<DashMap<u32, TcpStream, RandomState>>,
+    udp_sockets: Arc<DashMap<u32, UdpSocket, RandomState>>,
 }
 
 impl SocketManager {
     pub fn new() -> Self {
         Self {
             next_fd: Arc::new(AtomicU32::new(1000)), // Start socket FDs at 1000
-            tcp_listeners: Arc::new(DashMap::new()),
-            tcp_streams: Arc::new(DashMap::new()),
-            udp_sockets: Arc::new(DashMap::new()),
+            tcp_listeners: Arc::new(DashMap::with_hasher(RandomState::new())),
+            tcp_streams: Arc::new(DashMap::with_hasher(RandomState::new())),
+            udp_sockets: Arc::new(DashMap::with_hasher(RandomState::new())),
         }
     }
 

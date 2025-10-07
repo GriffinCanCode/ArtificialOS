@@ -9,7 +9,7 @@ use crate::core::types::{Pid, Size};
 use log::{info, warn};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use ahash::HashMap;
 use std::sync::Arc;
 
 /// Global garbage collection strategy
@@ -278,7 +278,7 @@ impl GlobalGarbageCollector {
 
     /// Get process memory map
     fn get_process_memory_map(&self, mm: &MemoryManager) -> HashMap<Pid, Size> {
-        let mut map = HashMap::new();
+        let mut map = HashMap::default();
 
         // Get all allocated blocks and group by process
         let allocations = mm.process_allocations(0); // This would need to be refactored

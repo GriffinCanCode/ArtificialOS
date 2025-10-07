@@ -7,22 +7,23 @@ use super::traits::*;
 use super::types::*;
 use crate::core::types::Pid;
 use dashmap::DashMap;
+use ahash::RandomState;
 use log::info;
 use std::sync::Arc;
 
 /// Simulation-based namespace manager
 /// Provides API compatibility without true OS-level isolation
 pub struct SimulationNamespaceManager {
-    namespaces: Arc<DashMap<NamespaceId, NamespaceInfo>>,
-    pid_to_ns: Arc<DashMap<Pid, NamespaceId>>,
+    namespaces: Arc<DashMap<NamespaceId, NamespaceInfo, RandomState>>,
+    pid_to_ns: Arc<DashMap<Pid, NamespaceId, RandomState>>,
 }
 
 impl SimulationNamespaceManager {
     pub fn new() -> Self {
         info!("Network isolation manager initialized (simulation mode)");
         Self {
-            namespaces: Arc::new(DashMap::new()),
-            pid_to_ns: Arc::new(DashMap::new()),
+            namespaces: Arc::new(DashMap::with_hasher(RandomState::new())),
+            pid_to_ns: Arc::new(DashMap::with_hasher(RandomState::new())),
         }
     }
 }

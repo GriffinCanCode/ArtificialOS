@@ -37,6 +37,8 @@ time = { version = "0.3", features = ["serde", "macros"] }
 parking_lot = "0.12"
 dashmap = "5.5"
 ahash = "0.8"
+ringbuf = "0.4"
+flume = "0.11"  # High-performance MPSC channel for pub-sub
 
 # Structured logging
 tracing = "0.1"

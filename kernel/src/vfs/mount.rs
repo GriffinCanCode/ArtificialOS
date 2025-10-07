@@ -4,6 +4,7 @@
  */
 
 use dashmap::DashMap;
+use ahash::RandomState;
 use parking_lot::RwLock;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -45,7 +46,7 @@ struct MountEntry {
 
 /// Mount manager for filesystem routing
 pub struct MountManager {
-    mounts: Arc<DashMap<PathBuf, MountEntry>>,
+    mounts: Arc<DashMap<PathBuf, MountEntry, RandomState>>,
     mount_order: Arc<RwLock<Vec<PathBuf>>>, // Longest paths first for proper resolution
 }
 
@@ -53,7 +54,7 @@ impl MountManager {
     /// Create new mount manager
     pub fn new() -> Self {
         Self {
-            mounts: Arc::new(DashMap::new()),
+            mounts: Arc::new(DashMap::with_hasher(RandomState::new())),
             mount_order: Arc::new(RwLock::new(Vec::new())),
         }
     }

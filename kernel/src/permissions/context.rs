@@ -5,7 +5,7 @@
 
 use crate::core::types::Pid;
 use crate::security::types::SandboxConfig;
-use std::collections::HashMap;
+use ahash::HashMap;
 use std::time::SystemTime;
 
 /// Request context for permission evaluation
@@ -21,7 +21,7 @@ impl RequestContext {
     pub fn new() -> Self {
         Self {
             timestamp: SystemTime::now(),
-            metadata: HashMap::new(),
+            metadata: HashMap::default(),
         }
     }
 

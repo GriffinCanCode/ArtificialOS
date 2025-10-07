@@ -7,21 +7,22 @@ use super::traits::*;
 use super::types::*;
 use crate::core::types::Pid;
 use dashmap::DashMap;
+use ahash::RandomState;
 use log::{info, warn};
 use std::sync::Arc;
 
 /// macOS network isolation manager using packet filters
 pub struct MacOSNamespaceManager {
-    namespaces: Arc<DashMap<NamespaceId, NamespaceInfo>>,
-    pid_to_ns: Arc<DashMap<Pid, NamespaceId>>,
+    namespaces: Arc<DashMap<NamespaceId, NamespaceInfo, RandomState>>,
+    pid_to_ns: Arc<DashMap<Pid, NamespaceId, RandomState>>,
 }
 
 impl MacOSNamespaceManager {
     pub fn new() -> Self {
         info!("macOS network isolation manager initialized (pfctl mode)");
         Self {
-            namespaces: Arc::new(DashMap::new()),
-            pid_to_ns: Arc::new(DashMap::new()),
+            namespaces: Arc::new(DashMap::with_hasher(RandomState::new())),
+            pid_to_ns: Arc::new(DashMap::with_hasher(RandomState::new())),
         }
     }
 
