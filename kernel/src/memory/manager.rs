@@ -9,7 +9,7 @@ use crate::core::types::{Address, Pid, Size};
 use dashmap::DashMap;
 use log::{error, info, warn};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 /// Per-process memory tracking
 #[derive(Debug, Clone)]
@@ -17,6 +17,13 @@ struct ProcessMemoryTracking {
     current_bytes: Size,
     peak_bytes: Size,
     allocation_count: usize,
+}
+
+/// Free block for address recycling
+#[derive(Debug, Clone)]
+struct FreeBlock {
+    address: Address,
+    size: Size,
 }
 
 pub struct MemoryManager {
@@ -34,12 +41,14 @@ pub struct MemoryManager {
     process_tracking: Arc<DashMap<Pid, ProcessMemoryTracking>>,
     // Memory storage - maps addresses to their byte contents
     memory_storage: Arc<DashMap<Address, Vec<u8>>>,
+    // Free list for address recycling - sorted by size for best-fit allocation
+    free_list: Arc<Mutex<Vec<FreeBlock>>>,
 }
 
 impl MemoryManager {
     pub fn new() -> Self {
         let total = 1024 * 1024 * 1024; // 1GB simulated memory
-        info!("Memory manager initialized with {} bytes", total);
+        info!("Memory manager initialized with {} bytes and address recycling enabled", total);
         Self {
             blocks: Arc::new(DashMap::new()),
             next_address: Arc::new(AtomicU64::new(0)),
@@ -51,6 +60,7 @@ impl MemoryManager {
             deallocated_count: Arc::new(AtomicU64::new(0)),
             process_tracking: Arc::new(DashMap::new()),
             memory_storage: Arc::new(DashMap::new()),
+            free_list: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
@@ -69,16 +79,17 @@ impl MemoryManager {
         }
     }
 
-    /// Allocate memory with graceful OOM handling
+    /// Allocate memory with graceful OOM handling and address recycling
     pub fn allocate(&self, size: Size, pid: Pid) -> MemoryResult<Address> {
         // Check if allocation would exceed total memory atomically
-        let used = self.used_memory.fetch_add(size, Ordering::SeqCst);
+        let size_u64 = size as u64;
+        let used = self.used_memory.fetch_add(size_u64, Ordering::SeqCst);
 
-        if used + size > self.total_memory {
+        if used + size_u64 > self.total_memory as u64 {
             // Revert the increment
-            self.used_memory.fetch_sub(size, Ordering::SeqCst);
+            self.used_memory.fetch_sub(size_u64, Ordering::SeqCst);
 
-            let available = self.total_memory - used;
+            let available = self.total_memory - used as usize;
             error!(
                 "OOM: PID {} requested {} bytes, only {} bytes available ({} used / {} total)",
                 pid, size, available, used, self.total_memory
@@ -87,13 +98,52 @@ impl MemoryManager {
             return Err(MemoryError::OutOfMemory {
                 requested: size,
                 available,
-                used,
+                used: used as usize,
                 total: self.total_memory,
             });
         }
 
-        // Allocate address atomically
-        let address = self.next_address.fetch_add(size, Ordering::SeqCst);
+        // Try to recycle an address from the free list (best-fit algorithm)
+        let address = {
+            let mut free_list = self.free_list.lock().unwrap();
+
+            // Find the best-fit block (smallest block that fits the requested size)
+            let best_fit_idx = free_list
+                .iter()
+                .enumerate()
+                .filter(|(_, block)| block.size >= size)
+                .min_by_key(|(_, block)| block.size)
+                .map(|(idx, _)| idx);
+
+            if let Some(idx) = best_fit_idx {
+                let free_block = free_list.remove(idx);
+                let address = free_block.address;
+
+                info!(
+                    "Recycled address 0x{:x} (block size: {}, requested: {}) for PID {}",
+                    address, free_block.size, size, pid
+                );
+
+                // If the free block is larger than needed, split it and return the remainder
+                if free_block.size > size {
+                    let remainder_size = free_block.size - size;
+                    let remainder_addr = address + size;
+                    free_list.push(FreeBlock {
+                        address: remainder_addr,
+                        size: remainder_size,
+                    });
+                    info!(
+                        "Split block: keeping {} bytes, returning {} bytes at 0x{:x} to free list",
+                        size, remainder_size, remainder_addr
+                    );
+                }
+
+                address
+            } else {
+                // No suitable free block, allocate new address
+                self.next_address.fetch_add(size_u64, Ordering::SeqCst) as usize
+            }
+        };
 
         let block = MemoryBlock {
             address,
@@ -121,7 +171,7 @@ impl MemoryManager {
             });
 
         // Log allocation with memory pressure warnings
-        let used_val = used + size;
+        let used_val = used as usize + size;
 
         if let Some(level) = self.check_memory_pressure(used_val) {
             warn!(
@@ -140,7 +190,7 @@ impl MemoryManager {
         Ok(address)
     }
 
-    /// Deallocate memory
+    /// Deallocate memory and add to free list for address recycling
     pub fn deallocate(&self, address: Address) -> MemoryResult<()> {
         if let Some(mut entry) = self.blocks.get_mut(&address) {
             let block = entry.value_mut();
@@ -149,7 +199,7 @@ impl MemoryManager {
                 let pid = block.owner_pid;
                 block.allocated = false;
 
-                self.used_memory.fetch_sub(size, Ordering::SeqCst);
+                self.used_memory.fetch_sub(size as u64, Ordering::SeqCst);
 
                 // Update per-process tracking
                 if let Some(pid) = pid {
@@ -158,20 +208,29 @@ impl MemoryManager {
                     }
                 }
 
+                // Add to free list for address recycling
+                {
+                    let mut free_list = self.free_list.lock().unwrap();
+                    free_list.push(FreeBlock { address, size });
+
+                    // Optionally coalesce adjacent blocks to reduce fragmentation
+                    Self::coalesce_free_blocks(&mut free_list);
+                }
+
                 // Track deallocated blocks for GC
                 let dealloc_count = self.deallocated_count.fetch_add(1, Ordering::SeqCst) + 1;
 
                 let used = self.used_memory.load(Ordering::SeqCst);
                 info!(
-                    "Deallocated {} bytes at 0x{:x} ({} bytes now available, {} deallocated blocks)",
+                    "Deallocated {} bytes at 0x{:x}, added to free list ({} bytes now available, {} deallocated blocks)",
                     size,
                     address,
-                    self.total_memory - used,
+                    self.total_memory - used as usize,
                     dealloc_count
                 );
 
                 // Trigger GC if threshold reached
-                let should_gc = dealloc_count >= self.gc_threshold;
+                let should_gc = dealloc_count >= self.gc_threshold as u64;
                 drop(entry);
 
                 if should_gc {
@@ -190,10 +249,40 @@ impl MemoryManager {
         Err(MemoryError::InvalidAddress(address))
     }
 
+    /// Coalesce adjacent free blocks to reduce fragmentation
+    fn coalesce_free_blocks(free_list: &mut Vec<FreeBlock>) {
+        if free_list.len() < 2 {
+            return;
+        }
+
+        // Sort by address
+        free_list.sort_by_key(|block| block.address);
+
+        let mut i = 0;
+        while i < free_list.len() - 1 {
+            let current_end = free_list[i].address + free_list[i].size;
+            let next_start = free_list[i + 1].address;
+
+            // If blocks are adjacent, merge them
+            if current_end == next_start {
+                let next_size = free_list[i + 1].size;
+                free_list[i].size += next_size;
+                free_list.remove(i + 1);
+                info!(
+                    "Coalesced adjacent free blocks at 0x{:x} (new size: {})",
+                    free_list[i].address, free_list[i].size
+                );
+            } else {
+                i += 1;
+            }
+        }
+    }
+
     /// Free all memory allocated to a specific process (called on process termination)
     pub fn free_process_memory(&self, pid: Pid) -> Size {
         let mut freed_bytes = 0;
         let mut freed_count = 0;
+        let mut freed_blocks = Vec::new();
 
         for mut entry in self.blocks.iter_mut() {
             let block = entry.value_mut();
@@ -201,30 +290,41 @@ impl MemoryManager {
                 block.allocated = false;
                 freed_bytes += block.size;
                 freed_count += 1;
+                freed_blocks.push(FreeBlock {
+                    address: block.address,
+                    size: block.size,
+                });
             }
         }
 
         if freed_bytes > 0 {
-            self.used_memory.fetch_sub(freed_bytes, Ordering::SeqCst);
+            self.used_memory.fetch_sub(freed_bytes as u64, Ordering::SeqCst);
 
             // Remove process tracking entry
             self.process_tracking.remove(&pid);
+
+            // Add freed blocks to free list for recycling
+            {
+                let mut free_list = self.free_list.lock().unwrap();
+                free_list.extend(freed_blocks);
+                Self::coalesce_free_blocks(&mut free_list);
+            }
 
             // Track deallocated blocks for GC
             let dealloc_count = self.deallocated_count.fetch_add(freed_count, Ordering::SeqCst) + freed_count;
 
             let used = self.used_memory.load(Ordering::SeqCst);
             info!(
-                "Cleaned up {} bytes ({} blocks) from terminated PID {} ({} bytes now available, {} deallocated blocks)",
+                "Cleaned up {} bytes ({} blocks) from terminated PID {}, added to free list ({} bytes now available, {} deallocated blocks)",
                 freed_bytes,
                 freed_count,
                 pid,
-                self.total_memory - used,
+                self.total_memory - used as usize,
                 dealloc_count
             );
 
             // Trigger GC if threshold reached
-            let should_gc = dealloc_count >= self.gc_threshold;
+            let should_gc = dealloc_count >= self.gc_threshold as u64;
 
             if should_gc {
                 info!("GC threshold reached after process cleanup, running garbage collection...");
@@ -258,13 +358,13 @@ impl MemoryManager {
 
     /// Get overall memory info: (total, used, available)
     pub fn info(&self) -> (Size, Size, Size) {
-        let used = self.used_memory.load(Ordering::SeqCst);
+        let used = self.used_memory.load(Ordering::SeqCst) as usize;
         (self.total_memory, used, self.total_memory - used)
     }
 
     /// Get detailed memory statistics
     pub fn stats(&self) -> MemoryStats {
-        let used = self.used_memory.load(Ordering::SeqCst);
+        let used = self.used_memory.load(Ordering::SeqCst) as usize;
 
         let allocated_blocks = self.blocks.iter().filter(|entry| entry.value().allocated).count();
         let fragmented_blocks = self.blocks.iter().filter(|entry| !entry.value().allocated).count();
@@ -281,6 +381,7 @@ impl MemoryManager {
 
     /// Garbage collect deallocated memory blocks
     /// Removes deallocated blocks from the HashMap to prevent unbounded growth
+    /// Note: Free blocks remain in the free list for address recycling
     pub fn collect(&self) -> Size {
         let initial_count = self.blocks.len();
 
@@ -291,7 +392,7 @@ impl MemoryManager {
             .map(|entry| *entry.key())
             .collect();
 
-        // Remove deallocated blocks
+        // Remove deallocated blocks from the blocks map
         for addr in &deallocated_addrs {
             self.blocks.remove(addr);
         }
@@ -308,11 +409,16 @@ impl MemoryManager {
         // Reset deallocated counter
         self.deallocated_count.store(0, Ordering::SeqCst);
 
+        // Note: We intentionally keep blocks in the free list for address recycling
+        // The free list allows these addresses to be reused in future allocations
+
         if removed_count > 0 {
+            let free_list_size = self.free_list.lock().unwrap().len();
             info!(
-                "Garbage collection complete: removed {} deallocated blocks and their storage, {} blocks remain",
+                "Garbage collection complete: removed {} deallocated blocks and their storage, {} blocks remain, {} blocks in free list for recycling",
                 removed_count,
-                initial_count - removed_count
+                initial_count - removed_count,
+                free_list_size
             );
         }
 
@@ -328,7 +434,7 @@ impl MemoryManager {
     /// Check if GC should run
     pub fn should_collect(&self) -> bool {
         let dealloc_count = self.deallocated_count.load(Ordering::SeqCst);
-        dealloc_count >= self.gc_threshold
+        dealloc_count >= self.gc_threshold as u64
     }
 
     /// Set GC threshold
@@ -538,6 +644,7 @@ impl Clone for MemoryManager {
             deallocated_count: Arc::clone(&self.deallocated_count),
             process_tracking: Arc::clone(&self.process_tracking),
             memory_storage: Arc::clone(&self.memory_storage),
+            free_list: Arc::clone(&self.free_list),
         }
     }
 }
