@@ -15,10 +15,15 @@ path = "src/main.rs"
 # Async runtime
 tokio = { version = "1.35", features = ["full"] }
 tokio-stream = "0.1"
+futures = "0.3"
+async-stream = "0.3"
 
 # gRPC
 tonic = "0.11"
 prost = "0.12"
+
+# UUID generation
+uuid = { version = "1.6", features = ["v4"] }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
@@ -26,6 +31,7 @@ serde_json = "1.0"
 
 # Concurrency
 parking_lot = "0.12"
+dashmap = "5.5"
 
 # Structured logging
 tracing = "0.1"

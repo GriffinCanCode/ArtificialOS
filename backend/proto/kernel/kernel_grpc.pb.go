@@ -20,6 +20,11 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	KernelService_ExecuteSyscall_FullMethodName      = "/kernel.KernelService/ExecuteSyscall"
+	KernelService_StreamSyscall_FullMethodName       = "/kernel.KernelService/StreamSyscall"
+	KernelService_ExecuteSyscallAsync_FullMethodName = "/kernel.KernelService/ExecuteSyscallAsync"
+	KernelService_GetAsyncStatus_FullMethodName      = "/kernel.KernelService/GetAsyncStatus"
+	KernelService_CancelAsync_FullMethodName         = "/kernel.KernelService/CancelAsync"
+	KernelService_ExecuteSyscallBatch_FullMethodName = "/kernel.KernelService/ExecuteSyscallBatch"
 	KernelService_CreateProcess_FullMethodName       = "/kernel.KernelService/CreateProcess"
 	KernelService_UpdateSandbox_FullMethodName       = "/kernel.KernelService/UpdateSandbox"
 	KernelService_ScheduleNext_FullMethodName        = "/kernel.KernelService/ScheduleNext"
@@ -36,6 +41,14 @@ const (
 type KernelServiceClient interface {
 	// Execute a system call
 	ExecuteSyscall(ctx context.Context, in *SyscallRequest, opts ...grpc.CallOption) (*SyscallResponse, error)
+	// Streaming syscall for large data transfers
+	StreamSyscall(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[StreamSyscallRequest, StreamSyscallChunk], error)
+	// Async syscall execution
+	ExecuteSyscallAsync(ctx context.Context, in *SyscallRequest, opts ...grpc.CallOption) (*AsyncSyscallResponse, error)
+	GetAsyncStatus(ctx context.Context, in *AsyncStatusRequest, opts ...grpc.CallOption) (*AsyncStatusResponse, error)
+	CancelAsync(ctx context.Context, in *AsyncCancelRequest, opts ...grpc.CallOption) (*AsyncCancelResponse, error)
+	// Batch syscall execution
+	ExecuteSyscallBatch(ctx context.Context, in *BatchSyscallRequest, opts ...grpc.CallOption) (*BatchSyscallResponse, error)
 	// Create a sandboxed process
 	CreateProcess(ctx context.Context, in *CreateProcessRequest, opts ...grpc.CallOption) (*CreateProcessResponse, error)
 	// Manage sandbox permissions
@@ -60,6 +73,59 @@ func (c *kernelServiceClient) ExecuteSyscall(ctx context.Context, in *SyscallReq
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SyscallResponse)
 	err := c.cc.Invoke(ctx, KernelService_ExecuteSyscall_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *kernelServiceClient) StreamSyscall(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[StreamSyscallRequest, StreamSyscallChunk], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &KernelService_ServiceDesc.Streams[0], KernelService_StreamSyscall_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[StreamSyscallRequest, StreamSyscallChunk]{ClientStream: stream}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type KernelService_StreamSyscallClient = grpc.BidiStreamingClient[StreamSyscallRequest, StreamSyscallChunk]
+
+func (c *kernelServiceClient) ExecuteSyscallAsync(ctx context.Context, in *SyscallRequest, opts ...grpc.CallOption) (*AsyncSyscallResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AsyncSyscallResponse)
+	err := c.cc.Invoke(ctx, KernelService_ExecuteSyscallAsync_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *kernelServiceClient) GetAsyncStatus(ctx context.Context, in *AsyncStatusRequest, opts ...grpc.CallOption) (*AsyncStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AsyncStatusResponse)
+	err := c.cc.Invoke(ctx, KernelService_GetAsyncStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *kernelServiceClient) CancelAsync(ctx context.Context, in *AsyncCancelRequest, opts ...grpc.CallOption) (*AsyncCancelResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AsyncCancelResponse)
+	err := c.cc.Invoke(ctx, KernelService_CancelAsync_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *kernelServiceClient) ExecuteSyscallBatch(ctx context.Context, in *BatchSyscallRequest, opts ...grpc.CallOption) (*BatchSyscallResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BatchSyscallResponse)
+	err := c.cc.Invoke(ctx, KernelService_ExecuteSyscallBatch_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +184,7 @@ func (c *kernelServiceClient) SetSchedulingPolicy(ctx context.Context, in *SetSc
 
 func (c *kernelServiceClient) StreamEvents(ctx context.Context, in *EventStreamRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[KernelEvent], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &KernelService_ServiceDesc.Streams[0], KernelService_StreamEvents_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &KernelService_ServiceDesc.Streams[1], KernelService_StreamEvents_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -143,6 +209,14 @@ type KernelService_StreamEventsClient = grpc.ServerStreamingClient[KernelEvent]
 type KernelServiceServer interface {
 	// Execute a system call
 	ExecuteSyscall(context.Context, *SyscallRequest) (*SyscallResponse, error)
+	// Streaming syscall for large data transfers
+	StreamSyscall(grpc.BidiStreamingServer[StreamSyscallRequest, StreamSyscallChunk]) error
+	// Async syscall execution
+	ExecuteSyscallAsync(context.Context, *SyscallRequest) (*AsyncSyscallResponse, error)
+	GetAsyncStatus(context.Context, *AsyncStatusRequest) (*AsyncStatusResponse, error)
+	CancelAsync(context.Context, *AsyncCancelRequest) (*AsyncCancelResponse, error)
+	// Batch syscall execution
+	ExecuteSyscallBatch(context.Context, *BatchSyscallRequest) (*BatchSyscallResponse, error)
 	// Create a sandboxed process
 	CreateProcess(context.Context, *CreateProcessRequest) (*CreateProcessResponse, error)
 	// Manage sandbox permissions
@@ -165,6 +239,21 @@ type UnimplementedKernelServiceServer struct{}
 
 func (UnimplementedKernelServiceServer) ExecuteSyscall(context.Context, *SyscallRequest) (*SyscallResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ExecuteSyscall not implemented")
+}
+func (UnimplementedKernelServiceServer) StreamSyscall(grpc.BidiStreamingServer[StreamSyscallRequest, StreamSyscallChunk]) error {
+	return status.Errorf(codes.Unimplemented, "method StreamSyscall not implemented")
+}
+func (UnimplementedKernelServiceServer) ExecuteSyscallAsync(context.Context, *SyscallRequest) (*AsyncSyscallResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ExecuteSyscallAsync not implemented")
+}
+func (UnimplementedKernelServiceServer) GetAsyncStatus(context.Context, *AsyncStatusRequest) (*AsyncStatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAsyncStatus not implemented")
+}
+func (UnimplementedKernelServiceServer) CancelAsync(context.Context, *AsyncCancelRequest) (*AsyncCancelResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CancelAsync not implemented")
+}
+func (UnimplementedKernelServiceServer) ExecuteSyscallBatch(context.Context, *BatchSyscallRequest) (*BatchSyscallResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ExecuteSyscallBatch not implemented")
 }
 func (UnimplementedKernelServiceServer) CreateProcess(context.Context, *CreateProcessRequest) (*CreateProcessResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateProcess not implemented")
@@ -219,6 +308,85 @@ func _KernelService_ExecuteSyscall_Handler(srv interface{}, ctx context.Context,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(KernelServiceServer).ExecuteSyscall(ctx, req.(*SyscallRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KernelService_StreamSyscall_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(KernelServiceServer).StreamSyscall(&grpc.GenericServerStream[StreamSyscallRequest, StreamSyscallChunk]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type KernelService_StreamSyscallServer = grpc.BidiStreamingServer[StreamSyscallRequest, StreamSyscallChunk]
+
+func _KernelService_ExecuteSyscallAsync_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SyscallRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KernelServiceServer).ExecuteSyscallAsync(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KernelService_ExecuteSyscallAsync_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KernelServiceServer).ExecuteSyscallAsync(ctx, req.(*SyscallRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KernelService_GetAsyncStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AsyncStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KernelServiceServer).GetAsyncStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KernelService_GetAsyncStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KernelServiceServer).GetAsyncStatus(ctx, req.(*AsyncStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KernelService_CancelAsync_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AsyncCancelRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KernelServiceServer).CancelAsync(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KernelService_CancelAsync_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KernelServiceServer).CancelAsync(ctx, req.(*AsyncCancelRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KernelService_ExecuteSyscallBatch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BatchSyscallRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KernelServiceServer).ExecuteSyscallBatch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KernelService_ExecuteSyscallBatch_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KernelServiceServer).ExecuteSyscallBatch(ctx, req.(*BatchSyscallRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -336,6 +504,22 @@ var KernelService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _KernelService_ExecuteSyscall_Handler,
 		},
 		{
+			MethodName: "ExecuteSyscallAsync",
+			Handler:    _KernelService_ExecuteSyscallAsync_Handler,
+		},
+		{
+			MethodName: "GetAsyncStatus",
+			Handler:    _KernelService_GetAsyncStatus_Handler,
+		},
+		{
+			MethodName: "CancelAsync",
+			Handler:    _KernelService_CancelAsync_Handler,
+		},
+		{
+			MethodName: "ExecuteSyscallBatch",
+			Handler:    _KernelService_ExecuteSyscallBatch_Handler,
+		},
+		{
 			MethodName: "CreateProcess",
 			Handler:    _KernelService_CreateProcess_Handler,
 		},
@@ -357,6 +541,12 @@ var KernelService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "StreamSyscall",
+			Handler:       _KernelService_StreamSyscall_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
 		{
 			StreamName:    "StreamEvents",
 			Handler:       _KernelService_StreamEvents_Handler,

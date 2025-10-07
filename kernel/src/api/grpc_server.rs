@@ -15,6 +15,9 @@ use crate::security::{
 };
 use crate::syscalls::{Syscall, SyscallExecutor, SyscallResult};
 
+use super::async_task::{AsyncTaskManager, TaskStatus};
+use super::batch::BatchExecutor;
+use super::streaming::StreamingManager;
 use super::traits::ServerLifecycle;
 use super::types::{ApiError, ApiResult, ServerConfig};
 
@@ -31,6 +34,9 @@ pub struct KernelServiceImpl {
     syscall_executor: SyscallExecutor,
     process_manager: ProcessManager,
     sandbox_manager: SandboxManager,
+    async_manager: AsyncTaskManager,
+    streaming_manager: StreamingManager,
+    batch_executor: BatchExecutor,
 }
 
 impl KernelServiceImpl {
@@ -40,10 +46,17 @@ impl KernelServiceImpl {
         sandbox_manager: SandboxManager,
     ) -> Self {
         info!("gRPC service initialized");
+        let async_manager = AsyncTaskManager::new(syscall_executor.clone());
+        let streaming_manager = StreamingManager::new(syscall_executor.clone());
+        let batch_executor = BatchExecutor::new(syscall_executor.clone());
+
         Self {
             syscall_executor,
             process_manager,
             sandbox_manager,
+            async_manager,
+            streaming_manager,
+            batch_executor,
         }
     }
 }
@@ -51,6 +64,7 @@ impl KernelServiceImpl {
 #[tonic::async_trait]
 impl KernelService for KernelServiceImpl {
     type StreamEventsStream = tokio_stream::wrappers::ReceiverStream<Result<KernelEvent, Status>>;
+    type StreamSyscallStream = tokio_stream::wrappers::ReceiverStream<Result<StreamSyscallChunk, Status>>;
 
     async fn execute_syscall(
         &self,
@@ -674,6 +688,228 @@ impl KernelService for KernelServiceImpl {
                 success: false,
                 error: "Scheduler not available".to_string(),
             }))
+        }
+    }
+
+    async fn stream_syscall(
+        &self,
+        request: Request<tonic::Streaming<StreamSyscallRequest>>,
+    ) -> Result<Response<Self::StreamSyscallStream>, Status> {
+        let mut stream = request.into_inner();
+        let (tx, rx) = tokio::sync::mpsc::channel(100);
+        let streaming_manager = self.streaming_manager.clone();
+
+        tokio::spawn(async move {
+            while let Ok(Some(req)) = stream.message().await {
+                match req.request {
+                    Some(stream_syscall_request::Request::Read(read_req)) => {
+                        let path = std::path::PathBuf::from(read_req.path);
+                        let chunk_size = if read_req.chunk_size > 0 {
+                            Some(read_req.chunk_size)
+                        } else {
+                            None
+                        };
+
+                        match streaming_manager.stream_file_read(req.pid, path, chunk_size).await {
+                            Ok(file_stream) => {
+                                use futures::StreamExt;
+                                tokio::pin!(file_stream);
+                                while let Some(result) = file_stream.next().await {
+                                    let chunk = match result {
+                                        Ok(data) => StreamSyscallChunk {
+                                            chunk: Some(stream_syscall_chunk::Chunk::Data(data)),
+                                        },
+                                        Err(e) => StreamSyscallChunk {
+                                            chunk: Some(stream_syscall_chunk::Chunk::Error(e)),
+                                        },
+                                    };
+                                    if tx.send(Ok(chunk)).await.is_err() {
+                                        return;
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                let _ = tx.send(Ok(StreamSyscallChunk {
+                                    chunk: Some(stream_syscall_chunk::Chunk::Error(e)),
+                                })).await;
+                                return;
+                            }
+                        }
+                    }
+                    Some(stream_syscall_request::Request::Write(_)) => {
+                        // Write streaming handled separately
+                    }
+                    None => {}
+                }
+            }
+        });
+
+        Ok(Response::new(tokio_stream::wrappers::ReceiverStream::new(rx)))
+    }
+
+    async fn execute_syscall_async(
+        &self,
+        request: Request<SyscallRequest>,
+    ) -> Result<Response<AsyncSyscallResponse>, Status> {
+        let req = request.into_inner();
+        let pid = req.pid;
+
+        // Convert proto syscall to internal (reuse existing logic)
+        let syscall = match self.proto_to_syscall(&req) {
+            Ok(s) => s,
+            Err(e) => {
+                return Ok(Response::new(AsyncSyscallResponse {
+                    task_id: String::new(),
+                    accepted: false,
+                    error: e,
+                }));
+            }
+        };
+
+        let task_id = self.async_manager.submit(pid, syscall);
+
+        Ok(Response::new(AsyncSyscallResponse {
+            task_id,
+            accepted: true,
+            error: String::new(),
+        }))
+    }
+
+    async fn get_async_status(
+        &self,
+        request: Request<AsyncStatusRequest>,
+    ) -> Result<Response<AsyncStatusResponse>, Status> {
+        let req = request.into_inner();
+
+        match self.async_manager.get_status(&req.task_id) {
+            Some((status, progress)) => {
+                let (proto_status, result) = match status {
+                    TaskStatus::Pending => (async_status_response::Status::Pending, None),
+                    TaskStatus::Running => (async_status_response::Status::Running, None),
+                    TaskStatus::Completed(res) => {
+                        (async_status_response::Status::Completed, Some(self.syscall_result_to_proto(res)))
+                    }
+                    TaskStatus::Failed(msg) => (
+                        async_status_response::Status::Failed,
+                        Some(SyscallResponse {
+                            result: Some(syscall_response::Result::Error(ErrorResult { message: msg })),
+                        }),
+                    ),
+                    TaskStatus::Cancelled => (async_status_response::Status::Cancelled, None),
+                };
+
+                Ok(Response::new(AsyncStatusResponse {
+                    status: proto_status as i32,
+                    result,
+                    progress,
+                }))
+            }
+            None => Err(Status::not_found("Task not found")),
+        }
+    }
+
+    async fn cancel_async(
+        &self,
+        request: Request<AsyncCancelRequest>,
+    ) -> Result<Response<AsyncCancelResponse>, Status> {
+        let req = request.into_inner();
+        let cancelled = self.async_manager.cancel(&req.task_id);
+
+        Ok(Response::new(AsyncCancelResponse {
+            cancelled,
+            error: if cancelled { String::new() } else { "Task not found or already completed".to_string() },
+        }))
+    }
+
+    async fn execute_syscall_batch(
+        &self,
+        request: Request<BatchSyscallRequest>,
+    ) -> Result<Response<BatchSyscallResponse>, Status> {
+        let req = request.into_inner();
+        let parallel = req.parallel;
+
+        let mut syscalls = Vec::new();
+        for syscall_req in req.requests {
+            let pid = syscall_req.pid;
+            match self.proto_to_syscall(&syscall_req) {
+                Ok(syscall) => syscalls.push((pid, syscall)),
+                Err(e) => {
+                    return Ok(Response::new(BatchSyscallResponse {
+                        responses: vec![SyscallResponse {
+                            result: Some(syscall_response::Result::Error(ErrorResult { message: e })),
+                        }],
+                        success_count: 0,
+                        failure_count: 1,
+                    }));
+                }
+            }
+        }
+
+        let results = self.batch_executor.execute_batch(syscalls, parallel).await;
+
+        let mut success_count = 0;
+        let mut failure_count = 0;
+        let responses: Vec<_> = results.into_iter().map(|r| {
+            match &r {
+                SyscallResult::Success { .. } => success_count += 1,
+                _ => failure_count += 1,
+            }
+            self.syscall_result_to_proto(r)
+        }).collect();
+
+        Ok(Response::new(BatchSyscallResponse {
+            responses,
+            success_count,
+            failure_count,
+        }))
+    }
+}
+
+impl KernelServiceImpl {
+    fn proto_to_syscall(&self, req: &SyscallRequest) -> Result<Syscall, String> {
+        // Extract syscall from protobuf (reuse existing conversion logic from execute_syscall)
+        // This is a helper to avoid duplication
+        match &req.syscall {
+            Some(syscall_request::Syscall::ReadFile(call)) => Ok(Syscall::ReadFile {
+                path: PathBuf::from(call.path.clone()),
+            }),
+            Some(syscall_request::Syscall::WriteFile(call)) => Ok(Syscall::WriteFile {
+                path: PathBuf::from(call.path.clone()),
+                data: call.data.clone(),
+            }),
+            // Add more syscalls as needed - for now support file ops
+            Some(syscall_request::Syscall::CreateFile(call)) => Ok(Syscall::CreateFile {
+                path: PathBuf::from(call.path.clone()),
+            }),
+            Some(syscall_request::Syscall::DeleteFile(call)) => Ok(Syscall::DeleteFile {
+                path: PathBuf::from(call.path.clone()),
+            }),
+            Some(syscall_request::Syscall::SpawnProcess(call)) => Ok(Syscall::SpawnProcess {
+                command: call.command.clone(),
+                args: call.args.clone(),
+            }),
+            Some(syscall_request::Syscall::Sleep(call)) => Ok(Syscall::Sleep {
+                duration_ms: call.duration_ms,
+            }),
+            _ => Err("Unsupported syscall for async/batch".to_string()),
+        }
+    }
+
+    fn syscall_result_to_proto(&self, result: SyscallResult) -> SyscallResponse {
+        match result {
+            SyscallResult::Success { data } => SyscallResponse {
+                result: Some(syscall_response::Result::Success(SuccessResult {
+                    data: data.unwrap_or_default(),
+                })),
+            },
+            SyscallResult::Error { message } => SyscallResponse {
+                result: Some(syscall_response::Result::Error(ErrorResult { message })),
+            },
+            SyscallResult::PermissionDenied { reason } => SyscallResponse {
+                result: Some(syscall_response::Result::PermissionDenied(
+                    PermissionDeniedResult { reason },
+                )),
+            },
         }
     }
 }
