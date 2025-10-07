@@ -5,6 +5,7 @@
 */
 
 use crate::core::types::Pid;
+use crate::permissions::{PermissionChecker, PermissionRequest, Resource, Action};
 
 use log::info;
 use std::time::Duration;
@@ -16,11 +17,12 @@ use super::types::SyscallResult;
 
 impl SyscallExecutor {
     pub(super) fn sleep(&self, pid: Pid, duration_ms: u64) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::TimeAccess)
-        {
-            return SyscallResult::permission_denied("Missing TimeAccess capability");
+        // Check permission using centralized manager
+        let request = PermissionRequest::new(pid, Resource::System("time".to_string()), Action::Read);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         // Limit sleep duration to prevent DoS
@@ -38,11 +40,12 @@ impl SyscallExecutor {
     }
 
     pub(super) fn get_uptime(&self, pid: Pid) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::TimeAccess)
-        {
-            return SyscallResult::permission_denied("Missing TimeAccess capability");
+        // Check permission using centralized manager
+        let request = PermissionRequest::new(pid, Resource::System("time".to_string()), Action::Read);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let start = SYSTEM_START

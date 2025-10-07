@@ -24,11 +24,12 @@ impl SyscallExecutor {
         writer_pid: Pid,
         capacity: Option<usize>,
     ) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SendMessage)
-        {
-            return SyscallResult::permission_denied("Missing SendMessage capability");
+        // Check permission using centralized manager
+        let request = PermissionRequest::new(pid, Resource::IpcChannel(0), Action::Create);
+        let response = self.permission_manager.check_and_audit(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let pipe_manager = match &self.pipe_manager {

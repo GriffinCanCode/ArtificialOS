@@ -6,6 +6,7 @@
 
 use crate::core::json;
 use crate::core::types::Pid;
+use crate::permissions::{PermissionChecker, PermissionRequest, Resource, Action};
 
 use log::{error, info};
 
@@ -17,11 +18,12 @@ use super::types::SyscallResult;
 
 impl SyscallExecutor {
     pub(super) fn get_memory_stats(&self, pid: Pid) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SystemInfo)
-        {
-            return SyscallResult::permission_denied("Missing SystemInfo capability");
+        // Check permission using centralized manager
+        let request = PermissionRequest::new(pid, Resource::System("memory".to_string()), Action::Inspect);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let memory_manager = match &self.memory_manager {
@@ -43,11 +45,12 @@ impl SyscallExecutor {
     }
 
     pub(super) fn get_process_memory_stats(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SystemInfo)
-        {
-            return SyscallResult::permission_denied("Missing SystemInfo capability");
+        // Check permission using centralized manager
+        let request = PermissionRequest::new(pid, Resource::Process(target_pid), Action::Inspect);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let memory_manager = match &self.memory_manager {
@@ -78,11 +81,12 @@ impl SyscallExecutor {
     }
 
     pub(super) fn trigger_gc(&self, pid: Pid, target_pid: Option<u32>) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SystemInfo)
-        {
-            return SyscallResult::permission_denied("Missing SystemInfo capability");
+        // Check permission using centralized manager
+        let request = PermissionRequest::new(pid, Resource::System("gc".to_string()), Action::Execute);
+        let response = self.permission_manager.check_and_audit(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let memory_manager = match &self.memory_manager {
