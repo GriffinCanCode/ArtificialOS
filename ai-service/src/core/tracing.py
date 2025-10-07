@@ -15,9 +15,7 @@ from core import get_logger
 logger = get_logger(__name__)
 
 # Context variables for trace propagation
-_trace_id: contextvars.ContextVar[str] = contextvars.ContextVar(
-    "trace_id", default=""
-)
+_trace_id: contextvars.ContextVar[str] = contextvars.ContextVar("trace_id", default="")
 _span_id: contextvars.ContextVar[str] = contextvars.ContextVar("span_id", default="")
 
 
@@ -58,9 +56,7 @@ class Span:
 
     def log(self, message: str, **fields: Any) -> None:
         """Add a log entry to the span."""
-        self.logs.append(
-            {"timestamp": time.time(), "message": message, "fields": fields}
-        )
+        self.logs.append({"timestamp": time.time(), "message": message, "fields": fields})
 
 
 class Tracer:

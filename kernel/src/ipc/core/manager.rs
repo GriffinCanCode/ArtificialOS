@@ -288,10 +288,7 @@ impl AsyncQueue for QueueManager {
         QueueManager::destroy(self, queue_id, pid)
     }
 
-    fn stats(
-        &self,
-        queue_id: super::types::QueueId,
-    ) -> IpcResult<crate::ipc::queue::QueueStats> {
+    fn stats(&self, queue_id: super::types::QueueId) -> IpcResult<crate::ipc::queue::QueueStats> {
         QueueManager::stats(self, queue_id)
     }
 }

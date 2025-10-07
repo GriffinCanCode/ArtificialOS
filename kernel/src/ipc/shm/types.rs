@@ -72,10 +72,9 @@ impl From<ShmError> for IpcError {
                 "Global shared memory limit exceeded: {}/{} bytes",
                 current, max
             )),
-            ShmError::AllocationFailed(msg) => IpcError::InvalidOperation(format!(
-                "Memory allocation failed: {}",
-                msg
-            )),
+            ShmError::AllocationFailed(msg) => {
+                IpcError::InvalidOperation(format!("Memory allocation failed: {}", msg))
+            }
         }
     }
 }

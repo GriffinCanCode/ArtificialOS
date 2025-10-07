@@ -64,10 +64,9 @@ impl From<PipeError> for IpcError {
                 "Global pipe memory limit exceeded: {}/{} bytes",
                 current, max
             )),
-            PipeError::AllocationFailed(msg) => IpcError::InvalidOperation(format!(
-                "Memory allocation failed: {}",
-                msg
-            )),
+            PipeError::AllocationFailed(msg) => {
+                IpcError::InvalidOperation(format!("Memory allocation failed: {}", msg))
+            }
         }
     }
 }

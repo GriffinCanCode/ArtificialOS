@@ -83,10 +83,7 @@ export function Sortable<T extends SortableItem>({
     }
   }, [strategy]);
 
-  const activeItem = useMemo(
-    () => items.find((item) => item.id === activeId),
-    [items, activeId]
-  );
+  const activeItem = useMemo(() => items.find((item) => item.id === activeId), [items, activeId]);
 
   // Memoize rendered items to prevent unnecessary re-renders
   const renderedItems = useMemo(

@@ -207,7 +207,7 @@ export const LiveMetricsDashboard: React.FC = () => {
 
   if (!currentMetrics) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex h-screen items-center justify-center">
         <div className="text-gray-400">Loading metrics...</div>
       </div>
     );
@@ -216,57 +216,57 @@ export const LiveMetricsDashboard: React.FC = () => {
   const summary = getMetricsSummary();
 
   return (
-    <div className="p-8 space-y-8 bg-gray-950 min-h-screen">
+    <div className="min-h-screen space-y-8 bg-gray-950 p-8">
       <div className="space-y-2">
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+        <h1 className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-4xl font-bold text-transparent">
           AgentOS Metrics Dashboard
         </h1>
         <p className="text-gray-400">Real-time system performance monitoring</p>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-lg border border-gray-800 bg-gray-900 p-6">
           <div className="text-sm text-gray-400">Total Executions</div>
-          <div className="text-3xl font-bold text-white mt-2">{summary.totalToolExecutions}</div>
+          <div className="mt-2 text-3xl font-bold text-white">{summary.totalToolExecutions}</div>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
+        <div className="rounded-lg border border-gray-800 bg-gray-900 p-6">
           <div className="text-sm text-gray-400">Errors</div>
-          <div className="text-3xl font-bold text-red-400 mt-2">{summary.totalErrors}</div>
+          <div className="mt-2 text-3xl font-bold text-red-400">{summary.totalErrors}</div>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
+        <div className="rounded-lg border border-gray-800 bg-gray-900 p-6">
           <div className="text-sm text-gray-400">Avg Latency</div>
-          <div className="text-3xl font-bold text-blue-400 mt-2">
+          <div className="mt-2 text-3xl font-bold text-blue-400">
             {summary.avgLatencyMs.toFixed(2)}ms
           </div>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
+        <div className="rounded-lg border border-gray-800 bg-gray-900 p-6">
           <div className="text-sm text-gray-400">Uptime</div>
-          <div className="text-3xl font-bold text-green-400 mt-2">
+          <div className="mt-2 text-3xl font-bold text-green-400">
             {Math.floor(summary.uptime / 60)}m
           </div>
         </div>
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
-          <h3 className="text-xl font-semibold text-white mb-4">Performance Trend</h3>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <div className="rounded-lg border border-gray-800 bg-gray-900 p-6">
+          <h3 className="mb-4 text-xl font-semibold text-white">Performance Trend</h3>
           <PerformanceChart data={metricsHistory} />
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
-          <h3 className="text-xl font-semibold text-white mb-4">Error Rate</h3>
+        <div className="rounded-lg border border-gray-800 bg-gray-900 p-6">
+          <h3 className="mb-4 text-xl font-semibold text-white">Error Rate</h3>
           <ErrorRateChart data={metricsHistory} />
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
-          <h3 className="text-xl font-semibold text-white mb-4">Tool Executions</h3>
+        <div className="rounded-lg border border-gray-800 bg-gray-900 p-6">
+          <h3 className="mb-4 text-xl font-semibold text-white">Tool Executions</h3>
           <ToolExecutionChart metrics={currentMetrics.ui} />
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
-          <h3 className="text-xl font-semibold text-white mb-4">Web Vitals</h3>
+        <div className="rounded-lg border border-gray-800 bg-gray-900 p-6">
+          <h3 className="mb-4 text-xl font-semibold text-white">Web Vitals</h3>
           <WebVitalsChart metrics={currentMetrics.webVitals} />
         </div>
       </div>

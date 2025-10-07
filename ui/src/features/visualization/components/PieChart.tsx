@@ -4,14 +4,7 @@
  */
 
 import React from "react";
-import {
-  PieChart as RechartsPie,
-  Pie,
-  Cell,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
+import { PieChart as RechartsPie, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import type { BaseComponentProps } from "../../dynamics/core/types";
 import { useSyncState } from "../../dynamics/hooks/useSyncState";
 import { getRechartsTheme, getSeriesColor } from "../utils";
@@ -45,9 +38,7 @@ export const PieChart: React.FC<BaseComponentProps> = ({ component, state }) => 
     <div className="chart-container" style={{ width: width || "100%", height }}>
       <ResponsiveContainer width="100%" height="100%">
         <RechartsPie>
-          {showTooltip && (
-            <Tooltip {...themeProps.tooltip} />
-          )}
+          {showTooltip && <Tooltip {...themeProps.tooltip} />}
 
           {showLegend && (
             <Legend
@@ -69,10 +60,7 @@ export const PieChart: React.FC<BaseComponentProps> = ({ component, state }) => 
             {...(animate && { isAnimationActive: true })}
           >
             {data.map((entry, index) => (
-              <Cell
-                key={`cell-${index}`}
-                fill={colors[index] || getSeriesColor(index)}
-              />
+              <Cell key={`cell-${index}`} fill={colors[index] || getSeriesColor(index)} />
             ))}
           </Pie>
         </RechartsPie>

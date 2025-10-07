@@ -19,12 +19,12 @@ export function formatDate(date: Date, formatString: string = "yyyy-MM-dd"): str
   // Map legacy format strings for backward compatibility
   const legacyFormatMap: Record<string, string> = {
     "YYYY-MM-DD": "yyyy-MM-dd",
-    "YYYY": "yyyy",
-    "MM": "MM",
-    "DD": "dd",
-    "HH": "HH",
-    "mm": "mm",
-    "ss": "ss",
+    YYYY: "yyyy",
+    MM: "MM",
+    DD: "dd",
+    HH: "HH",
+    mm: "mm",
+    ss: "ss",
   };
 
   const mappedFormat = legacyFormatMap[formatString] || formatString;

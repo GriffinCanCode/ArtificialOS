@@ -46,9 +46,18 @@ impl MetricsService {
             output.push_str(&format!("# TYPE kernel_{} summary\n", name));
             output.push_str(&format!("kernel_{}_sum {}\n", name, stats.sum));
             output.push_str(&format!("kernel_{}_count {}\n", name, stats.count));
-            output.push_str(&format!("kernel_{}{{quantile=\"0.5\"}} {}\n", name, stats.p50));
-            output.push_str(&format!("kernel_{}{{quantile=\"0.95\"}} {}\n", name, stats.p95));
-            output.push_str(&format!("kernel_{}{{quantile=\"0.99\"}} {}\n", name, stats.p99));
+            output.push_str(&format!(
+                "kernel_{}{{quantile=\"0.5\"}} {}\n",
+                name, stats.p50
+            ));
+            output.push_str(&format!(
+                "kernel_{}{{quantile=\"0.95\"}} {}\n",
+                name, stats.p95
+            ));
+            output.push_str(&format!(
+                "kernel_{}{{quantile=\"0.99\"}} {}\n",
+                name, stats.p99
+            ));
         }
 
         // Uptime

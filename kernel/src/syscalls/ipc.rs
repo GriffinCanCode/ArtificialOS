@@ -393,7 +393,9 @@ impl SyscallExecutor {
             "fifo" => crate::ipc::QueueType::Fifo,
             "priority" => crate::ipc::QueueType::Priority,
             "pubsub" => crate::ipc::QueueType::PubSub,
-            _ => return SyscallResult::error("Invalid queue type (must be: fifo, priority, pubsub)"),
+            _ => {
+                return SyscallResult::error("Invalid queue type (must be: fifo, priority, pubsub)")
+            }
         };
 
         match queue_manager.create(pid, q_type, capacity) {
@@ -435,7 +437,12 @@ impl SyscallExecutor {
 
         match queue_manager.send(queue_id, pid, data.to_vec(), priority) {
             Ok(_) => {
-                info!("PID {} sent {} bytes to queue {}", pid, data.len(), queue_id);
+                info!(
+                    "PID {} sent {} bytes to queue {}",
+                    pid,
+                    data.len(),
+                    queue_id
+                );
                 SyscallResult::success()
             }
             Err(e) => {
@@ -460,7 +467,12 @@ impl SyscallExecutor {
 
         match queue_manager.receive(queue_id, pid) {
             Ok(Some(msg)) => {
-                info!("PID {} received {} bytes from queue {}", pid, msg.data.len(), queue_id);
+                info!(
+                    "PID {} received {} bytes from queue {}",
+                    pid,
+                    msg.data.len(),
+                    queue_id
+                );
                 match serde_json::to_vec(&msg) {
                     Ok(data) => SyscallResult::success_with_data(data),
                     Err(e) => {

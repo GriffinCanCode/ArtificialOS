@@ -48,30 +48,30 @@ export const LineChart: React.FC<BaseComponentProps> = ({ component, state }) =>
   return (
     <div className="chart-container" style={{ width: width || "100%", height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <RechartsLine
-          data={data}
-          margin={margin}
-          {...(animate && { isAnimationActive: true })}
-        >
+        <RechartsLine data={data} margin={margin} {...(animate && { isAnimationActive: true })}>
           {showGrid && <CartesianGrid {...themeProps.cartesianGrid} />}
 
           <XAxis
             dataKey={xAxis.dataKey}
-            label={xAxis.label ? { value: xAxis.label, position: "insideBottom", offset: -10 } : undefined}
+            label={
+              xAxis.label
+                ? { value: xAxis.label, position: "insideBottom", offset: -10 }
+                : undefined
+            }
             hide={xAxis.hide}
             {...themeProps.axis}
           />
 
           <YAxis
-            label={yAxis.label ? { value: yAxis.label, angle: -90, position: "insideLeft" } : undefined}
+            label={
+              yAxis.label ? { value: yAxis.label, angle: -90, position: "insideLeft" } : undefined
+            }
             domain={yAxis.domain}
             hide={yAxis.hide}
             {...themeProps.axis}
           />
 
-          {showTooltip && (
-            <Tooltip {...themeProps.tooltip} />
-          )}
+          {showTooltip && <Tooltip {...themeProps.tooltip} />}
 
           {showLegend && (
             <Legend

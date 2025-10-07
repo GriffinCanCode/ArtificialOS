@@ -150,9 +150,7 @@ class MetricsCollector:
         self.llm_calls_total.labels(model=model, status=status).inc()
         self.llm_duration.labels(model=model).observe(duration)
 
-    def record_llm_tokens(
-        self, model: str, input_tokens: int, output_tokens: int
-    ) -> None:
+    def record_llm_tokens(self, model: str, input_tokens: int, output_tokens: int) -> None:
         """Record LLM token counts."""
         self.llm_tokens.labels(model=model, type="input").observe(input_tokens)
         self.llm_tokens.labels(model=model, type="output").observe(output_tokens)

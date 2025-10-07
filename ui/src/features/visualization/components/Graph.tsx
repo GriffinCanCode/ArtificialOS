@@ -89,9 +89,7 @@ export const Graph: React.FC<BaseComponentProps> = ({ component, state }) => {
         elementsSelectable={props.interactive !== false}
         style={{ background: flowTheme.background }}
       >
-        {showBackground && (
-          <Background color={flowTheme.edge.stroke} gap={16} />
-        )}
+        {showBackground && <Background color={flowTheme.edge.stroke} gap={16} />}
 
         {showControls && <Controls />}
 

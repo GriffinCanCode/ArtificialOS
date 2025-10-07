@@ -4,7 +4,7 @@
  */
 
 use crate::core::types::Pid;
-use crate::monitoring::{MetricsCollector, span_syscall};
+use crate::monitoring::{span_syscall, MetricsCollector};
 use crate::security::SandboxManager;
 use log::info;
 use std::sync::{Arc, OnceLock};
@@ -196,8 +196,15 @@ impl SyscallExecutor {
             Syscall::ShmStats { segment_id } => self.shm_stats(pid, segment_id),
 
             // IPC - Async Queues
-            Syscall::CreateQueue { ref queue_type, capacity } => self.create_queue(pid, queue_type, capacity),
-            Syscall::SendQueue { queue_id, ref data, priority } => self.send_queue(pid, queue_id, data, priority),
+            Syscall::CreateQueue {
+                ref queue_type,
+                capacity,
+            } => self.create_queue(pid, queue_type, capacity),
+            Syscall::SendQueue {
+                queue_id,
+                ref data,
+                priority,
+            } => self.send_queue(pid, queue_id, data, priority),
             Syscall::ReceiveQueue { queue_id } => self.receive_queue(pid, queue_id),
             Syscall::SubscribeQueue { queue_id } => self.subscribe_queue(pid, queue_id),
             Syscall::UnsubscribeQueue { queue_id } => self.unsubscribe_queue(pid, queue_id),

@@ -49,12 +49,16 @@
   border-radius: 0.5rem;
   border-width: 2px;
   padding: 0.5rem 1rem;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
   transition: all 0.2s;
 }
 
 .graph-container .react-flow__node:hover {
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
   transform: scale(1.05);
 }
 
@@ -79,7 +83,9 @@
 .graph-container .react-flow__controls {
   border: 1px solid rgb(31, 41, 55);
   border-radius: 0.5rem;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
   background: rgba(17, 24, 39, 0.9);
   backdrop-filter: blur(8px);
 }
@@ -100,7 +106,9 @@
 .graph-container .react-flow__minimap {
   border: 1px solid rgb(31, 41, 55);
   border-radius: 0.5rem;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
   background: rgba(17, 24, 39, 0.9);
   backdrop-filter: blur(8px);
 }
@@ -116,7 +124,9 @@
 
 .recharts-default-tooltip {
   border-radius: 0.5rem !important;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
   border-width: 2px !important;
   backdrop-filter: blur(8px) !important;
 }

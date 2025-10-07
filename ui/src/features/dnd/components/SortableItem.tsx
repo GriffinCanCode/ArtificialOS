@@ -45,4 +45,4 @@ export const SortableItem: React.FC<SortableItemProps> = ({
       {children}
     </div>
   );
-}
+};

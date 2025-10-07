@@ -3,12 +3,12 @@
  * Central manager for shared memory segments
  */
 
-use super::segment::SharedSegment;
 use super::super::traits::SharedMemory;
 use super::super::types::{IpcResult, ShmId};
+use super::segment::SharedSegment;
 use super::types::{
-    ShmError, ShmPermission, ShmStats, GLOBAL_SHM_MEMORY_LIMIT, MAX_SEGMENT_SIZE,
-    MAX_SEGMENTS_PER_PROCESS,
+    ShmError, ShmPermission, ShmStats, GLOBAL_SHM_MEMORY_LIMIT, MAX_SEGMENTS_PER_PROCESS,
+    MAX_SEGMENT_SIZE,
 };
 use crate::core::types::{Pid, Size};
 use crate::memory::MemoryManager;

@@ -82,13 +82,28 @@ pub trait IpcCleanup: Send + Sync {
 /// Async queue interface
 pub trait AsyncQueue: Send + Sync {
     /// Create a new async queue
-    fn create(&self, owner_pid: Pid, queue_type: super::types::QueueType, capacity: Option<Size>) -> IpcResult<super::types::QueueId>;
+    fn create(
+        &self,
+        owner_pid: Pid,
+        queue_type: super::types::QueueType,
+        capacity: Option<Size>,
+    ) -> IpcResult<super::types::QueueId>;
 
     /// Send message to queue
-    fn send(&self, queue_id: super::types::QueueId, from_pid: Pid, data: Vec<u8>, priority: Option<u8>) -> IpcResult<()>;
+    fn send(
+        &self,
+        queue_id: super::types::QueueId,
+        from_pid: Pid,
+        data: Vec<u8>,
+        priority: Option<u8>,
+    ) -> IpcResult<()>;
 
     /// Receive message from queue (non-blocking)
-    fn receive(&self, queue_id: super::types::QueueId, pid: Pid) -> IpcResult<Option<crate::ipc::queue::QueueMessage>>;
+    fn receive(
+        &self,
+        queue_id: super::types::QueueId,
+        pid: Pid,
+    ) -> IpcResult<Option<crate::ipc::queue::QueueMessage>>;
 
     /// Subscribe to PubSub queue
     fn subscribe(&self, queue_id: super::types::QueueId, pid: Pid) -> IpcResult<()>;

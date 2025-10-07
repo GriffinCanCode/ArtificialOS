@@ -125,9 +125,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
         setUploadFiles((prev) =>
           prev.map((f) =>
-            f.id === fileId
-              ? { ...f, status: "error" as UploadStatus, error: errorMessage }
-              : f
+            f.id === fileId ? { ...f, status: "error" as UploadStatus, error: errorMessage } : f
           )
         );
 
@@ -254,12 +252,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
   return (
     <div className={`file-upload-wrapper ${className || ""}`}>
-      <Dropzone
-        {...dropzoneConfig}
-        onDrop={handleDrop}
-        validator={validator}
-        showPreview={false}
-      />
+      <Dropzone {...dropzoneConfig} onDrop={handleDrop} validator={validator} showPreview={false} />
 
       {uploadFiles.length > 0 && (
         <div className="upload-list-container">

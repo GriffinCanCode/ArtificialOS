@@ -56,9 +56,7 @@ export const Dropzone: React.FC<DropzoneProps> = ({
             <p className="dropzone-text">
               {isDragging ? "Drop files here" : "Drag & drop files here, or click to select"}
             </p>
-            {config.accept && (
-              <p className="dropzone-hint">Accepts: {config.accept.join(", ")}</p>
-            )}
+            {config.accept && <p className="dropzone-hint">Accepts: {config.accept.join(", ")}</p>}
             {config.maxSize && (
               <p className="dropzone-hint">Max size: {formatFileSize(config.maxSize)}</p>
             )}
@@ -96,4 +94,4 @@ export const Dropzone: React.FC<DropzoneProps> = ({
       )}
     </div>
   );
-}
+};

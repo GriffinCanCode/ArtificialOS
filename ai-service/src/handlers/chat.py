@@ -71,7 +71,7 @@ class ChatHandler:
 
                 yield ai_pb2.ChatToken(
                     type=ai_pb2.ChatToken.COMPLETE, content="", timestamp=int(time.time())
-            )
+                )
         except ValidationError as e:
             logger.error("validation_failed", error=str(e))
             yield ai_pb2.ChatToken(

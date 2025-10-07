@@ -3,12 +3,12 @@
  * Central manager for Unix-style pipes
  */
 
-use super::pipe::Pipe;
 use super::super::traits::PipeChannel;
 use super::super::types::{IpcResult, PipeId};
+use super::pipe::Pipe;
 use super::types::{
-    PipeError, PipeStats, DEFAULT_PIPE_CAPACITY, GLOBAL_PIPE_MEMORY_LIMIT, MAX_PIPE_CAPACITY,
-    MAX_PIPES_PER_PROCESS,
+    PipeError, PipeStats, DEFAULT_PIPE_CAPACITY, GLOBAL_PIPE_MEMORY_LIMIT, MAX_PIPES_PER_PROCESS,
+    MAX_PIPE_CAPACITY,
 };
 use crate::core::types::{Pid, Size};
 use crate::memory::MemoryManager;

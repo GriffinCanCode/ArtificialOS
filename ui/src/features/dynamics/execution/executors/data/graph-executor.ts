@@ -176,9 +176,7 @@ export class GraphExecutor implements BaseExecutor {
 
     const currentNodes: GraphNode[] = this.context.componentState.get(`${graphId}.nodes`) || [];
     const newNodes = currentNodes.map((n) =>
-      n.id === nodeId
-        ? { ...n, style: { ...n.style, ...style, border: "2px solid #667eea" } }
-        : n
+      n.id === nodeId ? { ...n, style: { ...n.style, ...style, border: "2px solid #667eea" } } : n
     );
 
     this.context.componentState.set(`${graphId}.nodes`, newNodes);

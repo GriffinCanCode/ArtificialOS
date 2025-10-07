@@ -50,8 +50,8 @@ export function useSessions() {
       // Sort sessions by updated_at (most recent first)
       return {
         ...data,
-        sessions: [...data.sessions].sort(
-          (a, b) => compareDatesDesc(new Date(a.updated_at), new Date(b.updated_at))
+        sessions: [...data.sessions].sort((a, b) =>
+          compareDatesDesc(new Date(a.updated_at), new Date(b.updated_at))
         ),
       };
     },

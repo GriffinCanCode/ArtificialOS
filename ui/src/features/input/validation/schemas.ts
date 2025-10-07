@@ -42,9 +42,7 @@ export const integerSchema = z.number().int("Must be an integer");
 
 export const dateSchema = z.date();
 
-export const futureDateSchema = z
-  .date()
-  .refine((date) => isFuture(date), "Must be a future date");
+export const futureDateSchema = z.date().refine((date) => isFuture(date), "Must be a future date");
 
 export const pastDateSchema = z.date().refine((date) => isPast(date), "Must be a past date");
 

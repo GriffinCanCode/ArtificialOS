@@ -3,8 +3,8 @@
  * Structured tracing for syscalls and operations
  */
 
-use std::time::Instant;
 use log::{debug, warn};
+use std::time::Instant;
 
 /// Initialize tracing (using log for simplicity)
 pub fn init_tracing() {

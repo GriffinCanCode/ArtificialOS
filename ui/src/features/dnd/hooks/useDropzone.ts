@@ -126,18 +126,15 @@ export function useDropzone({
     e.stopPropagation();
   }, []);
 
-  const handleDragEnter = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
 
-      dragCounter.current++;
-      if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
-        setIsDragging(true);
-      }
-    },
-    []
-  );
+    dragCounter.current++;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
+  }, []);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();

@@ -22,7 +22,9 @@ const chartSeriesSchema = z.object({
 const chartAxisSchema = z.object({
   dataKey: z.string().optional(),
   label: z.string().optional(),
-  domain: z.tuple([z.union([z.number(), z.string()]), z.union([z.number(), z.string()])]).optional(),
+  domain: z
+    .tuple([z.union([z.number(), z.string()]), z.union([z.number(), z.string()])])
+    .optional(),
   tickFormatter: z.string().optional(),
   hide: z.boolean().optional(),
 });

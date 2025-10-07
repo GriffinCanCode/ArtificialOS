@@ -113,7 +113,9 @@ const ThoughtStream: React.FC<ThoughtStreamProps> = React.memo(({ isVisible, onT
                   <div className="thought-index">{idx + 1}</div>
                   <div className="thought-content">
                     <div className="thought-text">{thought.content}</div>
-                    <div className="thought-time">{formatTime(new Date(thought.timestamp * 1000), false)}</div>
+                    <div className="thought-time">
+                      {formatTime(new Date(thought.timestamp * 1000), false)}
+                    </div>
                   </div>
                 </div>
               ))

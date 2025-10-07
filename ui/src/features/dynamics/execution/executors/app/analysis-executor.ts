@@ -71,10 +71,7 @@ export class AnalysisExecutor implements AsyncExecutor {
       this.updateAIMetrics(allMetrics.aiService);
 
       // Update last refresh time
-      this.context.componentState.set(
-        "last-update",
-        `Updated: ${formatTime(new Date(), false)}`
-      );
+      this.context.componentState.set("last-update", `Updated: ${formatTime(new Date(), false)}`);
 
       logger.info("Metrics refreshed successfully", { component: "AnalysisExecutor" });
       return true;
@@ -158,7 +155,8 @@ export class AnalysisExecutor implements AsyncExecutor {
     const summary = metrics.summary || {};
 
     // Uptime - prefer backend uptime, fallback to UI uptime
-    const uptimeSeconds = backend.uptime_seconds || summary.uptime_seconds || metrics.ui?.uptime_seconds || 0;
+    const uptimeSeconds =
+      backend.uptime_seconds || summary.uptime_seconds || metrics.ui?.uptime_seconds || 0;
     this.context.componentState.set("uptime-value", this.formatUptime(uptimeSeconds));
 
     // Total requests - from summary

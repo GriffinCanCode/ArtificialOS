@@ -7,4 +7,4 @@ mod metrics;
 mod tracer;
 
 pub use metrics::{MetricsCollector, MetricsSnapshot};
-pub use tracer::{init_tracing, span_syscall, span_operation};
+pub use tracer::{init_tracing, span_operation, span_syscall};

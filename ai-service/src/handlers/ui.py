@@ -32,9 +32,7 @@ class UIHandler:
 
             with trace_operation("ui_generation", message=validated.message[:50]):
                 # Generate UI
-                package = self.ui_generator.generate(
-                    validated.message, context=validated.context
-                )
+                package = self.ui_generator.generate(validated.message, context=validated.context)
 
                 # Track metrics
                 duration = time.time() - start_time
@@ -78,9 +76,7 @@ class UIHandler:
                 )
 
                 # Generate with streaming
-                package = self.ui_generator.generate(
-                    validated.message, context=validated.context
-                )
+                package = self.ui_generator.generate(validated.message, context=validated.context)
 
                 # Stream UI spec (in production, this would stream incrementally)
                 ui_spec_str = package.model_dump_json()

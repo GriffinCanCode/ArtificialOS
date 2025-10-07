@@ -14,7 +14,8 @@ fn test_create_fifo_queue() {
     let manager = QueueManager::new(memory_manager);
 
     let owner_pid = 100;
-    let queue_id = manager.create(owner_pid, QueueType::Fifo, Some(100))
+    let queue_id = manager
+        .create(owner_pid, QueueType::Fifo, Some(100))
         .unwrap();
 
     assert!(queue_id > 0);
@@ -32,7 +33,8 @@ fn test_create_priority_queue() {
     let manager = QueueManager::new(memory_manager);
 
     let owner_pid = 100;
-    let queue_id = manager.create(owner_pid, QueueType::Priority, Some(50))
+    let queue_id = manager
+        .create(owner_pid, QueueType::Priority, Some(50))
         .unwrap();
 
     let stats = manager.stats(queue_id).unwrap();
@@ -46,8 +48,7 @@ fn test_create_pubsub_queue() {
     let manager = QueueManager::new(memory_manager);
 
     let owner_pid = 100;
-    let queue_id = manager.create(owner_pid, QueueType::PubSub, None)
-        .unwrap();
+    let queue_id = manager.create(owner_pid, QueueType::PubSub, None).unwrap();
 
     let stats = manager.stats(queue_id).unwrap();
     assert_eq!(stats.queue_type, QueueType::PubSub);
@@ -60,11 +61,13 @@ fn test_fifo_send_receive() {
     let manager = QueueManager::new(memory_manager);
 
     let owner_pid = 100;
-    let queue_id = manager.create(owner_pid, QueueType::Fifo, Some(10))
+    let queue_id = manager
+        .create(owner_pid, QueueType::Fifo, Some(10))
         .unwrap();
 
     let data = b"Hello, Queue!".to_vec();
-    manager.send(queue_id, owner_pid, data.clone(), None)
+    manager
+        .send(queue_id, owner_pid, data.clone(), None)
         .unwrap();
 
     let received = manager.receive(queue_id, owner_pid).unwrap().unwrap();
@@ -78,7 +81,8 @@ fn test_fifo_ordering() {
     let manager = QueueManager::new(memory_manager);
 
     let owner_pid = 100;
-    let queue_id = manager.create(owner_pid, QueueType::Fifo, Some(10))
+    let queue_id = manager
+        .create(owner_pid, QueueType::Fifo, Some(10))
         .unwrap();
 
     // Send messages in order
@@ -101,13 +105,20 @@ fn test_priority_queue_ordering() {
     let manager = QueueManager::new(memory_manager);
 
     let owner_pid = 100;
-    let queue_id = manager.create(owner_pid, QueueType::Priority, Some(10))
+    let queue_id = manager
+        .create(owner_pid, QueueType::Priority, Some(10))
         .unwrap();
 
     // Send messages with different priorities
-    manager.send(queue_id, owner_pid, b"Low".to_vec(), Some(1)).unwrap();
-    manager.send(queue_id, owner_pid, b"High".to_vec(), Some(10)).unwrap();
-    manager.send(queue_id, owner_pid, b"Medium".to_vec(), Some(5)).unwrap();
+    manager
+        .send(queue_id, owner_pid, b"Low".to_vec(), Some(1))
+        .unwrap();
+    manager
+        .send(queue_id, owner_pid, b"High".to_vec(), Some(10))
+        .unwrap();
+    manager
+        .send(queue_id, owner_pid, b"Medium".to_vec(), Some(5))
+        .unwrap();
 
     // Should receive in priority order (highest first)
     let msg1 = manager.receive(queue_id, owner_pid).unwrap().unwrap();
@@ -132,8 +143,7 @@ fn test_pubsub_subscribe_unsubscribe() {
     let sub_pid1 = 200;
     let sub_pid2 = 300;
 
-    let queue_id = manager.create(owner_pid, QueueType::PubSub, None)
-        .unwrap();
+    let queue_id = manager.create(owner_pid, QueueType::PubSub, None).unwrap();
 
     // Subscribe two processes
     manager.subscribe(queue_id, sub_pid1).unwrap();
@@ -158,8 +168,7 @@ fn test_pubsub_message_delivery() {
     let sub_pid1 = 200;
     let sub_pid2 = 300;
 
-    let queue_id = manager.create(owner_pid, QueueType::PubSub, None)
-        .unwrap();
+    let queue_id = manager.create(owner_pid, QueueType::PubSub, None).unwrap();
 
     // Subscribe both processes
     manager.subscribe(queue_id, sub_pid1).unwrap();
@@ -167,7 +176,8 @@ fn test_pubsub_message_delivery() {
 
     // Publish a message
     let data = b"Broadcast message".to_vec();
-    manager.send(queue_id, owner_pid, data.clone(), None)
+    manager
+        .send(queue_id, owner_pid, data.clone(), None)
         .unwrap();
 
     // Both subscribers should receive it
@@ -185,7 +195,8 @@ fn test_queue_capacity_limit() {
 
     let owner_pid = 100;
     let capacity = 5;
-    let queue_id = manager.create(owner_pid, QueueType::Fifo, Some(capacity))
+    let queue_id = manager
+        .create(owner_pid, QueueType::Fifo, Some(capacity))
         .unwrap();
 
     // Fill to capacity
@@ -205,7 +216,8 @@ fn test_receive_empty_queue() {
     let manager = QueueManager::new(memory_manager);
 
     let owner_pid = 100;
-    let queue_id = manager.create(owner_pid, QueueType::Fifo, Some(10))
+    let queue_id = manager
+        .create(owner_pid, QueueType::Fifo, Some(10))
         .unwrap();
 
     // Receive from empty queue should return None
@@ -219,11 +231,13 @@ fn test_close_queue() {
     let manager = QueueManager::new(memory_manager);
 
     let owner_pid = 100;
-    let queue_id = manager.create(owner_pid, QueueType::Fifo, Some(10))
+    let queue_id = manager
+        .create(owner_pid, QueueType::Fifo, Some(10))
         .unwrap();
 
     // Send a message
-    manager.send(queue_id, owner_pid, b"Test".to_vec(), None)
+    manager
+        .send(queue_id, owner_pid, b"Test".to_vec(), None)
         .unwrap();
 
     // Close the queue
@@ -240,7 +254,8 @@ fn test_destroy_queue() {
     let manager = QueueManager::new(memory_manager);
 
     let owner_pid = 100;
-    let queue_id = manager.create(owner_pid, QueueType::Fifo, Some(10))
+    let queue_id = manager
+        .create(owner_pid, QueueType::Fifo, Some(10))
         .unwrap();
 
     // Destroy the queue
@@ -257,7 +272,8 @@ fn test_queue_stats() {
     let manager = QueueManager::new(memory_manager);
 
     let owner_pid = 100;
-    let queue_id = manager.create(owner_pid, QueueType::Fifo, Some(10))
+    let queue_id = manager
+        .create(owner_pid, QueueType::Fifo, Some(10))
         .unwrap();
 
     // Check initial stats
@@ -267,7 +283,8 @@ fn test_queue_stats() {
 
     // Send messages
     for _ in 0..3 {
-        manager.send(queue_id, owner_pid, b"Test".to_vec(), None)
+        manager
+            .send(queue_id, owner_pid, b"Test".to_vec(), None)
             .unwrap();
     }
 
@@ -285,7 +302,8 @@ fn test_concurrent_queue_operations() {
     let manager = Arc::new(QueueManager::new(memory_manager));
 
     let owner_pid = 100;
-    let queue_id = manager.create(owner_pid, QueueType::Fifo, Some(100))
+    let queue_id = manager
+        .create(owner_pid, QueueType::Fifo, Some(100))
         .unwrap();
 
     // Spawn multiple threads sending messages
@@ -322,14 +340,14 @@ fn test_multiple_queues() {
     let pid1 = 100;
     let pid2 = 200;
 
-    let queue1 = manager.create(pid1, QueueType::Fifo, Some(10))
-        .unwrap();
-    let queue2 = manager.create(pid2, QueueType::Priority, Some(10))
-        .unwrap();
+    let queue1 = manager.create(pid1, QueueType::Fifo, Some(10)).unwrap();
+    let queue2 = manager.create(pid2, QueueType::Priority, Some(10)).unwrap();
 
     // Send to both queues
     manager.send(queue1, pid1, b"To Q1".to_vec(), None).unwrap();
-    manager.send(queue2, pid2, b"To Q2".to_vec(), Some(5)).unwrap();
+    manager
+        .send(queue2, pid2, b"To Q2".to_vec(), Some(5))
+        .unwrap();
 
     // Receive from both queues
     let msg1 = manager.receive(queue1, pid1).unwrap().unwrap();
@@ -345,10 +363,12 @@ fn test_message_timestamp() {
     let manager = QueueManager::new(memory_manager);
 
     let owner_pid = 100;
-    let queue_id = manager.create(owner_pid, QueueType::Fifo, Some(10))
+    let queue_id = manager
+        .create(owner_pid, QueueType::Fifo, Some(10))
         .unwrap();
 
-    manager.send(queue_id, owner_pid, b"Test".to_vec(), None)
+    manager
+        .send(queue_id, owner_pid, b"Test".to_vec(), None)
         .unwrap();
 
     let msg = manager.receive(queue_id, owner_pid).unwrap().unwrap();
@@ -362,8 +382,7 @@ fn test_pubsub_no_subscribers() {
     let manager = QueueManager::new(memory_manager);
 
     let owner_pid = 100;
-    let queue_id = manager.create(owner_pid, QueueType::PubSub, None)
-        .unwrap();
+    let queue_id = manager.create(owner_pid, QueueType::PubSub, None).unwrap();
 
     // Should be able to publish even with no subscribers
     let result = manager.send(queue_id, owner_pid, b"Test".to_vec(), None);
@@ -376,11 +395,13 @@ fn test_priority_default_value() {
     let manager = QueueManager::new(memory_manager);
 
     let owner_pid = 100;
-    let queue_id = manager.create(owner_pid, QueueType::Priority, Some(10))
+    let queue_id = manager
+        .create(owner_pid, QueueType::Priority, Some(10))
         .unwrap();
 
     // Send without priority (should use default = 0)
-    manager.send(queue_id, owner_pid, b"Default priority".to_vec(), None)
+    manager
+        .send(queue_id, owner_pid, b"Default priority".to_vec(), None)
         .unwrap();
 
     let msg = manager.receive(queue_id, owner_pid).unwrap().unwrap();
@@ -396,14 +417,16 @@ fn test_queue_isolation() {
     let pid1 = 100;
     let pid2 = 200;
 
-    let queue1 = manager.create(pid1, QueueType::Fifo, Some(10))
-        .unwrap();
-    let queue2 = manager.create(pid2, QueueType::Fifo, Some(10))
-        .unwrap();
+    let queue1 = manager.create(pid1, QueueType::Fifo, Some(10)).unwrap();
+    let queue2 = manager.create(pid2, QueueType::Fifo, Some(10)).unwrap();
 
     // Send to both queues
-    manager.send(queue1, pid1, b"Q1 Message".to_vec(), None).unwrap();
-    manager.send(queue2, pid2, b"Q2 Message".to_vec(), None).unwrap();
+    manager
+        .send(queue1, pid1, b"Q1 Message".to_vec(), None)
+        .unwrap();
+    manager
+        .send(queue2, pid2, b"Q2 Message".to_vec(), None)
+        .unwrap();
 
     // Messages should not cross queues
     let msg1 = manager.receive(queue1, pid1).unwrap().unwrap();

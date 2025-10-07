@@ -49,16 +49,19 @@ export const AreaChart: React.FC<BaseComponentProps> = ({ component, state }) =>
   return (
     <div className="chart-container" style={{ width: width || "100%", height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <RechartsArea
-          data={data}
-          margin={margin}
-          {...(animate && { isAnimationActive: true })}
-        >
+        <RechartsArea data={data} margin={margin} {...(animate && { isAnimationActive: true })}>
           <defs>
             {series.map((s, index) => {
               const color = s.color || getSeriesColor(index);
               return (
-                <linearGradient key={s.dataKey} id={`gradient-${s.dataKey}`} x1="0" y1="0" x2="0" y2="1">
+                <linearGradient
+                  key={s.dataKey}
+                  id={`gradient-${s.dataKey}`}
+                  x1="0"
+                  y1="0"
+                  x2="0"
+                  y2="1"
+                >
                   <stop offset="5%" stopColor={color} stopOpacity={0.8} />
                   <stop offset="95%" stopColor={color} stopOpacity={0.1} />
                 </linearGradient>
@@ -70,21 +73,25 @@ export const AreaChart: React.FC<BaseComponentProps> = ({ component, state }) =>
 
           <XAxis
             dataKey={xAxis.dataKey}
-            label={xAxis.label ? { value: xAxis.label, position: "insideBottom", offset: -10 } : undefined}
+            label={
+              xAxis.label
+                ? { value: xAxis.label, position: "insideBottom", offset: -10 }
+                : undefined
+            }
             hide={xAxis.hide}
             {...themeProps.axis}
           />
 
           <YAxis
-            label={yAxis.label ? { value: yAxis.label, angle: -90, position: "insideLeft" } : undefined}
+            label={
+              yAxis.label ? { value: yAxis.label, angle: -90, position: "insideLeft" } : undefined
+            }
             domain={yAxis.domain}
             hide={yAxis.hide}
             {...themeProps.axis}
           />
 
-          {showTooltip && (
-            <Tooltip {...themeProps.tooltip} />
-          )}
+          {showTooltip && <Tooltip {...themeProps.tooltip} />}
 
           {showLegend && (
             <Legend

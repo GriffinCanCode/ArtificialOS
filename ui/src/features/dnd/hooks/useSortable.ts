@@ -4,12 +4,7 @@
  */
 
 import { useState, useCallback } from "react";
-import type {
-  DragEndEvent,
-  DragStartEvent,
-  DragOverEvent,
-  UniqueIdentifier,
-} from "@dnd-kit/core";
+import type { DragEndEvent, DragStartEvent, DragOverEvent, UniqueIdentifier } from "@dnd-kit/core";
 import type { SortableItem, SortResult, SortHandler } from "../core/types";
 import { arrayMove } from "../core/utils";
 

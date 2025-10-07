@@ -40,7 +40,11 @@ export { useSortable } from "./hooks/useSortable";
 export { useDropzone } from "./hooks/useDropzone";
 
 // Store
-export { useStore as useDockStore, useActions as useDockActions, useDockItems } from "./store/store";
+export {
+  useStore as useDockStore,
+  useActions as useDockActions,
+  useDockItems,
+} from "./store/store";
 
 // Components
 export { Sortable } from "./components/Sortable";

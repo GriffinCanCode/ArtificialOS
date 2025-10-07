@@ -119,4 +119,3 @@ def start_metrics_server(port: int = 50053, host: str = "0.0.0.0") -> None:
     thread = threading.Thread(target=serve, daemon=True)
     thread.start()
     logger.info("metrics_server_started", host=host, port=port)
-

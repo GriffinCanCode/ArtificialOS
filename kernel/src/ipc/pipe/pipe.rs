@@ -3,8 +3,8 @@
  * Core pipe data structure
  */
 
-use super::types::PipeError;
 use super::super::types::PipeId;
+use super::types::PipeError;
 use crate::core::types::{Address, Pid, Size};
 use crate::memory::MemoryManager;
 use std::collections::VecDeque;

@@ -3,12 +3,7 @@
  * Powered by date-fns-tz for robust timezone handling
  */
 
-import {
-  formatInTimeZone,
-  toZonedTime,
-  fromZonedTime,
-  getTimezoneOffset,
-} from "date-fns-tz";
+import { formatInTimeZone, toZonedTime, fromZonedTime, getTimezoneOffset } from "date-fns-tz";
 
 /**
  * Format a date in a specific timezone

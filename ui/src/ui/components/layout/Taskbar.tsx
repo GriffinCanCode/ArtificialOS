@@ -22,9 +22,7 @@ const TaskbarItem = React.memo<{
   onClick: () => void;
 }>(({ title, icon, isFocused, isMinimized, onClick }) => (
   <button
-    className={`taskbar-item ${isFocused ? "active" : ""} ${
-      isMinimized ? "minimized" : ""
-    }`}
+    className={`taskbar-item ${isFocused ? "active" : ""} ${isMinimized ? "minimized" : ""}`}
     onClick={onClick}
     title={title}
   >
@@ -69,7 +67,7 @@ export const Taskbar: React.FC = () => {
     const visible = [
       ...focused,
       ...nonMinimized.slice(0, MAX_VISIBLE_ITEMS - focused.length - 1),
-      ...minimized.slice(0, 1) // Show at least one minimized as indicator
+      ...minimized.slice(0, 1), // Show at least one minimized as indicator
     ];
 
     return visible.slice(0, MAX_VISIBLE_ITEMS);
@@ -108,7 +106,10 @@ export const Taskbar: React.FC = () => {
         className="taskbar-container"
       />
       {hasMoreWindows && (
-        <div className="taskbar-overflow" title={`${hiddenCount} more window${hiddenCount > 1 ? 's' : ''}`}>
+        <div
+          className="taskbar-overflow"
+          title={`${hiddenCount} more window${hiddenCount > 1 ? "s" : ""}`}
+        >
           +{hiddenCount}
         </div>
       )}

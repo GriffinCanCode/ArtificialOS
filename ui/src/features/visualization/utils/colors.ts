@@ -19,13 +19,7 @@ export const CHART_COLORS = {
     "#fa709a", // Pink
     "#fee140", // Yellow
   ],
-  gradient: [
-    "#667eea",
-    "#764ba2",
-    "#f093fb",
-    "#4facfe",
-    "#00f2fe",
-  ],
+  gradient: ["#667eea", "#764ba2", "#f093fb", "#4facfe", "#00f2fe"],
   sequential: [
     "#f7fafc",
     "#e2e8f0",
@@ -36,13 +30,7 @@ export const CHART_COLORS = {
     "#2d3748",
     "#1a202c",
   ],
-  diverging: [
-    "#4facfe",
-    "#00f2fe",
-    "#f7fafc",
-    "#fee140",
-    "#fa709a",
-  ],
+  diverging: ["#4facfe", "#00f2fe", "#f7fafc", "#fee140", "#fa709a"],
   categorical: [
     "#667eea", // Purple
     "#4facfe", // Blue
@@ -69,9 +57,12 @@ export const CHART_COLORS = {
 /**
  * Get color for chart series by index
  */
-export function getSeriesColor(index: number, palette: keyof typeof CHART_COLORS = "primary"): string {
+export function getSeriesColor(
+  index: number,
+  palette: keyof typeof CHART_COLORS = "primary"
+): string {
   const colors = Array.isArray(CHART_COLORS[palette])
-    ? CHART_COLORS[palette] as string[]
+    ? (CHART_COLORS[palette] as string[])
     : CHART_COLORS.primary;
   return colors[index % colors.length];
 }
@@ -121,10 +112,15 @@ export function hexToRgb(hex: string): { r: number; g: number; b: number } {
  * Convert RGB to hex color
  */
 export function rgbToHex(r: number, g: number, b: number): string {
-  return "#" + [r, g, b].map((x) => {
-    const hex = x.toString(16);
-    return hex.length === 1 ? "0" + hex : hex;
-  }).join("");
+  return (
+    "#" +
+    [r, g, b]
+      .map((x) => {
+        const hex = x.toString(16);
+        return hex.length === 1 ? "0" + hex : hex;
+      })
+      .join("")
+  );
 }
 
 /**

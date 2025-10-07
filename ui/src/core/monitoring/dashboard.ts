@@ -110,9 +110,8 @@ export function getMetricsSummary() {
     }
   }
 
-  const avgLatency = latencies.length > 0
-    ? latencies.reduce((a, b) => a + b, 0) / latencies.length
-    : 0;
+  const avgLatency =
+    latencies.length > 0 ? latencies.reduce((a, b) => a + b, 0) / latencies.length : 0;
 
   return {
     totalToolExecutions,
@@ -137,10 +136,10 @@ if (typeof window !== "undefined") {
     "%c🚀 AgentOS Metrics",
     "font-size: 16px; font-weight: bold; color: #667eea;",
     "\n\nAccess metrics via:\n" +
-    "  • agentOSMetrics.getAll() - Get all metrics\n" +
-    "  • agentOSMetrics.getSummary() - Get summary\n" +
-    "  • agentOSMetrics.log() - Log to console\n" +
-    "  • agentOSMetrics.download() - Download JSON\n" +
-    "  • agentOSMetrics.openDashboard() - Open web dashboard"
+      "  • agentOSMetrics.getAll() - Get all metrics\n" +
+      "  • agentOSMetrics.getSummary() - Get summary\n" +
+      "  • agentOSMetrics.log() - Log to console\n" +
+      "  • agentOSMetrics.download() - Download JSON\n" +
+      "  • agentOSMetrics.openDashboard() - Open web dashboard"
   );
 }

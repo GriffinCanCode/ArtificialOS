@@ -130,7 +130,13 @@ pub trait IpcSyscalls: Send + Sync {
     fn create_queue(&self, pid: Pid, queue_type: &str, capacity: Option<usize>) -> SyscallResult;
 
     /// Send message to queue
-    fn send_queue(&self, pid: Pid, queue_id: u32, data: &[u8], priority: Option<u8>) -> SyscallResult;
+    fn send_queue(
+        &self,
+        pid: Pid,
+        queue_id: u32,
+        data: &[u8],
+        priority: Option<u8>,
+    ) -> SyscallResult;
 
     /// Receive message from queue
     fn receive_queue(&self, pid: Pid, queue_id: u32) -> SyscallResult;

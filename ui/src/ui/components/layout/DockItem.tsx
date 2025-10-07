@@ -36,4 +36,4 @@ export const DockItem: React.FC<DockItemProps> = ({ item, onClick, disabled = fa
       </button>
     </SortableItem>
   );
-}
+};

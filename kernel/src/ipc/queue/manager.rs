@@ -3,13 +3,13 @@
  * Central manager for all queue types with async support
  */
 
+use super::super::types::{IpcError, IpcResult, QueueId, QueueType};
 use super::fifo::FifoQueue;
 use super::priority::PriorityQueue;
 use super::pubsub::PubSubQueue;
-use super::super::types::{IpcError, IpcResult, QueueId, QueueType};
 use super::types::{
-    QueueMessage, QueueStats, GLOBAL_QUEUE_MEMORY_LIMIT, MAX_MESSAGE_SIZE,
-    MAX_QUEUE_CAPACITY, MAX_QUEUES_PER_PROCESS,
+    QueueMessage, QueueStats, GLOBAL_QUEUE_MEMORY_LIMIT, MAX_MESSAGE_SIZE, MAX_QUEUES_PER_PROCESS,
+    MAX_QUEUE_CAPACITY,
 };
 use crate::core::types::{Pid, Priority, Size};
 use crate::memory::MemoryManager;
@@ -115,7 +115,10 @@ impl QueueManager {
         };
 
         self.queues.write().insert(queue_id, queue);
-        process_queues.entry(owner_pid).or_default().insert(queue_id);
+        process_queues
+            .entry(owner_pid)
+            .or_default()
+            .insert(queue_id);
 
         info!(
             "PID {} created {:?} queue {} (capacity: {})",
@@ -250,10 +253,7 @@ impl QueueManager {
             // Deallocate memory through MemoryManager (unified memory accounting)
             if let Some(addr) = message.data_address {
                 if let Err(e) = self.memory_manager.deallocate(addr) {
-                    warn!(
-                        "Failed to deallocate message data at 0x{:x}: {}",
-                        addr, e
-                    );
+                    warn!("Failed to deallocate message data at 0x{:x}: {}", addr, e);
                 }
             }
 
@@ -515,9 +515,7 @@ mod tests {
         let manager = QueueManager::new(memory_manager);
         let queue_id = manager.create(1, QueueType::Priority, Some(100)).unwrap();
 
-        manager
-            .send(queue_id, 1, b"low".to_vec(), Some(1))
-            .unwrap();
+        manager.send(queue_id, 1, b"low".to_vec(), Some(1)).unwrap();
         manager
             .send(queue_id, 1, b"high".to_vec(), Some(10))
             .unwrap();
