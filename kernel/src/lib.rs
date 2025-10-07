@@ -50,8 +50,8 @@ pub use scheduler::{
 
 // Security
 pub use security::{
-    Capability, LimitManager, Limits, LimitsError, ResourceLimits, SandboxConfig, SandboxError,
-    SandboxManager, SandboxStats, SecurityError, SecurityEvent,
+    Capability, EbpfManagerImpl, LimitManager, Limits, LimitsError, ResourceLimits, SandboxConfig,
+    SandboxError, SandboxManager, SandboxStats, SecurityError, SecurityEvent,
 };
 
 // Signals
