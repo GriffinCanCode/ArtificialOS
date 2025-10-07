@@ -34,7 +34,7 @@ pub fn proto_to_syscall_full(req: &SyscallRequest) -> Result<Syscall, String> {
             path: PathBuf::from(call.path.clone()),
         }),
         Some(syscall_request::Syscall::MoveFile(call)) => Ok(Syscall::MoveFile {
-            source: PathBuf::from(call.source.clone()),
+            source: PathBuf::from(call.path.clone()),
             destination: PathBuf::from(call.destination.clone()),
         }),
         Some(syscall_request::Syscall::CopyFile(call)) => Ok(Syscall::CopyFile {

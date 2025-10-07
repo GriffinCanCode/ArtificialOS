@@ -1,0 +1,204 @@
+/*!
+ * CPU Scheduler
+ * Manages process scheduling with multiple policies and preemption
+ */
+
+use super::types::{ProcessStats, SchedulerStats, SchedulingPolicy};
+use crate::core::types::{Pid, Priority};
+use log::info;
+use parking_lot::RwLock;
+use std::collections::{BinaryHeap, VecDeque};
+use std::sync::Arc;
+use std::time::Duration;
+
+mod entry;
+mod operations;
+mod policy;
+mod stats;
+
+use entry::{Entry, FairEntry};
+
+/// CPU Scheduler
+pub struct Scheduler {
+    policy: Arc<RwLock<SchedulingPolicy>>,
+    quantum: Arc<RwLock<Duration>>,
+
+    // Round-robin queue
+    rr_queue: Arc<RwLock<VecDeque<Entry>>>,
+
+    // Priority queue (max-heap by priority)
+    priority_queue: Arc<RwLock<BinaryHeap<Entry>>>,
+
+    // Fair queue (min-heap by vruntime) - O(log n) operations
+    fair_queue: Arc<RwLock<BinaryHeap<FairEntry>>>,
+
+    // Current running process
+    current: Arc<RwLock<Option<Entry>>>,
+
+    // Statistics
+    stats: Arc<RwLock<SchedulerStats>>,
+}
+
+impl Scheduler {
+    /// Create new scheduler with policy
+    pub fn new(policy: SchedulingPolicy) -> Self {
+        Self::with_quantum(policy, Duration::from_millis(10))
+    }
+
+    /// Create scheduler with custom quantum
+    pub fn with_quantum(policy: SchedulingPolicy, quantum: Duration) -> Self {
+        info!(
+            "Scheduler initialized: policy={:?}, quantum={:?}",
+            policy, quantum
+        );
+
+        Self {
+            policy: Arc::new(RwLock::new(policy)),
+            quantum: Arc::new(RwLock::new(quantum)),
+            rr_queue: Arc::new(RwLock::new(VecDeque::new())),
+            priority_queue: Arc::new(RwLock::new(BinaryHeap::new())),
+            fair_queue: Arc::new(RwLock::new(BinaryHeap::new())),
+            current: Arc::new(RwLock::new(None)),
+            stats: Arc::new(RwLock::new(SchedulerStats {
+                total_scheduled: 0,
+                context_switches: 0,
+                preemptions: 0,
+                active_processes: 0,
+                policy,
+                quantum_micros: quantum.as_micros() as u64,
+            })),
+        }
+    }
+}
+
+impl Clone for Scheduler {
+    fn clone(&self) -> Self {
+        Self {
+            policy: Arc::clone(&self.policy),
+            quantum: Arc::clone(&self.quantum),
+            rr_queue: Arc::clone(&self.rr_queue),
+            priority_queue: Arc::clone(&self.priority_queue),
+            fair_queue: Arc::clone(&self.fair_queue),
+            current: Arc::clone(&self.current),
+            stats: Arc::clone(&self.stats),
+        }
+    }
+}
+
+impl Default for Scheduler {
+    fn default() -> Self {
+        Self::new(SchedulingPolicy::Fair)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::thread;
+    use std::time::Duration;
+
+    #[test]
+    fn test_round_robin_basic() {
+        let scheduler = Scheduler::new(SchedulingPolicy::RoundRobin);
+
+        scheduler.add(1, 5);
+        scheduler.add(2, 5);
+        scheduler.add(3, 5);
+
+        assert_eq!(scheduler.len(), 3);
+
+        // Should schedule in FIFO order
+        assert_eq!(scheduler.schedule(), Some(1));
+        assert_eq!(scheduler.current(), Some(1));
+    }
+
+    #[test]
+    fn test_priority_scheduling() {
+        let scheduler = Scheduler::new(SchedulingPolicy::Priority);
+
+        scheduler.add(1, 3); // Low priority
+        scheduler.add(2, 8); // High priority
+        scheduler.add(3, 5); // Medium priority
+
+        // Should schedule highest priority first
+        assert_eq!(scheduler.schedule(), Some(2));
+    }
+
+    #[test]
+    fn test_remove_process() {
+        let scheduler = Scheduler::new(SchedulingPolicy::RoundRobin);
+
+        scheduler.add(1, 5);
+        scheduler.add(2, 5);
+        assert_eq!(scheduler.len(), 2);
+
+        assert!(scheduler.remove(1));
+        assert_eq!(scheduler.len(), 1);
+
+        assert!(!scheduler.remove(999)); // Non-existent
+    }
+
+    #[test]
+    fn test_yield_process() {
+        let scheduler = Scheduler::new(SchedulingPolicy::RoundRobin);
+
+        scheduler.add(1, 5);
+        scheduler.add(2, 5);
+
+        assert_eq!(scheduler.schedule(), Some(1));
+        assert_eq!(scheduler.yield_process(), Some(2));
+        assert_eq!(scheduler.current(), Some(2));
+    }
+
+    #[test]
+    fn test_empty_scheduler() {
+        let scheduler = Scheduler::new(SchedulingPolicy::RoundRobin);
+        assert!(scheduler.is_empty());
+        assert_eq!(scheduler.schedule(), None);
+    }
+
+    #[test]
+    fn test_statistics() {
+        let scheduler = Scheduler::new(SchedulingPolicy::Priority);
+
+        scheduler.add(1, 5);
+        scheduler.add(2, 3);
+
+        scheduler.schedule();
+        scheduler.schedule();
+
+        let stats = scheduler.stats();
+        assert!(stats.total_scheduled > 0);
+        assert_eq!(stats.policy, SchedulingPolicy::Priority);
+    }
+
+    #[test]
+    fn test_policy_change() {
+        let scheduler = Scheduler::new(SchedulingPolicy::RoundRobin);
+
+        scheduler.add(1, 5);
+        scheduler.add(2, 5);
+
+        scheduler.set_policy(SchedulingPolicy::Priority);
+        assert_eq!(scheduler.len(), 2); // Processes should be requeued
+    }
+
+    #[test]
+    fn test_preemption_with_quantum() {
+        let scheduler =
+            Scheduler::with_quantum(SchedulingPolicy::RoundRobin, Duration::from_millis(10));
+
+        scheduler.add(1, 5);
+        scheduler.add(2, 5);
+
+        // Schedule first process
+        assert_eq!(scheduler.schedule(), Some(1));
+
+        // Wait for quantum to expire
+        thread::sleep(Duration::from_millis(15));
+
+        // Next schedule should preempt and switch
+        let next = scheduler.schedule();
+        assert_eq!(next, Some(2));
+    }
+}
