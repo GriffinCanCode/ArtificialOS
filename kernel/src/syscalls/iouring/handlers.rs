@@ -70,20 +70,16 @@
              Syscall::RecvFrom { sockfd, size, flags } => Some(SyscallOpType::RecvFrom {
                  sockfd: *sockfd,
                  size: *size,
-                 flags: *flags,
-             }),
+                flags: *flags,
+            }),
 
-             // IPC
-             Syscall::SendIpcMessage { target_pid, data } => Some(SyscallOpType::IpcSend {
-                 target_pid: *target_pid,
-                 data: data.clone(),
-             }),
-             Syscall::ReceiveIpcMessage { size } => Some(SyscallOpType::IpcRecv { size: *size }),
+            // IPC - Note: SendQueue/ReceiveQueue would need queue_id, so not included here
+            // Direct IPC messaging syscalls don't exist in current implementation
 
-             // Not an I/O-bound operation
-             _ => None,
-         }
-     }
+            // Not an I/O-bound operation
+            _ => None,
+        }
+    }
  }
 
  impl SyscallHandler for IoUringHandler {
@@ -148,24 +144,28 @@
      }
  }
 
- impl crate::syscalls::handlers::AsyncSyscallHandler for IoUringAsyncHandler {
-     fn handle_async(
-         &self,
-         pid: Pid,
-         syscall: &Syscall,
-     ) -> std::pin::Pin<
-         Box<dyn std::future::Future<Output = Option<SyscallResult>> + Send + '_>,
-     > {
-         Box::pin(async move {
-             // Create an io_uring handler in blocking mode
-             let handler = IoUringHandler::new(self.manager.clone(), true);
+impl crate::syscalls::handlers::AsyncSyscallHandler for IoUringAsyncHandler {
+    fn handle_async(
+        &self,
+        pid: Pid,
+        syscall: &Syscall,
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Option<SyscallResult>> + Send + '_>,
+    > {
+        // Clone syscall to move into async block
+        let syscall = syscall.clone();
+        let manager = self.manager.clone();
 
-             // Handle the syscall (this will submit and wait)
-             handler.handle(pid, syscall)
-         })
-     }
+        Box::pin(async move {
+            // Create an io_uring handler in blocking mode
+            let handler = IoUringHandler::new(manager, true);
 
-     fn name(&self) -> &'static str {
-         "io_uring_async_handler"
-     }
- }
+            // Handle the syscall (this will submit and wait)
+            handler.handle(pid, &syscall)
+        })
+    }
+
+    fn name(&self) -> &'static str {
+        "io_uring_async_handler"
+    }
+}

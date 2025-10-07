@@ -9,24 +9,24 @@ use ai_os_kernel::syscalls::{
 };
 use ai_os_kernel::core::types::Pid;
 use ai_os_kernel::memory::MemoryManager;
-use ai_os_kernel::process::ProcessManager;
-use ai_os_kernel::permissions::PermissionManager;
-use ai_os_kernel::vfs::Vfs;
+use ai_os_kernel::process::ProcessManagerImpl;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tempfile::tempdir;
 
 fn setup_test_manager() -> (IoUringManager, Pid) {
     let memory_manager = MemoryManager::new();
-    let process_manager = ProcessManager::new(memory_manager.clone());
-    let permission_manager = Arc::new(PermissionManager::new());
-    let vfs = Vfs::new();
+    let process_manager = ProcessManagerImpl::new();
+    let sandbox_manager = ai_os_kernel::security::SandboxManager::new();
+    let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
+    let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
 
-    let syscall_executor = SyscallExecutor::new(
+    let syscall_executor = SyscallExecutor::with_full_features(
+        sandbox_manager,
+        pipe_manager,
+        shm_manager,
         process_manager.clone(),
         memory_manager.clone(),
-        permission_manager,
-        vfs,
     );
 
     let iouring_executor = Arc::new(IoUringExecutor::new(syscall_executor));
@@ -34,10 +34,9 @@ fn setup_test_manager() -> (IoUringManager, Pid) {
 
     // Create a test process
     let pid = process_manager.create_process(
-        vec!["/bin/test".to_string()],
-        vec![],
-        vec![],
-    ).unwrap();
+        "test_process".to_string(),
+        10, // priority
+    );
 
     (manager, pid)
 }

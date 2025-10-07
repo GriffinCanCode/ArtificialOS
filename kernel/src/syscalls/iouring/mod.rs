@@ -210,11 +210,14 @@ pub mod handlers;
      #[error("Ring not found for PID {0}")]
      RingNotFound(Pid),
 
-     #[error("Submission queue full")]
-     SubmissionQueueFull,
+    #[error("Submission queue full")]
+    SubmissionQueueFull,
 
-     #[error("Completion queue empty")]
-     CompletionQueueEmpty,
+    #[error("Completion queue full")]
+    CompletionQueueFull,
+
+    #[error("Completion queue empty")]
+    CompletionQueueEmpty,
 
      #[error("Operation timeout")]
      Timeout,

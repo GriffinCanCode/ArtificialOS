@@ -461,12 +461,8 @@ fn syscall_to_iouring_op(syscall: &Syscall) -> Option<SyscallOpType> {
             flags: *flags,
         }),
 
-        // IPC
-        Syscall::SendMessage { target_pid, data } => Some(SyscallOpType::IpcSend {
-            target_pid: *target_pid,
-            data: data.clone(),
-        }),
-        Syscall::ReceiveMessage => Some(SyscallOpType::IpcRecv { size: 4096 }), // Default buffer size
+        // IPC - Note: SendQueue/ReceiveQueue would need queue_id, so not included here
+        // Direct IPC messaging syscalls don't exist in current implementation
 
         // Not suitable for io_uring
         _ => None,

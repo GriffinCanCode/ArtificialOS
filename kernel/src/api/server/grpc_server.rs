@@ -199,6 +199,32 @@ impl KernelService for KernelServiceImpl {
     ) -> Result<Response<BatchSyscallResponse>, Status> {
         async_handlers::handle_execute_syscall_batch(&self.batch_executor, request).await
     }
+
+    async fn execute_syscall_iouring(
+        &self,
+        request: Request<SyscallRequest>,
+    ) -> Result<Response<AsyncSyscallResponse>, Status> {
+        async_handlers::handle_execute_syscall_iouring(
+            &self.iouring_manager,
+            &self.async_manager,
+            request,
+        )
+        .await
+    }
+
+    async fn reap_completions(
+        &self,
+        request: Request<ReapCompletionsRequest>,
+    ) -> Result<Response<ReapCompletionsResponse>, Status> {
+        async_handlers::handle_reap_iouring_completions(&self.iouring_manager, request).await
+    }
+
+    async fn submit_iouring_batch(
+        &self,
+        request: Request<BatchSyscallRequest>,
+    ) -> Result<Response<IoUringBatchResponse>, Status> {
+        async_handlers::handle_submit_iouring_batch(&self.iouring_manager, request).await
+    }
 }
 
 /// gRPC Server wrapper that implements ServerLifecycle trait

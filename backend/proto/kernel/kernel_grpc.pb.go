@@ -19,18 +19,21 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	KernelService_ExecuteSyscall_FullMethodName      = "/kernel.KernelService/ExecuteSyscall"
-	KernelService_StreamSyscall_FullMethodName       = "/kernel.KernelService/StreamSyscall"
-	KernelService_ExecuteSyscallAsync_FullMethodName = "/kernel.KernelService/ExecuteSyscallAsync"
-	KernelService_GetAsyncStatus_FullMethodName      = "/kernel.KernelService/GetAsyncStatus"
-	KernelService_CancelAsync_FullMethodName         = "/kernel.KernelService/CancelAsync"
-	KernelService_ExecuteSyscallBatch_FullMethodName = "/kernel.KernelService/ExecuteSyscallBatch"
-	KernelService_CreateProcess_FullMethodName       = "/kernel.KernelService/CreateProcess"
-	KernelService_UpdateSandbox_FullMethodName       = "/kernel.KernelService/UpdateSandbox"
-	KernelService_ScheduleNext_FullMethodName        = "/kernel.KernelService/ScheduleNext"
-	KernelService_GetSchedulerStats_FullMethodName   = "/kernel.KernelService/GetSchedulerStats"
-	KernelService_SetSchedulingPolicy_FullMethodName = "/kernel.KernelService/SetSchedulingPolicy"
-	KernelService_StreamEvents_FullMethodName        = "/kernel.KernelService/StreamEvents"
+	KernelService_ExecuteSyscall_FullMethodName        = "/kernel.KernelService/ExecuteSyscall"
+	KernelService_StreamSyscall_FullMethodName         = "/kernel.KernelService/StreamSyscall"
+	KernelService_ExecuteSyscallAsync_FullMethodName   = "/kernel.KernelService/ExecuteSyscallAsync"
+	KernelService_GetAsyncStatus_FullMethodName        = "/kernel.KernelService/GetAsyncStatus"
+	KernelService_CancelAsync_FullMethodName           = "/kernel.KernelService/CancelAsync"
+	KernelService_ExecuteSyscallBatch_FullMethodName   = "/kernel.KernelService/ExecuteSyscallBatch"
+	KernelService_ExecuteSyscallIouring_FullMethodName = "/kernel.KernelService/ExecuteSyscallIouring"
+	KernelService_ReapCompletions_FullMethodName       = "/kernel.KernelService/ReapCompletions"
+	KernelService_SubmitIouringBatch_FullMethodName    = "/kernel.KernelService/SubmitIouringBatch"
+	KernelService_CreateProcess_FullMethodName         = "/kernel.KernelService/CreateProcess"
+	KernelService_UpdateSandbox_FullMethodName         = "/kernel.KernelService/UpdateSandbox"
+	KernelService_ScheduleNext_FullMethodName          = "/kernel.KernelService/ScheduleNext"
+	KernelService_GetSchedulerStats_FullMethodName     = "/kernel.KernelService/GetSchedulerStats"
+	KernelService_SetSchedulingPolicy_FullMethodName   = "/kernel.KernelService/SetSchedulingPolicy"
+	KernelService_StreamEvents_FullMethodName          = "/kernel.KernelService/StreamEvents"
 )
 
 // KernelServiceClient is the client API for KernelService service.
@@ -49,6 +52,10 @@ type KernelServiceClient interface {
 	CancelAsync(ctx context.Context, in *AsyncCancelRequest, opts ...grpc.CallOption) (*AsyncCancelResponse, error)
 	// Batch syscall execution
 	ExecuteSyscallBatch(ctx context.Context, in *BatchSyscallRequest, opts ...grpc.CallOption) (*BatchSyscallResponse, error)
+	// io_uring-style async syscall completion
+	ExecuteSyscallIouring(ctx context.Context, in *SyscallRequest, opts ...grpc.CallOption) (*AsyncSyscallResponse, error)
+	ReapCompletions(ctx context.Context, in *ReapCompletionsRequest, opts ...grpc.CallOption) (*ReapCompletionsResponse, error)
+	SubmitIouringBatch(ctx context.Context, in *BatchSyscallRequest, opts ...grpc.CallOption) (*IoUringBatchResponse, error)
 	// Create a sandboxed process
 	CreateProcess(ctx context.Context, in *CreateProcessRequest, opts ...grpc.CallOption) (*CreateProcessResponse, error)
 	// Manage sandbox permissions
@@ -126,6 +133,36 @@ func (c *kernelServiceClient) ExecuteSyscallBatch(ctx context.Context, in *Batch
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(BatchSyscallResponse)
 	err := c.cc.Invoke(ctx, KernelService_ExecuteSyscallBatch_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *kernelServiceClient) ExecuteSyscallIouring(ctx context.Context, in *SyscallRequest, opts ...grpc.CallOption) (*AsyncSyscallResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AsyncSyscallResponse)
+	err := c.cc.Invoke(ctx, KernelService_ExecuteSyscallIouring_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *kernelServiceClient) ReapCompletions(ctx context.Context, in *ReapCompletionsRequest, opts ...grpc.CallOption) (*ReapCompletionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReapCompletionsResponse)
+	err := c.cc.Invoke(ctx, KernelService_ReapCompletions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *kernelServiceClient) SubmitIouringBatch(ctx context.Context, in *BatchSyscallRequest, opts ...grpc.CallOption) (*IoUringBatchResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(IoUringBatchResponse)
+	err := c.cc.Invoke(ctx, KernelService_SubmitIouringBatch_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -217,6 +254,10 @@ type KernelServiceServer interface {
 	CancelAsync(context.Context, *AsyncCancelRequest) (*AsyncCancelResponse, error)
 	// Batch syscall execution
 	ExecuteSyscallBatch(context.Context, *BatchSyscallRequest) (*BatchSyscallResponse, error)
+	// io_uring-style async syscall completion
+	ExecuteSyscallIouring(context.Context, *SyscallRequest) (*AsyncSyscallResponse, error)
+	ReapCompletions(context.Context, *ReapCompletionsRequest) (*ReapCompletionsResponse, error)
+	SubmitIouringBatch(context.Context, *BatchSyscallRequest) (*IoUringBatchResponse, error)
 	// Create a sandboxed process
 	CreateProcess(context.Context, *CreateProcessRequest) (*CreateProcessResponse, error)
 	// Manage sandbox permissions
@@ -254,6 +295,15 @@ func (UnimplementedKernelServiceServer) CancelAsync(context.Context, *AsyncCance
 }
 func (UnimplementedKernelServiceServer) ExecuteSyscallBatch(context.Context, *BatchSyscallRequest) (*BatchSyscallResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ExecuteSyscallBatch not implemented")
+}
+func (UnimplementedKernelServiceServer) ExecuteSyscallIouring(context.Context, *SyscallRequest) (*AsyncSyscallResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ExecuteSyscallIouring not implemented")
+}
+func (UnimplementedKernelServiceServer) ReapCompletions(context.Context, *ReapCompletionsRequest) (*ReapCompletionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReapCompletions not implemented")
+}
+func (UnimplementedKernelServiceServer) SubmitIouringBatch(context.Context, *BatchSyscallRequest) (*IoUringBatchResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SubmitIouringBatch not implemented")
 }
 func (UnimplementedKernelServiceServer) CreateProcess(context.Context, *CreateProcessRequest) (*CreateProcessResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateProcess not implemented")
@@ -391,6 +441,60 @@ func _KernelService_ExecuteSyscallBatch_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _KernelService_ExecuteSyscallIouring_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SyscallRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KernelServiceServer).ExecuteSyscallIouring(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KernelService_ExecuteSyscallIouring_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KernelServiceServer).ExecuteSyscallIouring(ctx, req.(*SyscallRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KernelService_ReapCompletions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReapCompletionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KernelServiceServer).ReapCompletions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KernelService_ReapCompletions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KernelServiceServer).ReapCompletions(ctx, req.(*ReapCompletionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KernelService_SubmitIouringBatch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BatchSyscallRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KernelServiceServer).SubmitIouringBatch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KernelService_SubmitIouringBatch_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KernelServiceServer).SubmitIouringBatch(ctx, req.(*BatchSyscallRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _KernelService_CreateProcess_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateProcessRequest)
 	if err := dec(in); err != nil {
@@ -518,6 +622,18 @@ var KernelService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ExecuteSyscallBatch",
 			Handler:    _KernelService_ExecuteSyscallBatch_Handler,
+		},
+		{
+			MethodName: "ExecuteSyscallIouring",
+			Handler:    _KernelService_ExecuteSyscallIouring_Handler,
+		},
+		{
+			MethodName: "ReapCompletions",
+			Handler:    _KernelService_ReapCompletions_Handler,
+		},
+		{
+			MethodName: "SubmitIouringBatch",
+			Handler:    _KernelService_SubmitIouringBatch_Handler,
 		},
 		{
 			MethodName: "CreateProcess",

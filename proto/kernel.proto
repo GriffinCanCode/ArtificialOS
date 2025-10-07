@@ -20,6 +20,11 @@ service KernelService {
   // Batch syscall execution
   rpc ExecuteSyscallBatch(BatchSyscallRequest) returns (BatchSyscallResponse);
 
+  // io_uring-style async syscall completion
+  rpc ExecuteSyscallIouring(SyscallRequest) returns (AsyncSyscallResponse);
+  rpc ReapCompletions(ReapCompletionsRequest) returns (ReapCompletionsResponse);
+  rpc SubmitIouringBatch(BatchSyscallRequest) returns (IoUringBatchResponse);
+
   // Create a sandboxed process
   rpc CreateProcess(CreateProcessRequest) returns (CreateProcessResponse);
 

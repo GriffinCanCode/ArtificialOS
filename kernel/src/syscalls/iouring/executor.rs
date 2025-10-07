@@ -21,23 +21,26 @@
          Self { syscall_executor }
      }
 
-     /// Execute pending operations from a ring (single)
-     pub async fn execute_async(&self, ring: Arc<SyscallCompletionRing>) {
-         if let Some(entry) = ring.pop_submission() {
-             let result = self.execute_operation(&entry.op, entry.pid).await;
+    /// Execute pending operations from a ring (single)
+    pub async fn execute_async(&self, ring: Arc<SyscallCompletionRing>) {
+        if let Some(entry) = ring.pop_submission() {
+            let result = self.execute_operation(&entry.op, entry.pid).await;
 
-             let status = match &result {
-                 crate::syscalls::types::SyscallResult::Success { .. } => {
-                     SyscallCompletionStatus::Success
-                 }
-                 crate::syscalls::types::SyscallResult::Error { message } => {
-                     SyscallCompletionStatus::Error(message.clone())
-                 }
-             };
+            let status = match &result {
+                crate::syscalls::types::SyscallResult::Success { .. } => {
+                    SyscallCompletionStatus::Success
+                }
+                crate::syscalls::types::SyscallResult::Error { message } => {
+                    SyscallCompletionStatus::Error(message.clone())
+                }
+                crate::syscalls::types::SyscallResult::PermissionDenied { reason } => {
+                    SyscallCompletionStatus::Error(format!("Permission denied: {}", reason))
+                }
+            };
 
-             ring.complete(entry.seq, status, result, entry.user_data);
-         }
-     }
+            ring.complete(entry.seq, status, result, entry.user_data);
+        }
+    }
 
      /// Execute pending operations from a ring (batch)
      pub async fn execute_batch_async(&self, ring: Arc<SyscallCompletionRing>) {
@@ -60,17 +63,20 @@
              .map(|entry| {
                  let executor = &self.syscall_executor;
                  let ring = ring.clone();
-                 async move {
-                     let result = self.execute_operation(&entry.op, entry.pid).await;
+                async move {
+                    let result = self.execute_operation(&entry.op, entry.pid).await;
 
-                     let status = match &result {
-                         crate::syscalls::types::SyscallResult::Success { .. } => {
-                             SyscallCompletionStatus::Success
-                         }
-                         crate::syscalls::types::SyscallResult::Error { message } => {
-                             SyscallCompletionStatus::Error(message.clone())
-                         }
-                     };
+                    let status = match &result {
+                        crate::syscalls::types::SyscallResult::Success { .. } => {
+                            SyscallCompletionStatus::Success
+                        }
+                        crate::syscalls::types::SyscallResult::Error { message } => {
+                            SyscallCompletionStatus::Error(message.clone())
+                        }
+                        crate::syscalls::types::SyscallResult::PermissionDenied { reason } => {
+                            SyscallCompletionStatus::Error(format!("Permission denied: {}", reason))
+                        }
+                    };
 
                      ring.complete(entry.seq, status, result, entry.user_data);
                  }
@@ -135,21 +141,26 @@
                  SyscallOpType::SendTo { sockfd, data, address, flags } => {
                      executor.sendto(pid, sockfd, &data, &address, flags)
                  }
-                 SyscallOpType::RecvFrom { sockfd, size, flags } => {
-                     executor.recvfrom(pid, sockfd, size, flags)
-                 }
+                SyscallOpType::RecvFrom { sockfd, size, flags } => {
+                    executor.recvfrom(pid, sockfd, size, flags)
+                }
 
-                // IPC operations
-                SyscallOpType::IpcSend { target_pid, data } => {
-                    // Use existing IPC infrastructure
-                    use crate::syscalls::types::SyscallResult;
-                    executor.send_message(pid, target_pid, data)
-                }
-                SyscallOpType::IpcRecv { size } => {
-                    // Use existing IPC infrastructure
-                    executor.receive_message(pid)
-                }
-             }
+               // IPC operations (using queues)
+               SyscallOpType::IpcSend { target_pid, data } => {
+                   // IPC via SendQueue - would need a queue_id mapping
+                   // For now, return error indicating need for explicit queue usage
+                   crate::syscalls::types::SyscallResult::Error {
+                       message: "Direct IPC send not supported via io_uring, use SendQueue instead".to_string()
+                   }
+               }
+               SyscallOpType::IpcRecv { size } => {
+                   // IPC via ReceiveQueue - would need a queue_id mapping
+                   // For now, return error indicating need for explicit queue usage
+                   crate::syscalls::types::SyscallResult::Error {
+                       message: "Direct IPC recv not supported via io_uring, use ReceiveQueue instead".to_string()
+                   }
+               }
+            }
          })
          .await
          .unwrap_or_else(|e| {

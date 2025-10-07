@@ -8069,6 +8069,230 @@ func (x *BatchSyscallResponse) GetFailureCount() uint32 {
 	return 0
 }
 
+type ReapCompletionsRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Pid            uint32                 `protobuf:"varint,1,opt,name=pid,proto3" json:"pid,omitempty"`
+	MaxCompletions uint32                 `protobuf:"varint,2,opt,name=max_completions,json=maxCompletions,proto3" json:"max_completions,omitempty"` // 0 means all
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ReapCompletionsRequest) Reset() {
+	*x = ReapCompletionsRequest{}
+	mi := &file_kernel_proto_msgTypes[125]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReapCompletionsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReapCompletionsRequest) ProtoMessage() {}
+
+func (x *ReapCompletionsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_kernel_proto_msgTypes[125]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReapCompletionsRequest.ProtoReflect.Descriptor instead.
+func (*ReapCompletionsRequest) Descriptor() ([]byte, []int) {
+	return file_kernel_proto_rawDescGZIP(), []int{125}
+}
+
+func (x *ReapCompletionsRequest) GetPid() uint32 {
+	if x != nil {
+		return x.Pid
+	}
+	return 0
+}
+
+func (x *ReapCompletionsRequest) GetMaxCompletions() uint32 {
+	if x != nil {
+		return x.MaxCompletions
+	}
+	return 0
+}
+
+type ReapCompletionsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Completions   []*IoUringCompletion   `protobuf:"bytes,1,rep,name=completions,proto3" json:"completions,omitempty"`
+	Count         uint32                 `protobuf:"varint,2,opt,name=count,proto3" json:"count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReapCompletionsResponse) Reset() {
+	*x = ReapCompletionsResponse{}
+	mi := &file_kernel_proto_msgTypes[126]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReapCompletionsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReapCompletionsResponse) ProtoMessage() {}
+
+func (x *ReapCompletionsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_kernel_proto_msgTypes[126]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReapCompletionsResponse.ProtoReflect.Descriptor instead.
+func (*ReapCompletionsResponse) Descriptor() ([]byte, []int) {
+	return file_kernel_proto_rawDescGZIP(), []int{126}
+}
+
+func (x *ReapCompletionsResponse) GetCompletions() []*IoUringCompletion {
+	if x != nil {
+		return x.Completions
+	}
+	return nil
+}
+
+func (x *ReapCompletionsResponse) GetCount() uint32 {
+	if x != nil {
+		return x.Count
+	}
+	return 0
+}
+
+type IoUringCompletion struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Seq           uint64                 `protobuf:"varint,1,opt,name=seq,proto3" json:"seq,omitempty"`                           // Sequence number
+	UserData      uint64                 `protobuf:"varint,2,opt,name=user_data,json=userData,proto3" json:"user_data,omitempty"` // User-provided correlation data
+	Result        *SyscallResponse       `protobuf:"bytes,3,opt,name=result,proto3" json:"result,omitempty"`                      // Result of the operation
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *IoUringCompletion) Reset() {
+	*x = IoUringCompletion{}
+	mi := &file_kernel_proto_msgTypes[127]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *IoUringCompletion) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*IoUringCompletion) ProtoMessage() {}
+
+func (x *IoUringCompletion) ProtoReflect() protoreflect.Message {
+	mi := &file_kernel_proto_msgTypes[127]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use IoUringCompletion.ProtoReflect.Descriptor instead.
+func (*IoUringCompletion) Descriptor() ([]byte, []int) {
+	return file_kernel_proto_rawDescGZIP(), []int{127}
+}
+
+func (x *IoUringCompletion) GetSeq() uint64 {
+	if x != nil {
+		return x.Seq
+	}
+	return 0
+}
+
+func (x *IoUringCompletion) GetUserData() uint64 {
+	if x != nil {
+		return x.UserData
+	}
+	return 0
+}
+
+func (x *IoUringCompletion) GetResult() *SyscallResponse {
+	if x != nil {
+		return x.Result
+	}
+	return nil
+}
+
+type IoUringBatchResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Sequences     []uint64               `protobuf:"varint,1,rep,packed,name=sequences,proto3" json:"sequences,omitempty"` // Assigned sequence numbers
+	Accepted      bool                   `protobuf:"varint,2,opt,name=accepted,proto3" json:"accepted,omitempty"`
+	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *IoUringBatchResponse) Reset() {
+	*x = IoUringBatchResponse{}
+	mi := &file_kernel_proto_msgTypes[128]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *IoUringBatchResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*IoUringBatchResponse) ProtoMessage() {}
+
+func (x *IoUringBatchResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_kernel_proto_msgTypes[128]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use IoUringBatchResponse.ProtoReflect.Descriptor instead.
+func (*IoUringBatchResponse) Descriptor() ([]byte, []int) {
+	return file_kernel_proto_rawDescGZIP(), []int{128}
+}
+
+func (x *IoUringBatchResponse) GetSequences() []uint64 {
+	if x != nil {
+		return x.Sequences
+	}
+	return nil
+}
+
+func (x *IoUringBatchResponse) GetAccepted() bool {
+	if x != nil {
+		return x.Accepted
+	}
+	return false
+}
+
+func (x *IoUringBatchResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
 var File_kernel_proto protoreflect.FileDescriptor
 
 const file_kernel_proto_rawDesc = "" +
@@ -8584,7 +8808,21 @@ const file_kernel_proto_rawDesc = "" +
 	"\x14BatchSyscallResponse\x125\n" +
 	"\tresponses\x18\x01 \x03(\v2\x17.kernel.SyscallResponseR\tresponses\x12#\n" +
 	"\rsuccess_count\x18\x02 \x01(\rR\fsuccessCount\x12#\n" +
-	"\rfailure_count\x18\x03 \x01(\rR\ffailureCount*9\n" +
+	"\rfailure_count\x18\x03 \x01(\rR\ffailureCount\"S\n" +
+	"\x16ReapCompletionsRequest\x12\x10\n" +
+	"\x03pid\x18\x01 \x01(\rR\x03pid\x12'\n" +
+	"\x0fmax_completions\x18\x02 \x01(\rR\x0emaxCompletions\"l\n" +
+	"\x17ReapCompletionsResponse\x12;\n" +
+	"\vcompletions\x18\x01 \x03(\v2\x19.kernel.IoUringCompletionR\vcompletions\x12\x14\n" +
+	"\x05count\x18\x02 \x01(\rR\x05count\"s\n" +
+	"\x11IoUringCompletion\x12\x10\n" +
+	"\x03seq\x18\x01 \x01(\x04R\x03seq\x12\x1b\n" +
+	"\tuser_data\x18\x02 \x01(\x04R\buserData\x12/\n" +
+	"\x06result\x18\x03 \x01(\v2\x17.kernel.SyscallResponseR\x06result\"f\n" +
+	"\x14IoUringBatchResponse\x12\x1c\n" +
+	"\tsequences\x18\x01 \x03(\x04R\tsequences\x12\x1a\n" +
+	"\baccepted\x18\x02 \x01(\bR\baccepted\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error*9\n" +
 	"\fSandboxLevel\x12\v\n" +
 	"\aMINIMAL\x10\x00\x12\f\n" +
 	"\bSTANDARD\x10\x01\x12\x0e\n" +
@@ -8606,14 +8844,17 @@ const file_kernel_proto_rawDesc = "" +
 	"\vTIME_ACCESS\x10\n" +
 	"\x12\x10\n" +
 	"\fSEND_MESSAGE\x10\v\x12\x13\n" +
-	"\x0fRECEIVE_MESSAGE\x10\f2\xb7\a\n" +
+	"\x0fRECEIVE_MESSAGE\x10\f2\xab\t\n" +
 	"\rKernelService\x12A\n" +
 	"\x0eExecuteSyscall\x12\x16.kernel.SyscallRequest\x1a\x17.kernel.SyscallResponse\x12M\n" +
 	"\rStreamSyscall\x12\x1c.kernel.StreamSyscallRequest\x1a\x1a.kernel.StreamSyscallChunk(\x010\x01\x12K\n" +
 	"\x13ExecuteSyscallAsync\x12\x16.kernel.SyscallRequest\x1a\x1c.kernel.AsyncSyscallResponse\x12I\n" +
 	"\x0eGetAsyncStatus\x12\x1a.kernel.AsyncStatusRequest\x1a\x1b.kernel.AsyncStatusResponse\x12F\n" +
 	"\vCancelAsync\x12\x1a.kernel.AsyncCancelRequest\x1a\x1b.kernel.AsyncCancelResponse\x12P\n" +
-	"\x13ExecuteSyscallBatch\x12\x1b.kernel.BatchSyscallRequest\x1a\x1c.kernel.BatchSyscallResponse\x12L\n" +
+	"\x13ExecuteSyscallBatch\x12\x1b.kernel.BatchSyscallRequest\x1a\x1c.kernel.BatchSyscallResponse\x12M\n" +
+	"\x15ExecuteSyscallIouring\x12\x16.kernel.SyscallRequest\x1a\x1c.kernel.AsyncSyscallResponse\x12R\n" +
+	"\x0fReapCompletions\x12\x1e.kernel.ReapCompletionsRequest\x1a\x1f.kernel.ReapCompletionsResponse\x12O\n" +
+	"\x12SubmitIouringBatch\x12\x1b.kernel.BatchSyscallRequest\x1a\x1c.kernel.IoUringBatchResponse\x12L\n" +
 	"\rCreateProcess\x12\x1c.kernel.CreateProcessRequest\x1a\x1d.kernel.CreateProcessResponse\x12L\n" +
 	"\rUpdateSandbox\x12\x1c.kernel.UpdateSandboxRequest\x1a\x1d.kernel.UpdateSandboxResponse\x12I\n" +
 	"\fScheduleNext\x12\x1b.kernel.ScheduleNextRequest\x1a\x1c.kernel.ScheduleNextResponse\x12X\n" +
@@ -8634,7 +8875,7 @@ func file_kernel_proto_rawDescGZIP() []byte {
 }
 
 var file_kernel_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_kernel_proto_msgTypes = make([]protoimpl.MessageInfo, 125)
+var file_kernel_proto_msgTypes = make([]protoimpl.MessageInfo, 129)
 var file_kernel_proto_goTypes = []any{
 	(SandboxLevel)(0),                       // 0: kernel.SandboxLevel
 	(Capability)(0),                         // 1: kernel.Capability
@@ -8764,6 +9005,10 @@ var file_kernel_proto_goTypes = []any{
 	(*AsyncCancelResponse)(nil),             // 125: kernel.AsyncCancelResponse
 	(*BatchSyscallRequest)(nil),             // 126: kernel.BatchSyscallRequest
 	(*BatchSyscallResponse)(nil),            // 127: kernel.BatchSyscallResponse
+	(*ReapCompletionsRequest)(nil),          // 128: kernel.ReapCompletionsRequest
+	(*ReapCompletionsResponse)(nil),         // 129: kernel.ReapCompletionsResponse
+	(*IoUringCompletion)(nil),               // 130: kernel.IoUringCompletion
+	(*IoUringBatchResponse)(nil),            // 131: kernel.IoUringBatchResponse
 }
 var file_kernel_proto_depIdxs = []int32{
 	8,   // 0: kernel.SyscallRequest.read_file:type_name -> kernel.ReadFileCall
@@ -8874,35 +9119,43 @@ var file_kernel_proto_depIdxs = []int32{
 	4,   // 105: kernel.AsyncStatusResponse.result:type_name -> kernel.SyscallResponse
 	3,   // 106: kernel.BatchSyscallRequest.requests:type_name -> kernel.SyscallRequest
 	4,   // 107: kernel.BatchSyscallResponse.responses:type_name -> kernel.SyscallResponse
-	3,   // 108: kernel.KernelService.ExecuteSyscall:input_type -> kernel.SyscallRequest
-	116, // 109: kernel.KernelService.StreamSyscall:input_type -> kernel.StreamSyscallRequest
-	3,   // 110: kernel.KernelService.ExecuteSyscallAsync:input_type -> kernel.SyscallRequest
-	122, // 111: kernel.KernelService.GetAsyncStatus:input_type -> kernel.AsyncStatusRequest
-	124, // 112: kernel.KernelService.CancelAsync:input_type -> kernel.AsyncCancelRequest
-	126, // 113: kernel.KernelService.ExecuteSyscallBatch:input_type -> kernel.BatchSyscallRequest
-	98,  // 114: kernel.KernelService.CreateProcess:input_type -> kernel.CreateProcessRequest
-	100, // 115: kernel.KernelService.UpdateSandbox:input_type -> kernel.UpdateSandboxRequest
-	109, // 116: kernel.KernelService.ScheduleNext:input_type -> kernel.ScheduleNextRequest
-	111, // 117: kernel.KernelService.GetSchedulerStats:input_type -> kernel.GetSchedulerStatsRequest
-	114, // 118: kernel.KernelService.SetSchedulingPolicy:input_type -> kernel.SetSchedulingPolicyRequest
-	103, // 119: kernel.KernelService.StreamEvents:input_type -> kernel.EventStreamRequest
-	4,   // 120: kernel.KernelService.ExecuteSyscall:output_type -> kernel.SyscallResponse
-	119, // 121: kernel.KernelService.StreamSyscall:output_type -> kernel.StreamSyscallChunk
-	121, // 122: kernel.KernelService.ExecuteSyscallAsync:output_type -> kernel.AsyncSyscallResponse
-	123, // 123: kernel.KernelService.GetAsyncStatus:output_type -> kernel.AsyncStatusResponse
-	125, // 124: kernel.KernelService.CancelAsync:output_type -> kernel.AsyncCancelResponse
-	127, // 125: kernel.KernelService.ExecuteSyscallBatch:output_type -> kernel.BatchSyscallResponse
-	99,  // 126: kernel.KernelService.CreateProcess:output_type -> kernel.CreateProcessResponse
-	101, // 127: kernel.KernelService.UpdateSandbox:output_type -> kernel.UpdateSandboxResponse
-	110, // 128: kernel.KernelService.ScheduleNext:output_type -> kernel.ScheduleNextResponse
-	112, // 129: kernel.KernelService.GetSchedulerStats:output_type -> kernel.GetSchedulerStatsResponse
-	115, // 130: kernel.KernelService.SetSchedulingPolicy:output_type -> kernel.SetSchedulingPolicyResponse
-	104, // 131: kernel.KernelService.StreamEvents:output_type -> kernel.KernelEvent
-	120, // [120:132] is the sub-list for method output_type
-	108, // [108:120] is the sub-list for method input_type
-	108, // [108:108] is the sub-list for extension type_name
-	108, // [108:108] is the sub-list for extension extendee
-	0,   // [0:108] is the sub-list for field type_name
+	130, // 108: kernel.ReapCompletionsResponse.completions:type_name -> kernel.IoUringCompletion
+	4,   // 109: kernel.IoUringCompletion.result:type_name -> kernel.SyscallResponse
+	3,   // 110: kernel.KernelService.ExecuteSyscall:input_type -> kernel.SyscallRequest
+	116, // 111: kernel.KernelService.StreamSyscall:input_type -> kernel.StreamSyscallRequest
+	3,   // 112: kernel.KernelService.ExecuteSyscallAsync:input_type -> kernel.SyscallRequest
+	122, // 113: kernel.KernelService.GetAsyncStatus:input_type -> kernel.AsyncStatusRequest
+	124, // 114: kernel.KernelService.CancelAsync:input_type -> kernel.AsyncCancelRequest
+	126, // 115: kernel.KernelService.ExecuteSyscallBatch:input_type -> kernel.BatchSyscallRequest
+	3,   // 116: kernel.KernelService.ExecuteSyscallIouring:input_type -> kernel.SyscallRequest
+	128, // 117: kernel.KernelService.ReapCompletions:input_type -> kernel.ReapCompletionsRequest
+	126, // 118: kernel.KernelService.SubmitIouringBatch:input_type -> kernel.BatchSyscallRequest
+	98,  // 119: kernel.KernelService.CreateProcess:input_type -> kernel.CreateProcessRequest
+	100, // 120: kernel.KernelService.UpdateSandbox:input_type -> kernel.UpdateSandboxRequest
+	109, // 121: kernel.KernelService.ScheduleNext:input_type -> kernel.ScheduleNextRequest
+	111, // 122: kernel.KernelService.GetSchedulerStats:input_type -> kernel.GetSchedulerStatsRequest
+	114, // 123: kernel.KernelService.SetSchedulingPolicy:input_type -> kernel.SetSchedulingPolicyRequest
+	103, // 124: kernel.KernelService.StreamEvents:input_type -> kernel.EventStreamRequest
+	4,   // 125: kernel.KernelService.ExecuteSyscall:output_type -> kernel.SyscallResponse
+	119, // 126: kernel.KernelService.StreamSyscall:output_type -> kernel.StreamSyscallChunk
+	121, // 127: kernel.KernelService.ExecuteSyscallAsync:output_type -> kernel.AsyncSyscallResponse
+	123, // 128: kernel.KernelService.GetAsyncStatus:output_type -> kernel.AsyncStatusResponse
+	125, // 129: kernel.KernelService.CancelAsync:output_type -> kernel.AsyncCancelResponse
+	127, // 130: kernel.KernelService.ExecuteSyscallBatch:output_type -> kernel.BatchSyscallResponse
+	121, // 131: kernel.KernelService.ExecuteSyscallIouring:output_type -> kernel.AsyncSyscallResponse
+	129, // 132: kernel.KernelService.ReapCompletions:output_type -> kernel.ReapCompletionsResponse
+	131, // 133: kernel.KernelService.SubmitIouringBatch:output_type -> kernel.IoUringBatchResponse
+	99,  // 134: kernel.KernelService.CreateProcess:output_type -> kernel.CreateProcessResponse
+	101, // 135: kernel.KernelService.UpdateSandbox:output_type -> kernel.UpdateSandboxResponse
+	110, // 136: kernel.KernelService.ScheduleNext:output_type -> kernel.ScheduleNextResponse
+	112, // 137: kernel.KernelService.GetSchedulerStats:output_type -> kernel.GetSchedulerStatsResponse
+	115, // 138: kernel.KernelService.SetSchedulingPolicy:output_type -> kernel.SetSchedulingPolicyResponse
+	104, // 139: kernel.KernelService.StreamEvents:output_type -> kernel.KernelEvent
+	125, // [125:140] is the sub-list for method output_type
+	110, // [110:125] is the sub-list for method input_type
+	110, // [110:110] is the sub-list for extension type_name
+	110, // [110:110] is the sub-list for extension extendee
+	0,   // [0:110] is the sub-list for field type_name
 }
 
 func init() { file_kernel_proto_init() }
@@ -9036,7 +9289,7 @@ func file_kernel_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_kernel_proto_rawDesc), len(file_kernel_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   125,
+			NumMessages:   129,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
