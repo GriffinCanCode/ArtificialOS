@@ -46,12 +46,12 @@ impl SharedSegment {
         }
     }
 
-    pub fn has_permission(&self, pid: Pid, perm: ShmPermission) -> bool {
-        match self.permissions.get(&pid) {
-            Some(ShmPermission::ReadWrite) => true,
-            Some(ShmPermission::ReadOnly) => perm == ShmPermission::ReadOnly,
-            None => false,
-        }
+    /// Check if a process has at least the required permission level
+    pub fn has_permission(&self, pid: Pid, required: ShmPermission) -> bool {
+        self.permissions
+            .get(&pid)
+            .map(|perm| perm.satisfies(required))
+            .unwrap_or(false)
     }
 
     pub fn attach(&mut self, pid: Pid, perm: ShmPermission) {

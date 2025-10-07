@@ -4,7 +4,7 @@
  */
 
 use super::super::types::{IpcError, ShmId};
-use crate::core::serde::is_empty_vec;
+use crate::core::serde::{is_empty_vec, is_zero_usize};
 use crate::core::types::{Pid, Size};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -15,17 +15,22 @@ pub const MAX_SEGMENTS_PER_PROCESS: usize = 10;
 pub const GLOBAL_SHM_MEMORY_LIMIT: usize = 500 * 1024 * 1024; // 500MB total
 
 /// Shared memory error types
-#[derive(Debug, Error)]
+#[derive(Debug, Clone, Error, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "error", content = "details")]
 pub enum ShmError {
+    /// Segment not found
     #[error("Segment not found: {0}")]
     NotFound(u32),
 
+    /// Permission denied
     #[error("Permission denied: {0}")]
     PermissionDenied(String),
 
+    /// Invalid size
     #[error("Invalid size: {0}")]
     InvalidSize(String),
 
+    /// Invalid offset or size range
     #[error("Invalid offset or size: offset {offset}, size {size}, segment size {segment_size}")]
     InvalidRange {
         offset: usize,
@@ -33,15 +38,19 @@ pub enum ShmError {
         segment_size: usize,
     },
 
+    /// Segment size exceeds maximum allowed
     #[error("Segment size exceeds limit: requested {requested}, max {max}")]
     SizeExceeded { requested: usize, max: usize },
 
+    /// Process has too many segments
     #[error("Process segment limit exceeded: {0}/{1}")]
     ProcessLimitExceeded(usize, usize),
 
+    /// Global memory limit exceeded
     #[error("Global shared memory limit exceeded: {0}/{1} bytes")]
     GlobalMemoryExceeded(usize, usize),
 
+    /// Memory allocation failed
     #[error("Memory allocation failed: {0}")]
     AllocationFailed(String),
 }
@@ -85,6 +94,7 @@ impl From<ShmError> for IpcError {
 #[serde(rename_all = "snake_case")]
 pub struct ShmStats {
     pub id: ShmId,
+    #[serde(skip_serializing_if = "is_zero_usize")]
     pub size: Size,
     pub owner_pid: Pid,
     #[serde(skip_serializing_if = "is_empty_vec")]
@@ -94,8 +104,32 @@ pub struct ShmStats {
 }
 
 /// Shared memory permission types
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ShmPermission {
+    /// Read and write access
     ReadWrite,
+    /// Read-only access
     ReadOnly,
+}
+
+impl ShmPermission {
+    /// Check if this permission allows reading
+    pub fn can_read(&self) -> bool {
+        true // Both permissions allow reading
+    }
+
+    /// Check if this permission allows writing
+    pub fn can_write(&self) -> bool {
+        matches!(self, ShmPermission::ReadWrite)
+    }
+
+    /// Check if this permission is at least as permissive as the required permission
+    pub fn satisfies(&self, required: ShmPermission) -> bool {
+        match (self, required) {
+            (ShmPermission::ReadWrite, _) => true,
+            (ShmPermission::ReadOnly, ShmPermission::ReadOnly) => true,
+            _ => false,
+        }
+    }
 }
