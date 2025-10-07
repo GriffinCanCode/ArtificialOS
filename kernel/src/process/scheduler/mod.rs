@@ -5,6 +5,7 @@
 
 use super::types::{ProcessStats, SchedulerStats, SchedulingPolicy};
 use crate::core::types::{Pid, Priority};
+use dashmap::DashMap;
 use log::info;
 use parking_lot::RwLock;
 use std::collections::{BinaryHeap, VecDeque};
@@ -17,6 +18,15 @@ mod policy;
 mod stats;
 
 use entry::{Entry, FairEntry};
+
+/// Location of a process in the scheduler
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum QueueLocation {
+    Current,
+    RoundRobin,
+    Priority,
+    Fair,
+}
 
 /// CPU Scheduler
 pub struct Scheduler {
@@ -34,6 +44,9 @@ pub struct Scheduler {
 
     // Current running process
     current: Arc<RwLock<Option<Entry>>>,
+
+    // Process location index for O(1) lookup
+    process_locations: Arc<DashMap<Pid, QueueLocation>>,
 
     // Statistics
     stats: Arc<RwLock<SchedulerStats>>,
@@ -59,6 +72,7 @@ impl Scheduler {
             priority_queue: Arc::new(RwLock::new(BinaryHeap::new())),
             fair_queue: Arc::new(RwLock::new(BinaryHeap::new())),
             current: Arc::new(RwLock::new(None)),
+            process_locations: Arc::new(DashMap::new()),
             stats: Arc::new(RwLock::new(SchedulerStats {
                 total_scheduled: 0,
                 context_switches: 0,
@@ -80,6 +94,7 @@ impl Clone for Scheduler {
             priority_queue: Arc::clone(&self.priority_queue),
             fair_queue: Arc::clone(&self.fair_queue),
             current: Arc::clone(&self.current),
+            process_locations: Arc::clone(&self.process_locations),
             stats: Arc::clone(&self.stats),
         }
     }

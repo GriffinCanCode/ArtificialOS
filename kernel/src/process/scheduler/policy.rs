@@ -4,7 +4,7 @@
  */
 
 use super::entry::{Entry, FairEntry};
-use super::Scheduler;
+use super::{QueueLocation, Scheduler};
 use crate::core::types::{Pid, Priority};
 use crate::process::types::SchedulingPolicy;
 use log::info;
@@ -52,17 +52,21 @@ impl Scheduler {
         *self.policy.write() = new_policy;
         self.stats.write().policy = new_policy;
 
-        // Requeue all processes under new policy
+        // Requeue all processes under new policy and update location index
         for entry in all_entries {
+            let pid = entry.pid;
             match new_policy {
                 SchedulingPolicy::RoundRobin => {
                     self.rr_queue.write().push_back(entry);
+                    self.process_locations.insert(pid, QueueLocation::RoundRobin);
                 }
                 SchedulingPolicy::Priority => {
                     self.priority_queue.write().push(entry);
+                    self.process_locations.insert(pid, QueueLocation::Priority);
                 }
                 SchedulingPolicy::Fair => {
                     self.fair_queue.write().push(FairEntry(entry));
+                    self.process_locations.insert(pid, QueueLocation::Fair);
                 }
             }
         }
@@ -77,28 +81,31 @@ impl Scheduler {
         info!("Time quantum updated to {:?}", quantum);
     }
 
-    /// Update process priority dynamically
+    /// Update process priority dynamically - O(1) lookup + O(n) heap rebuild
     pub fn set_priority(&self, pid: Pid, new_priority: Priority) -> bool {
-        let policy = *self.policy.read();
+        // Fast O(1) check if process exists
+        let location = match self.process_locations.get(&pid) {
+            Some(loc) => *loc,
+            None => return false, // Process not in scheduler
+        };
 
-        // Update in current process
-        let mut current = self.current.write();
-        if let Some(ref mut entry) = *current {
-            if entry.pid == pid {
-                entry.priority = new_priority;
-                drop(current);
-                info!(
-                    "Updated priority for current process {} to {}",
-                    pid, new_priority
-                );
-                return true;
+        // Update priority based on cached location
+        match location {
+            QueueLocation::Current => {
+                let mut current = self.current.write();
+                if let Some(ref mut entry) = *current {
+                    if entry.pid == pid {
+                        entry.priority = new_priority;
+                        info!(
+                            "Updated priority for current process {} to {}",
+                            pid, new_priority
+                        );
+                        return true;
+                    }
+                }
+                false
             }
-        }
-        drop(current);
-
-        // Update in queues
-        match policy {
-            SchedulingPolicy::RoundRobin => {
+            QueueLocation::RoundRobin => {
                 let mut queue = self.rr_queue.write();
                 if let Some(entry) = queue.iter_mut().find(|e| e.pid == pid) {
                     entry.priority = new_priority;
@@ -108,9 +115,10 @@ impl Scheduler {
                     );
                     return true;
                 }
+                false
             }
-            SchedulingPolicy::Priority => {
-                // For heap, need to rebuild
+            QueueLocation::Priority => {
+                // For heap, need to rebuild - unavoidable with BinaryHeap
                 let mut queue = self.priority_queue.write();
                 let mut entries: Vec<Entry> = queue.drain().collect();
                 let found = entries.iter_mut().any(|e| {
@@ -132,11 +140,11 @@ impl Scheduler {
                         "Updated priority for queued process {} to {}",
                         pid, new_priority
                     );
-                    return true;
                 }
+                found
             }
-            SchedulingPolicy::Fair => {
-                // For heap, need to rebuild
+            QueueLocation::Fair => {
+                // For heap, need to rebuild - unavoidable with BinaryHeap
                 let mut queue = self.fair_queue.write();
                 let mut entries: Vec<FairEntry> = queue.drain().collect();
                 let found = entries.iter_mut().any(|e| {
@@ -158,12 +166,10 @@ impl Scheduler {
                         "Updated priority for queued process {} to {}",
                         pid, new_priority
                     );
-                    return true;
                 }
+                found
             }
         }
-
-        false
     }
 
     /// Get current scheduling policy

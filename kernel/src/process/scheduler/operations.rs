@@ -4,7 +4,7 @@
  */
 
 use super::entry::{Entry, FairEntry};
-use super::Scheduler;
+use super::{QueueLocation, Scheduler};
 use crate::core::types::{Pid, Priority};
 use crate::process::types::{ProcessStats, SchedulingPolicy};
 use log::info;
@@ -41,12 +41,15 @@ impl Scheduler {
         match policy {
             SchedulingPolicy::RoundRobin => {
                 self.rr_queue.write().push_back(entry);
+                self.process_locations.insert(pid, QueueLocation::RoundRobin);
             }
             SchedulingPolicy::Priority => {
                 self.priority_queue.write().push(entry);
+                self.process_locations.insert(pid, QueueLocation::Priority);
             }
             SchedulingPolicy::Fair => {
                 self.fair_queue.write().push(FairEntry(entry));
+                self.process_locations.insert(pid, QueueLocation::Fair);
             }
         }
 
@@ -57,20 +60,26 @@ impl Scheduler {
         );
     }
 
-    /// Remove process from scheduler
+    /// Remove process from scheduler - O(1) lookup + O(n) scan (unavoidable with BinaryHeap)
     pub fn remove(&self, pid: Pid) -> bool {
+        // Fast O(1) check if process exists
+        let location = match self.process_locations.remove(&pid) {
+            Some((_, loc)) => loc,
+            None => return false, // Process not in scheduler
+        };
+
         let mut removed = false;
 
-        let policy = *self.policy.read();
-        match policy {
-            SchedulingPolicy::RoundRobin => {
+        // Remove from the appropriate queue based on cached location
+        match location {
+            QueueLocation::RoundRobin => {
                 let mut queue = self.rr_queue.write();
                 if let Some(pos) = queue.iter().position(|e| e.pid == pid) {
                     queue.remove(pos);
                     removed = true;
                 }
             }
-            SchedulingPolicy::Priority => {
+            QueueLocation::Priority => {
                 let mut queue = self.priority_queue.write();
                 let original_len = queue.len();
                 let entries: Vec<Entry> = queue.drain().filter(|e| e.pid != pid).collect();
@@ -79,7 +88,7 @@ impl Scheduler {
                     queue.push(entry);
                 }
             }
-            SchedulingPolicy::Fair => {
+            QueueLocation::Fair => {
                 let mut queue = self.fair_queue.write();
                 let original_len = queue.len();
                 let entries: Vec<FairEntry> = queue.drain().filter(|e| e.0.pid != pid).collect();
@@ -88,21 +97,23 @@ impl Scheduler {
                     queue.push(entry);
                 }
             }
+            QueueLocation::Current => {
+                let mut current = self.current.write();
+                if current.as_ref().map(|e| e.pid) == Some(pid) {
+                    *current = None;
+                    removed = true;
+                }
+            }
         }
-
-        // Check if current process is the one being removed
-        let mut current = self.current.write();
-        if current.as_ref().map(|e| e.pid) == Some(pid) {
-            *current = None;
-            removed = true;
-        }
-        drop(current);
 
         if removed {
             let mut stats = self.stats.write();
             stats.active_processes = stats.active_processes.saturating_sub(1);
             drop(stats);
             info!("Process {} removed from scheduler", pid);
+        } else {
+            // Re-insert into index if we didn't actually find it (shouldn't happen)
+            self.process_locations.insert(pid, location);
         }
 
         removed
@@ -143,12 +154,18 @@ impl Scheduler {
                 match policy {
                     SchedulingPolicy::RoundRobin => {
                         self.rr_queue.write().push_back(new_entry);
+                        self.process_locations
+                            .insert(preempted_pid, QueueLocation::RoundRobin);
                     }
                     SchedulingPolicy::Priority => {
                         self.priority_queue.write().push(new_entry);
+                        self.process_locations
+                            .insert(preempted_pid, QueueLocation::Priority);
                     }
                     SchedulingPolicy::Fair => {
                         self.fair_queue.write().push(FairEntry(new_entry));
+                        self.process_locations
+                            .insert(preempted_pid, QueueLocation::Fair);
                     }
                 }
 
@@ -180,6 +197,9 @@ impl Scheduler {
             entry.time_slice_remaining = *self.quantum.read();
             *current = Some(entry);
 
+            // Update location to Current
+            self.process_locations.insert(pid, QueueLocation::Current);
+
             let mut stats = self.stats.write();
             stats.total_scheduled += 1;
             if stats.total_scheduled > 0 {
@@ -198,7 +218,8 @@ impl Scheduler {
         let mut current = self.current.write();
 
         if let Some(entry) = current.take() {
-            info!("Process {} yielded voluntarily", entry.pid);
+            let pid = entry.pid;
+            info!("Process {} yielded voluntarily", pid);
 
             // Re-add to queue with full quantum
             let mut new_entry = entry;
@@ -209,12 +230,15 @@ impl Scheduler {
             match policy {
                 SchedulingPolicy::RoundRobin => {
                     self.rr_queue.write().push_back(new_entry);
+                    self.process_locations.insert(pid, QueueLocation::RoundRobin);
                 }
                 SchedulingPolicy::Priority => {
                     self.priority_queue.write().push(new_entry);
+                    self.process_locations.insert(pid, QueueLocation::Priority);
                 }
                 SchedulingPolicy::Fair => {
                     self.fair_queue.write().push(FairEntry(new_entry));
+                    self.process_locations.insert(pid, QueueLocation::Fair);
                 }
             }
 
@@ -246,27 +270,24 @@ impl Scheduler {
         self.len() == 0
     }
 
-    /// Get per-process CPU usage statistics
+    /// Get per-process CPU usage statistics - O(1) lookup + O(n) scan (for now)
     pub fn process_stats(&self, pid: Pid) -> Option<ProcessStats> {
-        // Check current process
-        let current = self.current.read();
-        if let Some(ref entry) = *current {
-            if entry.pid == pid {
-                return Some(ProcessStats {
+        // Fast O(1) check if process exists
+        let location = self.process_locations.get(&pid)?;
+
+        // Search in the appropriate location based on cached index
+        match *location {
+            QueueLocation::Current => {
+                let current = self.current.read();
+                current.as_ref().map(|entry| ProcessStats {
                     pid: entry.pid,
                     priority: entry.priority,
                     cpu_time_micros: entry.cpu_time_micros,
                     vruntime: entry.vruntime,
                     is_current: true,
-                });
+                })
             }
-        }
-        drop(current);
-
-        // Search in queues
-        let policy = *self.policy.read();
-        match policy {
-            SchedulingPolicy::RoundRobin => {
+            QueueLocation::RoundRobin => {
                 let queue = self.rr_queue.read();
                 queue
                     .iter()
@@ -279,7 +300,7 @@ impl Scheduler {
                         is_current: false,
                     })
             }
-            SchedulingPolicy::Priority => {
+            QueueLocation::Priority => {
                 let queue = self.priority_queue.read();
                 queue
                     .iter()
@@ -292,7 +313,7 @@ impl Scheduler {
                         is_current: false,
                     })
             }
-            SchedulingPolicy::Fair => {
+            QueueLocation::Fair => {
                 let queue = self.fair_queue.read();
                 queue
                     .iter()
