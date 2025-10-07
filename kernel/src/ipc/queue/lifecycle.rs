@@ -131,7 +131,8 @@ impl QueueManager {
 
     /// Drain all messages from queue and deallocate
     fn drain_queue_messages(&self, queue_id: QueueId) -> IpcResult<usize> {
-        let mut queue = self.queues.get_mut(&queue_id).unwrap();
+        let mut queue = self.queues.get_mut(&queue_id)
+            .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found for draining", queue_id)))?;
         let mut freed_count = 0;
 
         loop {

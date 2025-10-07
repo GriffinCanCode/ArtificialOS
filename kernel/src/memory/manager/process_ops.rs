@@ -80,7 +80,8 @@ impl MemoryManager {
 
             // Add freed blocks to segregated free list for recycling
             {
-                let mut free_list = self.free_list.lock().unwrap();
+                let mut free_list = self.free_list.lock()
+                    .expect("Free list mutex poisoned - critical process cleanup failure");
                 for block in freed_blocks {
                     free_list.insert(block);
                 }

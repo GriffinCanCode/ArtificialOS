@@ -48,7 +48,8 @@ impl MemoryManager {
             self.blocks.shrink_to_fit();
             self.memory_storage.shrink_to_fit();
 
-            let free_list_size = self.free_list.lock().unwrap().len();
+            let free_list_size = self.free_list.lock()
+                .expect("Free list mutex poisoned - critical GC failure").len();
             info!(
                 "Garbage collection complete: removed {} deallocated blocks and their storage, {} blocks remain, {} blocks in segregated free list for O(1)/O(log n) recycling (maps shrunk to fit)",
                 removed_count,
