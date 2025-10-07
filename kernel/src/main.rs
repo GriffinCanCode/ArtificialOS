@@ -13,7 +13,7 @@ use tracing::info;
 
 use ai_os_kernel::{
     start_grpc_server, init_tracing, IPCManager, LocalFS, MemFS, MemoryManager, MmapManager,
-    MountManager, Policy, ProcessManager, SandboxManager, SyscallExecutor,
+    MountManager, SchedulingPolicy as Policy, ProcessManager, SandboxManager, SyscallExecutor,
 };
 use std::sync::Arc;
 
