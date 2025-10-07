@@ -36,12 +36,37 @@ impl LocalFS {
         }
     }
 
-    /// Resolve path relative to root
+    /// Resolve path relative to root with proper normalization
+    /// Prevents directory traversal attacks by handling .. and . components
     fn resolve(&self, path: &Path) -> PathBuf {
-        // Strip leading slash if present to treat all paths as relative to root
-        let path_str = path.to_str().unwrap_or("");
-        let clean_path = path_str.trim_start_matches('/');
-        self.root.join(clean_path)
+        // Normalize the path by resolving . and .. components
+        let mut components = Vec::new();
+
+        for component in path.components() {
+            match component {
+                std::path::Component::Normal(c) => {
+                    components.push(c);
+                }
+                std::path::Component::ParentDir => {
+                    // Only pop if we have components (prevents escaping root)
+                    components.pop();
+                }
+                std::path::Component::RootDir | std::path::Component::CurDir => {
+                    // Ignore root and current dir markers
+                }
+                std::path::Component::Prefix(_) => {
+                    // Ignore Windows prefixes for security
+                }
+            }
+        }
+
+        // Build the final path relative to root
+        let mut result = self.root.clone();
+        for component in components {
+            result.push(component);
+        }
+
+        result
     }
 
     /// Check write permission

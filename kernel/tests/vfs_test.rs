@@ -401,3 +401,300 @@ fn test_unmount_nonexistent_error() {
     let result = mgr.unmount("/nonexistent");
     assert!(result.is_err());
 }
+
+// ============================================
+// Security Tests
+// ============================================
+
+#[test]
+fn test_localfs_path_normalization_prevents_escape() {
+    use std::fs;
+
+    let temp = TempDir::new().unwrap();
+    let fs = LocalFS::new(temp.path());
+
+    // Create a file outside the root
+    let outside_file = temp.path().parent().unwrap().join("outside.txt");
+    fs::write(&outside_file, b"secret").unwrap();
+
+    // Try to access file outside root using ..
+    let result = fs.read(Path::new("../outside.txt"));
+    // Should not be able to read file outside root
+    assert!(result.is_err());
+
+    // Try with absolute path traversal
+    let result = fs.read(Path::new("/../outside.txt"));
+    assert!(result.is_err());
+
+    // Try with multiple ..
+    let result = fs.read(Path::new("foo/../../outside.txt"));
+    assert!(result.is_err());
+
+    // Cleanup
+    let _ = fs::remove_file(&outside_file);
+}
+
+#[test]
+fn test_localfs_path_normalization_dot_components() {
+    let temp = TempDir::new().unwrap();
+    let fs = LocalFS::new(temp.path());
+
+    // Create a test file
+    fs.write(Path::new("test.txt"), b"data").unwrap();
+
+    // Access with . (current directory) - should work
+    let data = fs.read(Path::new("./test.txt")).unwrap();
+    assert_eq!(data, b"data");
+
+    // Access with multiple ./ - should work
+    let data = fs.read(Path::new("././test.txt")).unwrap();
+    assert_eq!(data, b"data");
+
+    // Create nested directory
+    fs.create_dir(Path::new("dir")).unwrap();
+    fs.write(Path::new("dir/file.txt"), b"nested").unwrap();
+
+    // Access with .. from nested path - should work within root
+    fs.write(Path::new("dir/../test2.txt"), b"sibling").unwrap();
+    assert!(fs.exists(Path::new("test2.txt")));
+}
+
+#[test]
+fn test_mount_manager_readonly_enforcement() {
+    use ai_os_kernel::vfs::VfsError;
+
+    let mgr = MountManager::new();
+    let fs = Arc::new(MemFS::new());
+
+    // Mount filesystem as readonly
+    mgr.mount_with_options("/readonly", fs, true).unwrap();
+
+    // Read operations should work
+    // First mount a writable fs to create a file
+    let writable_fs = Arc::new(MemFS::new());
+    writable_fs.write(Path::new("/test.txt"), b"data").unwrap();
+    mgr.unmount("/readonly").unwrap();
+    mgr.mount_with_options("/readonly", writable_fs, true)
+        .unwrap();
+
+    let data = mgr.read(Path::new("/readonly/test.txt")).unwrap();
+    assert_eq!(data, b"data");
+
+    // Write operations should fail
+    let result = mgr.write(Path::new("/readonly/new.txt"), b"fail");
+    assert!(matches!(result, Err(VfsError::ReadOnly)));
+
+    // Create should fail
+    let result = mgr.create(Path::new("/readonly/new.txt"));
+    assert!(matches!(result, Err(VfsError::ReadOnly)));
+
+    // Append should fail
+    let result = mgr.append(Path::new("/readonly/test.txt"), b"more");
+    assert!(matches!(result, Err(VfsError::ReadOnly)));
+
+    // Delete should fail
+    let result = mgr.delete(Path::new("/readonly/test.txt"));
+    assert!(matches!(result, Err(VfsError::ReadOnly)));
+
+    // Create directory should fail
+    let result = mgr.create_dir(Path::new("/readonly/newdir"));
+    assert!(matches!(result, Err(VfsError::ReadOnly)));
+
+    // Truncate should fail
+    let result = mgr.truncate(Path::new("/readonly/test.txt"), 0);
+    assert!(matches!(result, Err(VfsError::ReadOnly)));
+
+    // Set permissions should fail
+    use ai_os_kernel::vfs::Permissions;
+    let result = mgr.set_permissions(Path::new("/readonly/test.txt"), Permissions::readwrite());
+    assert!(matches!(result, Err(VfsError::ReadOnly)));
+}
+
+#[test]
+fn test_mount_manager_readonly_cross_filesystem_copy() {
+    use ai_os_kernel::vfs::VfsError;
+
+    let mgr = MountManager::new();
+
+    // Mount writable source and readonly destination
+    let src_fs = Arc::new(MemFS::new());
+    let dst_fs = Arc::new(MemFS::new());
+
+    mgr.mount("/src", src_fs).unwrap();
+    mgr.mount_with_options("/dst", dst_fs, true).unwrap();
+
+    // Write to source
+    mgr.write(Path::new("/src/file.txt"), b"data").unwrap();
+
+    // Copy to readonly destination should fail
+    let result = mgr.copy(Path::new("/src/file.txt"), Path::new("/dst/file.txt"));
+    assert!(matches!(result, Err(VfsError::ReadOnly)));
+
+    // Rename to readonly destination should fail
+    let result = mgr.rename(Path::new("/src/file.txt"), Path::new("/dst/file.txt"));
+    assert!(matches!(result, Err(VfsError::ReadOnly)));
+}
+
+#[test]
+fn test_mount_manager_readonly_with_open_flags() {
+    use ai_os_kernel::vfs::{OpenFlags, OpenMode, VfsError};
+
+    let mgr = MountManager::new();
+    let fs = Arc::new(MemFS::new());
+
+    // Create a file first
+    fs.write(Path::new("/test.txt"), b"data").unwrap();
+
+    mgr.mount_with_options("/readonly", fs, true).unwrap();
+
+    // Opening for read should work
+    let result = mgr.open(
+        Path::new("/readonly/test.txt"),
+        OpenFlags::read_only(),
+        OpenMode::default(),
+    );
+    assert!(result.is_ok());
+
+    // Opening for write should fail
+    let result = mgr.open(
+        Path::new("/readonly/test.txt"),
+        OpenFlags::write_only(),
+        OpenMode::default(),
+    );
+    assert!(matches!(result, Err(VfsError::ReadOnly)));
+
+    // Opening for read-write should fail
+    let result = mgr.open(
+        Path::new("/readonly/test.txt"),
+        OpenFlags::read_write(),
+        OpenMode::default(),
+    );
+    assert!(matches!(result, Err(VfsError::ReadOnly)));
+}
+
+#[test]
+fn test_memfs_capacity_concurrent_writes() {
+    use std::thread;
+
+    let fs = Arc::new(MemFS::with_capacity(1000));
+    let mut handles = vec![];
+
+    // Spawn multiple threads trying to write simultaneously
+    for i in 0..10 {
+        let fs_clone = Arc::clone(&fs);
+        let handle = thread::spawn(move || {
+            let data = vec![i as u8; 50]; // Each thread writes 50 bytes
+            let path = format!("/file{}.txt", i);
+            fs_clone.write(Path::new(&path), &data)
+        });
+        handles.push(handle);
+    }
+
+    // Collect results
+    let mut successes = 0;
+    for handle in handles {
+        match handle.join().unwrap() {
+            Ok(_) => successes += 1,
+            Err(_) => {} // Some may fail due to capacity limits
+        }
+    }
+
+    // At least some should succeed (50 bytes * 10 = 500 bytes, under 1000 limit)
+    assert!(successes > 0);
+
+    // Total written should not exceed capacity
+    // Calculate actual size used
+    let mut total_size = 0;
+    for i in 0..10 {
+        let path = format!("/file{}.txt", i);
+        if let Ok(metadata) = fs.metadata(Path::new(&path)) {
+            total_size += metadata.size;
+        }
+    }
+    assert!(total_size <= 1000, "Total size {} exceeds capacity 1000", total_size);
+}
+
+#[test]
+fn test_memfs_capacity_append_enforcement() {
+    use ai_os_kernel::vfs::VfsError;
+
+    let fs = MemFS::with_capacity(100);
+
+    // Create a file near capacity
+    fs.write(Path::new("/file.txt"), &vec![0u8; 90]).unwrap();
+
+    // Append within capacity should work
+    fs.append(Path::new("/file.txt"), &vec![1u8; 5]).unwrap();
+    assert_eq!(fs.metadata(Path::new("/file.txt")).unwrap().size, 95);
+
+    // Append beyond capacity should fail
+    let result = fs.append(Path::new("/file.txt"), &vec![2u8; 10]);
+    assert!(matches!(result, Err(VfsError::OutOfSpace)));
+
+    // Size should not have changed
+    assert_eq!(fs.metadata(Path::new("/file.txt")).unwrap().size, 95);
+}
+
+#[test]
+fn test_memfs_capacity_truncate_enforcement() {
+    use ai_os_kernel::vfs::VfsError;
+
+    let fs = MemFS::with_capacity(100);
+
+    // Create a small file
+    fs.write(Path::new("/file.txt"), &vec![0u8; 20]).unwrap();
+
+    // Truncate to larger size within capacity should work
+    fs.truncate(Path::new("/file.txt"), 50).unwrap();
+    assert_eq!(fs.metadata(Path::new("/file.txt")).unwrap().size, 50);
+
+    // Truncate to size exceeding capacity should fail
+    let result = fs.truncate(Path::new("/file.txt"), 150);
+    assert!(matches!(result, Err(VfsError::OutOfSpace)));
+
+    // Size should not have changed
+    assert_eq!(fs.metadata(Path::new("/file.txt")).unwrap().size, 50);
+
+    // Truncate to smaller size should work
+    fs.truncate(Path::new("/file.txt"), 30).unwrap();
+    assert_eq!(fs.metadata(Path::new("/file.txt")).unwrap().size, 30);
+}
+
+#[test]
+fn test_memfs_capacity_overwrite_existing_file() {
+    let fs = MemFS::with_capacity(100);
+
+    // Create initial file
+    fs.write(Path::new("/file.txt"), &vec![0u8; 50]).unwrap();
+
+    // Overwrite with smaller file should work
+    fs.write(Path::new("/file.txt"), &vec![1u8; 30]).unwrap();
+    assert_eq!(fs.metadata(Path::new("/file.txt")).unwrap().size, 30);
+
+    // Overwrite with larger file within capacity should work
+    fs.write(Path::new("/file.txt"), &vec![2u8; 90]).unwrap();
+    assert_eq!(fs.metadata(Path::new("/file.txt")).unwrap().size, 90);
+
+    // Overwrite with file exceeding capacity should fail
+    let result = fs.write(Path::new("/file.txt"), &vec![3u8; 150]);
+    assert!(result.is_err());
+
+    // Original file should still exist with old size
+    assert_eq!(fs.metadata(Path::new("/file.txt")).unwrap().size, 90);
+}
+
+#[test]
+fn test_mount_from_config() {
+    use ai_os_kernel::vfs::MountPoint;
+
+    let mgr = MountManager::new();
+    let fs = Arc::new(MemFS::new());
+
+    // Create readonly mount config
+    let config = MountPoint::readonly("/readonly", "test");
+    mgr.mount_from_config(&config, fs).unwrap();
+
+    // Verify readonly enforcement
+    let result = mgr.write(Path::new("/readonly/test.txt"), b"data");
+    assert!(result.is_err());
+}

@@ -125,24 +125,54 @@ impl MemFS {
         result
     }
 
-    /// Check if space is available
-    fn check_space(&self, additional: usize) -> VfsResult<()> {
+    /// Check if space is available and reserve it atomically
+    /// Must be called with current_size write lock held
+    fn check_and_reserve_space(&self, additional: usize, size_guard: &mut usize) -> VfsResult<()> {
         if let Some(max) = self.max_size {
-            let current = *self.current_size.read();
-            if current + additional > max {
+            if *size_guard + additional > max {
                 return Err(VfsError::OutOfSpace);
             }
+            *size_guard += additional;
         }
         Ok(())
     }
 
-    /// Update current size
-    fn update_size(&self, delta: isize) {
+    /// Release reserved space (on error)
+    /// Must be called with current_size write lock held
+    fn release_space(&self, amount: usize, size_guard: &mut usize) {
+        *size_guard = size_guard.saturating_sub(amount);
+    }
+
+    /// Update current size delta
+    /// For operations that change size without reservation
+    fn update_size_delta(&self, delta: isize) {
         let mut size = self.current_size.write();
         if delta > 0 {
-            *size += delta as usize;
+            // This path should not be used for new allocations
+            // Use check_and_reserve_space instead
+            if let Some(max) = self.max_size {
+                // Safety check to prevent overflow
+                let new_size = (*size).saturating_add(delta as usize);
+                if new_size <= max {
+                    *size = new_size;
+                }
+            } else {
+                *size += delta as usize;
+            }
         } else {
             *size = size.saturating_sub(delta.unsigned_abs());
+        }
+    }
+
+    /// Update size after successful operation (for resizing existing files)
+    fn update_size_atomic(&self, old_size: usize, new_size: usize) {
+        let mut size = self.current_size.write();
+        if new_size > old_size {
+            let delta = new_size - old_size;
+            *size += delta;
+        } else {
+            let delta = old_size - new_size;
+            *size = size.saturating_sub(delta);
         }
     }
 
@@ -229,17 +259,40 @@ impl FileSystem for MemFS {
 
     fn write(&self, path: &Path, data: &[u8]) -> VfsResult<()> {
         let path = self.normalize(path);
-        self.check_space(data.len())?;
         self.ensure_parent(&path)?;
 
+        // Reserve space atomically
+        let mut size_guard = self.current_size.write();
+        let nodes = self.nodes.read();
+
+        // Calculate space needed
+        let space_needed = if let Some(Node::File { data: old_data, .. }) = nodes.get(&path) {
+            // Replacing existing file - only need additional space
+            if data.len() > old_data.len() {
+                data.len() - old_data.len()
+            } else {
+                0
+            }
+        } else {
+            // New file - need full space
+            data.len()
+        };
+
+        // Check and reserve space atomically
+        self.check_and_reserve_space(space_needed, &mut size_guard)?;
+
+        drop(nodes);
+        drop(size_guard);
+
+        // Now perform the actual write
         let mut nodes = self.nodes.write();
         let now = SystemTime::now();
 
-        // Calculate size change
-        let size_delta = if let Some(Node::File { data: old_data, .. }) = nodes.get(&path) {
-            data.len() as isize - old_data.len() as isize
+        // Get old size for accurate tracking
+        let old_size = if let Some(Node::File { data: old_data, .. }) = nodes.get(&path) {
+            old_data.len()
         } else {
-            data.len() as isize
+            0
         };
 
         // Add child to parent if new file
@@ -247,7 +300,13 @@ impl FileSystem for MemFS {
             if let Some(parent) = self.parent_path(&path) {
                 let file_name = self.file_name(&path)?;
                 drop(nodes);
-                self.add_child(&parent, &file_name, &path)?;
+                let result = self.add_child(&parent, &file_name, &path);
+                if result.is_err() {
+                    // Release reserved space on error
+                    let mut size_guard = self.current_size.write();
+                    self.release_space(space_needed, &mut size_guard);
+                    return result;
+                }
                 nodes = self.nodes.write();
             }
         }
@@ -263,13 +322,23 @@ impl FileSystem for MemFS {
         );
 
         drop(nodes);
-        self.update_size(size_delta);
+
+        // Adjust size if we reserved too much or too little
+        // This handles the case where the actual size change differs from reservation
+        if old_size > 0 {
+            self.update_size_atomic(old_size, data.len());
+        }
+
         Ok(())
     }
 
     fn append(&self, path: &Path, data: &[u8]) -> VfsResult<()> {
         let path = self.normalize(path);
-        self.check_space(data.len())?;
+
+        // Reserve space atomically
+        let mut size_guard = self.current_size.write();
+        self.check_and_reserve_space(data.len(), &mut size_guard)?;
+        drop(size_guard);
 
         let mut nodes = self.nodes.write();
 
@@ -281,13 +350,21 @@ impl FileSystem for MemFS {
             }) => {
                 file_data.extend_from_slice(data);
                 *modified = SystemTime::now();
-                drop(nodes);
-                self.update_size(data.len() as isize);
                 Ok(())
             }
-            Some(Node::Directory { .. }) => Err(VfsError::IsADirectory(path.display().to_string())),
+            Some(Node::Directory { .. }) => {
+                drop(nodes);
+                // Release reserved space on error
+                let mut size_guard = self.current_size.write();
+                self.release_space(data.len(), &mut size_guard);
+                Err(VfsError::IsADirectory(path.display().to_string()))
+            }
             None => {
                 drop(nodes);
+                // Release our reservation and let write handle it
+                let mut size_guard = self.current_size.write();
+                self.release_space(data.len(), &mut size_guard);
+                drop(size_guard);
                 self.write(&path, data)
             }
         }
@@ -311,11 +388,11 @@ impl FileSystem for MemFS {
                     let file_name = self.file_name(&path)?;
                     drop(nodes);
                     self.remove_child(&parent, &file_name)?;
-                    self.update_size(-(size as isize));
+                    self.update_size_delta(-(size as isize));
                     Ok(())
                 } else {
                     drop(nodes);
-                    self.update_size(-(size as isize));
+                    self.update_size_delta(-(size as isize));
                     Ok(())
                 }
             }
@@ -467,7 +544,7 @@ impl FileSystem for MemFS {
             self.remove_child(&parent, &dir_name)?;
         }
 
-        self.update_size(-(total_size as isize));
+        self.update_size_delta(-(total_size as isize));
         Ok(())
     }
 
@@ -519,46 +596,46 @@ impl FileSystem for MemFS {
 
     fn truncate(&self, path: &Path, size: u64) -> VfsResult<()> {
         let path = self.normalize(path);
+        let new_size = size as usize;
 
-        // Check node type first
-        {
+        // Check node type and get current size
+        let old_size = {
             let nodes = self.nodes.read();
             match nodes.get(&path) {
                 Some(Node::Directory { .. }) => {
                     return Err(VfsError::IsADirectory(path.display().to_string()))
                 }
                 None => return Err(VfsError::NotFound(path.display().to_string())),
-                Some(Node::File { .. }) => {} // Continue
+                Some(Node::File { data, .. }) => data.len(),
             }
+        };
+
+        // Reserve space if growing
+        if new_size > old_size {
+            let additional = new_size - old_size;
+            let mut size_guard = self.current_size.write();
+            self.check_and_reserve_space(additional, &mut size_guard)?;
+            drop(size_guard);
         }
 
+        // Perform the truncate
         let mut nodes = self.nodes.write();
         if let Some(Node::File { data, modified, .. }) = nodes.get_mut(&path) {
-            let old_size = data.len();
-            let new_size = size as usize;
+            data.resize(new_size, 0);
+            *modified = SystemTime::now();
+            drop(nodes);
 
-            if new_size < old_size {
-                data.truncate(new_size);
-                *modified = SystemTime::now();
-                drop(nodes);
-                self.update_size(-((old_size - new_size) as isize));
-            } else if new_size > old_size {
-                let additional = new_size - old_size;
-                drop(nodes);
-                self.check_space(additional)?;
-                let mut nodes = self.nodes.write();
-                if let Some(Node::File { data, modified, .. }) = nodes.get_mut(&path) {
-                    data.resize(new_size, 0);
-                    *modified = SystemTime::now();
-                    self.update_size(additional as isize);
-                }
-            } else {
-                // Size unchanged, just update modified time
-                *modified = SystemTime::now();
-            }
-
+            // Update size tracking
+            self.update_size_atomic(old_size, new_size);
             Ok(())
         } else {
+            // File was removed between checks
+            drop(nodes);
+            if new_size > old_size {
+                // Release reserved space
+                let mut size_guard = self.current_size.write();
+                self.release_space(new_size - old_size, &mut size_guard);
+            }
             Err(VfsError::NotFound(path.display().to_string()))
         }
     }

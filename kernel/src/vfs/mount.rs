@@ -37,9 +37,15 @@ impl MountPoint {
     }
 }
 
+/// Internal mount entry with filesystem and options
+struct MountEntry {
+    fs: Arc<dyn FileSystem>,
+    readonly: bool,
+}
+
 /// Mount manager for filesystem routing
 pub struct MountManager {
-    mounts: Arc<RwLock<HashMap<PathBuf, Arc<dyn FileSystem>>>>,
+    mounts: Arc<RwLock<HashMap<PathBuf, MountEntry>>>,
     mount_order: Arc<RwLock<Vec<PathBuf>>>, // Longest paths first for proper resolution
 }
 
@@ -54,6 +60,16 @@ impl MountManager {
 
     /// Mount a filesystem at specified path
     pub fn mount<P: Into<PathBuf>>(&self, mount_path: P, fs: Arc<dyn FileSystem>) -> VfsResult<()> {
+        self.mount_with_options(mount_path, fs, false)
+    }
+
+    /// Mount a filesystem at specified path with readonly option
+    pub fn mount_with_options<P: Into<PathBuf>>(
+        &self,
+        mount_path: P,
+        fs: Arc<dyn FileSystem>,
+        readonly: bool,
+    ) -> VfsResult<()> {
         let mount_path = self.normalize_path(&mount_path.into());
 
         let mut mounts = self.mounts.write();
@@ -64,7 +80,7 @@ impl MountManager {
             )));
         }
 
-        mounts.insert(mount_path.clone(), fs);
+        mounts.insert(mount_path.clone(), MountEntry { fs, readonly });
         drop(mounts);
 
         // Update mount order (longest paths first)
@@ -73,6 +89,11 @@ impl MountManager {
         order.sort_by(|a, b| b.as_os_str().len().cmp(&a.as_os_str().len()));
 
         Ok(())
+    }
+
+    /// Mount a filesystem using a MountPoint configuration
+    pub fn mount_from_config(&self, config: &MountPoint, fs: Arc<dyn FileSystem>) -> VfsResult<()> {
+        self.mount_with_options(&config.path, fs, config.readonly)
     }
 
     /// Unmount filesystem at specified path
@@ -94,8 +115,8 @@ impl MountManager {
         Ok(())
     }
 
-    /// Resolve path to (filesystem, relative_path)
-    fn resolve(&self, path: &Path) -> VfsResult<(Arc<dyn FileSystem>, PathBuf)> {
+    /// Resolve path to (filesystem, relative_path, readonly)
+    fn resolve(&self, path: &Path) -> VfsResult<(Arc<dyn FileSystem>, PathBuf, bool)> {
         let path = self.normalize_path(path);
         let mounts = self.mounts.read();
         let order = self.mount_order.read();
@@ -103,7 +124,9 @@ impl MountManager {
         // Find longest matching mount point
         for mount_path in order.iter() {
             if path.starts_with(mount_path) {
-                let fs = mounts.get(mount_path).unwrap().clone();
+                let entry = mounts.get(mount_path).unwrap();
+                let fs = entry.fs.clone();
+                let readonly = entry.readonly;
                 let rel_path = if path == *mount_path {
                     PathBuf::from("/")
                 } else {
@@ -111,7 +134,7 @@ impl MountManager {
                         .map(|p| PathBuf::from("/").join(p))
                         .unwrap_or_else(|_| PathBuf::from("/"))
                 };
-                return Ok((fs, rel_path));
+                return Ok((fs, rel_path, readonly));
             }
         }
 
@@ -119,6 +142,15 @@ impl MountManager {
             "no filesystem mounted for path: {}",
             path.display()
         )))
+    }
+
+    /// Check if mount point allows writes
+    fn check_readonly(&self, readonly: bool) -> VfsResult<()> {
+        if readonly {
+            Err(VfsError::ReadOnly)
+        } else {
+            Ok(())
+        }
     }
 
     /// Normalize path (make absolute)
@@ -135,7 +167,7 @@ impl MountManager {
         let mounts = self.mounts.read();
         mounts
             .iter()
-            .map(|(path, fs)| (path.clone(), fs.name().to_string()))
+            .map(|(path, entry)| (path.clone(), entry.fs.name().to_string()))
             .collect()
     }
 
@@ -164,64 +196,72 @@ impl Clone for MountManager {
 // Implement FileSystem for MountManager to act as unified interface
 impl FileSystem for MountManager {
     fn read(&self, path: &Path) -> VfsResult<Vec<u8>> {
-        let (fs, rel_path) = self.resolve(path)?;
+        let (fs, rel_path, _) = self.resolve(path)?;
         fs.read(&rel_path)
     }
 
     fn write(&self, path: &Path, data: &[u8]) -> VfsResult<()> {
-        let (fs, rel_path) = self.resolve(path)?;
+        let (fs, rel_path, readonly) = self.resolve(path)?;
+        self.check_readonly(readonly)?;
         fs.write(&rel_path, data)
     }
 
     fn append(&self, path: &Path, data: &[u8]) -> VfsResult<()> {
-        let (fs, rel_path) = self.resolve(path)?;
+        let (fs, rel_path, readonly) = self.resolve(path)?;
+        self.check_readonly(readonly)?;
         fs.append(&rel_path, data)
     }
 
     fn create(&self, path: &Path) -> VfsResult<()> {
-        let (fs, rel_path) = self.resolve(path)?;
+        let (fs, rel_path, readonly) = self.resolve(path)?;
+        self.check_readonly(readonly)?;
         fs.create(&rel_path)
     }
 
     fn delete(&self, path: &Path) -> VfsResult<()> {
-        let (fs, rel_path) = self.resolve(path)?;
+        let (fs, rel_path, readonly) = self.resolve(path)?;
+        self.check_readonly(readonly)?;
         fs.delete(&rel_path)
     }
 
     fn exists(&self, path: &Path) -> bool {
         self.resolve(path)
-            .and_then(|(fs, rel_path)| Ok(fs.exists(&rel_path)))
+            .and_then(|(fs, rel_path, _)| Ok(fs.exists(&rel_path)))
             .unwrap_or(false)
     }
 
     fn metadata(&self, path: &Path) -> VfsResult<Metadata> {
-        let (fs, rel_path) = self.resolve(path)?;
+        let (fs, rel_path, _) = self.resolve(path)?;
         fs.metadata(&rel_path)
     }
 
     fn list_dir(&self, path: &Path) -> VfsResult<Vec<Entry>> {
-        let (fs, rel_path) = self.resolve(path)?;
+        let (fs, rel_path, _) = self.resolve(path)?;
         fs.list_dir(&rel_path)
     }
 
     fn create_dir(&self, path: &Path) -> VfsResult<()> {
-        let (fs, rel_path) = self.resolve(path)?;
+        let (fs, rel_path, readonly) = self.resolve(path)?;
+        self.check_readonly(readonly)?;
         fs.create_dir(&rel_path)
     }
 
     fn remove_dir(&self, path: &Path) -> VfsResult<()> {
-        let (fs, rel_path) = self.resolve(path)?;
+        let (fs, rel_path, readonly) = self.resolve(path)?;
+        self.check_readonly(readonly)?;
         fs.remove_dir(&rel_path)
     }
 
     fn remove_dir_all(&self, path: &Path) -> VfsResult<()> {
-        let (fs, rel_path) = self.resolve(path)?;
+        let (fs, rel_path, readonly) = self.resolve(path)?;
+        self.check_readonly(readonly)?;
         fs.remove_dir_all(&rel_path)
     }
 
     fn copy(&self, from: &Path, to: &Path) -> VfsResult<()> {
-        let (from_fs, from_rel) = self.resolve(from)?;
-        let (to_fs, to_rel) = self.resolve(to)?;
+        let (from_fs, from_rel, _) = self.resolve(from)?;
+        let (to_fs, to_rel, to_readonly) = self.resolve(to)?;
+        self.check_readonly(to_readonly)?;
 
         // Same filesystem - use native copy
         if Arc::ptr_eq(&from_fs, &to_fs) {
@@ -234,8 +274,10 @@ impl FileSystem for MountManager {
     }
 
     fn rename(&self, from: &Path, to: &Path) -> VfsResult<()> {
-        let (from_fs, from_rel) = self.resolve(from)?;
-        let (to_fs, to_rel) = self.resolve(to)?;
+        let (from_fs, from_rel, from_readonly) = self.resolve(from)?;
+        let (to_fs, to_rel, to_readonly) = self.resolve(to)?;
+        self.check_readonly(from_readonly)?;
+        self.check_readonly(to_readonly)?;
 
         // Same filesystem - use native rename
         if Arc::ptr_eq(&from_fs, &to_fs) {
@@ -250,27 +292,34 @@ impl FileSystem for MountManager {
     }
 
     fn symlink(&self, src: &Path, dst: &Path) -> VfsResult<()> {
-        let (fs, dst_rel) = self.resolve(dst)?;
+        let (fs, dst_rel, readonly) = self.resolve(dst)?;
+        self.check_readonly(readonly)?;
         fs.symlink(src, &dst_rel)
     }
 
     fn read_link(&self, path: &Path) -> VfsResult<PathBuf> {
-        let (fs, rel_path) = self.resolve(path)?;
+        let (fs, rel_path, _) = self.resolve(path)?;
         fs.read_link(&rel_path)
     }
 
     fn truncate(&self, path: &Path, size: u64) -> VfsResult<()> {
-        let (fs, rel_path) = self.resolve(path)?;
+        let (fs, rel_path, readonly) = self.resolve(path)?;
+        self.check_readonly(readonly)?;
         fs.truncate(&rel_path, size)
     }
 
     fn set_permissions(&self, path: &Path, perms: Permissions) -> VfsResult<()> {
-        let (fs, rel_path) = self.resolve(path)?;
+        let (fs, rel_path, readonly) = self.resolve(path)?;
+        self.check_readonly(readonly)?;
         fs.set_permissions(&rel_path, perms)
     }
 
     fn open(&self, path: &Path, flags: OpenFlags, mode: OpenMode) -> VfsResult<Box<dyn OpenFile>> {
-        let (fs, rel_path) = self.resolve(path)?;
+        let (fs, rel_path, readonly) = self.resolve(path)?;
+        // Check readonly only if opening for write
+        if flags.write || flags.append || flags.truncate || flags.create || flags.create_new {
+            self.check_readonly(readonly)?;
+        }
         fs.open(&rel_path, flags, mode)
     }
 
