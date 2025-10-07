@@ -43,6 +43,11 @@ pub enum SignalError {
 }
 
 /// UNIX-style signal numbers
+///
+/// # Performance
+/// - Packed C layout for efficient signal dispatch
+/// - Copy-optimized for frequent passing in signal handlers
+#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Signal {
@@ -128,7 +133,10 @@ impl Signal {
     }
 
     /// Get signal number
-    #[inline]
+    ///
+    /// # Performance
+    /// Hot path - frequently called in signal routing and prioritization
+    #[inline(always)]
     #[must_use]
     pub const fn number(&self) -> u32 {
         match self {
@@ -167,16 +175,22 @@ impl Signal {
     }
 
     /// Check if this is a real-time signal
-    #[inline]
+    ///
+    /// # Performance
+    /// Hot path - frequently checked for signal priority routing
+    #[inline(always)]
     #[must_use]
     pub const fn is_realtime(&self) -> bool {
         matches!(self, Signal::SIGRT(_))
     }
 
     /// Get priority (higher = more urgent, RT signals > standard)
-    #[inline]
+    ///
+    /// # Performance
+    /// Hot path - critical for signal queue ordering
+    #[inline(always)]
     #[must_use]
-    pub fn priority(&self) -> u32 {
+    pub const fn priority(&self) -> u32 {
         match self {
             Signal::SIGRT(n) => 1000 + n, // RT signals always higher priority
             _ => self.number(),
@@ -184,14 +198,20 @@ impl Signal {
     }
 
     /// Check if signal can be caught/blocked
-    #[inline]
+    ///
+    /// # Performance
+    /// Hot path - checked on every signal delivery
+    #[inline(always)]
     #[must_use]
     pub const fn can_catch(&self) -> bool {
         !matches!(self, Signal::SIGKILL | Signal::SIGSTOP)
     }
 
     /// Check if signal is fatal by default
-    #[inline]
+    ///
+    /// # Performance
+    /// Hot path - determines signal handling behavior
+    #[inline(always)]
     #[must_use]
     pub const fn is_fatal(&self) -> bool {
         matches!(
@@ -270,6 +290,10 @@ pub enum SignalDisposition {
 }
 
 /// Pending signal information
+///
+/// # Performance
+/// - Cache-line aligned for fast signal queue operations
+#[repr(C, align(64))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PendingSignal {
     pub signal: Signal,

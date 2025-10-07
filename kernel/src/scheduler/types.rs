@@ -6,6 +6,10 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Scheduler policy configuration
+///
+/// # Performance
+/// - Packed C layout for efficient policy checks
+#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SchedulerPolicy {
     /// Round-robin with fixed time quantum
@@ -31,7 +35,11 @@ impl SchedulerPolicy {
     }
 
     /// Convert to string representation
-    pub fn as_str(&self) -> &'static str {
+    ///
+    /// # Performance
+    /// Hot path - frequently called for logging and serialization
+    #[inline(always)]
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Self::RoundRobin => "round_robin",
             Self::Priority => "priority",
@@ -60,6 +68,10 @@ impl<'de> Deserialize<'de> for SchedulerPolicy {
 }
 
 /// Time quantum configuration
+///
+/// # Performance
+/// - Packed C layout for efficient time slice calculations
+#[repr(C)]
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct TimeQuantum {
     pub micros: u64,
@@ -78,12 +90,20 @@ impl TimeQuantum {
     }
 
     /// Get microseconds
-    pub fn as_micros(&self) -> u64 {
+    ///
+    /// # Performance
+    /// Hot path - called on every time slice calculation
+    #[inline(always)]
+    pub const fn as_micros(&self) -> u64 {
         self.micros
     }
 
     /// Get milliseconds
-    pub fn as_millis(&self) -> f64 {
+    ///
+    /// # Performance
+    /// Hot path - frequently used in scheduler statistics
+    #[inline(always)]
+    pub const fn as_millis(&self) -> f64 {
         self.micros as f64 / 1000.0
     }
 }
@@ -120,12 +140,19 @@ pub const MAX_PRIORITY: u8 = 10;
 pub const DEFAULT_PRIORITY: u8 = 5;
 
 /// Validate priority value
+///
+/// # Performance
+/// Hot path - called on every priority change operation
+#[inline(always)]
 pub fn validate_priority(priority: u8) -> Result<u8, String> {
     if priority > MAX_PRIORITY {
-        Err(format!(
-            "Priority {} exceeds maximum ({})",
-            priority, MAX_PRIORITY
-        ))
+        // Cold path - validation failure
+        #[cold]
+        #[inline(never)]
+        fn make_error(priority: u8) -> String {
+            format!("Priority {} exceeds maximum ({})", priority, MAX_PRIORITY)
+        }
+        Err(make_error(priority))
     } else {
         Ok(priority)
     }

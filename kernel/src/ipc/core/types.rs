@@ -169,13 +169,21 @@ pub enum Permission {
 }
 
 impl Permission {
-    #[inline]
+    /// Check if permission allows reading
+    ///
+    /// # Performance
+    /// Hot path - frequently called in IPC operations
+    #[inline(always)]
     #[must_use]
     pub const fn can_read(&self) -> bool {
         matches!(self, Permission::ReadOnly | Permission::ReadWrite)
     }
 
-    #[inline]
+    /// Check if permission allows writing
+    ///
+    /// # Performance
+    /// Hot path - frequently called in IPC operations
+    #[inline(always)]
     #[must_use]
     pub const fn can_write(&self) -> bool {
         matches!(self, Permission::WriteOnly | Permission::ReadWrite)

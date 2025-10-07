@@ -140,7 +140,7 @@ impl Permissions {
     }
 
     /// Check if permissions are read-only (no write bits set)
-    /// 
+    ///
     /// # Performance
     /// Hot path - frequently called in VFS operations
     #[inline(always)]
@@ -150,7 +150,7 @@ impl Permissions {
     }
 
     /// Set read-only mode by clearing all write bits
-    /// 
+    ///
     /// # Performance
     /// Hot path - called during permission modifications
     #[inline(always)]
@@ -163,7 +163,7 @@ impl Permissions {
     }
 
     /// Check if any execute bit is set
-    /// 
+    ///
     /// # Performance
     /// Hot path - frequently checked in process execution
     #[inline(always)]
@@ -238,21 +238,30 @@ pub struct Metadata {
 
 impl Metadata {
     /// Check if this is a directory
-    #[inline]
+    ///
+    /// # Performance
+    /// Hot path - very frequently called in path resolution
+    #[inline(always)]
     #[must_use]
     pub const fn is_dir(&self) -> bool {
         matches!(self.file_type, FileType::Directory)
     }
 
     /// Check if this is a regular file
-    #[inline]
+    ///
+    /// # Performance
+    /// Hot path - very frequently called in file operations
+    #[inline(always)]
     #[must_use]
     pub const fn is_file(&self) -> bool {
         matches!(self.file_type, FileType::File)
     }
 
     /// Check if this is a symbolic link
-    #[inline]
+    ///
+    /// # Performance
+    /// Hot path - frequently called during path resolution
+    #[inline(always)]
     #[must_use]
     pub const fn is_symlink(&self) -> bool {
         matches!(self.file_type, FileType::Symlink)

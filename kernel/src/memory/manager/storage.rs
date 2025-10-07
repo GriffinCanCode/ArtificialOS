@@ -1,0 +1,105 @@
+/*!
+ * Memory Storage Operations
+ * Read/write operations for simulated physical memory
+ */
+
+use super::super::types::{MemoryError, MemoryResult};
+use super::MemoryManager;
+use crate::core::types::{Address, Size};
+use log::info;
+
+impl MemoryManager {
+    /// Write bytes to a memory address
+    /// This simulates writing to physical memory for shared memory segments
+    pub fn write_bytes(&self, address: Address, data: &[u8]) -> MemoryResult<()> {
+        // Find the block containing this address
+        let mut base_addr = None;
+        let mut block_size = 0;
+        for entry in self.blocks.iter() {
+            let addr = *entry.key();
+            let block = entry.value();
+            if block.allocated && address >= addr && address < addr + block.size {
+                // Check if write fits within block bounds
+                if address + data.len() <= addr + block.size {
+                    base_addr = Some(addr);
+                    block_size = block.size;
+                    break;
+                } else {
+                    return Err(MemoryError::InvalidAddress(address));
+                }
+            }
+        }
+
+        if let Some(base_addr) = base_addr {
+            // Calculate offset within the block
+            let offset = address - base_addr;
+
+            // Get or create storage for this block using alter() for atomic operation
+            self.memory_storage.alter(&base_addr, |_, mut block_data| {
+                // Ensure block_data is large enough
+                if block_data.len() < block_size {
+                    block_data.resize(block_size, 0u8);
+                }
+                // Write data at the offset
+                let end = offset + data.len();
+                block_data[offset..end].copy_from_slice(data);
+                block_data
+            });
+
+            info!(
+                "Wrote {} bytes to address 0x{:x} (offset {} in block at 0x{:x})",
+                data.len(),
+                address,
+                offset,
+                base_addr
+            );
+            Ok(())
+        } else {
+            Err(MemoryError::InvalidAddress(address))
+        }
+    }
+
+    /// Read bytes from a memory address
+    /// This simulates reading from physical memory for shared memory segments
+    pub fn read_bytes(&self, address: Address, size: Size) -> MemoryResult<Vec<u8>> {
+        // Find the block containing this address
+        let mut base_addr = None;
+        for entry in self.blocks.iter() {
+            let addr = *entry.key();
+            let block = entry.value();
+            if block.allocated && address >= addr && address < addr + block.size {
+                // Check if read fits within block bounds
+                if address + size <= addr + block.size {
+                    base_addr = Some(addr);
+                    break;
+                } else {
+                    return Err(MemoryError::InvalidAddress(address));
+                }
+            }
+        }
+
+        if let Some(base_addr) = base_addr {
+            // Calculate offset within the block
+            let offset = address - base_addr;
+
+            // Get storage for this block
+            let data = if let Some(block_data) = self.memory_storage.get(&base_addr) {
+                // Read data from the stored bytes
+                let end = offset + size;
+                block_data[offset..end].to_vec()
+            } else {
+                // Block has no data written yet, return zeros
+                vec![0u8; size]
+            };
+
+            info!(
+                "Read {} bytes from address 0x{:x} (offset {} in block at 0x{:x})",
+                size, address, offset, base_addr
+            );
+
+            Ok(data)
+        } else {
+            Err(MemoryError::InvalidAddress(address))
+        }
+    }
+}

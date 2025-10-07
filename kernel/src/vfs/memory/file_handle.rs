@@ -6,7 +6,7 @@
 use std::io::{Cursor, Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 
-use super::super::traits::OpenFile;
+use super::super::traits::{FileSystem, OpenFile};
 use super::super::types::*;
 use super::MemFS;
 

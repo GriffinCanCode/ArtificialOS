@@ -17,6 +17,11 @@ pub const MAX_QUEUES_PER_PROCESS: usize = 100;
 pub const GLOBAL_QUEUE_MEMORY_LIMIT: usize = 100 * 1024 * 1024; // 100MB
 
 /// Queue message with metadata (data stored in MemoryManager)
+///
+/// # Performance
+/// - Cache-line aligned for fast queue operations
+/// - C-compatible layout for predictable memory layout
+#[repr(C, align(64))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct QueueMessage {
