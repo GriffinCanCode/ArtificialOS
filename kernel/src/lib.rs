@@ -38,7 +38,7 @@ pub use monitoring::{MetricsCollector, MetricsSnapshot};
 pub use process::{
     ExecutionConfig, ProcessExecutorImpl as ProcessExecutor, ProcessInfo as Process,
     ProcessManagerBuilder, ProcessManagerImpl as ProcessManager, ProcessState, ProcessStats,
-    Scheduler, SchedulerStats, SchedulingPolicy as Policy,
+    Scheduler, SchedulerCommand, SchedulerStats, SchedulerTask, SchedulingPolicy as Policy,
 };
 
 // Scheduler

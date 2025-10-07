@@ -6,6 +6,7 @@
 pub mod executor;
 pub mod manager;
 pub mod scheduler;
+pub mod scheduler_task;
 pub mod traits;
 pub mod types;
 
@@ -16,3 +17,4 @@ pub use types::*;
 pub use executor::ProcessExecutor as ProcessExecutorImpl;
 pub use manager::{ProcessManager as ProcessManagerImpl, ProcessManagerBuilder};
 pub use scheduler::Scheduler;
+pub use scheduler_task::{SchedulerTask, SchedulerCommand};

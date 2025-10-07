@@ -9,25 +9,28 @@ use crate::ipc::IPCManager;
 use crate::memory::MemoryManager;
 use crate::process::executor::ProcessExecutor;
 use crate::process::scheduler::Scheduler;
+use crate::process::scheduler_task::SchedulerTask;
 use crate::security::{LimitManager, Limits};
+use dashmap::DashMap;
 use log::info;
 use parking_lot::RwLock;
-use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 // Type alias for backwards compatibility
 pub type Process = ProcessInfo;
 
 pub struct ProcessManager {
-    processes: Arc<RwLock<HashMap<Pid, ProcessInfo>>>,
-    next_pid: Arc<RwLock<Pid>>,
+    processes: Arc<DashMap<Pid, ProcessInfo>>,
+    next_pid: AtomicU32,
     memory_manager: Option<MemoryManager>,
     executor: Option<ProcessExecutor>,
     limit_manager: Option<LimitManager>,
     ipc_manager: Option<IPCManager>,
     scheduler: Option<Arc<RwLock<Scheduler>>>,
+    scheduler_task: Option<Arc<SchedulerTask>>,
     // Track child processes per parent PID for limit enforcement
-    child_counts: Arc<RwLock<HashMap<Pid, u32>>>,
+    child_counts: Arc<DashMap<Pid, u32>>,
 }
 
 /// Builder for ProcessManager
@@ -99,6 +102,11 @@ impl ProcessManagerBuilder {
             .scheduler_policy
             .map(|policy| Arc::new(RwLock::new(Scheduler::new(policy))));
 
+        // Spawn autonomous scheduler task if scheduler is enabled
+        let scheduler_task = scheduler.as_ref().map(|sched| {
+            Arc::new(SchedulerTask::spawn(Arc::clone(sched)))
+        });
+
         let mut features = Vec::new();
         if self.memory_manager.is_some() {
             features.push("memory");
@@ -115,18 +123,22 @@ impl ProcessManagerBuilder {
         if scheduler.is_some() {
             features.push("scheduler");
         }
+        if scheduler_task.is_some() {
+            features.push("preemptive-scheduling");
+        }
 
         info!("Process manager initialized with: {}", features.join(", "));
 
         ProcessManager {
-            processes: Arc::new(RwLock::new(HashMap::new())),
-            next_pid: Arc::new(RwLock::new(1)),
+            processes: Arc::new(DashMap::new()),
+            next_pid: AtomicU32::new(1),
             memory_manager: self.memory_manager,
             executor,
             limit_manager,
             ipc_manager: self.ipc_manager,
             scheduler,
-            child_counts: Arc::new(RwLock::new(HashMap::new())),
+            scheduler_task,
+            child_counts: Arc::new(DashMap::new()),
         }
     }
 }
@@ -142,14 +154,15 @@ impl ProcessManager {
     pub fn new() -> Self {
         info!("Process manager initialized (basic)");
         Self {
-            processes: Arc::new(RwLock::new(HashMap::new())),
-            next_pid: Arc::new(RwLock::new(1)),
+            processes: Arc::new(DashMap::new()),
+            next_pid: AtomicU32::new(1),
             memory_manager: None,
             executor: None,
             limit_manager: None,
             ipc_manager: None,
             scheduler: None,
-            child_counts: Arc::new(RwLock::new(HashMap::new())),
+            scheduler_task: None,
+            child_counts: Arc::new(DashMap::new()),
         }
     }
 
@@ -170,16 +183,8 @@ impl ProcessManager {
         priority: Priority,
         config: Option<ExecutionConfig>,
     ) -> u32 {
-        // Allocate PID
-        let processes = self.processes.write();
-        let mut next_pid = self.next_pid.write();
-
-        let pid = *next_pid;
-        *next_pid += 1;
-
-        // Drop locks early to avoid deadlock when reacquiring later
-        drop(processes);
-        drop(next_pid);
+        // Allocate PID atomically
+        let pid = self.next_pid.fetch_add(1, Ordering::SeqCst);
 
         // Spawn OS process if command provided and executor available
         let os_pid = if let Some(cfg) = config {
@@ -210,9 +215,6 @@ impl ProcessManager {
             None
         };
 
-        // Reacquire locks if needed
-        let mut processes = self.processes.write();
-
         let process = ProcessInfo {
             pid,
             name: name.clone(),
@@ -221,7 +223,7 @@ impl ProcessManager {
             os_pid,
         };
 
-        processes.insert(pid, process);
+        self.processes.insert(pid, process);
         info!(
             "Created process: {} (PID: {}, OS PID: {:?})",
             name, pid, os_pid
@@ -251,19 +253,16 @@ impl ProcessManager {
     }
 
     pub fn get_process(&self, pid: Pid) -> Option<ProcessInfo> {
-        self.processes.read().get(&pid).cloned()
+        self.processes.get(&pid).map(|r| r.value().clone())
     }
 
     pub fn terminate_process(&self, pid: Pid) -> bool {
-        let mut processes = self.processes.write();
-        if let Some(process) = processes.remove(&pid) {
+        if let Some((_, process)) = self.processes.remove(&pid) {
             info!("Terminating process: PID {}", pid);
 
             // Kill OS process if it exists
             if let Some(os_pid) = process.os_pid {
                 if let Some(ref executor) = self.executor {
-                    drop(processes); // Release lock before potentially blocking operation
-
                     if let Err(e) = executor.kill(pid) {
                         log::warn!("Failed to kill OS process: {}", e);
                     }
@@ -274,9 +273,6 @@ impl ProcessManager {
                             log::warn!("Failed to remove limits: {}", e);
                         }
                     }
-
-                    // Reacquire lock
-                    let _ = self.processes.write();
                 }
             }
 
@@ -311,7 +307,7 @@ impl ProcessManager {
     }
 
     pub fn list_processes(&self) -> Vec<ProcessInfo> {
-        self.processes.read().values().cloned().collect()
+        self.processes.iter().map(|r| r.value().clone()).collect()
     }
 
     /// Get memory manager reference
@@ -327,30 +323,28 @@ impl ProcessManager {
     /// Check if process has OS execution
     pub fn has_os_process(&self, pid: Pid) -> bool {
         self.processes
-            .read()
             .get(&pid)
-            .and_then(|p| p.os_pid)
+            .and_then(|r| r.value().os_pid)
             .is_some()
     }
 
     /// Get child process count for a PID
     pub fn get_child_count(&self, pid: Pid) -> u32 {
-        *self.child_counts.read().get(&pid).unwrap_or(&0)
+        self.child_counts.get(&pid).map(|r| *r.value()).unwrap_or(0)
     }
 
     /// Increment child count for a PID
     fn increment_child_count(&self, pid: Pid) {
-        let mut counts = self.child_counts.write();
-        *counts.entry(pid).or_insert(0) += 1;
+        self.child_counts.entry(pid).and_modify(|v| *v += 1).or_insert(1);
     }
 
     /// Decrement child count for a PID
     fn decrement_child_count(&self, pid: Pid) {
-        let mut counts = self.child_counts.write();
-        if let Some(count) = counts.get_mut(&pid) {
-            *count = count.saturating_sub(1);
-            if *count == 0 {
-                counts.remove(&pid);
+        if let Some(mut entry) = self.child_counts.get_mut(&pid) {
+            *entry = entry.saturating_sub(1);
+            if *entry == 0 {
+                drop(entry);
+                self.child_counts.remove(&pid);
             }
         }
     }
@@ -412,19 +406,21 @@ impl ProcessManager {
     /// Set process priority
     pub fn set_process_priority(&self, pid: Pid, new_priority: Priority) -> bool {
         // Update process info
-        let mut processes = self.processes.write();
-        let process = match processes.get_mut(&pid) {
-            Some(p) => p,
+        let mut entry = match self.processes.get_mut(&pid) {
+            Some(e) => e,
             None => return false,
         };
 
-        let old_priority = process.priority;
-        process.priority = new_priority;
+        let old_priority = entry.priority;
+        let os_pid = entry.os_pid;
+        entry.priority = new_priority;
 
         info!(
             "Updated priority for PID {}: {} -> {}",
             pid, old_priority, new_priority
         );
+
+        drop(entry); // Release DashMap lock
 
         // Update scheduler if available (use efficient in-place update)
         if let Some(ref scheduler) = self.scheduler {
@@ -435,7 +431,7 @@ impl ProcessManager {
         }
 
         // Update resource limits if executor and limit manager available
-        if let Some(os_pid) = process.os_pid {
+        if let Some(os_pid) = os_pid {
             if let (Some(ref limit_mgr), Some(_)) = (&self.limit_manager, &self.executor) {
                 let new_limits = self.priority_to_limits(new_priority);
                 if let Err(e) = limit_mgr.apply(os_pid, &new_limits) {
@@ -451,10 +447,10 @@ impl ProcessManager {
 
     /// Boost process priority
     pub fn boost_process_priority(&self, pid: Pid) -> Result<Priority, String> {
-        let processes = self.processes.read();
-        let process = processes.get(&pid).ok_or_else(|| format!("Process {} not found", pid))?;
-        let current_priority = process.priority;
-        drop(processes);
+        let current_priority = self.processes
+            .get(&pid)
+            .map(|r| r.value().priority)
+            .ok_or_else(|| format!("Process {} not found", pid))?;
 
         let new_priority = crate::scheduler::apply_priority_op(
             current_priority,
@@ -470,10 +466,10 @@ impl ProcessManager {
 
     /// Lower process priority
     pub fn lower_process_priority(&self, pid: Pid) -> Result<Priority, String> {
-        let processes = self.processes.read();
-        let process = processes.get(&pid).ok_or_else(|| format!("Process {} not found", pid))?;
-        let current_priority = process.priority;
-        drop(processes);
+        let current_priority = self.processes
+            .get(&pid)
+            .map(|r| r.value().priority)
+            .ok_or_else(|| format!("Process {} not found", pid))?;
 
         let new_priority = crate::scheduler::apply_priority_op(
             current_priority,
@@ -496,11 +492,22 @@ impl ProcessManager {
 
         if let Some(ref scheduler) = self.scheduler {
             scheduler.read().set_quantum(quantum);
+
+            // Update the scheduler task's interval dynamically
+            if let Some(ref task) = self.scheduler_task {
+                task.update_quantum(quantum_micros);
+            }
+
             info!("Time quantum updated to {} microseconds", quantum_micros);
             Ok(())
         } else {
             Err("Scheduler not available".to_string())
         }
+    }
+
+    /// Get scheduler task for advanced control (pause/resume/trigger)
+    pub fn scheduler_task(&self) -> Option<&Arc<SchedulerTask>> {
+        self.scheduler_task.as_ref()
     }
 }
 
@@ -508,12 +515,13 @@ impl Clone for ProcessManager {
     fn clone(&self) -> Self {
         Self {
             processes: Arc::clone(&self.processes),
-            next_pid: Arc::clone(&self.next_pid),
+            next_pid: AtomicU32::new(self.next_pid.load(Ordering::SeqCst)),
             memory_manager: self.memory_manager.clone(),
             executor: self.executor.clone(),
             limit_manager: None, // Limit manager is not Clone, create new if needed
             ipc_manager: self.ipc_manager.clone(),
             scheduler: self.scheduler.clone(),
+            scheduler_task: self.scheduler_task.clone(),
             child_counts: Arc::clone(&self.child_counts),
         }
     }
