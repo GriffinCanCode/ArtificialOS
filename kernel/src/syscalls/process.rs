@@ -8,7 +8,7 @@ use crate::core::types::{Pid, Priority};
 use log::{error, info, warn};
 use std::process::Command;
 
-use crate::security::Capability;
+use crate::security::{Capability, ResourceLimitProvider, SandboxProvider};
 
 use super::executor::SyscallExecutor;
 use super::types::{ProcessOutput, SyscallResult};

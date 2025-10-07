@@ -10,7 +10,9 @@ use std::time::Duration;
 use tonic::{transport::Server, Request, Response, Status};
 
 use crate::process::ProcessManagerImpl as ProcessManager;
-use crate::security::{Capability as SandboxCapability, SandboxConfig, SandboxManager};
+use crate::security::{
+    Capability as SandboxCapability, NetworkRule, SandboxConfig, SandboxManager, SandboxProvider,
+};
 use crate::syscalls::{Syscall, SyscallExecutor, SyscallResult};
 
 use super::traits::ServerLifecycle;
@@ -679,15 +681,15 @@ impl KernelService for KernelServiceImpl {
 // Helper function to convert proto capability to sandbox capability
 fn proto_to_sandbox_capability(cap: Capability) -> SandboxCapability {
     match cap {
-        Capability::ReadFile => SandboxCapability::ReadFile,
-        Capability::WriteFile => SandboxCapability::WriteFile,
-        Capability::CreateFile => SandboxCapability::CreateFile,
-        Capability::DeleteFile => SandboxCapability::DeleteFile,
-        Capability::ListDirectory => SandboxCapability::ListDirectory,
+        Capability::ReadFile => SandboxCapability::ReadFile(None),
+        Capability::WriteFile => SandboxCapability::WriteFile(None),
+        Capability::CreateFile => SandboxCapability::CreateFile(None),
+        Capability::DeleteFile => SandboxCapability::DeleteFile(None),
+        Capability::ListDirectory => SandboxCapability::ListDirectory(None),
         Capability::SpawnProcess => SandboxCapability::SpawnProcess,
         Capability::KillProcess => SandboxCapability::KillProcess,
-        Capability::NetworkAccess => SandboxCapability::NetworkAccess,
-        Capability::BindPort => SandboxCapability::BindPort,
+        Capability::NetworkAccess => SandboxCapability::NetworkAccess(NetworkRule::AllowAll),
+        Capability::BindPort => SandboxCapability::BindPort(None),
         Capability::SystemInfo => SandboxCapability::SystemInfo,
         Capability::TimeAccess => SandboxCapability::TimeAccess,
         Capability::SendMessage => SandboxCapability::SendMessage,

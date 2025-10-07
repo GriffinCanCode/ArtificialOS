@@ -426,13 +426,12 @@ impl ProcessManager {
             pid, old_priority, new_priority
         );
 
-        // Update scheduler if available
+        // Update scheduler if available (use efficient in-place update)
         if let Some(ref scheduler) = self.scheduler {
-            let scheduler = scheduler.write();
-            // Remove and re-add process to update priority in scheduler queues
-            scheduler.remove(pid);
-            scheduler.add(pid, new_priority);
-            info!("Updated PID {} priority in scheduler", pid);
+            let scheduler = scheduler.read();
+            if scheduler.set_priority(pid, new_priority) {
+                info!("Updated PID {} priority in scheduler", pid);
+            }
         }
 
         // Update resource limits if executor and limit manager available
@@ -448,6 +447,60 @@ impl ProcessManager {
         }
 
         true
+    }
+
+    /// Boost process priority
+    pub fn boost_process_priority(&self, pid: Pid) -> Result<Priority, String> {
+        let processes = self.processes.read();
+        let process = processes.get(&pid).ok_or_else(|| format!("Process {} not found", pid))?;
+        let current_priority = process.priority;
+        drop(processes);
+
+        let new_priority = crate::scheduler::apply_priority_op(
+            current_priority,
+            crate::scheduler::PriorityOp::Boost,
+        )?;
+
+        if self.set_process_priority(pid, new_priority) {
+            Ok(new_priority)
+        } else {
+            Err("Failed to update priority".to_string())
+        }
+    }
+
+    /// Lower process priority
+    pub fn lower_process_priority(&self, pid: Pid) -> Result<Priority, String> {
+        let processes = self.processes.read();
+        let process = processes.get(&pid).ok_or_else(|| format!("Process {} not found", pid))?;
+        let current_priority = process.priority;
+        drop(processes);
+
+        let new_priority = crate::scheduler::apply_priority_op(
+            current_priority,
+            crate::scheduler::PriorityOp::Lower,
+        )?;
+
+        if self.set_process_priority(pid, new_priority) {
+            Ok(new_priority)
+        } else {
+            Err("Failed to update priority".to_string())
+        }
+    }
+
+    /// Set scheduler time quantum (requires scheduler)
+    pub fn set_time_quantum(&self, quantum_micros: u64) -> Result<(), String> {
+        let quantum = std::time::Duration::from_micros(quantum_micros);
+
+        // Validate using scheduler's time quantum type
+        crate::scheduler::TimeQuantum::new(quantum_micros)?;
+
+        if let Some(ref scheduler) = self.scheduler {
+            scheduler.read().set_quantum(quantum);
+            info!("Time quantum updated to {} microseconds", quantum_micros);
+            Ok(())
+        } else {
+            Err("Scheduler not available".to_string())
+        }
     }
 }
 

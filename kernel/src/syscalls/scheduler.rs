@@ -181,18 +181,26 @@ impl SyscallExecutor {
             );
         }
 
-        if let Err(e) = crate::scheduler::TimeQuantum::new(quantum_micros) {
-            error!("Invalid time quantum requested: {} microseconds", quantum_micros);
-            return SyscallResult::error(e);
-        }
-
         info!(
             "PID {} setting time quantum to {} microseconds",
             pid, quantum_micros
         );
 
-        warn!("SetTimeQuantum not fully implemented - quantum is set at scheduler creation");
-        SyscallResult::error("Dynamic quantum adjustment not yet supported")
+        let process_manager = match &self.process_manager {
+            Some(pm) => pm,
+            None => return SyscallResult::error("Process manager not available"),
+        };
+
+        match process_manager.set_time_quantum(quantum_micros) {
+            Ok(()) => {
+                info!("Time quantum updated to {} microseconds", quantum_micros);
+                SyscallResult::success()
+            }
+            Err(e) => {
+                error!("Failed to set time quantum: {}", e);
+                SyscallResult::error(e)
+            }
+        }
     }
 
     /// Get current time quantum (internal implementation)
@@ -332,35 +340,22 @@ impl SyscallExecutor {
             None => return SyscallResult::error("Process manager not available"),
         };
 
-        match process_manager.get_process(target_pid) {
-            Some(process_info) => {
-                let current_priority = process_info.priority;
-
-                match crate::scheduler::apply_priority_op(
-                    current_priority,
-                    crate::scheduler::PriorityOp::Boost,
-                ) {
-                    Ok(new_priority) => {
-                        info!(
-                            "PID {} boosting priority of PID {} from {} to {}",
-                            pid, target_pid, current_priority, new_priority
-                        );
-
-                        warn!("Priority boost not fully implemented - requires mutable process access and scheduler update");
-                        SyscallResult::error(
-                            "Priority management not yet fully integrated with scheduler",
-                        )
-                    }
-                    Err(e) => {
-                        info!(
-                            "PID {} attempted to boost priority of PID {}: {}",
-                            pid, target_pid, e
-                        );
-                        SyscallResult::error(e)
-                    }
-                }
+        match process_manager.boost_process_priority(target_pid) {
+            Ok(new_priority) => {
+                info!(
+                    "PID {} successfully boosted priority of PID {} to {}",
+                    pid, target_pid, new_priority
+                );
+                let data = new_priority.to_le_bytes().to_vec();
+                SyscallResult::success_with_data(data)
             }
-            None => SyscallResult::error(format!("Process {} not found", target_pid)),
+            Err(e) => {
+                info!(
+                    "PID {} attempted to boost priority of PID {}: {}",
+                    pid, target_pid, e
+                );
+                SyscallResult::error(e)
+            }
         }
     }
 
@@ -380,35 +375,22 @@ impl SyscallExecutor {
             None => return SyscallResult::error("Process manager not available"),
         };
 
-        match process_manager.get_process(target_pid) {
-            Some(process_info) => {
-                let current_priority = process_info.priority;
-
-                match crate::scheduler::apply_priority_op(
-                    current_priority,
-                    crate::scheduler::PriorityOp::Lower,
-                ) {
-                    Ok(new_priority) => {
-                        info!(
-                            "PID {} lowering priority of PID {} from {} to {}",
-                            pid, target_pid, current_priority, new_priority
-                        );
-
-                        warn!("Priority lowering not fully implemented - requires mutable process access and scheduler update");
-                        SyscallResult::error(
-                            "Priority management not yet fully integrated with scheduler",
-                        )
-                    }
-                    Err(e) => {
-                        info!(
-                            "PID {} attempted to lower priority of PID {}: {}",
-                            pid, target_pid, e
-                        );
-                        SyscallResult::error(e)
-                    }
-                }
+        match process_manager.lower_process_priority(target_pid) {
+            Ok(new_priority) => {
+                info!(
+                    "PID {} successfully lowered priority of PID {} to {}",
+                    pid, target_pid, new_priority
+                );
+                let data = new_priority.to_le_bytes().to_vec();
+                SyscallResult::success_with_data(data)
             }
-            None => SyscallResult::error(format!("Process {} not found", target_pid)),
+            Err(e) => {
+                info!(
+                    "PID {} attempted to lower priority of PID {}: {}",
+                    pid, target_pid, e
+                );
+                SyscallResult::error(e)
+            }
         }
     }
 }

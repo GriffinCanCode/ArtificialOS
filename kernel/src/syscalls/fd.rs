@@ -59,7 +59,7 @@ impl SyscallExecutor {
         if read_flag != 0
             && !self
                 .sandbox_manager
-                .check_permission(pid, &Capability::ReadFile)
+                .check_permission(pid, &Capability::ReadFile(None))
         {
             return SyscallResult::permission_denied("Missing ReadFile capability");
         }
@@ -67,7 +67,7 @@ impl SyscallExecutor {
         if write_flag != 0
             && !self
                 .sandbox_manager
-                .check_permission(pid, &Capability::WriteFile)
+                .check_permission(pid, &Capability::WriteFile(None))
         {
             return SyscallResult::permission_denied("Missing WriteFile capability");
         }
@@ -75,7 +75,7 @@ impl SyscallExecutor {
         if create_flag != 0
             && !self
                 .sandbox_manager
-                .check_permission(pid, &Capability::CreateFile)
+                .check_permission(pid, &Capability::CreateFile(None))
         {
             return SyscallResult::permission_denied("Missing CreateFile capability");
         }
@@ -170,7 +170,7 @@ impl SyscallExecutor {
     pub(super) fn dup(&self, pid: Pid, fd: u32) -> SyscallResult {
         if !self
             .sandbox_manager
-            .check_permission(pid, &Capability::ReadFile)
+            .check_permission(pid, &Capability::ReadFile(None))
         {
             return SyscallResult::permission_denied("Missing ReadFile capability");
         }
@@ -201,7 +201,7 @@ impl SyscallExecutor {
     pub(super) fn dup2(&self, pid: Pid, oldfd: u32, newfd: u32) -> SyscallResult {
         if !self
             .sandbox_manager
-            .check_permission(pid, &Capability::ReadFile)
+            .check_permission(pid, &Capability::ReadFile(None))
         {
             return SyscallResult::permission_denied("Missing ReadFile capability");
         }
@@ -231,7 +231,7 @@ impl SyscallExecutor {
     pub(super) fn lseek(&self, pid: Pid, fd: u32, offset: i64, whence: u32) -> SyscallResult {
         if !self
             .sandbox_manager
-            .check_permission(pid, &Capability::ReadFile)
+            .check_permission(pid, &Capability::ReadFile(None))
         {
             return SyscallResult::permission_denied("Missing ReadFile capability");
         }
@@ -282,7 +282,7 @@ impl SyscallExecutor {
     pub(super) fn fcntl(&self, pid: Pid, fd: u32, cmd: u32, arg: u32) -> SyscallResult {
         if !self
             .sandbox_manager
-            .check_permission(pid, &Capability::ReadFile)
+            .check_permission(pid, &Capability::ReadFile(None))
         {
             return SyscallResult::permission_denied("Missing ReadFile capability");
         }

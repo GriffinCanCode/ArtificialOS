@@ -1,6 +1,6 @@
 /*!
  * Security Module
- * Sandboxing and resource limits
+ * Sandboxing and resource limits with granular capabilities
  */
 
 pub mod limits;

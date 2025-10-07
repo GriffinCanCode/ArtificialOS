@@ -8,7 +8,7 @@ use crate::core::types::Pid;
 
 use log::{error, info};
 
-use crate::security::Capability;
+use crate::security::{Capability, NetworkRule};
 
 use super::executor::SyscallExecutor;
 use super::types::{SyscallResult, SystemInfo};
@@ -93,7 +93,7 @@ impl SyscallExecutor {
     pub(super) fn network_request(&self, pid: Pid, url: &str) -> SyscallResult {
         if !self
             .sandbox_manager
-            .check_permission(pid, &Capability::NetworkAccess)
+            .check_permission(pid, &Capability::NetworkAccess(NetworkRule::AllowAll))
         {
             return SyscallResult::permission_denied("Missing NetworkAccess capability");
         }

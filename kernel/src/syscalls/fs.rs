@@ -46,7 +46,7 @@ impl SyscallExecutor {
     pub(super) fn file_stat(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
         if !self
             .sandbox_manager
-            .check_permission(pid, &Capability::ReadFile)
+            .check_permission(pid, &Capability::ReadFile(None))
         {
             return SyscallResult::permission_denied("Missing ReadFile capability");
         }
@@ -100,7 +100,7 @@ impl SyscallExecutor {
     ) -> SyscallResult {
         if !self
             .sandbox_manager
-            .check_permission(pid, &Capability::WriteFile)
+            .check_permission(pid, &Capability::WriteFile(None))
         {
             return SyscallResult::permission_denied("Missing WriteFile capability");
         }
@@ -142,14 +142,14 @@ impl SyscallExecutor {
     ) -> SyscallResult {
         if !self
             .sandbox_manager
-            .check_permission(pid, &Capability::ReadFile)
+            .check_permission(pid, &Capability::ReadFile(None))
         {
             return SyscallResult::permission_denied("Missing ReadFile capability");
         }
 
         if !self
             .sandbox_manager
-            .check_permission(pid, &Capability::WriteFile)
+            .check_permission(pid, &Capability::WriteFile(None))
         {
             return SyscallResult::permission_denied("Missing WriteFile capability");
         }
@@ -244,7 +244,7 @@ impl SyscallExecutor {
     pub(super) fn truncate_file(&self, pid: Pid, path: &PathBuf, size: u64) -> SyscallResult {
         if !self
             .sandbox_manager
-            .check_permission(pid, &Capability::WriteFile)
+            .check_permission(pid, &Capability::WriteFile(None))
         {
             return SyscallResult::permission_denied("Missing WriteFile capability");
         }

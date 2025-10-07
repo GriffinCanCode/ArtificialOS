@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use std::net::{TcpListener, TcpStream, UdpSocket};
 use std::sync::{Arc, RwLock};
 
-use crate::security::Capability;
+use crate::security::{Capability, NetworkRule};
 
 use super::executor::SyscallExecutor;
 use super::types::SyscallResult;
@@ -63,7 +63,7 @@ impl SyscallExecutor {
     ) -> SyscallResult {
         if !self
             .sandbox_manager
-            .check_permission(pid, &Capability::NetworkAccess)
+            .check_permission(pid, &Capability::NetworkAccess(NetworkRule::AllowAll))
         {
             return SyscallResult::permission_denied("Missing NetworkAccess capability");
         }
@@ -90,7 +90,7 @@ impl SyscallExecutor {
     pub(super) fn bind(&self, pid: Pid, sockfd: u32, address: &str) -> SyscallResult {
         if !self
             .sandbox_manager
-            .check_permission(pid, &Capability::BindPort)
+            .check_permission(pid, &Capability::BindPort(None))
         {
             return SyscallResult::permission_denied("Missing BindPort capability");
         }
@@ -124,7 +124,7 @@ impl SyscallExecutor {
     pub(super) fn listen(&self, pid: Pid, sockfd: u32, backlog: u32) -> SyscallResult {
         if !self
             .sandbox_manager
-            .check_permission(pid, &Capability::BindPort)
+            .check_permission(pid, &Capability::BindPort(None))
         {
             return SyscallResult::permission_denied("Missing BindPort capability");
         }
@@ -145,7 +145,7 @@ impl SyscallExecutor {
     pub(super) fn accept(&self, pid: Pid, sockfd: u32) -> SyscallResult {
         if !self
             .sandbox_manager
-            .check_permission(pid, &Capability::NetworkAccess)
+            .check_permission(pid, &Capability::NetworkAccess(NetworkRule::AllowAll))
         {
             return SyscallResult::permission_denied("Missing NetworkAccess capability");
         }
@@ -185,7 +185,7 @@ impl SyscallExecutor {
     pub(super) fn connect(&self, pid: Pid, sockfd: u32, address: &str) -> SyscallResult {
         if !self
             .sandbox_manager
-            .check_permission(pid, &Capability::NetworkAccess)
+            .check_permission(pid, &Capability::NetworkAccess(NetworkRule::AllowAll))
         {
             return SyscallResult::permission_denied("Missing NetworkAccess capability");
         }
@@ -208,7 +208,7 @@ impl SyscallExecutor {
     pub(super) fn send(&self, pid: Pid, sockfd: u32, data: &[u8], flags: u32) -> SyscallResult {
         if !self
             .sandbox_manager
-            .check_permission(pid, &Capability::NetworkAccess)
+            .check_permission(pid, &Capability::NetworkAccess(NetworkRule::AllowAll))
         {
             return SyscallResult::permission_denied("Missing NetworkAccess capability");
         }
@@ -240,7 +240,7 @@ impl SyscallExecutor {
     pub(super) fn recv(&self, pid: Pid, sockfd: u32, size: usize, flags: u32) -> SyscallResult {
         if !self
             .sandbox_manager
-            .check_permission(pid, &Capability::NetworkAccess)
+            .check_permission(pid, &Capability::NetworkAccess(NetworkRule::AllowAll))
         {
             return SyscallResult::permission_denied("Missing NetworkAccess capability");
         }
@@ -277,7 +277,7 @@ impl SyscallExecutor {
     ) -> SyscallResult {
         if !self
             .sandbox_manager
-            .check_permission(pid, &Capability::NetworkAccess)
+            .check_permission(pid, &Capability::NetworkAccess(NetworkRule::AllowAll))
         {
             return SyscallResult::permission_denied("Missing NetworkAccess capability");
         }
@@ -310,7 +310,7 @@ impl SyscallExecutor {
     pub(super) fn recvfrom(&self, pid: Pid, sockfd: u32, size: usize, flags: u32) -> SyscallResult {
         if !self
             .sandbox_manager
-            .check_permission(pid, &Capability::NetworkAccess)
+            .check_permission(pid, &Capability::NetworkAccess(NetworkRule::AllowAll))
         {
             return SyscallResult::permission_denied("Missing NetworkAccess capability");
         }
@@ -345,7 +345,7 @@ impl SyscallExecutor {
     pub(super) fn close_socket(&self, pid: Pid, sockfd: u32) -> SyscallResult {
         if !self
             .sandbox_manager
-            .check_permission(pid, &Capability::NetworkAccess)
+            .check_permission(pid, &Capability::NetworkAccess(NetworkRule::AllowAll))
         {
             return SyscallResult::permission_denied("Missing NetworkAccess capability");
         }
@@ -378,7 +378,7 @@ impl SyscallExecutor {
     ) -> SyscallResult {
         if !self
             .sandbox_manager
-            .check_permission(pid, &Capability::NetworkAccess)
+            .check_permission(pid, &Capability::NetworkAccess(NetworkRule::AllowAll))
         {
             return SyscallResult::permission_denied("Missing NetworkAccess capability");
         }
@@ -400,7 +400,7 @@ impl SyscallExecutor {
     ) -> SyscallResult {
         if !self
             .sandbox_manager
-            .check_permission(pid, &Capability::NetworkAccess)
+            .check_permission(pid, &Capability::NetworkAccess(NetworkRule::AllowAll))
         {
             return SyscallResult::permission_denied("Missing NetworkAccess capability");
         }

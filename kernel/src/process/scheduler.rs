@@ -127,7 +127,28 @@ impl Scheduler {
     pub fn add(&self, pid: Pid, priority: Priority) {
         let quantum = *self.quantum.read();
         let policy = *self.policy.read();
-        let entry = Entry::new(pid, priority, quantum);
+        let mut entry = Entry::new(pid, priority, quantum);
+
+        // For fair scheduling, initialize vruntime to min_vruntime to prevent starvation
+        if policy == SchedulingPolicy::Fair {
+            let mut min_vrt = u64::MAX;
+
+            // Check current process vruntime
+            if let Some(ref current_entry) = *self.current.read() {
+                min_vrt = min_vrt.min(current_entry.vruntime);
+            }
+
+            // Check queued processes vruntime
+            let queue = self.priority_queue.read();
+            for e in queue.iter() {
+                min_vrt = min_vrt.min(e.vruntime);
+            }
+            drop(queue);
+
+            entry.vruntime = if min_vrt == u64::MAX { 0 } else { min_vrt };
+        }
+
+        let vruntime = entry.vruntime;
 
         match policy {
             SchedulingPolicy::RoundRobin => {
@@ -140,8 +161,8 @@ impl Scheduler {
 
         self.stats.write().active_processes += 1;
         info!(
-            "Process {} added to scheduler (priority: {})",
-            pid, priority
+            "Process {} added to scheduler (priority: {}, vruntime: {})",
+            pid, priority, vruntime
         );
     }
 
@@ -160,8 +181,9 @@ impl Scheduler {
             }
             SchedulingPolicy::Priority | SchedulingPolicy::Fair => {
                 let mut queue = self.priority_queue.write();
+                let original_len = queue.len();
                 let entries: Vec<Entry> = queue.drain().filter(|e| e.pid != pid).collect();
-                removed = entries.len() < queue.len() + 1;
+                removed = entries.len() < original_len;
                 for entry in entries {
                     queue.push(entry);
                 }
@@ -174,10 +196,12 @@ impl Scheduler {
             *current = None;
             removed = true;
         }
+        drop(current);
 
         if removed {
-            self.stats.write().active_processes =
-                self.stats.read().active_processes.saturating_sub(1);
+            let mut stats = self.stats.write();
+            stats.active_processes = stats.active_processes.saturating_sub(1);
+            drop(stats);
             info!("Process {} removed from scheduler", pid);
         }
 
@@ -366,6 +390,90 @@ impl Scheduler {
         }
 
         info!("Policy change complete: {} processes requeued", self.len());
+    }
+
+    /// Set time quantum dynamically
+    pub fn set_quantum(&self, quantum: Duration) {
+        *self.quantum.write() = quantum;
+        self.stats.write().quantum_micros = quantum.as_micros() as u64;
+        info!("Time quantum updated to {:?}", quantum);
+    }
+
+    /// Update process priority dynamically
+    pub fn set_priority(&self, pid: Pid, new_priority: Priority) -> bool {
+        let policy = *self.policy.read();
+
+        // Update in current process
+        let mut current = self.current.write();
+        if let Some(ref mut entry) = *current {
+            if entry.pid == pid {
+                entry.priority = new_priority;
+                drop(current);
+                info!("Updated priority for current process {} to {}", pid, new_priority);
+                return true;
+            }
+        }
+        drop(current);
+
+        // Update in queues
+        match policy {
+            SchedulingPolicy::RoundRobin => {
+                let mut queue = self.rr_queue.write();
+                if let Some(entry) = queue.iter_mut().find(|e| e.pid == pid) {
+                    entry.priority = new_priority;
+                    info!("Updated priority for queued process {} to {}", pid, new_priority);
+                    return true;
+                }
+            }
+            SchedulingPolicy::Priority | SchedulingPolicy::Fair => {
+                // For heap, need to rebuild
+                let mut queue = self.priority_queue.write();
+                let mut entries: Vec<Entry> = queue.drain().collect();
+                let found = entries.iter_mut().any(|e| {
+                    if e.pid == pid {
+                        e.priority = new_priority;
+                        true
+                    } else {
+                        false
+                    }
+                });
+
+                // Rebuild heap
+                for entry in entries {
+                    queue.push(entry);
+                }
+
+                if found {
+                    info!("Updated priority for queued process {} to {}", pid, new_priority);
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+
+    /// Get minimum virtual runtime (for fair scheduler normalization)
+    fn min_vruntime(&self) -> u64 {
+        let policy = *self.policy.read();
+        if policy != SchedulingPolicy::Fair {
+            return 0;
+        }
+
+        let mut min = u64::MAX;
+
+        // Check current
+        if let Some(ref entry) = *self.current.read() {
+            min = min.min(entry.vruntime);
+        }
+
+        // Check queue
+        let queue = self.priority_queue.read();
+        for entry in queue.iter() {
+            min = min.min(entry.vruntime);
+        }
+
+        if min == u64::MAX { 0 } else { min }
     }
 
     /// Get scheduler statistics

@@ -21,7 +21,7 @@ impl SyscallExecutor {
     pub(super) fn vfs_read(&self, pid: Pid, path: &Path) -> SyscallResult {
         if !self
             .sandbox_manager
-            .check_permission(pid, &Capability::ReadFile)
+            .check_permission(pid, &Capability::ReadFile(None))
         {
             return SyscallResult::permission_denied("Missing ReadFile capability");
         }
@@ -74,7 +74,7 @@ impl SyscallExecutor {
     pub(super) fn vfs_write(&self, pid: Pid, path: &Path, data: &[u8]) -> SyscallResult {
         if !self
             .sandbox_manager
-            .check_permission(pid, &Capability::WriteFile)
+            .check_permission(pid, &Capability::WriteFile(None))
         {
             return SyscallResult::permission_denied("Missing WriteFile capability");
         }
@@ -133,7 +133,7 @@ impl SyscallExecutor {
     pub(super) fn vfs_delete(&self, pid: Pid, path: &Path) -> SyscallResult {
         if !self
             .sandbox_manager
-            .check_permission(pid, &Capability::DeleteFile)
+            .check_permission(pid, &Capability::DeleteFile(None))
         {
             return SyscallResult::permission_denied("Missing DeleteFile capability");
         }
@@ -175,7 +175,7 @@ impl SyscallExecutor {
     pub(super) fn vfs_exists(&self, pid: Pid, path: &Path) -> SyscallResult {
         if !self
             .sandbox_manager
-            .check_permission(pid, &Capability::ReadFile)
+            .check_permission(pid, &Capability::ReadFile(None))
         {
             return SyscallResult::permission_denied("Missing ReadFile capability");
         }
@@ -202,7 +202,7 @@ impl SyscallExecutor {
     pub(super) fn vfs_create_dir(&self, pid: Pid, path: &Path) -> SyscallResult {
         if !self
             .sandbox_manager
-            .check_permission(pid, &Capability::CreateFile)
+            .check_permission(pid, &Capability::CreateFile(None))
         {
             return SyscallResult::permission_denied("Missing CreateFile capability");
         }
@@ -244,7 +244,7 @@ impl SyscallExecutor {
     pub(super) fn vfs_remove_dir(&self, pid: Pid, path: &Path) -> SyscallResult {
         if !self
             .sandbox_manager
-            .check_permission(pid, &Capability::DeleteFile)
+            .check_permission(pid, &Capability::DeleteFile(None))
         {
             return SyscallResult::permission_denied("Missing DeleteFile capability");
         }
@@ -286,7 +286,7 @@ impl SyscallExecutor {
     pub(super) fn vfs_list_dir(&self, pid: Pid, path: &Path) -> SyscallResult {
         if !self
             .sandbox_manager
-            .check_permission(pid, &Capability::ListDirectory)
+            .check_permission(pid, &Capability::ListDirectory(None))
         {
             return SyscallResult::permission_denied("Missing ListDirectory capability");
         }

@@ -88,23 +88,36 @@ impl From<std::io::Error> for LimitsError {
     }
 }
 
+/// Network access rules
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum NetworkRule {
+    /// Allow all network access
+    AllowAll,
+    /// Allow specific host (with optional port)
+    AllowHost { host: String, port: Option<u16> },
+    /// Allow CIDR block
+    AllowCIDR(String),
+    /// Block specific host
+    BlockHost { host: String, port: Option<u16> },
+}
+
 /// Capabilities that can be granted to sandboxed processes
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Capability {
-    // File system
-    ReadFile,
-    WriteFile,
-    CreateFile,
-    DeleteFile,
-    ListDirectory,
+    // File system - granular per-path
+    ReadFile(Option<PathBuf>),    // None = all files
+    WriteFile(Option<PathBuf>),   // None = all files
+    CreateFile(Option<PathBuf>),  // None = anywhere
+    DeleteFile(Option<PathBuf>),  // None = anywhere
+    ListDirectory(Option<PathBuf>), // None = all dirs
 
     // Process
     SpawnProcess,
     KillProcess,
 
-    // Network
-    NetworkAccess,
-    BindPort,
+    // Network - with rules
+    NetworkAccess(NetworkRule),
+    BindPort(Option<u16>), // None = any port
 
     // System
     SystemInfo,
@@ -115,18 +128,40 @@ pub enum Capability {
     ReceiveMessage,
 }
 
+impl Capability {
+    /// Check if this capability matches or is more permissive than another
+    pub fn grants(&self, required: &Capability) -> bool {
+        match (self, required) {
+            (Capability::ReadFile(None), Capability::ReadFile(_)) => true,
+            (Capability::ReadFile(Some(a)), Capability::ReadFile(Some(b))) => b.starts_with(a),
+            (Capability::WriteFile(None), Capability::WriteFile(_)) => true,
+            (Capability::WriteFile(Some(a)), Capability::WriteFile(Some(b))) => b.starts_with(a),
+            (Capability::CreateFile(None), Capability::CreateFile(_)) => true,
+            (Capability::CreateFile(Some(a)), Capability::CreateFile(Some(b))) => b.starts_with(a),
+            (Capability::DeleteFile(None), Capability::DeleteFile(_)) => true,
+            (Capability::DeleteFile(Some(a)), Capability::DeleteFile(Some(b))) => b.starts_with(a),
+            (Capability::ListDirectory(None), Capability::ListDirectory(_)) => true,
+            (Capability::ListDirectory(Some(a)), Capability::ListDirectory(Some(b))) => b.starts_with(a),
+            (Capability::NetworkAccess(NetworkRule::AllowAll), Capability::NetworkAccess(_)) => true,
+            (Capability::BindPort(None), Capability::BindPort(_)) => true,
+            (Capability::BindPort(Some(a)), Capability::BindPort(Some(b))) => a == b,
+            (a, b) => a == b,
+        }
+    }
+}
+
 impl std::fmt::Display for Capability {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Capability::ReadFile => write!(f, "ReadFile"),
-            Capability::WriteFile => write!(f, "WriteFile"),
-            Capability::CreateFile => write!(f, "CreateFile"),
-            Capability::DeleteFile => write!(f, "DeleteFile"),
-            Capability::ListDirectory => write!(f, "ListDirectory"),
+            Capability::ReadFile(p) => write!(f, "ReadFile({:?})", p),
+            Capability::WriteFile(p) => write!(f, "WriteFile({:?})", p),
+            Capability::CreateFile(p) => write!(f, "CreateFile({:?})", p),
+            Capability::DeleteFile(p) => write!(f, "DeleteFile({:?})", p),
+            Capability::ListDirectory(p) => write!(f, "ListDirectory({:?})", p),
             Capability::SpawnProcess => write!(f, "SpawnProcess"),
             Capability::KillProcess => write!(f, "KillProcess"),
-            Capability::NetworkAccess => write!(f, "NetworkAccess"),
-            Capability::BindPort => write!(f, "BindPort"),
+            Capability::NetworkAccess(r) => write!(f, "NetworkAccess({:?})", r),
+            Capability::BindPort(p) => write!(f, "BindPort({:?})", p),
             Capability::SystemInfo => write!(f, "SystemInfo"),
             Capability::TimeAccess => write!(f, "TimeAccess"),
             Capability::SendMessage => write!(f, "SendMessage"),
@@ -143,7 +178,7 @@ pub struct SandboxConfig {
     pub resource_limits: ResourceLimits,
     pub allowed_paths: Vec<PathBuf>,
     pub blocked_paths: Vec<PathBuf>,
-    pub allow_network: bool,
+    pub network_rules: Vec<NetworkRule>,
     pub environment_vars: Vec<(String, String)>,
 }
 
@@ -162,7 +197,7 @@ impl SandboxConfig {
                 PathBuf::from("/usr/bin"),
                 PathBuf::from("/usr/sbin"),
             ],
-            allow_network: false,
+            network_rules: vec![],
             environment_vars: vec![],
         }
     }
@@ -170,8 +205,8 @@ impl SandboxConfig {
     /// Create a standard sandbox (balanced)
     pub fn standard(pid: Pid) -> Self {
         let mut capabilities = HashSet::new();
-        capabilities.insert(Capability::ReadFile);
-        capabilities.insert(Capability::WriteFile);
+        capabilities.insert(Capability::ReadFile(None));
+        capabilities.insert(Capability::WriteFile(None));
         capabilities.insert(Capability::SystemInfo);
         capabilities.insert(Capability::TimeAccess);
 
@@ -181,7 +216,7 @@ impl SandboxConfig {
             resource_limits: ResourceLimits::default(),
             allowed_paths: vec![PathBuf::from("/tmp"), PathBuf::from("/var/tmp")],
             blocked_paths: vec![PathBuf::from("/etc/passwd"), PathBuf::from("/etc/shadow")],
-            allow_network: false,
+            network_rules: vec![],
             environment_vars: vec![],
         }
     }
@@ -189,14 +224,14 @@ impl SandboxConfig {
     /// Create a privileged sandbox (for trusted apps)
     pub fn privileged(pid: Pid) -> Self {
         let mut capabilities = HashSet::new();
-        capabilities.insert(Capability::ReadFile);
-        capabilities.insert(Capability::WriteFile);
-        capabilities.insert(Capability::CreateFile);
-        capabilities.insert(Capability::DeleteFile);
-        capabilities.insert(Capability::ListDirectory);
+        capabilities.insert(Capability::ReadFile(None));
+        capabilities.insert(Capability::WriteFile(None));
+        capabilities.insert(Capability::CreateFile(None));
+        capabilities.insert(Capability::DeleteFile(None));
+        capabilities.insert(Capability::ListDirectory(None));
         capabilities.insert(Capability::SpawnProcess);
         capabilities.insert(Capability::KillProcess);
-        capabilities.insert(Capability::NetworkAccess);
+        capabilities.insert(Capability::NetworkAccess(NetworkRule::AllowAll));
         capabilities.insert(Capability::SystemInfo);
         capabilities.insert(Capability::TimeAccess);
         capabilities.insert(Capability::SendMessage);
@@ -212,9 +247,9 @@ impl SandboxConfig {
                 max_processes: 50,
                 max_network_connections: 100,
             },
-            allowed_paths: vec![PathBuf::from("/")], // Full access
+            allowed_paths: vec![PathBuf::from("/")],
             blocked_paths: vec![],
-            allow_network: true,
+            network_rules: vec![NetworkRule::AllowAll],
             environment_vars: vec![],
         }
     }
