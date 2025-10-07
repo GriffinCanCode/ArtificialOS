@@ -11,6 +11,7 @@ import { DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, State as WinState } from "
 import { getMaximizedBounds, getCascadePosition } from "../core/bounds";
 import type { Blueprint } from "../../../core/store/appStore";
 import { filterValidComponents } from "../../../core/utils/blueprintParser";
+import { useInstanceStore } from "../../dynamics/store/instanceStore";
 
 // ============================================================================
 // Store Interface
@@ -95,6 +96,9 @@ export const useStore = create<Store>()(
       },
 
       close: (windowId) => {
+        // Clean up dynamics instances for this window
+        useInstanceStore.getState().remove(windowId);
+
         set(
           (state) => {
             const remaining = state.windows.filter((w) => w.id !== windowId);
@@ -287,6 +291,9 @@ export const useStore = create<Store>()(
       },
 
       clearAll: () => {
+        // Clear all dynamics instances
+        useInstanceStore.getState().clear();
+
         set({ windows: [], nextZIndex: 1000 }, false, "clearAll");
       },
     }),

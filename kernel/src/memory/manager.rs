@@ -32,6 +32,8 @@ pub struct MemoryManager {
     deallocated_count: Arc<RwLock<Size>>,
     // Per-process memory tracking (for peak_bytes and allocation_count)
     process_tracking: Arc<RwLock<HashMap<Pid, ProcessMemoryTracking>>>,
+    // Memory storage - maps addresses to their byte contents
+    memory_storage: Arc<RwLock<HashMap<Address, Vec<u8>>>>,
 }
 
 impl MemoryManager {
@@ -48,6 +50,7 @@ impl MemoryManager {
             gc_threshold: 1000,
             deallocated_count: Arc::new(RwLock::new(0)),
             process_tracking: Arc::new(RwLock::new(HashMap::new())),
+            memory_storage: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -298,10 +301,27 @@ impl MemoryManager {
         let mut blocks = self.blocks.write();
         let initial_count = blocks.len();
 
+        // Collect addresses of deallocated blocks before removing them
+        let deallocated_addrs: Vec<Address> = blocks
+            .iter()
+            .filter(|(_, block)| !block.allocated)
+            .map(|(addr, _)| *addr)
+            .collect();
+
         // Retain only allocated blocks
         blocks.retain(|_, block| block.allocated);
 
         let removed_count = initial_count - blocks.len();
+
+        drop(blocks);
+
+        // Clean up storage for deallocated blocks
+        if !deallocated_addrs.is_empty() {
+            let mut storage = self.memory_storage.write();
+            for addr in &deallocated_addrs {
+                storage.remove(addr);
+            }
+        }
 
         // Reset deallocated counter
         let mut dealloc_count = self.deallocated_count.write();
@@ -309,9 +329,9 @@ impl MemoryManager {
 
         if removed_count > 0 {
             info!(
-                "Garbage collection complete: removed {} deallocated blocks, {} blocks remain",
+                "Garbage collection complete: removed {} deallocated blocks and their storage, {} blocks remain",
                 removed_count,
-                blocks.len()
+                initial_count - removed_count
             );
         }
 
@@ -360,15 +380,17 @@ impl MemoryManager {
     /// Write bytes to a memory address
     /// This simulates writing to physical memory for shared memory segments
     pub fn write_bytes(&self, address: Address, data: &[u8]) -> MemoryResult<()> {
-        let mut blocks = self.blocks.write();
+        let blocks = self.blocks.read();
 
         // Find the block containing this address
-        let mut found_block = None;
-        for (base_addr, block) in blocks.iter_mut() {
-            if block.allocated && address >= *base_addr && address < *base_addr + block.size {
+        let mut base_addr = None;
+        let mut block_size = 0;
+        for (addr, block) in blocks.iter() {
+            if block.allocated && address >= *addr && address < *addr + block.size {
                 // Check if write fits within block bounds
-                if address + data.len() <= *base_addr + block.size {
-                    found_block = Some((base_addr, block));
+                if address + data.len() <= *addr + block.size {
+                    base_addr = Some(*addr);
+                    block_size = block.size;
                     break;
                 } else {
                     return Err(MemoryError::InvalidAddress(address));
@@ -376,18 +398,28 @@ impl MemoryManager {
             }
         }
 
-        if let Some((base_addr, block)) = found_block {
-            // In a real OS, this would write to physical memory via MMU
-            // For simulation, we store data in the block's metadata
-            // Calculate offset within the block
-            let offset = address - *base_addr;
+        if let Some(base_addr) = base_addr {
+            drop(blocks);
 
-            // Ensure the block has storage for data
-            // We'll use a HashMap to store byte data per block
-            // For now, we acknowledge the write operation
+            // Calculate offset within the block
+            let offset = address - base_addr;
+
+            // Get or create storage for this block
+            let mut storage = self.memory_storage.write();
+            let block_data = storage.entry(base_addr).or_insert_with(|| vec![0u8; block_size]);
+
+            // Ensure block_data is large enough
+            if block_data.len() < block_size {
+                block_data.resize(block_size, 0u8);
+            }
+
+            // Write data at the offset
+            let end = offset + data.len();
+            block_data[offset..end].copy_from_slice(data);
+
             info!(
-                "Write {} bytes to address 0x{:x} (offset {} in block at 0x{:x})",
-                data.len(), address, offset, *base_addr
+                "Wrote {} bytes to address 0x{:x} (offset {} in block at 0x{:x})",
+                data.len(), address, offset, base_addr
             );
             Ok(())
         } else {
@@ -401,29 +433,47 @@ impl MemoryManager {
         let blocks = self.blocks.read();
 
         // Find the block containing this address
-        for (base_addr, block) in blocks.iter() {
-            if block.allocated && address >= *base_addr && address < *base_addr + block.size {
+        let mut base_addr = None;
+        let mut block_size = 0;
+        for (addr, block) in blocks.iter() {
+            if block.allocated && address >= *addr && address < *addr + block.size {
                 // Check if read fits within block bounds
-                if address + size <= *base_addr + block.size {
-                    // In a real OS, this would read from physical memory via MMU
-                    // For simulation, we return a zero-filled buffer
-                    // Calculate offset within the block
-                    let offset = address - *base_addr;
-
-                    info!(
-                        "Read {} bytes from address 0x{:x} (offset {} in block at 0x{:x})",
-                        size, address, offset, *base_addr
-                    );
-
-                    // Return zero-filled buffer (in production this would be actual memory content)
-                    return Ok(vec![0u8; size]);
+                if address + size <= *addr + block.size {
+                    base_addr = Some(*addr);
+                    block_size = block.size;
+                    break;
                 } else {
                     return Err(MemoryError::InvalidAddress(address));
                 }
             }
         }
 
-        Err(MemoryError::InvalidAddress(address))
+        if let Some(base_addr) = base_addr {
+            drop(blocks);
+
+            // Calculate offset within the block
+            let offset = address - base_addr;
+
+            // Get storage for this block
+            let storage = self.memory_storage.read();
+            let data = if let Some(block_data) = storage.get(&base_addr) {
+                // Read data from the stored bytes
+                let end = offset + size;
+                block_data[offset..end].to_vec()
+            } else {
+                // Block has no data written yet, return zeros
+                vec![0u8; size]
+            };
+
+            info!(
+                "Read {} bytes from address 0x{:x} (offset {} in block at 0x{:x})",
+                size, address, offset, base_addr
+            );
+
+            Ok(data)
+        } else {
+            Err(MemoryError::InvalidAddress(address))
+        }
     }
 }
 
@@ -500,6 +550,7 @@ impl Clone for MemoryManager {
             gc_threshold: self.gc_threshold,
             deallocated_count: Arc::clone(&self.deallocated_count),
             process_tracking: Arc::clone(&self.process_tracking),
+            memory_storage: Arc::clone(&self.memory_storage),
         }
     }
 }

@@ -78,7 +78,7 @@ impl SharedSegment {
         let write_address = self.address + offset;
 
         // Use memory manager to write data to the shared memory region
-        // In a real OS with MMU, this would update page tables and write to physical memory
+        // This writes to our simulated physical memory storage
         self.memory_manager.write_bytes(write_address, data)
             .map_err(|_| ShmError::InvalidRange {
                 offset,
@@ -103,7 +103,7 @@ impl SharedSegment {
         let read_address = self.address + offset;
 
         // Use memory manager to read data from the shared memory region
-        // In a real OS with MMU, this would access page tables and read from physical memory
+        // This reads from our simulated physical memory storage
         let data = self.memory_manager.read_bytes(read_address, size)
             .map_err(|_| ShmError::InvalidRange {
                 offset,
