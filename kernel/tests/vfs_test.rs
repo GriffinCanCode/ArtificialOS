@@ -702,3 +702,328 @@ fn test_mount_from_config() {
     let result = mgr.write(Path::new("/readonly/test.txt"), b"data");
     assert!(result.is_err());
 }
+
+#[test]
+fn test_file_level_readonly_permissions() {
+    use ai_os_kernel::vfs::{OpenFlags, OpenMode, Permissions, VfsError};
+
+    let fs = MemFS::new();
+
+    // Create a file
+    fs.write(Path::new("/test.txt"), b"hello").unwrap();
+
+    // Set file to readonly
+    let mut perms = Permissions::readwrite();
+    perms.set_readonly(true);
+    fs.set_permissions(Path::new("/test.txt"), perms).unwrap();
+
+    // Verify permissions are set
+    let metadata = fs.metadata(Path::new("/test.txt")).unwrap();
+    assert!(metadata.permissions.is_readonly());
+
+    // Try to write to readonly file - should fail
+    let result = fs.write(Path::new("/test.txt"), b"world");
+    assert!(matches!(result, Err(VfsError::PermissionDenied(_))));
+
+    // Try to append to readonly file - should fail
+    let result = fs.append(Path::new("/test.txt"), b" world");
+    assert!(matches!(result, Err(VfsError::PermissionDenied(_))));
+
+    // Try to truncate readonly file - should fail
+    let result = fs.truncate(Path::new("/test.txt"), 0);
+    assert!(matches!(result, Err(VfsError::PermissionDenied(_))));
+
+    // Try to open readonly file for writing - should fail
+    let result = fs.open(
+        Path::new("/test.txt"),
+        OpenFlags::write_only(),
+        OpenMode::default(),
+    );
+    assert!(matches!(result, Err(VfsError::PermissionDenied(_))));
+
+    // Opening for read should still work
+    let result = fs.open(
+        Path::new("/test.txt"),
+        OpenFlags::read_only(),
+        OpenMode::default(),
+    );
+    assert!(result.is_ok());
+
+    // Verify original content is preserved
+    let data = fs.read(Path::new("/test.txt")).unwrap();
+    assert_eq!(data, b"hello");
+}
+
+#[test]
+fn test_directory_permissions_enforcement() {
+    use ai_os_kernel::vfs::{Permissions, VfsError};
+
+    let fs = MemFS::new();
+
+    // Create a directory
+    fs.create_dir(Path::new("/testdir")).unwrap();
+
+    // Set directory to readonly
+    let mut perms = Permissions::new(0o555); // r-xr-xr-x (no write)
+    fs.set_permissions(Path::new("/testdir"), perms).unwrap();
+
+    // Verify permissions are set
+    let metadata = fs.metadata(Path::new("/testdir")).unwrap();
+    assert_eq!(metadata.permissions.mode & 0o200, 0);
+
+    // Try to create a file in readonly directory - should fail
+    let result = fs.write(Path::new("/testdir/file.txt"), b"data");
+    assert!(
+        result.is_err(),
+        "Should not be able to create file in readonly directory"
+    );
+
+    // Try to create a subdirectory in readonly directory - should fail
+    let result = fs.create_dir(Path::new("/testdir/subdir"));
+    assert!(
+        matches!(result, Err(VfsError::PermissionDenied(_))),
+        "Should not be able to create subdirectory in readonly directory"
+    );
+
+    // Reading should still work
+    let entries = fs.list_dir(Path::new("/testdir")).unwrap();
+    assert_eq!(entries.len(), 0);
+}
+
+#[test]
+fn test_permission_changes_while_file_open() {
+    use ai_os_kernel::vfs::{OpenFlags, OpenMode, Permissions, VfsError};
+    use std::io::Write;
+
+    let fs = MemFS::new();
+
+    // Create and open a file for writing
+    fs.write(Path::new("/test.txt"), b"hello").unwrap();
+    let mut file = fs
+        .open(
+            Path::new("/test.txt"),
+            OpenFlags::read_write(),
+            OpenMode::default(),
+        )
+        .unwrap();
+
+    // Change file to readonly while it's open
+    let mut perms = Permissions::readwrite();
+    perms.set_readonly(true);
+    fs.set_permissions(Path::new("/test.txt"), perms).unwrap();
+
+    // Try to write to the file - should fail due to permission check
+    let result = file.write(b" world");
+    assert!(
+        result.is_err(),
+        "Write should fail after permissions changed to readonly"
+    );
+
+    // Try to set length - should also fail
+    let result = file.set_len(0);
+    assert!(
+        matches!(result, Err(VfsError::PermissionDenied(_))),
+        "set_len should fail on readonly file"
+    );
+}
+
+#[test]
+fn test_mixed_mount_and_file_readonly() {
+    use ai_os_kernel::vfs::{Permissions, VfsError};
+
+    let mgr = MountManager::new();
+    let fs = Arc::new(MemFS::new());
+
+    // Create a file and set it readonly at file level
+    fs.write(Path::new("/test.txt"), b"data").unwrap();
+    let mut perms = Permissions::readwrite();
+    perms.set_readonly(true);
+    fs.set_permissions(Path::new("/test.txt"), perms).unwrap();
+
+    // Mount as writable (only mount-level readonly = false)
+    mgr.mount("/data", fs).unwrap();
+
+    // Try to write - should fail due to file-level permissions
+    let result = mgr.write(Path::new("/data/test.txt"), b"new data");
+    assert!(
+        matches!(result, Err(VfsError::PermissionDenied(_))),
+        "File-level readonly should be enforced even on writable mount"
+    );
+
+    // Create new file should work (directory is writable)
+    let result = mgr.write(Path::new("/data/newfile.txt"), b"new");
+    assert!(result.is_ok(), "Should be able to create new files");
+
+    // Now remount as readonly at mount level
+    mgr.unmount("/data").unwrap();
+    let fs2 = Arc::new(MemFS::new());
+    fs2.write(Path::new("/test.txt"), b"data").unwrap();
+    mgr.mount_with_options("/readonly", fs2, true).unwrap();
+
+    // Try to write to writable file on readonly mount - should fail
+    let result = mgr.write(Path::new("/readonly/test.txt"), b"new data");
+    assert!(
+        matches!(result, Err(VfsError::ReadOnly)),
+        "Mount-level readonly should block all writes"
+    );
+}
+
+#[test]
+fn test_copy_operations_preserve_permissions() {
+    use ai_os_kernel::vfs::Permissions;
+
+    let fs = MemFS::new();
+
+    // Create file with custom permissions
+    fs.write(Path::new("/source.txt"), b"content").unwrap();
+    let perms = Permissions::new(0o400); // readonly
+    fs.set_permissions(Path::new("/source.txt"), perms).unwrap();
+
+    // Copy the file
+    fs.copy(Path::new("/source.txt"), Path::new("/dest.txt"))
+        .unwrap();
+
+    // Verify destination has same content
+    let data = fs.read(Path::new("/dest.txt")).unwrap();
+    assert_eq!(data, b"content");
+
+    // Note: Current implementation creates files with default permissions
+    // This test documents the current behavior
+    let dest_metadata = fs.metadata(Path::new("/dest.txt")).unwrap();
+    // In a more complete implementation, we might want to preserve permissions
+    // For now, we just verify the file was created successfully
+    assert!(dest_metadata.is_file());
+}
+
+#[test]
+fn test_nested_directory_operations_with_permissions() {
+    use ai_os_kernel::vfs::{Permissions, VfsError};
+
+    let fs = MemFS::new();
+
+    // Create nested directory structure
+    fs.create_dir(Path::new("/parent")).unwrap();
+    fs.create_dir(Path::new("/parent/child")).unwrap();
+    fs.write(Path::new("/parent/child/file.txt"), b"data")
+        .unwrap();
+
+    // Make parent directory readonly
+    let perms = Permissions::new(0o555); // r-xr-xr-x
+    fs.set_permissions(Path::new("/parent"), perms).unwrap();
+
+    // Should still be able to read from child
+    let data = fs.read(Path::new("/parent/child/file.txt")).unwrap();
+    assert_eq!(data, b"data");
+
+    // Should still be able to list child directory
+    let entries = fs.list_dir(Path::new("/parent/child")).unwrap();
+    assert_eq!(entries.len(), 1);
+
+    // But cannot create new items in readonly parent
+    let result = fs.create_dir(Path::new("/parent/newchild"));
+    assert!(
+        matches!(result, Err(VfsError::PermissionDenied(_))),
+        "Cannot create directory in readonly parent"
+    );
+
+    // Cannot delete child directory (parent is readonly)
+    let result = fs.remove_dir(Path::new("/parent/child"));
+    assert!(
+        matches!(result, Err(VfsError::PermissionDenied(_))),
+        "Cannot remove directory from readonly parent"
+    );
+
+    // Make child directory readonly too
+    fs.set_permissions(Path::new("/parent/child"), perms)
+        .unwrap();
+
+    // Now cannot delete file from readonly child
+    let result = fs.delete(Path::new("/parent/child/file.txt"));
+    assert!(
+        matches!(result, Err(VfsError::PermissionDenied(_))),
+        "Cannot delete file from readonly directory"
+    );
+}
+
+#[test]
+fn test_create_file_with_explicit_readonly_permissions() {
+    use ai_os_kernel::vfs::{OpenFlags, OpenMode, Permissions, VfsError};
+
+    let fs = MemFS::new();
+
+    // Create file with readonly permissions from the start
+    let readonly_mode = OpenMode::readonly();
+    let _file = fs
+        .open(
+            Path::new("/readonly.txt"),
+            OpenFlags::create(),
+            readonly_mode,
+        )
+        .unwrap();
+
+    // Verify file was created with readonly permissions
+    let metadata = fs.metadata(Path::new("/readonly.txt")).unwrap();
+    assert!(
+        metadata.permissions.is_readonly(),
+        "File should be created with readonly permissions"
+    );
+
+    // Try to write to it - should fail
+    let result = fs.write(Path::new("/readonly.txt"), b"data");
+    assert!(
+        matches!(result, Err(VfsError::PermissionDenied(_))),
+        "Cannot write to file created with readonly permissions"
+    );
+}
+
+#[test]
+fn test_open_flags_respect_file_permissions() {
+    use ai_os_kernel::vfs::{OpenFlags, OpenMode, Permissions, VfsError};
+
+    let fs = MemFS::new();
+
+    // Create a readonly file
+    fs.write(Path::new("/test.txt"), b"original").unwrap();
+    let mut perms = Permissions::readwrite();
+    perms.set_readonly(true);
+    fs.set_permissions(Path::new("/test.txt"), perms).unwrap();
+
+    // Try to open with write flag - should fail
+    let result = fs.open(
+        Path::new("/test.txt"),
+        OpenFlags::write_only(),
+        OpenMode::default(),
+    );
+    assert!(
+        matches!(result, Err(VfsError::PermissionDenied(_))),
+        "Cannot open readonly file for writing"
+    );
+
+    // Try to open with append flag - should fail
+    let result = fs.open(
+        Path::new("/test.txt"),
+        OpenFlags::append_only(),
+        OpenMode::default(),
+    );
+    assert!(
+        matches!(result, Err(VfsError::PermissionDenied(_))),
+        "Cannot open readonly file for appending"
+    );
+
+    // Try to open with truncate flag - should fail
+    let mut flags = OpenFlags::read_write();
+    flags.truncate = true;
+    let result = fs.open(Path::new("/test.txt"), flags, OpenMode::default());
+    assert!(
+        matches!(result, Err(VfsError::PermissionDenied(_))),
+        "Cannot open readonly file with truncate flag"
+    );
+
+    // Opening for read should work
+    let result = fs.open(
+        Path::new("/test.txt"),
+        OpenFlags::read_only(),
+        OpenMode::default(),
+    );
+    assert!(result.is_ok(), "Should be able to open readonly file for reading");
+}

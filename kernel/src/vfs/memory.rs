@@ -278,6 +278,37 @@ impl FileSystem for MemFS {
         let path = self.normalize(path);
         self.ensure_parent(&path)?;
 
+        // Check if file exists and is readonly
+        let file_exists = if let Some(node) = self.nodes.get(&path) {
+            if let Node::File { permissions, .. } = node.value() {
+                if permissions.is_readonly() {
+                    return Err(VfsError::PermissionDenied(format!(
+                        "file is readonly: {}",
+                        path.display()
+                    )));
+                }
+            }
+            true
+        } else {
+            false
+        };
+
+        // If creating a new file, check parent directory write permissions
+        if !file_exists {
+            if let Some(parent_path) = self.parent_path(&path) {
+                if let Some(parent_node) = self.nodes.get(&parent_path) {
+                    if let Node::Directory { permissions, .. } = parent_node.value() {
+                        if permissions.mode & 0o200 == 0 {
+                            return Err(VfsError::PermissionDenied(format!(
+                                "parent directory is readonly: {}",
+                                parent_path.display()
+                            )));
+                        }
+                    }
+                }
+            }
+        }
+
         // Calculate space needed
         let space_needed = if let Some(node) = self.nodes.get(&path) {
             // Replacing existing file - only need additional space
@@ -346,6 +377,18 @@ impl FileSystem for MemFS {
     fn append(&self, path: &Path, data: &[u8]) -> VfsResult<()> {
         let path = self.normalize(path);
 
+        // Check if file exists and is readonly
+        if let Some(node) = self.nodes.get(&path) {
+            if let Node::File { permissions, .. } = node.value() {
+                if permissions.is_readonly() {
+                    return Err(VfsError::PermissionDenied(format!(
+                        "file is readonly: {}",
+                        path.display()
+                    )));
+                }
+            }
+        }
+
         // Reserve space atomically
         self.check_and_reserve_space(data.len())?;
 
@@ -382,6 +425,20 @@ impl FileSystem for MemFS {
 
     fn delete(&self, path: &Path) -> VfsResult<()> {
         let path = self.normalize(path);
+
+        // Check parent directory write permissions
+        if let Some(parent_path) = self.parent_path(&path) {
+            if let Some(parent_node) = self.nodes.get(&parent_path) {
+                if let Node::Directory { permissions, .. } = parent_node.value() {
+                    if permissions.mode & 0o200 == 0 {
+                        return Err(VfsError::PermissionDenied(format!(
+                            "parent directory is readonly: {}",
+                            parent_path.display()
+                        )));
+                    }
+                }
+            }
+        }
 
         match self.nodes.get(&path).map(|n| n.clone()) {
             Some(Node::File { data, .. }) => {
@@ -454,6 +511,21 @@ impl FileSystem for MemFS {
     fn create_dir(&self, path: &Path) -> VfsResult<()> {
         let path = self.normalize(path);
 
+        // Check parent directory write permissions
+        if let Some(parent_path) = self.parent_path(&path) {
+            if let Some(parent_node) = self.nodes.get(&parent_path) {
+                if let Node::Directory { permissions, .. } = parent_node.value() {
+                    // Check if parent directory is writable (owner write permission)
+                    if permissions.mode & 0o200 == 0 {
+                        return Err(VfsError::PermissionDenied(format!(
+                            "parent directory is readonly: {}",
+                            parent_path.display()
+                        )));
+                    }
+                }
+            }
+        }
+
         // Create parent directories if needed
         let mut current = PathBuf::from("/");
         for component in path.components().skip(1) {
@@ -485,6 +557,20 @@ impl FileSystem for MemFS {
 
     fn remove_dir(&self, path: &Path) -> VfsResult<()> {
         let path = self.normalize(path);
+
+        // Check parent directory write permissions
+        if let Some(parent_path) = self.parent_path(&path) {
+            if let Some(parent_node) = self.nodes.get(&parent_path) {
+                if let Node::Directory { permissions, .. } = parent_node.value() {
+                    if permissions.mode & 0o200 == 0 {
+                        return Err(VfsError::PermissionDenied(format!(
+                            "parent directory is readonly: {}",
+                            parent_path.display()
+                        )));
+                    }
+                }
+            }
+        }
 
         match self.nodes.get(&path).map(|n| n.clone()) {
             Some(Node::Directory { children, .. }) => {
@@ -596,13 +682,22 @@ impl FileSystem for MemFS {
         let path = self.normalize(path);
         let new_size = size as usize;
 
-        // Check node type and get current size
+        // Check node type, get current size, and check permissions
         let old_size = match self.nodes.get(&path).map(|n| n.clone()) {
             Some(Node::Directory { .. }) => {
                 return Err(VfsError::IsADirectory(path.display().to_string()))
             }
             None => return Err(VfsError::NotFound(path.display().to_string())),
-            Some(Node::File { data, .. }) => data.len(),
+            Some(Node::File { data, permissions, .. }) => {
+                // Check if file is readonly
+                if permissions.is_readonly() {
+                    return Err(VfsError::PermissionDenied(format!(
+                        "file is readonly: {}",
+                        path.display()
+                    )));
+                }
+                data.len()
+            }
         };
 
         // Reserve space if growing
@@ -655,8 +750,22 @@ impl FileSystem for MemFS {
         }
     }
 
-    fn open(&self, path: &Path, flags: OpenFlags, _mode: OpenMode) -> VfsResult<Box<dyn OpenFile>> {
+    fn open(&self, path: &Path, flags: OpenFlags, mode: OpenMode) -> VfsResult<Box<dyn OpenFile>> {
         let path = self.normalize(path);
+
+        // Check if file exists and verify permissions for write operations
+        if self.exists(&path) {
+            if flags.write || flags.append || flags.truncate {
+                // Check file permissions
+                let metadata = self.metadata(&path)?;
+                if metadata.permissions.is_readonly() {
+                    return Err(VfsError::PermissionDenied(format!(
+                        "file is readonly: {}",
+                        path.display()
+                    )));
+                }
+            }
+        }
 
         // Read initial data
         let data = if self.exists(&path) {
@@ -666,6 +775,25 @@ impl FileSystem for MemFS {
                 self.read(&path)?
             }
         } else if flags.create || flags.create_new {
+            // Create new file with specified permissions
+            self.ensure_parent(&path)?;
+            let now = SystemTime::now();
+            self.nodes.insert(
+                path.clone(),
+                Node::File {
+                    data: Vec::new(),
+                    permissions: mode.permissions,
+                    modified: now,
+                    created: now,
+                },
+            );
+
+            // Add to parent directory
+            if let Some(parent) = self.parent_path(&path) {
+                let file_name = self.file_name(&path)?;
+                self.add_child(&parent, &file_name, &path)?;
+            }
+
             Vec::new()
         } else {
             return Err(VfsError::NotFound(path.display().to_string()));
@@ -716,6 +844,17 @@ impl Write for MemFile {
                 "file not opened for writing",
             ));
         }
+
+        // Double-check file permissions haven't changed
+        if let Ok(metadata) = self.fs.metadata(&self.path) {
+            if metadata.permissions.is_readonly() {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "file is readonly",
+                ));
+            }
+        }
+
         self.cursor.write(buf)
     }
 
@@ -733,6 +872,15 @@ impl Seek for MemFile {
 impl OpenFile for MemFile {
     fn sync(&mut self) -> VfsResult<()> {
         if self.flags.write {
+            // Check permissions before syncing
+            if let Ok(metadata) = self.fs.metadata(&self.path) {
+                if metadata.permissions.is_readonly() {
+                    return Err(VfsError::PermissionDenied(format!(
+                        "file is readonly: {}",
+                        self.path.display()
+                    )));
+                }
+            }
             let data = self.cursor.get_ref().clone();
             self.fs.write(&self.path, &data)?;
         }
@@ -744,6 +892,15 @@ impl OpenFile for MemFile {
     }
 
     fn set_len(&mut self, size: u64) -> VfsResult<()> {
+        // Check permissions before resizing
+        if let Ok(metadata) = self.fs.metadata(&self.path) {
+            if metadata.permissions.is_readonly() {
+                return Err(VfsError::PermissionDenied(format!(
+                    "file is readonly: {}",
+                    self.path.display()
+                )));
+            }
+        }
         let data = self.cursor.get_mut();
         data.resize(size as usize, 0);
         Ok(())

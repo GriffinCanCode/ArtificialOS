@@ -14,7 +14,7 @@ use crate::memory::MemoryManager;
 use dashmap::DashMap;
 use log::{info, warn};
 use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 /// Pipe manager
 pub struct PipeManager {
@@ -30,7 +30,7 @@ pub struct PipeManager {
 impl PipeManager {
     pub fn new(memory_manager: MemoryManager) -> Self {
         info!(
-            "Pipe manager initialized (capacity: {})",
+            "Pipe manager initialized with ID recycling (capacity: {})",
             DEFAULT_PIPE_CAPACITY
         );
         Self {
@@ -40,6 +40,7 @@ impl PipeManager {
             // Use 32 shards for process pipe tracking
             process_pipes: Arc::new(DashMap::with_shard_amount(32)),
             memory_manager,
+            free_ids: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
@@ -80,7 +81,16 @@ impl PipeManager {
             .allocate(capacity, writer_pid)
             .map_err(|e| PipeError::AllocationFailed(e.to_string()))?;
 
-        let pipe_id = self.next_id.fetch_add(1, Ordering::SeqCst);
+        // Try to recycle an ID from the free list, otherwise allocate new
+        let pipe_id = {
+            let mut free_ids = self.free_ids.lock().unwrap();
+            if let Some(recycled_id) = free_ids.pop() {
+                info!("Recycled pipe ID {} for PIDs {}/{}", recycled_id, reader_pid, writer_pid);
+                recycled_id
+            } else {
+                self.next_id.fetch_add(1, Ordering::SeqCst)
+            }
+        };
 
         let pipe = Pipe::new(
             pipe_id,
@@ -187,6 +197,13 @@ impl PipeManager {
             );
         }
 
+        // Add pipe ID to free list for recycling
+        {
+            let mut free_ids = self.free_ids.lock().unwrap();
+            free_ids.push(pipe_id);
+            info!("Added pipe ID {} to free list for recycling", pipe_id);
+        }
+
         // Update process pipe counts using alter() for atomic decrement
         self.process_pipes.alter(&reader_pid, |_, count| {
             let new_count = count.saturating_sub(1);
@@ -281,6 +298,7 @@ impl Clone for PipeManager {
             next_id: AtomicU32::new(self.next_id.load(Ordering::SeqCst)),
             process_pipes: Arc::clone(&self.process_pipes),
             memory_manager: self.memory_manager.clone(),
+            free_ids: Arc::clone(&self.free_ids),
         }
     }
 }

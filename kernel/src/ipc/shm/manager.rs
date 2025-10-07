@@ -15,7 +15,7 @@ use dashmap::DashMap;
 use log::{info, warn};
 use parking_lot::RwLock;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 // Global shared memory tracking
 static GLOBAL_SHM_MEMORY: AtomicUsize = AtomicUsize::new(0);
@@ -27,12 +27,14 @@ pub struct ShmManager {
     // Track segment count per process
     process_segments: Arc<DashMap<Pid, Size>>,
     memory_manager: MemoryManager,
+    // Free IDs for recycling (prevents ID exhaustion)
+    free_ids: Arc<Mutex<Vec<ShmId>>>,
 }
 
 impl ShmManager {
     pub fn new(memory_manager: MemoryManager) -> Self {
         info!(
-            "Shared memory manager initialized (max segment: {} MB, global limit: {} MB)",
+            "Shared memory manager initialized with ID recycling (max segment: {} MB, global limit: {} MB)",
             MAX_SEGMENT_SIZE / (1024 * 1024),
             GLOBAL_SHM_MEMORY_LIMIT / (1024 * 1024)
         );
@@ -41,6 +43,7 @@ impl ShmManager {
             next_id: Arc::new(RwLock::new(1)),
             process_segments: Arc::new(DashMap::new()),
             memory_manager,
+            free_ids: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
@@ -84,10 +87,19 @@ impl ShmManager {
             .allocate(size, owner_pid)
             .map_err(|e| ShmError::AllocationFailed(e.to_string()))?;
 
-        let mut next_id = self.next_id.write();
-        let segment_id = *next_id;
-        *next_id += 1;
-        drop(next_id);
+        // Try to recycle an ID from the free list, otherwise allocate new
+        let segment_id = {
+            let mut free_ids = self.free_ids.lock().unwrap();
+            if let Some(recycled_id) = free_ids.pop() {
+                info!("Recycled segment ID {} for PID {}", recycled_id, owner_pid);
+                recycled_id
+            } else {
+                let mut next_id = self.next_id.write();
+                let id = *next_id;
+                *next_id += 1;
+                id
+            }
+        };
 
         let segment = SharedSegment::new(
             segment_id,
@@ -242,6 +254,13 @@ impl ShmManager {
             );
         }
 
+        // Add segment ID to free list for recycling
+        {
+            let mut free_ids = self.free_ids.lock().unwrap();
+            free_ids.push(segment_id);
+            info!("Added segment ID {} to free list for recycling", segment_id);
+        }
+
         // Update process segment count using alter() for atomic operation
         self.process_segments.alter(&owner_pid, |_, count| {
             let new_count = count.saturating_sub(1);
@@ -357,6 +376,7 @@ impl Clone for ShmManager {
             next_id: Arc::clone(&self.next_id),
             process_segments: Arc::clone(&self.process_segments),
             memory_manager: self.memory_manager.clone(),
+            free_ids: Arc::clone(&self.free_ids),
         }
     }
 }
