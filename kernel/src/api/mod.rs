@@ -5,7 +5,9 @@
 
 pub mod async_task;
 pub mod batch;
+pub mod conversions;
 pub mod grpc_server;
+pub mod handlers;
 pub mod metrics;
 pub mod streaming;
 pub mod traits;
