@@ -4,6 +4,7 @@
 * Low-level file descriptor operations
 */
 
+use crate::core::json;
 use crate::core::types::Pid;
 
 use dashmap::DashMap;
@@ -137,7 +138,7 @@ impl SyscallExecutor {
                     pid, path, fd, flags, mode
                 );
 
-                let data = serde_json::to_vec(&serde_json::json!({
+                let data = json::to_vec(&serde_json::json!({
                     "fd": fd
                 }))
                 .unwrap();
@@ -186,7 +187,7 @@ impl SyscallExecutor {
                 pid, fd, new_fd
             );
 
-            let data = serde_json::to_vec(&serde_json::json!({
+            let data = json::to_vec(&serde_json::json!({
                 "new_fd": new_fd
             }))
             .unwrap();
@@ -262,7 +263,7 @@ impl SyscallExecutor {
                         pid, fd, new_offset, whence_str
                     );
 
-                    let data = serde_json::to_vec(&serde_json::json!({
+                    let data = json::to_vec(&serde_json::json!({
                         "offset": new_offset
                     }))
                     .unwrap();
@@ -299,7 +300,7 @@ impl SyscallExecutor {
             pid, fd, cmd, arg
         );
 
-        let data = serde_json::to_vec(&serde_json::json!({
+        let data = json::to_vec(&serde_json::json!({
             "result": 0
         }))
         .unwrap();

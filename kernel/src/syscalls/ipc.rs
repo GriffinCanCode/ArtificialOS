@@ -4,6 +4,7 @@
 * Inter-process communication (pipes and shared memory)
 */
 
+use crate::core::json;
 use crate::core::types::Pid;
 
 use log::{error, info};
@@ -37,7 +38,7 @@ impl SyscallExecutor {
         match pipe_manager.create(reader_pid, writer_pid, capacity) {
             Ok(pipe_id) => {
                 info!("PID {} created pipe {}", pid, pipe_id);
-                match serde_json::to_vec(&pipe_id) {
+                match json::to_vec(&pipe_id) {
                     Ok(data) => SyscallResult::success_with_data(data),
                     Err(e) => {
                         error!("Failed to serialize pipe ID: {}", e);
@@ -68,7 +69,7 @@ impl SyscallExecutor {
         match pipe_manager.write(pipe_id, pid, data) {
             Ok(written) => {
                 info!("PID {} wrote {} bytes to pipe {}", pid, written, pipe_id);
-                match serde_json::to_vec(&written) {
+                match json::to_vec(&written) {
                     Ok(data) => SyscallResult::success_with_data(data),
                     Err(e) => {
                         error!("Failed to serialize write result: {}", e);
@@ -156,7 +157,7 @@ impl SyscallExecutor {
         };
 
         match pipe_manager.stats(pipe_id) {
-            Ok(stats) => match serde_json::to_vec(&stats) {
+            Ok(stats) => match json::to_vec(&stats) {
                 Ok(data) => {
                     info!("PID {} retrieved stats for pipe {}", pid, pipe_id);
                     SyscallResult::success_with_data(data)
@@ -193,7 +194,7 @@ impl SyscallExecutor {
                     "PID {} created shared memory segment {} ({} bytes)",
                     pid, segment_id, size
                 );
-                match serde_json::to_vec(&segment_id) {
+                match json::to_vec(&segment_id) {
                     Ok(data) => SyscallResult::success_with_data(data),
                     Err(e) => {
                         error!("Failed to serialize segment ID: {}", e);
@@ -353,7 +354,7 @@ impl SyscallExecutor {
         };
 
         match shm_manager.stats(segment_id) {
-            Ok(stats) => match serde_json::to_vec(&stats) {
+            Ok(stats) => match json::to_vec(&stats) {
                 Ok(data) => {
                     info!("PID {} retrieved stats for segment {}", pid, segment_id);
                     SyscallResult::success_with_data(data)
@@ -401,7 +402,7 @@ impl SyscallExecutor {
         match queue_manager.create(pid, q_type, capacity) {
             Ok(queue_id) => {
                 info!("PID {} created {:?} queue {}", pid, q_type, queue_id);
-                match serde_json::to_vec(&queue_id) {
+                match json::to_vec(&queue_id) {
                     Ok(data) => SyscallResult::success_with_data(data),
                     Err(e) => {
                         error!("Failed to serialize queue ID: {}", e);
@@ -493,7 +494,7 @@ impl SyscallExecutor {
                             priority: msg.priority,
                         };
 
-                        match serde_json::to_vec(&response) {
+                        match json::serialize_ipc_message(&response) {
                             Ok(serialized) => SyscallResult::success_with_data(serialized),
                             Err(e) => {
                                 error!("Failed to serialize message: {}", e);
@@ -604,7 +605,7 @@ impl SyscallExecutor {
         };
 
         match queue_manager.stats(queue_id) {
-            Ok(stats) => match serde_json::to_vec(&stats) {
+            Ok(stats) => match json::to_vec(&stats) {
                 Ok(data) => {
                     info!("PID {} retrieved stats for queue {}", pid, queue_id);
                     SyscallResult::success_with_data(data)

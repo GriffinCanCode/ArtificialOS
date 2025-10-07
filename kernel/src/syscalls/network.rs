@@ -4,6 +4,7 @@
 * Socket operations for TCP/UDP networking
 */
 
+use crate::core::json;
 use crate::core::types::Pid;
 
 use dashmap::DashMap;
@@ -74,7 +75,7 @@ impl SyscallExecutor {
             pid, sockfd, domain, socket_type, protocol
         );
 
-        let data = serde_json::to_vec(&serde_json::json!({
+        let data = json::to_vec(&serde_json::json!({
             "sockfd": sockfd,
             "domain": domain,
             "type": socket_type,
@@ -163,7 +164,7 @@ impl SyscallExecutor {
                     pid, sockfd, client_fd, addr
                 );
 
-                let data = serde_json::to_vec(&serde_json::json!({
+                let data = json::to_vec(&serde_json::json!({
                     "client_fd": client_fd,
                     "address": addr.to_string()
                 }))
@@ -218,7 +219,7 @@ impl SyscallExecutor {
                         "PID {} sent {} bytes on TCP socket {}",
                         pid, bytes_sent, sockfd
                     );
-                    let result = serde_json::to_vec(&serde_json::json!({
+                    let result = json::to_vec(&serde_json::json!({
                         "bytes_sent": bytes_sent
                     }))
                     .unwrap();
@@ -289,7 +290,7 @@ impl SyscallExecutor {
                         "PID {} sent {} bytes to {} on UDP socket {}",
                         pid, bytes_sent, address, sockfd
                     );
-                    let result = serde_json::to_vec(&serde_json::json!({
+                    let result = json::to_vec(&serde_json::json!({
                         "bytes_sent": bytes_sent
                     }))
                     .unwrap();
@@ -324,7 +325,7 @@ impl SyscallExecutor {
                         pid, bytes_read, addr, sockfd
                     );
 
-                    let result = serde_json::to_vec(&serde_json::json!({
+                    let result = json::to_vec(&serde_json::json!({
                         "data": buffer,
                         "address": addr.to_string()
                     }))
@@ -409,7 +410,7 @@ impl SyscallExecutor {
             sockfd, level, optname
         );
 
-        let result = serde_json::to_vec(&serde_json::json!({
+        let result = json::to_vec(&serde_json::json!({
             "value": 0
         }))
         .unwrap();

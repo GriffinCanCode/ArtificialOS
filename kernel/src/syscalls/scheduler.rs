@@ -3,6 +3,7 @@
  * Syscall interface for scheduler operations
  */
 
+use crate::core::json;
 use crate::core::types::Pid;
 use crate::scheduler::{PriorityControl, SchedulerControl, SchedulerPolicy, SchedulerStats};
 use crate::security::Capability;
@@ -153,7 +154,7 @@ impl SyscallExecutor {
                     crate::process::types::SchedulingPolicy::Fair => "fair",
                 };
 
-                match serde_json::to_vec(&policy_name) {
+                match json::to_vec(&policy_name) {
                     Ok(data) => {
                         info!("PID {} retrieved scheduling policy: {:?}", pid, policy);
                         SyscallResult::success_with_data(data)
@@ -245,7 +246,7 @@ impl SyscallExecutor {
         };
 
         match process_manager.get_scheduler_stats() {
-            Some(stats) => match serde_json::to_vec(&stats) {
+            Some(stats) => match json::to_vec(&stats) {
                 Ok(data) => SyscallResult::success_with_data(data),
                 Err(e) => {
                     error!("Failed to serialize scheduler stats: {}", e);
@@ -271,7 +272,7 @@ impl SyscallExecutor {
         };
 
         match process_manager.get_process_stats(target_pid) {
-            Some(stats) => match serde_json::to_vec(&stats) {
+            Some(stats) => match json::to_vec(&stats) {
                 Ok(data) => {
                     info!(
                         "PID {} retrieved scheduler stats for PID {}: CPU time: {}μs",
@@ -306,7 +307,7 @@ impl SyscallExecutor {
         };
 
         let stats = process_manager.get_all_process_stats();
-        match serde_json::to_vec(&stats) {
+        match json::to_vec(&stats) {
             Ok(data) => {
                 info!(
                     "PID {} retrieved scheduler stats for {} processes",

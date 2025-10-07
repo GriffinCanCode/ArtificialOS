@@ -4,6 +4,7 @@
 * System information and environment operations
 */
 
+use crate::core::json;
 use crate::core::types::Pid;
 
 use log::{error, info};

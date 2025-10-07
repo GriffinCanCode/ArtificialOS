@@ -4,6 +4,7 @@
 * Routes filesystem syscalls through VFS when available
 */
 
+use crate::core::json;
 use crate::core::types::Pid;
 
 use log::{info, warn};
@@ -323,7 +324,7 @@ impl SyscallExecutor {
                         files.len()
                     );
 
-                    match serde_json::to_vec(&files) {
+                    match json::serialize_vfs_batch(&files) {
                         Ok(json) => return SyscallResult::success_with_data(json),
                         Err(e) => {
                             return SyscallResult::error(format!(
@@ -364,7 +365,7 @@ impl SyscallExecutor {
                     path,
                     files.len()
                 );
-                match serde_json::to_vec(&files) {
+                match json::serialize_vfs_batch(&files) {
                     Ok(json) => SyscallResult::success_with_data(json),
                     Err(e) => SyscallResult::error(format!(
                         "Failed to serialize directory listing: {}",

@@ -78,6 +78,12 @@ serial_test = "3.0"
 futures = "0.3"
 # Random number generation for stress tests
 rand = "0.8"
+# Benchmarking
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "json_benchmark"
+harness = false
 
 [profile.release]
 opt-level = 3

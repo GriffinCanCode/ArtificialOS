@@ -3,6 +3,7 @@
  * Syscall interface for signal operations
  */
 
+use crate::core::json;
 use crate::core::types::Pid;
 use crate::security::Capability;
 use crate::signals::{
@@ -135,7 +136,7 @@ impl SyscallExecutor {
         let pending = signal_manager.pending_signals(pid);
         let signal_numbers: Vec<u32> = pending.iter().map(|s| s.number()).collect();
 
-        match serde_json::to_vec(&signal_numbers) {
+        match json::to_vec(&signal_numbers) {
             Ok(data) => SyscallResult::success_with_data(data),
             Err(e) => {
                 error!("Failed to serialize pending signals: {}", e);
