@@ -467,17 +467,43 @@ impl SyscallExecutor {
 
         match queue_manager.receive(queue_id, pid) {
             Ok(Some(msg)) => {
-                info!(
-                    "PID {} received {} bytes from queue {}",
-                    pid,
-                    msg.data.len(),
-                    queue_id
-                );
-                match serde_json::to_vec(&msg) {
-                    Ok(data) => SyscallResult::success_with_data(data),
+                // Read message data from MemoryManager
+                match queue_manager.read_message_data(&msg) {
+                    Ok(data) => {
+                        info!(
+                            "PID {} received {} bytes from queue {}",
+                            pid,
+                            data.len(),
+                            queue_id
+                        );
+
+                        // Create a serializable message with the data
+                        #[derive(serde::Serialize)]
+                        struct MessageResponse {
+                            id: u64,
+                            from: u32,
+                            data: Vec<u8>,
+                            priority: u8,
+                        }
+
+                        let response = MessageResponse {
+                            id: msg.id,
+                            from: msg.from,
+                            data,
+                            priority: msg.priority,
+                        };
+
+                        match serde_json::to_vec(&response) {
+                            Ok(serialized) => SyscallResult::success_with_data(serialized),
+                            Err(e) => {
+                                error!("Failed to serialize message: {}", e);
+                                SyscallResult::error("Serialization failed")
+                            }
+                        }
+                    }
                     Err(e) => {
-                        error!("Failed to serialize message: {}", e);
-                        SyscallResult::error("Serialization failed")
+                        error!("Failed to read message data: {}", e);
+                        SyscallResult::error(format!("Read failed: {}", e))
                     }
                 }
             }
