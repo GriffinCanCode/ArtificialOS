@@ -4,6 +4,7 @@
 * Process management and control
 */
 
+use crate::core::json;
 use crate::core::types::{Pid, Priority};
 use log::{error, info, warn};
 use std::process::Command;
@@ -61,7 +62,7 @@ impl SyscallExecutor {
 
                 self.sandbox_manager.record_termination(pid);
 
-                match serde_json::to_vec(&process_output) {
+                match json::to_vec(&process_output) {
                     Ok(result) => SyscallResult::success_with_data(result),
                     Err(e) => {
                         error!("Failed to serialize process output: {}", e);
@@ -107,7 +108,7 @@ impl SyscallExecutor {
         };
 
         match process_manager.get_process(target_pid) {
-            Some(process) => match serde_json::to_vec(&process) {
+            Some(process) => match json::to_vec(&process) {
                 Ok(data) => {
                     info!("PID {} retrieved info for PID {}", pid, target_pid);
                     SyscallResult::success_with_data(data)
@@ -135,7 +136,7 @@ impl SyscallExecutor {
         };
 
         let processes = process_manager.list_processes();
-        match serde_json::to_vec(&processes) {
+        match json::to_vec(&processes) {
             Ok(data) => {
                 info!("PID {} listed {} processes", pid, processes.len());
                 SyscallResult::success_with_data(data)
@@ -191,7 +192,7 @@ impl SyscallExecutor {
         };
 
         match process_manager.get_process(target_pid) {
-            Some(process) => match serde_json::to_vec(&process.state) {
+            Some(process) => match json::to_vec(&process.state) {
                 Ok(data) => {
                     info!("PID {} retrieved state for PID {}", pid, target_pid);
                     SyscallResult::success_with_data(data)
@@ -219,7 +220,7 @@ impl SyscallExecutor {
         };
 
         match process_manager.get_process_stats(target_pid) {
-            Some(stats) => match serde_json::to_vec(&stats) {
+            Some(stats) => match json::to_vec(&stats) {
                 Ok(data) => {
                     info!("PID {} retrieved stats for PID {}", pid, target_pid);
                     SyscallResult::success_with_data(data)

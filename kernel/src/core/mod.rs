@@ -4,6 +4,7 @@
  */
 
 pub mod errors;
+pub mod json;
 pub mod serde;
 pub mod traits;
 pub mod types;

@@ -4,6 +4,7 @@
 * Memory management and garbage collection
 */
 
+use crate::core::json;
 use crate::core::types::Pid;
 
 use log::{error, info};
@@ -29,7 +30,7 @@ impl SyscallExecutor {
         };
 
         let stats = memory_manager.stats();
-        match serde_json::to_vec(&stats) {
+        match json::to_vec(&stats) {
             Ok(data) => {
                 info!("PID {} retrieved global memory stats", pid);
                 SyscallResult::success_with_data(data)
@@ -64,7 +65,7 @@ impl SyscallExecutor {
             allocation_count,
         };
 
-        match serde_json::to_vec(&stats) {
+        match json::to_vec(&stats) {
             Ok(data) => {
                 info!("PID {} retrieved memory stats for PID {}", pid, target_pid);
                 SyscallResult::success_with_data(data)
@@ -98,7 +99,7 @@ impl SyscallExecutor {
                     pid, target, freed
                 );
 
-                let data = serde_json::to_vec(&serde_json::json!({
+                let data = json::to_vec(&serde_json::json!({
                     "freed_bytes": freed,
                     "target_pid": target
                 }))
@@ -126,7 +127,7 @@ impl SyscallExecutor {
                     stats.duration_ms
                 );
 
-                let data = serde_json::to_vec(&serde_json::json!({
+                let data = json::to_vec(&serde_json::json!({
                     "freed_bytes": stats.freed_bytes,
                     "freed_blocks": stats.freed_blocks,
                     "processes_cleaned": stats.processes_cleaned,

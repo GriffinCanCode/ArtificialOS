@@ -4,6 +4,7 @@
 * File and directory operations
 */
 
+use crate::core::json;
 use crate::core::types::Pid;
 
 use log::{error, info};
@@ -77,7 +78,7 @@ impl SyscallExecutor {
                 });
 
                 info!("PID {} stat file: {:?}", pid, path);
-                match serde_json::to_vec(&file_info) {
+                match json::to_vec(&file_info) {
                     Ok(json) => SyscallResult::success_with_data(json),
                     Err(e) => {
                         error!("Failed to serialize file stat: {}", e);

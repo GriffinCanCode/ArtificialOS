@@ -28,6 +28,7 @@ uuid = { version = "1.6", features = ["v4"] }
 # Serialization
 serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = "1.0"
+simd-json = "0.13"
 serde_with = { version = "3.11", features = ["time_0_3", "macros"] }
 time = { version = "0.3", features = ["serde", "macros"] }
 
@@ -49,6 +50,9 @@ env_logger = "0.11"
 
 # Network namespace isolation (Linux-specific)
 nix = { version = "0.29", features = ["sched", "net", "user"] }
+
+# HTTP client
+reqwest = { version = "0.12", features = ["blocking", "json", "gzip"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 rtnetlink = "0.14"

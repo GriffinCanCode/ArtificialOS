@@ -25,7 +25,7 @@ impl SyscallExecutor {
         let info = SystemInfo::current();
 
         info!("PID {} retrieved system info", pid);
-        match serde_json::to_vec(&info) {
+        match json::to_vec(&info) {
             Ok(data) => SyscallResult::success_with_data(data),
             Err(e) => {
                 error!("Failed to serialize system info: {}", e);
@@ -94,57 +94,51 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied("Missing NetworkAccess capability");
         }
 
-        use std::io::{Read, Write};
-        use std::net::TcpStream;
+        // Use reqwest for robust HTTP/HTTPS support with timeouts, connection pooling,
+        // redirect handling, and compression support
+        match reqwest::blocking::Client::builder()
+            .timeout(std::time::Duration::from_secs(30))
+            .user_agent("ai-os-kernel/0.1.0")
+            .build()
+        {
+            Ok(client) => match client.get(url).send() {
+                Ok(response) => {
+                    let status = response.status();
 
-        // Parse URL to extract host and path
-        let url_str = if url.starts_with("http://") {
-            &url[7..]
-        } else if url.starts_with("https://") {
-            log::warn!("HTTPS not fully supported, attempting plain HTTP");
-            &url[8..]
-        } else {
-            url
-        };
+                    if !status.is_success() {
+                        log::warn!(
+                            "PID {} received HTTP {} for {}",
+                            pid,
+                            status.as_u16(),
+                            url
+                        );
+                    }
 
-        let (host, path) = match url_str.split_once('/') {
-            Some((h, p)) => (h, format!("/{}", p)),
-            None => (url_str, "/".to_string()),
-        };
-
-        // Extract port if specified
-        let (host_name, port) = match host.split_once(':') {
-            Some((h, p)) => (h, p.parse::<u16>().unwrap_or(80)),
-            None => (host, 80),
-        };
-
-        let address = format!("{}:{}", host_name, port);
-
-        // Make HTTP request
-        match TcpStream::connect(&address) {
-            Ok(mut stream) => {
-                let request = format!(
-                    "GET {} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n\r\n",
-                    path, host_name
-                );
-
-                if let Err(e) = stream.write_all(request.as_bytes()) {
-                    log::error!("Failed to send HTTP request: {}", e);
-                    return SyscallResult::error(format!("Failed to send request: {}", e));
+                    match response.bytes() {
+                        Ok(body) => {
+                            info!(
+                                "PID {} fetched {} ({} bytes, status: {})",
+                                pid,
+                                url,
+                                body.len(),
+                                status.as_u16()
+                            );
+                            SyscallResult::success_with_data(body.to_vec())
+                        }
+                        Err(e) => {
+                            error!("Failed to read response body from {}: {}", url, e);
+                            SyscallResult::error(format!("Failed to read response body: {}", e))
+                        }
+                    }
                 }
-
-                let mut response = Vec::new();
-                if let Err(e) = stream.read_to_end(&mut response) {
-                    log::error!("Failed to read HTTP response: {}", e);
-                    return SyscallResult::error(format!("Failed to read response: {}", e));
+                Err(e) => {
+                    error!("Failed to fetch {}: {}", url, e);
+                    SyscallResult::error(format!("Network request failed: {}", e))
                 }
-
-                info!("PID {} fetched {} ({} bytes)", pid, url, response.len());
-                SyscallResult::success_with_data(response)
-            }
+            },
             Err(e) => {
-                log::error!("Failed to connect to {}: {}", address, e);
-                SyscallResult::error(format!("Network request failed: {}", e))
+                error!("Failed to create HTTP client: {}", e);
+                SyscallResult::error(format!("Failed to create HTTP client: {}", e))
             }
         }
     }
