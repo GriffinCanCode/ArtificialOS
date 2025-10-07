@@ -3,6 +3,7 @@ python-dotenv==1.0.1
 pydantic==2.10.5
 pydantic-settings==2.10.1
 pybreaker==1.2.0
+injector==0.21.0     # Dependency injection
 
 # AI/ML
 google-generativeai==0.8.4
@@ -30,9 +31,17 @@ pytest==8.3.5
 pytest-asyncio==1.2.0
 pytest-cov==6.0.0
 pytest-mock==3.14.0
+hypothesis==6.98.0   # Property-based testing
+respx==0.21.1        # httpx mocking
 
 # Code Quality
 black==25.1.0
 isort==6.0.0
 mypy==1.18.2
 ruff==0.11.2
+
+# Performance Libraries
+xxhash==3.4.1        # Fast hashing (10x faster than SHA256)
+msgspec==0.18.6      # Fast JSON parsing (2-3x faster than stdlib)
+orjson==3.9.15       # Fast JSON encoding (2-3x faster than stdlib)
+json-repair==0.25.0  # JSON repair and recovery

@@ -17,7 +17,6 @@ from core import configure_logging, get_logger, get_settings, create_container
 from core.tracing import init_tracer, extract_trace_context, set_trace_context
 from handlers import UIHandler, ChatHandler
 from models.loader import ModelLoader
-from agents.ui_generator import UIGenerator
 from monitoring.http_server import start_metrics_server
 
 
@@ -92,13 +91,10 @@ async def serve_async():
     # Start metrics HTTP server
     start_metrics_server(port=50053)
 
-    # Resolve dependencies
+    # Resolve all dependencies from DI container
     container = create_container(settings.backend_url)
-    ui_generator = container.get(UIGenerator)
-
-    # Create handlers
-    ui_handler = UIHandler(ui_generator)
-    chat_handler = ChatHandler(ModelLoader)
+    ui_handler = container.get(UIHandler)
+    chat_handler = container.get(ChatHandler)
     service = AsyncAIService(ui_handler, chat_handler)
 
     # Create async server with keepalive options and tracing interceptor

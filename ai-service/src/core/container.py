@@ -7,6 +7,8 @@ from models.config import GeminiConfig
 from agents.ui_generator import UIGenerator
 from agents.tools import ToolRegistry
 from clients.backend import BackendClient
+from handlers.ui import UIHandler
+from handlers.chat import ChatHandler
 
 
 class CoreModule(Module):
@@ -62,6 +64,18 @@ class CoreModule(Module):
             backend_services=backend_services,
             enable_cache=True,
         )
+
+    @singleton
+    @provider
+    def provide_ui_handler(self, ui_generator: UIGenerator) -> UIHandler:
+        """Provide UI handler."""
+        return UIHandler(ui_generator)
+
+    @singleton
+    @provider
+    def provide_chat_handler(self) -> ChatHandler:
+        """Provide chat handler."""
+        return ChatHandler(ModelLoader)
 
 
 def create_container(backend_url: str = "http://localhost:8000") -> Injector:

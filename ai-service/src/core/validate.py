@@ -1,8 +1,6 @@
 """Input validation with strong typing and multiple backends."""
 
-from dataclasses import dataclass
 from typing import Any
-from returns.result import Result, Success, Failure
 
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 
@@ -19,15 +17,6 @@ class ValidationError(Exception):
     """Validation failed."""
 
     pass
-
-
-@dataclass(frozen=True)
-class ValidationResult:
-    """Validation error with details (for Result pattern)."""
-
-    message: str
-    field: str | None = None
-    value: Any | None = None
 
 
 class RequestValidator(BaseModel):
@@ -142,21 +131,3 @@ class BlueprintValidator:
 
         if not isinstance(spec_dict["components"], list):
             raise ValidationError("UI spec 'components' must be a list")
-
-
-def validate_ui_spec(spec: dict[str, Any], json_str: str) -> Result[None, ValidationResult]:
-    """
-    Validate UI specification (Result pattern version).
-
-    Args:
-        spec: Parsed UI spec dictionary
-        json_str: JSON string representation
-
-    Returns:
-        Result indicating success or validation error
-    """
-    try:
-        BlueprintValidator.validate(spec, json_str)
-        return Success(None)
-    except ValidationError as e:
-        return Failure(ValidationResult(str(e)))

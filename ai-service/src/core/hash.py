@@ -7,13 +7,7 @@ All functions are strongly typed and designed for testability.
 from typing import Any, Protocol
 from enum import Enum
 import hashlib
-
-try:
-    import xxhash
-
-    HAS_XXHASH = True
-except ImportError:
-    HAS_XXHASH = False
+import xxhash
 
 
 class Algorithm(str, Enum):
@@ -58,11 +52,9 @@ def create_hasher(algorithm: Algorithm = Algorithm.XXHASH64) -> Hasher:
         Hasher instance
 
     Raises:
-        ValueError: If xxhash not available when requested
+        ValueError: If algorithm is unknown
     """
     if algorithm == Algorithm.XXHASH64:
-        if not HAS_XXHASH:
-            raise ValueError("xxhash not installed, use SHA256 or install xxhash")
         return XXHasher()
     elif algorithm == Algorithm.SHA256:
         return SHA256Hasher()
