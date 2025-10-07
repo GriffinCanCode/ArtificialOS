@@ -11,6 +11,7 @@ All tests are centrally located in the `tests/` directory for easy access and ma
 - **process_test.rs**: Process lifecycle, creation, termination, memory integration (10 tests)
 - **syscall_test.rs**: System call execution, sandboxing, permission checks (19 tests)
 - **ipc_test.rs**: Inter-process communication, message queuing, memory limits (14 tests)
+- **signals_test.rs**: Signal handling, RT signals, callbacks, priority queuing (87+ tests)
 - **integration_tests.rs**: End-to-end integration tests (12 tests)
 
 ### Module Tests
@@ -18,7 +19,7 @@ Some modules include embedded unit tests:
 - **sandbox.rs**: Capability management, path access control (3 tests)
 
 ### Total Test Coverage
-- **74 tests** covering all major kernel subsystems
+- **150+ tests** covering all major kernel subsystems
 
 ## Running Tests
 
@@ -53,6 +54,7 @@ make test-memory    # Run memory_test.rs
 make test-process   # Run process_test.rs
 make test-syscall   # Run syscall_test.rs
 make test-ipc       # Run ipc_test.rs
+make test-signals   # Run signals_test.rs
 ```
 
 ### Direct Cargo Commands

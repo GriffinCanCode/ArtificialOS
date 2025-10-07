@@ -3,6 +3,7 @@
  * UNIX-style signal definitions and result types
  */
 
+use crate::core::serde::{is_false, is_zero_u64};
 use crate::core::types::Pid;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -13,6 +14,7 @@ pub type SignalResult<T> = Result<T, SignalError>;
 
 /// Signal errors
 #[derive(Error, Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "type", content = "details")]
 pub enum SignalError {
     #[error("Process not found: {0}")]
     ProcessNotFound(Pid),
@@ -38,69 +40,48 @@ pub enum SignalError {
 
 /// UNIX-style signal numbers
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[repr(u32)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Signal {
-    /// Hangup detected on controlling terminal or death of controlling process
-    SIGHUP = 1,
-    /// Interrupt from keyboard (Ctrl+C)
-    SIGINT = 2,
-    /// Quit from keyboard (Ctrl+\)
-    SIGQUIT = 3,
-    /// Illegal instruction
-    SIGILL = 4,
-    /// Trace/breakpoint trap
-    SIGTRAP = 5,
-    /// Abort signal
-    SIGABRT = 6,
-    /// Bus error (bad memory access)
-    SIGBUS = 7,
-    /// Floating-point exception
-    SIGFPE = 8,
-    /// Kill signal (cannot be caught or ignored)
-    SIGKILL = 9,
-    /// User-defined signal 1
-    SIGUSR1 = 10,
-    /// Invalid memory reference
-    SIGSEGV = 11,
-    /// User-defined signal 2
-    SIGUSR2 = 12,
-    /// Broken pipe
-    SIGPIPE = 13,
-    /// Timer signal
-    SIGALRM = 14,
-    /// Termination signal
-    SIGTERM = 15,
-    /// Child process stopped or terminated
-    SIGCHLD = 17,
-    /// Continue if stopped
-    SIGCONT = 18,
-    /// Stop process (cannot be caught or ignored)
-    SIGSTOP = 19,
-    /// Stop typed at terminal (Ctrl+Z)
-    SIGTSTP = 20,
-    /// Terminal input for background process
-    SIGTTIN = 21,
-    /// Terminal output for background process
-    SIGTTOU = 22,
-    /// Urgent condition on socket
-    SIGURG = 23,
-    /// CPU time limit exceeded
-    SIGXCPU = 24,
-    /// File size limit exceeded
-    SIGXFSZ = 25,
-    /// Virtual alarm clock
-    SIGVTALRM = 26,
-    /// Profiling timer expired
-    SIGPROF = 27,
-    /// Window resize signal
-    SIGWINCH = 28,
-    /// I/O now possible
-    SIGIO = 29,
-    /// Power failure
-    SIGPWR = 30,
-    /// Bad system call
-    SIGSYS = 31,
+    // Standard signals (1-31)
+    SIGHUP,
+    SIGINT,
+    SIGQUIT,
+    SIGILL,
+    SIGTRAP,
+    SIGABRT,
+    SIGBUS,
+    SIGFPE,
+    SIGKILL,
+    SIGUSR1,
+    SIGSEGV,
+    SIGUSR2,
+    SIGPIPE,
+    SIGALRM,
+    SIGTERM,
+    SIGCHLD,
+    SIGCONT,
+    SIGSTOP,
+    SIGTSTP,
+    SIGTTIN,
+    SIGTTOU,
+    SIGURG,
+    SIGXCPU,
+    SIGXFSZ,
+    SIGVTALRM,
+    SIGPROF,
+    SIGWINCH,
+    SIGIO,
+    SIGPWR,
+    SIGSYS,
+
+    /// Real-time signal with priority (34-63)
+    /// Higher numbers = higher priority
+    SIGRT(u32),
 }
+
+/// Real-time signal range
+pub const SIGRTMIN: u32 = 34;
+pub const SIGRTMAX: u32 = 63;
 
 impl Signal {
     /// Convert from signal number
@@ -136,13 +117,59 @@ impl Signal {
             29 => Ok(Signal::SIGIO),
             30 => Ok(Signal::SIGPWR),
             31 => Ok(Signal::SIGSYS),
+            n @ SIGRTMIN..=SIGRTMAX => Ok(Signal::SIGRT(n)),
             _ => Err(SignalError::InvalidSignal(n)),
         }
     }
 
     /// Get signal number
     pub fn number(&self) -> u32 {
-        *self as u32
+        match self {
+            Signal::SIGHUP => 1,
+            Signal::SIGINT => 2,
+            Signal::SIGQUIT => 3,
+            Signal::SIGILL => 4,
+            Signal::SIGTRAP => 5,
+            Signal::SIGABRT => 6,
+            Signal::SIGBUS => 7,
+            Signal::SIGFPE => 8,
+            Signal::SIGKILL => 9,
+            Signal::SIGUSR1 => 10,
+            Signal::SIGSEGV => 11,
+            Signal::SIGUSR2 => 12,
+            Signal::SIGPIPE => 13,
+            Signal::SIGALRM => 14,
+            Signal::SIGTERM => 15,
+            Signal::SIGCHLD => 17,
+            Signal::SIGCONT => 18,
+            Signal::SIGSTOP => 19,
+            Signal::SIGTSTP => 20,
+            Signal::SIGTTIN => 21,
+            Signal::SIGTTOU => 22,
+            Signal::SIGURG => 23,
+            Signal::SIGXCPU => 24,
+            Signal::SIGXFSZ => 25,
+            Signal::SIGVTALRM => 26,
+            Signal::SIGPROF => 27,
+            Signal::SIGWINCH => 28,
+            Signal::SIGIO => 29,
+            Signal::SIGPWR => 30,
+            Signal::SIGSYS => 31,
+            Signal::SIGRT(n) => *n,
+        }
+    }
+
+    /// Check if this is a real-time signal
+    pub fn is_realtime(&self) -> bool {
+        matches!(self, Signal::SIGRT(_))
+    }
+
+    /// Get priority (higher = more urgent, RT signals > standard)
+    pub fn priority(&self) -> u32 {
+        match self {
+            Signal::SIGRT(n) => 1000 + n, // RT signals always higher priority
+            _ => self.number(),
+        }
     }
 
     /// Check if signal can be caught/blocked
@@ -167,38 +194,39 @@ impl Signal {
     }
 
     /// Get human-readable description
-    pub fn description(&self) -> &'static str {
+    pub fn description(&self) -> String {
         match self {
-            Signal::SIGHUP => "Hangup",
-            Signal::SIGINT => "Interrupt",
-            Signal::SIGQUIT => "Quit",
-            Signal::SIGILL => "Illegal instruction",
-            Signal::SIGTRAP => "Trace/breakpoint trap",
-            Signal::SIGABRT => "Aborted",
-            Signal::SIGBUS => "Bus error",
-            Signal::SIGFPE => "Floating point exception",
-            Signal::SIGKILL => "Killed",
-            Signal::SIGUSR1 => "User defined signal 1",
-            Signal::SIGSEGV => "Segmentation fault",
-            Signal::SIGUSR2 => "User defined signal 2",
-            Signal::SIGPIPE => "Broken pipe",
-            Signal::SIGALRM => "Alarm clock",
-            Signal::SIGTERM => "Terminated",
-            Signal::SIGCHLD => "Child status changed",
-            Signal::SIGCONT => "Continued",
-            Signal::SIGSTOP => "Stopped (signal)",
-            Signal::SIGTSTP => "Stopped",
-            Signal::SIGTTIN => "Stopped (tty input)",
-            Signal::SIGTTOU => "Stopped (tty output)",
-            Signal::SIGURG => "Urgent I/O condition",
-            Signal::SIGXCPU => "CPU time limit exceeded",
-            Signal::SIGXFSZ => "File size limit exceeded",
-            Signal::SIGVTALRM => "Virtual timer expired",
-            Signal::SIGPROF => "Profiling timer expired",
-            Signal::SIGWINCH => "Window size changed",
-            Signal::SIGIO => "I/O possible",
-            Signal::SIGPWR => "Power failure",
-            Signal::SIGSYS => "Bad system call",
+            Signal::SIGHUP => "Hangup".to_string(),
+            Signal::SIGINT => "Interrupt".to_string(),
+            Signal::SIGQUIT => "Quit".to_string(),
+            Signal::SIGILL => "Illegal instruction".to_string(),
+            Signal::SIGTRAP => "Trace/breakpoint trap".to_string(),
+            Signal::SIGABRT => "Aborted".to_string(),
+            Signal::SIGBUS => "Bus error".to_string(),
+            Signal::SIGFPE => "Floating point exception".to_string(),
+            Signal::SIGKILL => "Killed".to_string(),
+            Signal::SIGUSR1 => "User defined signal 1".to_string(),
+            Signal::SIGSEGV => "Segmentation fault".to_string(),
+            Signal::SIGUSR2 => "User defined signal 2".to_string(),
+            Signal::SIGPIPE => "Broken pipe".to_string(),
+            Signal::SIGALRM => "Alarm clock".to_string(),
+            Signal::SIGTERM => "Terminated".to_string(),
+            Signal::SIGCHLD => "Child status changed".to_string(),
+            Signal::SIGCONT => "Continued".to_string(),
+            Signal::SIGSTOP => "Stopped (signal)".to_string(),
+            Signal::SIGTSTP => "Stopped".to_string(),
+            Signal::SIGTTIN => "Stopped (tty input)".to_string(),
+            Signal::SIGTTOU => "Stopped (tty output)".to_string(),
+            Signal::SIGURG => "Urgent I/O condition".to_string(),
+            Signal::SIGXCPU => "CPU time limit exceeded".to_string(),
+            Signal::SIGXFSZ => "File size limit exceeded".to_string(),
+            Signal::SIGVTALRM => "Virtual timer expired".to_string(),
+            Signal::SIGPROF => "Profiling timer expired".to_string(),
+            Signal::SIGWINCH => "Window size changed".to_string(),
+            Signal::SIGIO => "I/O possible".to_string(),
+            Signal::SIGPWR => "Power failure".to_string(),
+            Signal::SIGSYS => "Bad system call".to_string(),
+            Signal::SIGRT(n) => format!("Real-time signal {}", n),
         }
     }
 }
@@ -211,6 +239,7 @@ impl fmt::Display for Signal {
 
 /// Signal disposition - what happens when signal is received
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum SignalDisposition {
     /// Default action for the signal
     Default,
@@ -234,6 +263,7 @@ pub struct PendingSignal {
 
 /// Signal handler action
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "action")]
 pub enum SignalAction {
     /// Default behavior
     Default,
@@ -265,20 +295,31 @@ impl SignalAction {
 
 /// Signal statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct SignalStats {
+    #[serde(skip_serializing_if = "is_zero_u64")]
     pub total_signals_sent: u64,
+    #[serde(skip_serializing_if = "is_zero_u64")]
     pub total_signals_delivered: u64,
+    #[serde(skip_serializing_if = "is_zero_u64")]
     pub total_signals_blocked: u64,
+    #[serde(skip_serializing_if = "is_zero_u64")]
     pub total_signals_queued: u64,
+    #[serde(skip_serializing_if = "crate::core::serde::is_zero_usize")]
     pub pending_signals: usize,
+    #[serde(skip_serializing_if = "crate::core::serde::is_zero_usize")]
     pub handlers_registered: usize,
 }
 
 /// Process signal state
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct ProcessSignalState {
     pub pid: Pid,
+    #[serde(skip_serializing_if = "crate::core::serde::is_empty_vec")]
     pub pending_signals: Vec<PendingSignal>,
+    #[serde(skip_serializing_if = "crate::core::serde::is_empty_vec")]
     pub blocked_signals: Vec<Signal>,
+    #[serde(skip_serializing_if = "crate::core::serde::is_empty_vec")]
     pub handlers: Vec<(Signal, SignalAction)>,
 }

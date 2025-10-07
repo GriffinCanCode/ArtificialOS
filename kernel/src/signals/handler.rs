@@ -3,16 +3,20 @@
  * Executes signal actions on processes
  */
 
-use super::types::{Signal, SignalAction, SignalError, SignalResult};
+use super::callbacks::CallbackRegistry;
+use super::types::{Signal, SignalAction, SignalResult};
 use crate::core::types::Pid;
-use log::{debug, info, warn};
+use log::{debug, info};
+use std::sync::Arc;
 
 /// Signal handler executor
-pub struct SignalHandler;
+pub struct SignalHandler {
+    callbacks: Arc<CallbackRegistry>,
+}
 
 impl SignalHandler {
-    pub fn new() -> Self {
-        Self
+    pub fn new(callbacks: Arc<CallbackRegistry>) -> Self {
+        Self { callbacks }
     }
 
     /// Execute signal action
@@ -31,7 +35,8 @@ impl SignalHandler {
                 Ok(SignalOutcome::Ignored)
             }
             SignalAction::Handler(handler_id) => {
-                info!("Invoking handler {} for signal {:?} on PID {}", handler_id, signal, pid);
+                self.callbacks.execute(handler_id, pid, signal)?;
+                info!("Handler {} executed for signal {:?} on PID {}", handler_id, signal, pid);
                 Ok(SignalOutcome::HandlerInvoked(handler_id))
             }
             SignalAction::Terminate => {
@@ -90,6 +95,12 @@ impl SignalHandler {
                 debug!("Ignoring signal {:?} for PID {} (default)", signal, pid);
                 Ok(SignalOutcome::Ignored)
             }
+
+            // Real-time signals - ignored by default
+            Signal::SIGRT(_) => {
+                debug!("Ignoring RT signal {:?} for PID {} (default)", signal, pid);
+                Ok(SignalOutcome::Ignored)
+            }
         }
     }
 
@@ -112,7 +123,7 @@ impl SignalHandler {
                     SignalAction::Stop
                 }
                 Signal::SIGCONT => SignalAction::Continue,
-                _ => SignalAction::Ignore,
+                Signal::SIGRT(_) | _ => SignalAction::Ignore,
             }
         }
     }
@@ -120,7 +131,7 @@ impl SignalHandler {
 
 impl Default for SignalHandler {
     fn default() -> Self {
-        Self::new()
+        Self::new(Arc::new(CallbackRegistry::new()))
     }
 }
 

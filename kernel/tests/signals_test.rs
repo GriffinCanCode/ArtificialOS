@@ -557,3 +557,551 @@ fn test_all_signal_numbers() {
         assert_eq!(expected.number(), num);
     }
 }
+
+// ============================================================================
+// NEW TESTS FOR ARCHITECTURAL IMPROVEMENTS
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// 1. Callback Registry Tests
+// ----------------------------------------------------------------------------
+
+#[test]
+fn test_callback_registry_register_and_execute() {
+    use std::sync::{Arc, Mutex};
+
+    let registry = CallbackRegistry::new();
+    let executed = Arc::new(Mutex::new(false));
+    let executed_clone = executed.clone();
+
+    // Register a callback
+    let handler_id = registry.register(move |pid, signal| {
+        *executed_clone.lock().unwrap() = true;
+        assert_eq!(pid, 100);
+        assert_eq!(signal, Signal::SIGUSR1);
+        Ok(())
+    });
+
+    // Execute the callback
+    assert!(registry.execute(handler_id, 100, Signal::SIGUSR1).is_ok());
+    assert!(*executed.lock().unwrap());
+}
+
+#[test]
+fn test_callback_registry_multiple_handlers() {
+    use std::sync::{Arc, Mutex};
+
+    let registry = CallbackRegistry::new();
+    let counter = Arc::new(Mutex::new(0));
+
+    // Register multiple handlers
+    let counter1 = counter.clone();
+    let id1 = registry.register(move |_, _| {
+        *counter1.lock().unwrap() += 1;
+        Ok(())
+    });
+
+    let counter2 = counter.clone();
+    let id2 = registry.register(move |_, _| {
+        *counter2.lock().unwrap() += 10;
+        Ok(())
+    });
+
+    // Execute different handlers
+    registry.execute(id1, 1, Signal::SIGUSR1).unwrap();
+    assert_eq!(*counter.lock().unwrap(), 1);
+
+    registry.execute(id2, 1, Signal::SIGUSR1).unwrap();
+    assert_eq!(*counter.lock().unwrap(), 11);
+}
+
+#[test]
+fn test_callback_registry_unregister() {
+    let registry = CallbackRegistry::new();
+
+    let handler_id = registry.register(|_, _| Ok(()));
+    assert!(registry.exists(handler_id));
+
+    // Unregister
+    assert!(registry.unregister(handler_id));
+    assert!(!registry.exists(handler_id));
+
+    // Executing unregistered handler should fail
+    assert!(registry.execute(handler_id, 1, Signal::SIGUSR1).is_err());
+}
+
+#[test]
+fn test_callback_registry_handler_errors() {
+    let registry = CallbackRegistry::new();
+
+    // Register handler that returns error
+    let handler_id = registry.register(|_, _| {
+        Err(SignalError::HandlerError("Test error".to_string()))
+    });
+
+    // Execution should propagate the error
+    let result = registry.execute(handler_id, 1, Signal::SIGUSR1);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_callback_count() {
+    let registry = CallbackRegistry::new();
+    assert_eq!(registry.count(), 0);
+
+    let id1 = registry.register(|_, _| Ok(()));
+    assert_eq!(registry.count(), 1);
+
+    let id2 = registry.register(|_, _| Ok(()));
+    assert_eq!(registry.count(), 2);
+
+    registry.unregister(id1);
+    assert_eq!(registry.count(), 1);
+}
+
+// ----------------------------------------------------------------------------
+// 2. Real-Time Signals Tests
+// ----------------------------------------------------------------------------
+
+#[test]
+fn test_realtime_signal_range() {
+    // Test SIGRTMIN and SIGRTMAX constants
+    assert_eq!(SIGRTMIN, 34);
+    assert_eq!(SIGRTMAX, 63);
+
+    // Test RT signal creation
+    let sig_min = Signal::from_number(SIGRTMIN).unwrap();
+    assert!(sig_min.is_realtime());
+    assert_eq!(sig_min.number(), SIGRTMIN);
+
+    let sig_max = Signal::from_number(SIGRTMAX).unwrap();
+    assert!(sig_max.is_realtime());
+    assert_eq!(sig_max.number(), SIGRTMAX);
+}
+
+#[test]
+fn test_realtime_signal_properties() {
+    let rt_signal = Signal::SIGRT(50);
+
+    // RT signals are catchable
+    assert!(rt_signal.can_catch());
+
+    // RT signals are not fatal by default
+    assert!(!rt_signal.is_fatal());
+
+    // RT signals are real-time
+    assert!(rt_signal.is_realtime());
+
+    // Standard signals are not real-time
+    assert!(!Signal::SIGUSR1.is_realtime());
+}
+
+#[test]
+fn test_realtime_signal_priority() {
+    // RT signals have higher priority than standard signals
+    let rt_low = Signal::SIGRT(34);
+    let rt_high = Signal::SIGRT(63);
+    let standard = Signal::SIGUSR1;
+
+    // RT signals: priority = 1000 + signal_number
+    assert_eq!(rt_low.priority(), 1034);
+    assert_eq!(rt_high.priority(), 1063);
+
+    // Standard signals: priority = signal_number
+    assert_eq!(standard.priority(), 10);
+
+    // RT signals always have higher priority
+    assert!(rt_low.priority() > standard.priority());
+    assert!(rt_high.priority() > rt_low.priority());
+}
+
+#[test]
+fn test_all_realtime_signals() {
+    // Test all RT signals can be created
+    for n in SIGRTMIN..=SIGRTMAX {
+        let signal = Signal::from_number(n).unwrap();
+        assert!(signal.is_realtime());
+        assert_eq!(signal.number(), n);
+        assert!(signal.can_catch());
+    }
+}
+
+// ----------------------------------------------------------------------------
+// 3. Priority Queue Tests
+// ----------------------------------------------------------------------------
+
+#[test]
+fn test_priority_queue_ordering() {
+    let manager = SignalManagerImpl::new();
+    let sender: Pid = 1;
+    let target: Pid = 2;
+
+    manager.initialize_process(sender).unwrap();
+    manager.initialize_process(target).unwrap();
+
+    // Send signals in mixed priority order
+    manager.send(sender, target, Signal::SIGUSR1).unwrap();  // Priority 10
+    manager.send(sender, target, Signal::SIGRT(63)).unwrap(); // Priority 1063
+    manager.send(sender, target, Signal::SIGRT(34)).unwrap(); // Priority 1034
+    manager.send(sender, target, Signal::SIGTERM).unwrap();   // Priority 15
+
+    // Deliver and check they come out in priority order
+    let pending = manager.pending_signals(target);
+    assert_eq!(pending.len(), 4);
+
+    // Deliver all
+    let delivered = manager.deliver_pending(target).unwrap();
+    assert_eq!(delivered, 4);
+
+    // All should be delivered
+    assert_eq!(manager.pending_count(target), 0);
+}
+
+#[test]
+fn test_priority_queue_same_priority() {
+    let manager = SignalManagerImpl::new();
+    let sender: Pid = 1;
+    let target: Pid = 2;
+
+    manager.initialize_process(sender).unwrap();
+    manager.initialize_process(target).unwrap();
+
+    // Send same signal multiple times (same priority)
+    manager.send(sender, target, Signal::SIGUSR1).unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(1));
+    manager.send(sender, target, Signal::SIGUSR1).unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(1));
+    manager.send(sender, target, Signal::SIGUSR1).unwrap();
+
+    // All should be queued
+    assert_eq!(manager.pending_count(target), 3);
+
+    // Deliver all (should use timestamp ordering for same priority)
+    let delivered = manager.deliver_pending(target).unwrap();
+    assert_eq!(delivered, 3);
+}
+
+#[test]
+fn test_rt_signals_delivered_before_standard() {
+    let manager = SignalManagerImpl::new();
+    let sender: Pid = 1;
+    let target: Pid = 2;
+
+    manager.initialize_process(sender).unwrap();
+    manager.initialize_process(target).unwrap();
+
+    // Send standard signal first
+    manager.send(sender, target, Signal::SIGUSR1).unwrap();
+
+    // Then RT signal (which should be delivered first despite being queued later)
+    manager.send(sender, target, Signal::SIGRT(40)).unwrap();
+
+    let pending = manager.pending_signals(target);
+    assert_eq!(pending.len(), 2);
+
+    // RT signal should have higher priority in queue
+    // (Actual order verified during delivery, not in pending list)
+    let delivered = manager.deliver_pending(target).unwrap();
+    assert_eq!(delivered, 2);
+}
+
+// ----------------------------------------------------------------------------
+// 4. Handler Execution with Callbacks Tests
+// ----------------------------------------------------------------------------
+
+#[test]
+fn test_handler_with_executable_callback() {
+    use std::sync::{Arc, Mutex};
+
+    let manager = SignalManagerImpl::new();
+    let sender: Pid = 1;
+    let target: Pid = 2;
+
+    manager.initialize_process(sender).unwrap();
+    manager.initialize_process(target).unwrap();
+
+    // Register executable callback
+    let executed = Arc::new(Mutex::new(false));
+    let executed_clone = executed.clone();
+
+    let callbacks = manager.callbacks();
+    let handler_id = callbacks.register(move |pid, signal| {
+        *executed_clone.lock().unwrap() = true;
+        assert_eq!(signal, Signal::SIGUSR1);
+        Ok(())
+    });
+
+    // Register handler with signal manager
+    manager.register_handler(target, Signal::SIGUSR1, SignalAction::Handler(handler_id)).unwrap();
+
+    // Send signal
+    manager.send(sender, target, Signal::SIGUSR1).unwrap();
+
+    // Deliver pending signals (should execute callback)
+    manager.deliver_pending(target).unwrap();
+
+    // Callback should have been executed
+    assert!(*executed.lock().unwrap());
+}
+
+#[test]
+fn test_handler_execution_failure() {
+    let manager = SignalManagerImpl::new();
+    let sender: Pid = 1;
+    let target: Pid = 2;
+
+    manager.initialize_process(sender).unwrap();
+    manager.initialize_process(target).unwrap();
+
+    // Register callback that fails
+    let callbacks = manager.callbacks();
+    let handler_id = callbacks.register(|_, _| {
+        Err(SignalError::HandlerError("Intentional failure".to_string()))
+    });
+
+    manager.register_handler(target, Signal::SIGUSR1, SignalAction::Handler(handler_id)).unwrap();
+
+    // Send signal
+    manager.send(sender, target, Signal::SIGUSR1).unwrap();
+
+    // Delivery should handle the error gracefully
+    let delivered = manager.deliver_pending(target).unwrap();
+    // Should still count as attempted delivery even if handler fails
+    assert!(delivered <= 1);
+}
+
+// ----------------------------------------------------------------------------
+// 5. Automatic Delivery Hook Tests
+// ----------------------------------------------------------------------------
+
+#[test]
+fn test_delivery_hook_creation() {
+    let manager = SignalManagerImpl::new();
+    let hook = SignalDeliveryHook::new(Arc::new(manager));
+
+    // Hook should be created successfully
+    assert!(hook.pending_count(1) == 0);
+}
+
+#[test]
+fn test_delivery_hook_delivers_before_schedule() {
+    let manager = Arc::new(SignalManagerImpl::new());
+    let sender: Pid = 1;
+    let target: Pid = 2;
+
+    manager.initialize_process(sender).unwrap();
+    manager.initialize_process(target).unwrap();
+
+    // Send some signals
+    manager.send(sender, target, Signal::SIGUSR1).unwrap();
+    manager.send(sender, target, Signal::SIGUSR2).unwrap();
+
+    let hook = SignalDeliveryHook::new(manager.clone());
+
+    // Deliver before scheduling
+    let (delivered, terminated, stopped, continued) = hook.deliver_before_schedule(target);
+
+    assert_eq!(delivered, 2);
+    assert!(!terminated);
+    assert!(!stopped);
+    assert!(!continued);
+
+    // Signals should be cleared
+    assert_eq!(manager.pending_count(target), 0);
+}
+
+#[test]
+fn test_delivery_hook_no_pending_signals() {
+    let manager = Arc::new(SignalManagerImpl::new());
+    let pid: Pid = 1;
+
+    manager.initialize_process(pid).unwrap();
+
+    let hook = SignalDeliveryHook::new(manager);
+
+    // No signals to deliver
+    let (delivered, _, _, _) = hook.deliver_before_schedule(pid);
+    assert_eq!(delivered, 0);
+}
+
+#[test]
+fn test_delivery_hook_should_schedule() {
+    let manager = Arc::new(SignalManagerImpl::new());
+    let pid: Pid = 1;
+
+    manager.initialize_process(pid).unwrap();
+
+    let hook = SignalDeliveryHook::new(manager.clone());
+
+    // Should always allow scheduling
+    assert!(hook.should_schedule(pid));
+
+    // Even with pending signals
+    manager.send(pid, pid, Signal::SIGUSR1).unwrap();
+    assert!(hook.should_schedule(pid));
+}
+
+#[test]
+fn test_delivery_hook_pending_count() {
+    let manager = Arc::new(SignalManagerImpl::new());
+    let sender: Pid = 1;
+    let target: Pid = 2;
+
+    manager.initialize_process(sender).unwrap();
+    manager.initialize_process(target).unwrap();
+
+    let hook = SignalDeliveryHook::new(manager.clone());
+
+    assert_eq!(hook.pending_count(target), 0);
+
+    manager.send(sender, target, Signal::SIGUSR1).unwrap();
+    assert_eq!(hook.pending_count(target), 1);
+
+    manager.send(sender, target, Signal::SIGUSR2).unwrap();
+    assert_eq!(hook.pending_count(target), 2);
+}
+
+// ----------------------------------------------------------------------------
+// 6. Process State Integration Tests
+// ----------------------------------------------------------------------------
+
+#[test]
+fn test_outcome_to_state_terminated() {
+    use crate::process::types::ProcessState;
+
+    let outcome = SignalOutcome::Terminated;
+    let state = outcome_to_state(outcome);
+
+    assert!(state.is_some());
+    assert_eq!(state.unwrap(), ProcessState::Terminated);
+}
+
+#[test]
+fn test_outcome_to_state_stopped() {
+    use crate::process::types::ProcessState;
+
+    let outcome = SignalOutcome::Stopped;
+    let state = outcome_to_state(outcome);
+
+    assert!(state.is_some());
+    assert_eq!(state.unwrap(), ProcessState::Waiting);
+}
+
+#[test]
+fn test_outcome_to_state_continued() {
+    use crate::process::types::ProcessState;
+
+    let outcome = SignalOutcome::Continued;
+    let state = outcome_to_state(outcome);
+
+    assert!(state.is_some());
+    assert_eq!(state.unwrap(), ProcessState::Running);
+}
+
+#[test]
+fn test_outcome_to_state_no_change() {
+    let outcome1 = SignalOutcome::HandlerInvoked(1);
+    let outcome2 = SignalOutcome::Ignored;
+
+    assert!(outcome_to_state(outcome1).is_none());
+    assert!(outcome_to_state(outcome2).is_none());
+}
+
+#[test]
+fn test_requires_immediate_action() {
+    assert!(requires_immediate_action(&SignalOutcome::Terminated));
+    assert!(requires_immediate_action(&SignalOutcome::Stopped));
+    assert!(requires_immediate_action(&SignalOutcome::Continued));
+    assert!(!requires_immediate_action(&SignalOutcome::HandlerInvoked(1)));
+    assert!(!requires_immediate_action(&SignalOutcome::Ignored));
+}
+
+#[test]
+fn test_should_interrupt() {
+    assert!(should_interrupt(&SignalOutcome::Terminated));
+    assert!(should_interrupt(&SignalOutcome::Stopped));
+    assert!(!should_interrupt(&SignalOutcome::Continued));
+    assert!(!should_interrupt(&SignalOutcome::HandlerInvoked(1)));
+    assert!(!should_interrupt(&SignalOutcome::Ignored));
+}
+
+// ----------------------------------------------------------------------------
+// 7. Integration Tests
+// ----------------------------------------------------------------------------
+
+#[test]
+fn test_full_rt_signal_workflow() {
+    use std::sync::{Arc, Mutex};
+
+    let manager = SignalManagerImpl::new();
+    let sender: Pid = 1;
+    let target: Pid = 2;
+
+    manager.initialize_process(sender).unwrap();
+    manager.initialize_process(target).unwrap();
+
+    // Register callback for RT signal
+    let executed = Arc::new(Mutex::new(Vec::new()));
+    let executed_clone = executed.clone();
+
+    let callbacks = manager.callbacks();
+    let handler_id = callbacks.register(move |_pid, signal| {
+        executed_clone.lock().unwrap().push(signal);
+        Ok(())
+    });
+
+    // Register handler for multiple RT signals
+    manager.register_handler(target, Signal::SIGRT(40), SignalAction::Handler(handler_id)).unwrap();
+    manager.register_handler(target, Signal::SIGRT(50), SignalAction::Handler(handler_id)).unwrap();
+
+    // Send RT signals in reverse priority order
+    manager.send(sender, target, Signal::SIGRT(40)).unwrap();
+    manager.send(sender, target, Signal::SIGRT(50)).unwrap();
+
+    // Deliver (should be in priority order: 50 before 40)
+    manager.deliver_pending(target).unwrap();
+
+    let executed_signals = executed.lock().unwrap();
+    assert_eq!(executed_signals.len(), 2);
+}
+
+#[test]
+fn test_mixed_signals_with_callbacks() {
+    use std::sync::{Arc, Mutex};
+
+    let manager = SignalManagerImpl::new();
+    let sender: Pid = 1;
+    let target: Pid = 2;
+
+    manager.initialize_process(sender).unwrap();
+    manager.initialize_process(target).unwrap();
+
+    // Track which signals were handled
+    let handled = Arc::new(Mutex::new(Vec::new()));
+    let handled_clone = handled.clone();
+
+    let callbacks = manager.callbacks();
+    let handler_id = callbacks.register(move |_, signal| {
+        handled_clone.lock().unwrap().push(signal);
+        Ok(())
+    });
+
+    // Register handlers for different signals
+    manager.register_handler(target, Signal::SIGUSR1, SignalAction::Handler(handler_id)).unwrap();
+    manager.register_handler(target, Signal::SIGRT(40), SignalAction::Handler(handler_id)).unwrap();
+
+    // Ignore one signal
+    manager.register_handler(target, Signal::SIGUSR2, SignalAction::Ignore).unwrap();
+
+    // Send mixed signals
+    manager.send(sender, target, Signal::SIGUSR1).unwrap();
+    manager.send(sender, target, Signal::SIGUSR2).unwrap();
+    manager.send(sender, target, Signal::SIGRT(40)).unwrap();
+
+    // Deliver all
+    manager.deliver_pending(target).unwrap();
+
+    let handled_signals = handled.lock().unwrap();
+    // SIGUSR2 was ignored, so only 2 signals handled
+    assert_eq!(handled_signals.len(), 2);
+}

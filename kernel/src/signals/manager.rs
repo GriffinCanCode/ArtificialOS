@@ -3,14 +3,17 @@
  * Central manager for process signals with queuing and delivery
  */
 
+use super::callbacks::CallbackRegistry;
 use super::handler::{SignalHandler, SignalOutcome};
 use super::traits::*;
 use super::types::*;
 use crate::core::types::Pid;
+use dashmap::DashMap;
 use log::{debug, info, warn};
 use parking_lot::RwLock;
-use std::collections::{HashMap, HashSet, VecDeque};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::cmp::Ordering;
+use std::collections::{BinaryHeap, HashMap, HashSet};
+use std::sync::atomic::{AtomicU64, Ordering as AtomicOrdering};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -18,11 +21,40 @@ use std::time::{SystemTime, UNIX_EPOCH};
 const MAX_PENDING_SIGNALS: usize = 128;
 const MAX_HANDLERS_PER_PROCESS: usize = 32;
 
+/// Pending signal with priority (for heap ordering)
+#[derive(Debug, Clone)]
+struct PrioritySignal {
+    signal: PendingSignal,
+    priority: u32,
+}
+
+impl PartialEq for PrioritySignal {
+    fn eq(&self, other: &Self) -> bool {
+        self.priority == other.priority
+    }
+}
+
+impl Eq for PrioritySignal {}
+
+impl PartialOrd for PrioritySignal {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for PrioritySignal {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // Higher priority first, then older timestamp
+        self.priority.cmp(&other.priority)
+            .then_with(|| other.signal.timestamp.cmp(&self.signal.timestamp))
+    }
+}
+
 /// Process signal information
 #[derive(Debug, Clone)]
 struct ProcessSignals {
     pid: Pid,
-    pending: VecDeque<PendingSignal>,
+    pending: BinaryHeap<PrioritySignal>, // Priority queue for RT signals
     blocked: HashSet<Signal>,
     handlers: HashMap<Signal, SignalAction>,
 }
@@ -31,7 +63,7 @@ impl ProcessSignals {
     fn new(pid: Pid) -> Self {
         Self {
             pid,
-            pending: VecDeque::new(),
+            pending: BinaryHeap::new(),
             blocked: HashSet::new(),
             handlers: HashMap::new(),
         }
@@ -49,18 +81,21 @@ impl ProcessSignals {
 /// Signal manager implementation
 #[derive(Clone)]
 pub struct SignalManagerImpl {
-    processes: Arc<RwLock<HashMap<Pid, ProcessSignals>>>,
+    processes: Arc<DashMap<Pid, ProcessSignals>>,
     handler: Arc<SignalHandler>,
+    callbacks: Arc<CallbackRegistry>,
     next_handler_id: Arc<AtomicU64>,
     stats: Arc<RwLock<SignalStats>>,
 }
 
 impl SignalManagerImpl {
     pub fn new() -> Self {
+        let callbacks = Arc::new(CallbackRegistry::new());
         info!("Signal manager initialized");
         Self {
-            processes: Arc::new(RwLock::new(HashMap::new())),
-            handler: Arc::new(SignalHandler::new()),
+            processes: Arc::new(DashMap::new()),
+            handler: Arc::new(SignalHandler::new(callbacks.clone())),
+            callbacks,
             next_handler_id: Arc::new(AtomicU64::new(1)),
             stats: Arc::new(RwLock::new(SignalStats {
                 total_signals_sent: 0,
@@ -73,6 +108,11 @@ impl SignalManagerImpl {
         }
     }
 
+    /// Get callback registry for registering handlers
+    pub fn callbacks(&self) -> Arc<CallbackRegistry> {
+        self.callbacks.clone()
+    }
+
     /// Get current timestamp
     fn timestamp() -> u64 {
         SystemTime::now()
@@ -83,19 +123,17 @@ impl SignalManagerImpl {
 
     /// Allocate handler ID
     fn next_handler_id(&self) -> u64 {
-        self.next_handler_id.fetch_add(1, Ordering::SeqCst)
+        self.next_handler_id.fetch_add(1, AtomicOrdering::SeqCst)
     }
 
-    /// Queue signal for delivery
+    /// Queue signal for delivery with priority
     fn queue_signal(
         &self,
         sender_pid: Pid,
         target_pid: Pid,
         signal: Signal,
     ) -> SignalResult<()> {
-        let mut processes = self.processes.write();
-
-        let proc = processes
+        let mut proc = self.processes
             .get_mut(&target_pid)
             .ok_or(SignalError::ProcessNotFound(target_pid))?;
 
@@ -112,18 +150,22 @@ impl SignalManagerImpl {
             return Err(SignalError::SignalBlocked(signal));
         }
 
-        // Queue the signal
-        proc.pending.push_back(PendingSignal {
-            signal,
-            sender_pid,
-            timestamp: Self::timestamp(),
+        // Queue with priority (RT signals get higher priority)
+        proc.pending.push(PrioritySignal {
+            signal: PendingSignal {
+                signal,
+                sender_pid,
+                timestamp: Self::timestamp(),
+            },
+            priority: signal.priority(),
         });
 
         let mut stats = self.stats.write();
         stats.total_signals_queued += 1;
         stats.pending_signals += 1;
 
-        info!("Queued signal {:?} from PID {} to PID {}", signal, sender_pid, target_pid);
+        info!("Queued signal {:?} from PID {} to PID {} (priority: {})",
+              signal, sender_pid, target_pid, signal.priority());
         Ok(())
     }
 
@@ -177,9 +219,7 @@ impl SignalDelivery for SignalManagerImpl {
     fn broadcast(&self, sender_pid: Pid, signal: Signal) -> SignalResult<u32> {
         debug!("Broadcasting signal {:?} from PID {}", signal, sender_pid);
 
-        let processes = self.processes.read();
-        let target_pids: Vec<Pid> = processes.keys().copied().collect();
-        drop(processes);
+        let target_pids: Vec<Pid> = self.processes.iter().map(|entry| *entry.key()).collect();
 
         let mut delivered = 0;
         for target_pid in target_pids {
@@ -195,9 +235,7 @@ impl SignalDelivery for SignalManagerImpl {
     }
 
     fn deliver_pending(&self, pid: Pid) -> SignalResult<usize> {
-        let mut processes = self.processes.write();
-
-        let proc = processes
+        let mut proc = self.processes
             .get_mut(&pid)
             .ok_or(SignalError::ProcessNotFound(pid))?;
 
@@ -206,11 +244,14 @@ impl SignalDelivery for SignalManagerImpl {
             return Ok(0);
         }
 
-        // Collect pending signals to deliver
-        let signals_to_deliver: Vec<PendingSignal> = proc.pending.drain(..).collect();
+        // Collect pending signals by priority (heap drains in priority order)
+        let mut signals_to_deliver: Vec<PendingSignal> = Vec::new();
+        while let Some(ps) = proc.pending.pop() {
+            signals_to_deliver.push(ps.signal);
+        }
         let handlers = proc.handlers.clone();
 
-        drop(processes);
+        drop(proc);
 
         let mut delivered = 0;
         for pending in signals_to_deliver {
@@ -237,7 +278,7 @@ impl SignalDelivery for SignalManagerImpl {
         stats.pending_signals = stats.pending_signals.saturating_sub(delivered);
         drop(stats);
 
-        info!("Delivered {} pending signals to PID {}", delivered, pid);
+        info!("Delivered {} pending signals to PID {} (priority order)", delivered, pid);
         Ok(delivered)
     }
 }
@@ -252,8 +293,7 @@ impl SignalHandlerRegistry for SignalManagerImpl {
             ));
         }
 
-        let mut processes = self.processes.write();
-        let proc = processes
+        let mut proc = self.processes
             .get_mut(&pid)
             .ok_or(SignalError::ProcessNotFound(pid))?;
 
@@ -271,8 +311,7 @@ impl SignalHandlerRegistry for SignalManagerImpl {
     }
 
     fn unregister_handler(&self, pid: Pid, signal: Signal) -> SignalResult<()> {
-        let mut processes = self.processes.write();
-        let proc = processes
+        let mut proc = self.processes
             .get_mut(&pid)
             .ok_or(SignalError::ProcessNotFound(pid))?;
 
@@ -288,14 +327,12 @@ impl SignalHandlerRegistry for SignalManagerImpl {
 
     fn get_handler(&self, pid: Pid, signal: Signal) -> Option<SignalAction> {
         self.processes
-            .read()
             .get(&pid)
             .and_then(|proc| proc.handlers.get(&signal).cloned())
     }
 
     fn reset_handlers(&self, pid: Pid) -> SignalResult<()> {
-        let mut processes = self.processes.write();
-        let proc = processes
+        let mut proc = self.processes
             .get_mut(&pid)
             .ok_or(SignalError::ProcessNotFound(pid))?;
 
@@ -320,8 +357,7 @@ impl SignalMasking for SignalManagerImpl {
             ));
         }
 
-        let mut processes = self.processes.write();
-        let proc = processes
+        let mut proc = self.processes
             .get_mut(&pid)
             .ok_or(SignalError::ProcessNotFound(pid))?;
 
@@ -331,8 +367,7 @@ impl SignalMasking for SignalManagerImpl {
     }
 
     fn unblock_signal(&self, pid: Pid, signal: Signal) -> SignalResult<()> {
-        let mut processes = self.processes.write();
-        let proc = processes
+        let mut proc = self.processes
             .get_mut(&pid)
             .ok_or(SignalError::ProcessNotFound(pid))?;
 
@@ -343,7 +378,6 @@ impl SignalMasking for SignalManagerImpl {
 
     fn is_blocked(&self, pid: Pid, signal: Signal) -> bool {
         self.processes
-            .read()
             .get(&pid)
             .map(|proc| proc.blocked.contains(&signal))
             .unwrap_or(false)
@@ -351,15 +385,13 @@ impl SignalMasking for SignalManagerImpl {
 
     fn get_blocked(&self, pid: Pid) -> Vec<Signal> {
         self.processes
-            .read()
             .get(&pid)
             .map(|proc| proc.blocked.iter().copied().collect())
             .unwrap_or_default()
     }
 
     fn set_mask(&self, pid: Pid, signals: Vec<Signal>) -> SignalResult<()> {
-        let mut processes = self.processes.write();
-        let proc = processes
+        let mut proc = self.processes
             .get_mut(&pid)
             .ok_or(SignalError::ProcessNotFound(pid))?;
 
@@ -382,23 +414,25 @@ impl SignalMasking for SignalManagerImpl {
 impl SignalQueue for SignalManagerImpl {
     fn pending_signals(&self, pid: Pid) -> Vec<Signal> {
         self.processes
-            .read()
             .get(&pid)
-            .map(|proc| proc.pending.iter().map(|ps| ps.signal).collect())
+            .map(|proc| {
+                proc.pending
+                    .iter()
+                    .map(|ps| ps.signal.signal)
+                    .collect()
+            })
             .unwrap_or_default()
     }
 
     fn has_pending(&self, pid: Pid) -> bool {
         self.processes
-            .read()
             .get(&pid)
             .map(|proc| proc.has_pending())
             .unwrap_or(false)
     }
 
     fn clear_pending(&self, pid: Pid) -> SignalResult<usize> {
-        let mut processes = self.processes.write();
-        let proc = processes
+        let mut proc = self.processes
             .get_mut(&pid)
             .ok_or(SignalError::ProcessNotFound(pid))?;
 
@@ -415,7 +449,6 @@ impl SignalQueue for SignalManagerImpl {
 
     fn pending_count(&self, pid: Pid) -> usize {
         self.processes
-            .read()
             .get(&pid)
             .map(|proc| proc.pending.len())
             .unwrap_or(0)
@@ -425,10 +458,10 @@ impl SignalQueue for SignalManagerImpl {
 // Implement SignalStateManager trait
 impl SignalStateManager for SignalManagerImpl {
     fn get_state(&self, pid: Pid) -> Option<ProcessSignalState> {
-        self.processes.read().get(&pid).map(|proc| {
+        self.processes.get(&pid).map(|proc| {
             ProcessSignalState {
                 pid: proc.pid,
-                pending_signals: proc.pending.iter().cloned().collect(),
+                pending_signals: proc.pending.iter().map(|ps| ps.signal.clone()).collect(),
                 blocked_signals: proc.blocked.iter().copied().collect(),
                 handlers: proc.handlers.iter().map(|(s, a)| (*s, a.clone())).collect(),
             }
@@ -436,23 +469,19 @@ impl SignalStateManager for SignalManagerImpl {
     }
 
     fn initialize_process(&self, pid: Pid) -> SignalResult<()> {
-        let mut processes = self.processes.write();
-
-        if processes.contains_key(&pid) {
+        if self.processes.contains_key(&pid) {
             return Err(SignalError::OperationFailed(
                 format!("Process {} already initialized", pid)
             ));
         }
 
-        processes.insert(pid, ProcessSignals::new(pid));
+        self.processes.insert(pid, ProcessSignals::new(pid));
         info!("Initialized signal state for PID {}", pid);
         Ok(())
     }
 
     fn cleanup_process(&self, pid: Pid) -> SignalResult<()> {
-        let mut processes = self.processes.write();
-
-        if let Some(proc) = processes.remove(&pid) {
+        if let Some((_, proc)) = self.processes.remove(&pid) {
             let pending_count = proc.pending.len();
             let handler_count = proc.handlers.len();
 
