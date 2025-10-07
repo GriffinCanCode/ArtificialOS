@@ -8,15 +8,28 @@
    ============================================================================ */
 
 .chart-container {
-  @apply relative;
-  @apply w-full;
-  @apply overflow-hidden;
-  @apply rounded-lg;
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  /* Chart background glow effect */
+  background: linear-gradient(to bottom right, rgba(17, 24, 39, 0.5), rgba(3, 7, 18, 0.5));
+}
+
+.chart-container::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom right, rgba(168, 85, 247, 0.05), rgba(59, 130, 246, 0.05));
+  pointer-events: none;
+  border-radius: 0.5rem;
 }
 
 /* Ensure charts respect their container */
 .chart-container > div {
-  @apply w-full h-full;
+  width: 100%;
+  height: 100%;
+  animation: chartFadeIn 0.3s ease-out;
 }
 
 /* ============================================================================
@@ -24,72 +37,72 @@
    ============================================================================ */
 
 .graph-container {
-  @apply relative;
-  @apply w-full;
-  @apply overflow-hidden;
-  @apply rounded-lg;
-  @apply border border-gray-800;
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(31, 41, 55);
 }
 
 /* ReactFlow specific styles */
 .graph-container .react-flow__node {
-  @apply rounded-lg;
-  @apply border-2;
-  @apply px-4 py-2;
-  @apply shadow-lg;
-  @apply transition-all duration-200;
+  border-radius: 0.5rem;
+  border-width: 2px;
+  padding: 0.5rem 1rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s;
 }
 
 .graph-container .react-flow__node:hover {
-  @apply shadow-xl;
-  @apply scale-105;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  transform: scale(1.05);
 }
 
 .graph-container .react-flow__node.selected {
-  @apply border-purple-500;
-  @apply shadow-purple-500/50;
+  border-color: rgb(168, 85, 247);
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.5);
 }
 
 .graph-container .react-flow__edge {
-  @apply transition-all duration-200;
+  transition: all 0.2s;
 }
 
 .graph-container .react-flow__edge.selected {
-  @apply opacity-100;
+  opacity: 1;
 }
 
 .graph-container .react-flow__edge-path {
-  @apply transition-all duration-200;
+  transition: all 0.2s;
 }
 
 /* Controls styling */
 .graph-container .react-flow__controls {
-  @apply border border-gray-800;
-  @apply rounded-lg;
-  @apply shadow-lg;
-  @apply bg-gray-900/90;
-  @apply backdrop-blur-sm;
+  border: 1px solid rgb(31, 41, 55);
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  background: rgba(17, 24, 39, 0.9);
+  backdrop-filter: blur(8px);
 }
 
 .graph-container .react-flow__controls-button {
-  @apply bg-gray-800;
-  @apply border-gray-700;
-  @apply text-gray-300;
-  @apply transition-all duration-200;
+  background: rgb(31, 41, 55);
+  border-color: rgb(55, 65, 81);
+  color: rgb(209, 213, 219);
+  transition: all 0.2s;
 }
 
 .graph-container .react-flow__controls-button:hover {
-  @apply bg-gray-700;
-  @apply text-white;
+  background: rgb(55, 65, 81);
+  color: white;
 }
 
 /* Minimap styling */
 .graph-container .react-flow__minimap {
-  @apply border border-gray-800;
-  @apply rounded-lg;
-  @apply shadow-lg;
-  @apply bg-gray-900/90;
-  @apply backdrop-blur-sm;
+  border: 1px solid rgb(31, 41, 55);
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  background: rgba(17, 24, 39, 0.9);
+  backdrop-filter: blur(8px);
 }
 
 /* ============================================================================
@@ -98,39 +111,39 @@
 
 /* Tooltip */
 .recharts-tooltip-wrapper {
-  @apply z-50;
+  z-index: 50;
 }
 
 .recharts-default-tooltip {
-  @apply rounded-lg !important;
-  @apply shadow-xl !important;
-  @apply border-2 !important;
-  @apply backdrop-blur-sm !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+  border-width: 2px !important;
+  backdrop-filter: blur(8px) !important;
 }
 
 /* Legend */
 .recharts-legend-wrapper {
-  @apply select-none;
+  user-select: none;
 }
 
 .recharts-legend-item {
-  @apply cursor-pointer;
-  @apply transition-opacity duration-200;
+  cursor: pointer;
+  transition: opacity 0.2s;
 }
 
 .recharts-legend-item:hover {
-  @apply opacity-70;
+  opacity: 0.7;
 }
 
 /* Grid lines */
 .recharts-cartesian-grid-horizontal line,
 .recharts-cartesian-grid-vertical line {
-  @apply opacity-20;
+  opacity: 0.2;
 }
 
 /* Axis */
 .recharts-cartesian-axis-tick {
-  @apply select-none;
+  user-select: none;
 }
 
 /* ============================================================================
@@ -138,17 +151,21 @@
    ============================================================================ */
 
 .chart-loading {
-  @apply flex items-center justify-center;
-  @apply w-full h-full;
-  @apply bg-gray-900/50;
-  @apply backdrop-blur-sm;
-  @apply rounded-lg;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: rgba(17, 24, 39, 0.5);
+  backdrop-filter: blur(8px);
+  border-radius: 0.5rem;
 }
 
 .chart-loading::after {
   content: "Loading chart...";
-  @apply text-gray-400;
-  @apply text-sm;
+  color: rgb(156, 163, 175);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
 }
 
 /* ============================================================================
@@ -156,16 +173,20 @@
    ============================================================================ */
 
 .chart-empty {
-  @apply flex items-center justify-center;
-  @apply w-full h-full;
-  @apply border-2 border-dashed border-gray-800;
-  @apply rounded-lg;
-  @apply text-gray-500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border: 2px dashed rgb(31, 41, 55);
+  border-radius: 0.5rem;
+  color: rgb(107, 114, 128);
 }
 
 .chart-empty::after {
   content: "No data available";
-  @apply text-sm;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
 }
 
 /* ============================================================================
@@ -183,39 +204,20 @@
   }
 }
 
-.chart-container > div {
-  animation: chartFadeIn 0.3s ease-out;
-}
-
 /* ============================================================================
    Responsive
    ============================================================================ */
 
 @media (max-width: 640px) {
   .chart-container {
-    @apply text-xs;
+    font-size: 0.75rem;
+    line-height: 1rem;
   }
 
   .recharts-cartesian-axis-tick {
-    @apply text-xs;
+    font-size: 0.75rem;
+    line-height: 1rem;
   }
-}
-
-/* ============================================================================
-   Dark Theme Enhancements
-   ============================================================================ */
-
-.chart-container {
-  /* Chart background glow effect */
-  @apply bg-gradient-to-br from-gray-900/50 to-gray-950/50;
-}
-
-.chart-container::before {
-  content: "";
-  @apply absolute inset-0;
-  @apply bg-gradient-to-br from-purple-500/5 to-blue-500/5;
-  @apply pointer-events-none;
-  @apply rounded-lg;
 }
 
 /* ============================================================================
@@ -224,12 +226,12 @@
 
 @media print {
   .chart-container {
-    @apply bg-white;
-    @apply text-black;
+    background: white;
+    color: black;
   }
 
   .graph-container .react-flow__controls,
   .graph-container .react-flow__minimap {
-    @apply hidden;
+    display: none;
   }
 }

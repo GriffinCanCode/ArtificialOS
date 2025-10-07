@@ -1,5 +1,6 @@
 /**
  * Taskbar Component Styles
+ * Optimized for GPU performance with many windows
  */
 
 .taskbar {
@@ -19,12 +20,15 @@
   background: rgba(10, 10, 20, 0.8);
   border: 1px solid rgba(139, 92, 246, 0.3);
   border-radius: 16px;
-  backdrop-filter: blur(20px);
+  /* Reduced backdrop-filter blur for performance */
+  backdrop-filter: blur(12px);
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.4),
     0 0 0 1px rgba(255, 255, 255, 0.05);
   pointer-events: auto;
   min-height: 48px;
+  /* Hint browser for transform optimizations */
+  will-change: transform;
 }
 
 .taskbar-item-wrapper {
@@ -43,8 +47,15 @@
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  /* Only transition GPU-accelerated properties */
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    opacity 0.2s ease,
+    transform 0.2s ease;
   max-width: 200px;
+  /* Use hardware acceleration */
+  transform: translateZ(0);
 }
 
 .taskbar-item:hover {
@@ -61,23 +72,57 @@
 
 .taskbar-item.minimized {
   opacity: 0.6;
+  /* Disable animations on minimized items to save GPU */
+  pointer-events: all;
+}
+
+/* Disable animation on minimized items to reduce GPU load */
+.taskbar-item.minimized .taskbar-item-indicator {
+  animation: none;
+  opacity: 0.8;
+}
+
+/* Only animate non-minimized indicators if present */
+.taskbar-item:not(.minimized) .taskbar-item-indicator {
+  animation: pulse 2s ease-in-out infinite;
 }
 
 .taskbar-item-icon {
   font-size: 16px;
   line-height: 1;
+  /* Prevent icon from triggering layout */
+  flex-shrink: 0;
 }
 
 .taskbar-item-title {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* Prevent text from triggering layout */
+  flex: 1;
+  min-width: 0;
 }
 
 .taskbar-item-indicator {
   font-size: 8px;
   color: rgba(139, 92, 246, 0.8);
-  animation: pulse 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+/* Overflow indicator for when too many windows are open */
+.taskbar-overflow {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 4px 8px;
+  background: rgba(139, 92, 246, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 11px;
+  font-weight: 600;
+  pointer-events: none;
 }
 
 @keyframes pulse {
@@ -87,5 +132,16 @@
   }
   50% {
     opacity: 1;
+  }
+}
+
+/* Reduce animations when many items are present */
+@media (prefers-reduced-motion: reduce) {
+  .taskbar-item {
+    transition: none;
+  }
+
+  .taskbar-item-indicator {
+    animation: none !important;
   }
 }

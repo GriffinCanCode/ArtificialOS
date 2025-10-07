@@ -1,9 +1,10 @@
 /**
  * Sortable Component
  * Generic sortable list wrapper using @dnd-kit
+ * Optimized for performance with many items
  */
 
-import React from "react";
+import React, { useMemo } from "react";
 import {
   DndContext,
   closestCenter,
@@ -69,7 +70,7 @@ export function Sortable<T extends SortableItem>({
     })
   );
 
-  const getStrategy = () => {
+  const sortingStrategy = useMemo(() => {
     switch (strategy) {
       case "horizontal":
         return horizontalListSortingStrategy;
@@ -80,9 +81,18 @@ export function Sortable<T extends SortableItem>({
       default:
         return horizontalListSortingStrategy;
     }
-  };
+  }, [strategy]);
 
-  const activeItem = items.find((item) => item.id === activeId);
+  const activeItem = useMemo(
+    () => items.find((item) => item.id === activeId),
+    [items, activeId]
+  );
+
+  // Memoize rendered items to prevent unnecessary re-renders
+  const renderedItems = useMemo(
+    () => items.map((item, i) => renderItem(item, i)),
+    [items, renderItem]
+  );
 
   return (
     <DndContext
@@ -92,11 +102,11 @@ export function Sortable<T extends SortableItem>({
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <SortableContext items={items} strategy={getStrategy()} disabled={disabled}>
-        <div className={className}>{children || items.map((item, i) => renderItem(item, i))}</div>
+      <SortableContext items={items} strategy={sortingStrategy} disabled={disabled}>
+        <div className={className}>{children || renderedItems}</div>
       </SortableContext>
 
-      <DragOverlay>
+      <DragOverlay dropAnimation={null}>
         {activeId && activeItem ? (
           renderOverlay ? (
             renderOverlay(activeItem)

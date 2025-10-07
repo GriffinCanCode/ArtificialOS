@@ -4,7 +4,7 @@
  */
 
 import React from "react";
-import { SortableItem } from "../../../features/dnd";
+import { SortableItem } from "../../../features/dnd/components/SortableItem";
 import type { DockItem as DockItemType } from "../../../features/dnd";
 import "./DockItem.css";
 

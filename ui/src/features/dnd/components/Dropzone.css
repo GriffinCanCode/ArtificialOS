@@ -7,97 +7,169 @@
 }
 
 .dropzone {
-  @apply border-2 border-dashed rounded-lg p-8;
-  @apply transition-all duration-200;
-  @apply cursor-pointer;
-  @apply bg-neutral-900/50;
-  @apply border-neutral-700;
-  @apply hover:border-neutral-500;
-  @apply hover:bg-neutral-800/50;
+  border: 2px dashed rgb(64, 64, 64);
+  border-radius: 0.5rem;
+  padding: 2rem;
+  transition: all 0.2s;
+  cursor: pointer;
+  background: rgba(23, 23, 23, 0.5);
+}
+
+.dropzone:hover {
+  border-color: rgb(115, 115, 115);
+  background: rgba(38, 38, 38, 0.5);
 }
 
 .dropzone.dragging {
-  @apply border-primary bg-primary/10;
-  @apply scale-[1.02];
+  border-color: rgb(139, 92, 246);
+  background: rgba(139, 92, 246, 0.1);
+  transform: scale(1.02);
 }
 
 .dropzone-content {
-  @apply flex flex-col items-center justify-center;
-  @apply text-center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .dropzone-icon {
-  @apply text-4xl mb-4;
+  font-size: 2.25rem;
+  line-height: 2.5rem;
+  margin-bottom: 1rem;
 }
 
 .dropzone-text {
-  @apply text-sm text-neutral-300 mb-2;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: rgb(212, 212, 212);
+  margin-bottom: 0.5rem;
 }
 
 .dropzone-hint {
-  @apply text-xs text-neutral-500;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: rgb(115, 115, 115);
 }
 
 .dropzone-error {
-  @apply mt-2 p-3 rounded;
-  @apply bg-red-500/10 border border-red-500/30;
-  @apply text-red-400 text-sm;
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 0.25rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: rgb(248, 113, 113);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
 }
 
 /* Preview */
 .dropzone-preview {
-  @apply mt-4 rounded-lg;
-  @apply bg-neutral-900/50 border border-neutral-700;
-  @apply overflow-hidden;
+  margin-top: 1rem;
+  border-radius: 0.5rem;
+  background: rgba(23, 23, 23, 0.5);
+  border: 1px solid rgb(64, 64, 64);
+  overflow: hidden;
 }
 
 .preview-header {
-  @apply flex items-center justify-between;
-  @apply p-3 border-b border-neutral-700;
-  @apply text-sm font-medium text-neutral-300;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  border-bottom: 1px solid rgb(64, 64, 64);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+  color: rgb(212, 212, 212);
 }
 
 .preview-clear {
-  @apply px-3 py-1 rounded;
-  @apply bg-neutral-800 hover:bg-neutral-700;
-  @apply text-xs text-neutral-400 hover:text-neutral-200;
-  @apply transition-colors;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.25rem;
+  background: rgb(38, 38, 38);
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: rgb(163, 163, 163);
+  transition: all 0.2s;
+  border: none;
+  cursor: pointer;
+}
+
+.preview-clear:hover {
+  background: rgb(64, 64, 64);
+  color: rgb(229, 229, 229);
 }
 
 .preview-list {
-  @apply p-2 space-y-2;
-  @apply max-h-64 overflow-y-auto;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 16rem;
+  overflow-y: auto;
 }
 
 .preview-item {
-  @apply flex items-center gap-3;
-  @apply p-2 rounded;
-  @apply bg-neutral-800/50 hover:bg-neutral-800;
-  @apply transition-colors;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  background: rgba(38, 38, 38, 0.5);
+  transition: all 0.2s;
+}
+
+.preview-item:hover {
+  background: rgb(38, 38, 38);
 }
 
 .preview-image {
-  @apply w-12 h-12 object-cover rounded;
-  @apply bg-neutral-700;
+  width: 3rem;
+  height: 3rem;
+  object-fit: cover;
+  border-radius: 0.25rem;
+  background: rgb(64, 64, 64);
 }
 
 .preview-info {
-  @apply flex-1 min-w-0;
+  flex: 1;
+  min-width: 0;
 }
 
 .preview-name {
-  @apply text-sm text-neutral-200 truncate;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: rgb(229, 229, 229);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .preview-size {
-  @apply text-xs text-neutral-500;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: rgb(115, 115, 115);
 }
 
 .preview-remove {
-  @apply w-6 h-6 rounded;
-  @apply bg-neutral-700 hover:bg-red-500;
-  @apply text-neutral-400 hover:text-white;
-  @apply transition-colors;
-  @apply flex items-center justify-center;
-  @apply text-lg leading-none;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.25rem;
+  background: rgb(64, 64, 64);
+  color: rgb(163, 163, 163);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.125rem;
+  line-height: 1;
+  border: none;
+  cursor: pointer;
+}
+
+.preview-remove:hover {
+  background: rgb(239, 68, 68);
+  color: white;
 }
