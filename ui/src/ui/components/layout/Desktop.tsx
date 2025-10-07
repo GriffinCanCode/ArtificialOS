@@ -1,11 +1,14 @@
 /**
  * Desktop Component
- * Main OS desktop with menu bar and dock
+ * Main OS desktop with menu bar and sortable dock
  */
 
 import React, { useEffect, useState } from "react";
 import { shouldIgnoreKeyboardEvent } from "../../../features/input";
 import { formatDate, formatTime } from "../../../core/utils/dates";
+import { Sortable, useDockItems, useDockActions } from "../../../features/dnd";
+import type { SortResult } from "../../../features/dnd";
+import { DockItem } from "./DockItem";
 import "./Desktop.css";
 
 interface DesktopProps {
@@ -16,6 +19,8 @@ interface DesktopProps {
 
 export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpenCreator }) => {
   const [time, setTime] = useState(new Date());
+  const dockItems = useDockItems();
+  const { reorder } = useDockActions();
 
   // Update clock
   useEffect(() => {
@@ -47,6 +52,20 @@ export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpen
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onOpenCreator, onOpenHub]);
 
+  // Handle dock reorder
+  const handleDockSort = (result: SortResult) => {
+    reorder(result.oldIndex, result.newIndex);
+  };
+
+  // Handle dock item click
+  const handleDockItemClick = (action: string) => {
+    if (action === "hub") {
+      onOpenHub();
+    } else {
+      onLaunchApp(action);
+    }
+  };
+
   return (
     <div className="desktop">
       {/* Desktop Background */}
@@ -73,40 +92,21 @@ export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpen
         </div>
       </div>
 
-      {/* Dock */}
+      {/* Dock - Sortable */}
       <div className="desktop-dock">
-        <div className="dock-container">
-          <button className="dock-item" onClick={onOpenHub} title="Hub">
-            <span className="dock-icon">🚀</span>
-          </button>
-          <button className="dock-item" onClick={() => onLaunchApp("file-explorer")} title="Files">
-            <span className="dock-icon">📁</span>
-          </button>
-          <button className="dock-item" onClick={() => onLaunchApp("browser")} title="Browser">
-            <span className="dock-icon">🌐</span>
-          </button>
-          <button
-            className="dock-item"
-            onClick={() => onLaunchApp("calculator")}
-            title="Calculator"
-          >
-            <span className="dock-icon">🧮</span>
-          </button>
-          <button className="dock-item" onClick={() => onLaunchApp("notes")} title="Notes">
-            <span className="dock-icon">📝</span>
-          </button>
-          <button
-            className="dock-item"
-            onClick={() => onLaunchApp("system-analysis")}
-            title="System Analysis"
-          >
-            <span className="dock-icon">📊</span>
-          </button>
-          <div className="dock-separator" />
-          <button className="dock-item" onClick={onOpenCreator} title="Create (⌘K)">
-            <span className="dock-icon">✨</span>
-          </button>
-        </div>
+        <Sortable
+          items={dockItems}
+          onSort={handleDockSort}
+          strategy="horizontal"
+          renderItem={(item) => (
+            <DockItem key={item.id} item={item} onClick={handleDockItemClick} />
+          )}
+          className="dock-container"
+        />
+        <div className="dock-separator" />
+        <button className="dock-item dock-creator" onClick={onOpenCreator} title="Create (⌘K)">
+          <span className="dock-icon">✨</span>
+        </button>
       </div>
 
       {/* Hint Overlay */}

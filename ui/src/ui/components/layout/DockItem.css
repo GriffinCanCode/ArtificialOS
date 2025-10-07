@@ -1,0 +1,49 @@
+/**
+ * Dock Item Styles
+ */
+
+.dock-item-wrapper {
+  position: relative;
+}
+
+.dock-item {
+  @apply relative flex items-center justify-center;
+  @apply w-14 h-14;
+  @apply rounded-xl;
+  @apply bg-neutral-800/50 backdrop-blur-sm;
+  @apply border border-neutral-700/50;
+  @apply transition-all duration-200;
+  @apply cursor-grab;
+}
+
+.dock-item:hover {
+  @apply bg-neutral-700/70;
+  @apply border-neutral-600;
+  @apply transform scale-110 -translate-y-1;
+  @apply shadow-lg;
+}
+
+.dock-item:active {
+  @apply cursor-grabbing;
+  @apply transform scale-105;
+}
+
+.dock-item.pinned {
+  @apply border-primary/30;
+}
+
+.dock-icon {
+  @apply text-2xl;
+  @apply pointer-events-none;
+}
+
+.dock-pin {
+  @apply absolute -top-1 -right-1;
+  @apply text-xs;
+  @apply opacity-0;
+  @apply transition-opacity;
+}
+
+.dock-item.pinned:hover .dock-pin {
+  @apply opacity-100;
+}

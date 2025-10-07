@@ -1,10 +1,12 @@
 /**
  * Taskbar Component
- * Shows open and minimized windows, allows restoring
+ * Shows open and minimized windows with sortable reordering
  */
 
 import React from "react";
 import { useStore, useActions } from "../../../features/windows";
+import { Sortable } from "../../../features/dnd";
+import type { SortResult } from "../../../features/dnd";
 import "./Taskbar.css";
 
 export const Taskbar: React.FC = () => {
@@ -19,14 +21,25 @@ export const Taskbar: React.FC = () => {
     }
   };
 
+  const handleSort = (result: SortResult) => {
+    // Optional: Add store action to persist window order if needed
+    console.log("Windows reordered:", result);
+  };
+
   if (windows.length === 0) {
     return null;
   }
 
+  // Convert windows to sortable items
+  const sortableWindows = windows.map((w) => ({ ...w, id: w.id }));
+
   return (
     <div className="taskbar">
-      <div className="taskbar-container">
-        {windows.map((window) => (
+      <Sortable
+        items={sortableWindows}
+        onSort={handleSort}
+        strategy="horizontal"
+        renderItem={(window) => (
           <button
             key={window.id}
             className={`taskbar-item ${window.isFocused ? "active" : ""} ${
@@ -39,8 +52,9 @@ export const Taskbar: React.FC = () => {
             <span className="taskbar-item-title">{window.title}</span>
             {window.isMinimized && <span className="taskbar-item-indicator">●</span>}
           </button>
-        ))}
-      </div>
+        )}
+        className="taskbar-container"
+      />
     </div>
   );
 };
