@@ -53,11 +53,16 @@ func TestDirectoryOpsList(t *testing.T) {
 	dir := &filesystem.DirectoryOps{FilesystemOps: ops}
 
 	ctx := context.Background()
-	files := []string{"file1.txt", "file2.txt", "dir1"}
-	filesJSON, _ := json.Marshal(files)
+	// Kernel returns entries with metadata
+	entries := []map[string]interface{}{
+		{"name": "file1.txt", "is_dir": false, "type": "file"},
+		{"name": "file2.txt", "is_dir": false, "type": "file"},
+		{"name": "dir1", "is_dir": true, "type": "directory"},
+	}
+	entriesJSON, _ := json.Marshal(entries)
 
 	mockKernel.On("ExecuteSyscall", mock.Anything, uint32(1), "list_directory", mock.Anything).
-		Return(filesJSON, nil)
+		Return(entriesJSON, nil)
 
 	result, err := dir.List(ctx, map[string]interface{}{
 		"path": "/test",
@@ -69,7 +74,11 @@ func TestDirectoryOpsList(t *testing.T) {
 	assert.Equal(t, 3, result.Data["count"])
 
 	returnedFiles := result.Data["files"].([]string)
-	assert.Equal(t, files, returnedFiles)
+	expectedFiles := []string{"file1.txt", "file2.txt", "dir1"}
+	assert.Equal(t, expectedFiles, returnedFiles)
+
+	returnedEntries := result.Data["entries"].([]map[string]interface{})
+	assert.Equal(t, 3, len(returnedEntries))
 }
 
 // TestDirectoryOpsCreate tests the Create operation

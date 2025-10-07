@@ -118,13 +118,19 @@ func TestFilesystemListExecute(t *testing.T) {
 	fs := filesystem.NewProvider(mockKernel, 1, "/storage")
 
 	ctx := context.Background()
-	files := []string{"file1.txt", "file2.txt", "dir1"}
-	filesJSON, _ := json.Marshal(files)
+	// Kernel returns entries with metadata
+	entries := []map[string]interface{}{
+		{"name": "file1.txt", "is_dir": false, "type": "file"},
+		{"name": "file2.txt", "is_dir": false, "type": "file"},
+		{"name": "dir1", "is_dir": true, "type": "directory"},
+	}
+	entriesJSON, _ := json.Marshal(entries)
 
 	// Mock the kernel syscall
 	mockKernel.On("ExecuteSyscall", mock.Anything, uint32(1), "list_directory", mock.MatchedBy(func(params map[string]interface{}) bool {
-		return params["path"] == "/test"
-	})).Return(filesJSON, nil)
+		path, ok := params["path"].(string)
+		return ok && path == "/test"
+	})).Return(entriesJSON, nil)
 
 	result, err := fs.Execute(ctx, "filesystem.dir.list", map[string]interface{}{
 		"path": "/test",

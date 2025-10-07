@@ -5,9 +5,10 @@
 
 use ai_os_kernel::ipc::{PipeManager, ShmManager};
 use ai_os_kernel::memory::MemoryManager;
-use ai_os_kernel::ProcessManager;
+use ai_os_kernel::security::traits::SandboxProvider;
 use ai_os_kernel::security::{SandboxConfig, SandboxManager};
 use ai_os_kernel::syscalls::{Syscall, SyscallExecutor, SyscallResult};
+use ai_os_kernel::ProcessManager;
 use std::path::PathBuf;
 use tempfile::TempDir;
 

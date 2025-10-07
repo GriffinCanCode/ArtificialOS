@@ -5,6 +5,7 @@
 
 use ai_os_kernel::api::grpc_server::{GrpcServer, KernelServiceImpl};
 use ai_os_kernel::process::ProcessManagerImpl;
+use ai_os_kernel::security::traits::SandboxProvider;
 use ai_os_kernel::security::SandboxManager;
 use ai_os_kernel::syscalls::SyscallExecutor;
 use std::net::SocketAddr;
@@ -41,7 +42,9 @@ async fn test_async_syscall_submission() {
 
     let syscall_req = SyscallRequest {
         pid,
-        syscall: Some(syscall_request::Syscall::GetCurrentTime(GetCurrentTimeCall {})),
+        syscall: Some(syscall_request::Syscall::GetCurrentTime(
+            GetCurrentTimeCall {},
+        )),
     };
 
     let response = service
@@ -168,7 +171,9 @@ async fn test_batch_parallel_execution() {
     let requests: Vec<_> = (0..10)
         .map(|_| SyscallRequest {
             pid,
-            syscall: Some(syscall_request::Syscall::GetCurrentTime(GetCurrentTimeCall {})),
+            syscall: Some(syscall_request::Syscall::GetCurrentTime(
+                GetCurrentTimeCall {},
+            )),
         })
         .collect();
 
@@ -260,7 +265,9 @@ async fn test_batch_error_handling() {
         requests: vec![
             SyscallRequest {
                 pid,
-                syscall: Some(syscall_request::Syscall::GetCurrentTime(GetCurrentTimeCall {})),
+                syscall: Some(syscall_request::Syscall::GetCurrentTime(
+                    GetCurrentTimeCall {},
+                )),
             },
             SyscallRequest {
                 pid,

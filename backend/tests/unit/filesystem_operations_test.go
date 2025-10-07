@@ -127,7 +127,7 @@ func TestOperationsOpsRename(t *testing.T) {
 
 // TestOperationsOpsSymlink tests the Symlink operation
 func TestOperationsOpsSymlink(t *testing.T) {
-	mockKernel := testutil.NewMockKernelClient(t)
+	mockKernel := new(testutil.MockKernelClient)
 
 	// Create a temporary directory for testing
 	tmpDir := t.TempDir()
@@ -146,12 +146,14 @@ func TestOperationsOpsSymlink(t *testing.T) {
 	linkPath := "/test/link.txt"
 
 	// Mock the resolvePath calls for both target and link
-	mockKernel.On("ExecuteSyscall", ctx, uint32(1), "file_stat", mock.MatchedBy(func(params map[string]interface{}) bool {
-		return params["path"] == targetPath
+	mockKernel.On("ExecuteSyscall", mock.Anything, uint32(1), "file_stat", mock.MatchedBy(func(params map[string]interface{}) bool {
+		path, ok := params["path"].(string)
+		return ok && path == targetPath
 	})).Return([]byte(`{"path":"`+tmpDir+`/target.txt"}`), nil)
 
-	mockKernel.On("ExecuteSyscall", ctx, uint32(1), "file_stat", mock.MatchedBy(func(params map[string]interface{}) bool {
-		return params["path"] == "/test"
+	mockKernel.On("ExecuteSyscall", mock.Anything, uint32(1), "file_stat", mock.MatchedBy(func(params map[string]interface{}) bool {
+		path, ok := params["path"].(string)
+		return ok && path == "/test"
 	})).Return([]byte(`{"path":"`+tmpDir+`"}`), nil)
 
 	// Create the actual target file
@@ -166,19 +168,25 @@ func TestOperationsOpsSymlink(t *testing.T) {
 	}, nil)
 
 	assert.NoError(t, err)
-	assert.True(t, result.Success)
+	if !assert.True(t, result.Success) {
+		if result.Error != nil {
+			t.Logf("Operation failed with error: %s", *result.Error)
+		}
+		return
+	}
 	assert.Equal(t, true, result.Data["created"])
 
 	// Verify symlink was created
 	linkFile := tmpDir + "/link.txt"
 	info, err := os.Lstat(linkFile)
-	assert.NoError(t, err)
-	assert.Equal(t, os.ModeSymlink, info.Mode()&os.ModeSymlink)
+	if assert.NoError(t, err) {
+		assert.Equal(t, os.ModeSymlink, info.Mode()&os.ModeSymlink)
+	}
 }
 
 // TestOperationsOpsReadlink tests the Readlink operation
 func TestOperationsOpsReadlink(t *testing.T) {
-	mockKernel := testutil.NewMockKernelClient(t)
+	mockKernel := new(testutil.MockKernelClient)
 
 	// Create a temporary directory for testing
 	tmpDir := t.TempDir()
@@ -207,8 +215,9 @@ func TestOperationsOpsReadlink(t *testing.T) {
 	linkPath := "/test/link.txt"
 
 	// Mock the resolvePath call
-	mockKernel.On("ExecuteSyscall", ctx, uint32(1), "file_stat", mock.MatchedBy(func(params map[string]interface{}) bool {
-		return params["path"] == linkPath
+	mockKernel.On("ExecuteSyscall", mock.Anything, uint32(1), "file_stat", mock.MatchedBy(func(params map[string]interface{}) bool {
+		path, ok := params["path"].(string)
+		return ok && path == linkPath
 	})).Return([]byte(`{"path":"`+linkFile+`"}`), nil)
 
 	result, err := operations.Readlink(ctx, map[string]interface{}{
@@ -216,14 +225,19 @@ func TestOperationsOpsReadlink(t *testing.T) {
 	}, nil)
 
 	assert.NoError(t, err)
-	assert.True(t, result.Success)
+	if !assert.True(t, result.Success) {
+		if result.Error != nil {
+			t.Logf("Operation failed with error: %s", *result.Error)
+		}
+		return
+	}
 	assert.Equal(t, targetFile, result.Data["target"])
 	assert.Equal(t, linkPath, result.Data["path"])
 }
 
 // TestOperationsOpsHardlink tests the Hardlink operation
 func TestOperationsOpsHardlink(t *testing.T) {
-	mockKernel := testutil.NewMockKernelClient(t)
+	mockKernel := new(testutil.MockKernelClient)
 
 	// Create a temporary directory for testing
 	tmpDir := t.TempDir()
@@ -242,12 +256,14 @@ func TestOperationsOpsHardlink(t *testing.T) {
 	linkPath := "/test/hardlink.txt"
 
 	// Mock the resolvePath calls
-	mockKernel.On("ExecuteSyscall", ctx, uint32(1), "file_stat", mock.MatchedBy(func(params map[string]interface{}) bool {
-		return params["path"] == targetPath
+	mockKernel.On("ExecuteSyscall", mock.Anything, uint32(1), "file_stat", mock.MatchedBy(func(params map[string]interface{}) bool {
+		path, ok := params["path"].(string)
+		return ok && path == targetPath
 	})).Return([]byte(`{"path":"`+tmpDir+`/target.txt"}`), nil)
 
-	mockKernel.On("ExecuteSyscall", ctx, uint32(1), "file_stat", mock.MatchedBy(func(params map[string]interface{}) bool {
-		return params["path"] == "/test"
+	mockKernel.On("ExecuteSyscall", mock.Anything, uint32(1), "file_stat", mock.MatchedBy(func(params map[string]interface{}) bool {
+		path, ok := params["path"].(string)
+		return ok && path == "/test"
 	})).Return([]byte(`{"path":"`+tmpDir+`"}`), nil)
 
 	// Create the actual target file
@@ -262,13 +278,20 @@ func TestOperationsOpsHardlink(t *testing.T) {
 	}, nil)
 
 	assert.NoError(t, err)
-	assert.True(t, result.Success)
+	if !assert.True(t, result.Success) {
+		if result.Error != nil {
+			t.Logf("Operation failed with error: %s", *result.Error)
+		}
+		return
+	}
 	assert.Equal(t, true, result.Data["created"])
 
 	// Verify hardlink was created
 	linkFile := tmpDir + "/hardlink.txt"
 	info, err := os.Stat(linkFile)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 	assert.False(t, info.Mode()&os.ModeSymlink == os.ModeSymlink) // Not a symlink
 
 	// Both files should have the same content

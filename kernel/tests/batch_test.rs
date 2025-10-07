@@ -4,6 +4,7 @@
  */
 
 use ai_os_kernel::api::batch::BatchExecutor;
+use ai_os_kernel::security::traits::SandboxProvider;
 use ai_os_kernel::security::{Capability, SandboxConfig, SandboxManager};
 use ai_os_kernel::syscalls::{Syscall, SyscallExecutor, SyscallResult};
 use std::fs;
@@ -116,10 +117,7 @@ async fn test_batch_mixed_results() {
                 path: invalid_path.into(),
             },
         ),
-        (
-            pid,
-            Syscall::GetCurrentTime,
-        ),
+        (pid, Syscall::GetCurrentTime),
     ];
 
     let results = batch_executor.execute_batch(requests, false).await;
@@ -160,9 +158,7 @@ async fn test_batch_large_batch() {
     let batch_executor = BatchExecutor::new(executor);
 
     // Create 100 system info requests
-    let requests: Vec<_> = (0..100)
-        .map(|_| (pid, Syscall::GetCurrentTime))
-        .collect();
+    let requests: Vec<_> = (0..100).map(|_| (pid, Syscall::GetCurrentTime)).collect();
 
     let start = std::time::Instant::now();
     let results = batch_executor.execute_batch(requests, true).await;

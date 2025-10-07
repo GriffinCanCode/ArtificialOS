@@ -3,8 +3,10 @@
  * Comprehensive tests for UNIX-style signal handling
  */
 
-use ai_os_kernel::signals::*;
 use ai_os_kernel::core::types::Pid;
+use ai_os_kernel::process::types::ProcessState;
+use ai_os_kernel::signals::*;
+use std::sync::Arc;
 
 #[test]
 fn test_signal_from_number() {
@@ -119,7 +121,9 @@ fn test_handler_registration() {
 
     // Register handler
     let action = SignalAction::Handler(100);
-    assert!(manager.register_handler(pid, Signal::SIGUSR1, action.clone()).is_ok());
+    assert!(manager
+        .register_handler(pid, Signal::SIGUSR1, action.clone())
+        .is_ok());
 
     // Get handler
     let handler = manager.get_handler(pid, Signal::SIGUSR1);
@@ -139,10 +143,14 @@ fn test_handler_registration_restrictions() {
 
     // Cannot register handler for SIGKILL
     let action = SignalAction::Handler(100);
-    assert!(manager.register_handler(pid, Signal::SIGKILL, action.clone()).is_err());
+    assert!(manager
+        .register_handler(pid, Signal::SIGKILL, action.clone())
+        .is_err());
 
     // Cannot register handler for SIGSTOP
-    assert!(manager.register_handler(pid, Signal::SIGSTOP, action).is_err());
+    assert!(manager
+        .register_handler(pid, Signal::SIGSTOP, action)
+        .is_err());
 }
 
 #[test]
@@ -153,9 +161,15 @@ fn test_handler_reset() {
     manager.initialize_process(pid).unwrap();
 
     // Register multiple handlers
-    manager.register_handler(pid, Signal::SIGUSR1, SignalAction::Handler(1)).unwrap();
-    manager.register_handler(pid, Signal::SIGUSR2, SignalAction::Handler(2)).unwrap();
-    manager.register_handler(pid, Signal::SIGTERM, SignalAction::Ignore).unwrap();
+    manager
+        .register_handler(pid, Signal::SIGUSR1, SignalAction::Handler(1))
+        .unwrap();
+    manager
+        .register_handler(pid, Signal::SIGUSR2, SignalAction::Handler(2))
+        .unwrap();
+    manager
+        .register_handler(pid, Signal::SIGTERM, SignalAction::Ignore)
+        .unwrap();
 
     // Reset all handlers
     assert!(manager.reset_handlers(pid).is_ok());
@@ -320,7 +334,9 @@ fn test_process_cleanup() {
 
     // Send signals and register handlers
     manager.send(sender, target, Signal::SIGUSR1).unwrap();
-    manager.register_handler(target, Signal::SIGTERM, SignalAction::Handler(1)).unwrap();
+    manager
+        .register_handler(target, Signal::SIGTERM, SignalAction::Handler(1))
+        .unwrap();
 
     // Cleanup process
     assert!(manager.cleanup_process(target).is_ok());
@@ -346,7 +362,9 @@ fn test_signal_statistics() {
     manager.send(sender, target, Signal::SIGUSR2).unwrap();
 
     // Register handler
-    manager.register_handler(target, Signal::SIGTERM, SignalAction::Handler(1)).unwrap();
+    manager
+        .register_handler(target, Signal::SIGTERM, SignalAction::Handler(1))
+        .unwrap();
 
     // Check stats
     let stats = manager.stats();
@@ -373,7 +391,9 @@ fn test_signal_handler_with_custom_action() {
     manager.initialize_process(target).unwrap();
 
     // Register ignore handler
-    manager.register_handler(target, Signal::SIGPIPE, SignalAction::Ignore).unwrap();
+    manager
+        .register_handler(target, Signal::SIGPIPE, SignalAction::Ignore)
+        .unwrap();
 
     // Send signal
     manager.send(sender, target, Signal::SIGPIPE).unwrap();
@@ -393,11 +413,23 @@ fn test_signal_descriptions() {
 
 #[test]
 fn test_signal_action_disposition() {
-    assert_eq!(SignalAction::Default.disposition(), SignalDisposition::Default);
-    assert_eq!(SignalAction::Ignore.disposition(), SignalDisposition::Ignore);
-    assert_eq!(SignalAction::Handler(1).disposition(), SignalDisposition::Handle);
+    assert_eq!(
+        SignalAction::Default.disposition(),
+        SignalDisposition::Default
+    );
+    assert_eq!(
+        SignalAction::Ignore.disposition(),
+        SignalDisposition::Ignore
+    );
+    assert_eq!(
+        SignalAction::Handler(1).disposition(),
+        SignalDisposition::Handle
+    );
     assert_eq!(SignalAction::Stop.disposition(), SignalDisposition::Stop);
-    assert_eq!(SignalAction::Continue.disposition(), SignalDisposition::Continue);
+    assert_eq!(
+        SignalAction::Continue.disposition(),
+        SignalDisposition::Continue
+    );
 }
 
 #[test]
@@ -419,27 +451,39 @@ fn test_signal_handler_executor() {
     let pid: Pid = 1;
 
     // Test default action execution
-    let outcome = handler.execute(pid, Signal::SIGUSR1, SignalAction::Default).unwrap();
+    let outcome = handler
+        .execute(pid, Signal::SIGUSR1, SignalAction::Default)
+        .unwrap();
     assert_eq!(outcome, SignalOutcome::Ignored); // SIGUSR1 is ignored by default
 
     // Test ignore action
-    let outcome = handler.execute(pid, Signal::SIGTERM, SignalAction::Ignore).unwrap();
+    let outcome = handler
+        .execute(pid, Signal::SIGTERM, SignalAction::Ignore)
+        .unwrap();
     assert_eq!(outcome, SignalOutcome::Ignored);
 
     // Test handler invocation
-    let outcome = handler.execute(pid, Signal::SIGUSR1, SignalAction::Handler(42)).unwrap();
+    let outcome = handler
+        .execute(pid, Signal::SIGUSR1, SignalAction::Handler(42))
+        .unwrap();
     assert_eq!(outcome, SignalOutcome::HandlerInvoked(42));
 
     // Test terminate action
-    let outcome = handler.execute(pid, Signal::SIGTERM, SignalAction::Terminate).unwrap();
+    let outcome = handler
+        .execute(pid, Signal::SIGTERM, SignalAction::Terminate)
+        .unwrap();
     assert_eq!(outcome, SignalOutcome::Terminated);
 
     // Test stop action
-    let outcome = handler.execute(pid, Signal::SIGSTOP, SignalAction::Stop).unwrap();
+    let outcome = handler
+        .execute(pid, Signal::SIGSTOP, SignalAction::Stop)
+        .unwrap();
     assert_eq!(outcome, SignalOutcome::Stopped);
 
     // Test continue action
-    let outcome = handler.execute(pid, Signal::SIGCONT, SignalAction::Continue).unwrap();
+    let outcome = handler
+        .execute(pid, Signal::SIGCONT, SignalAction::Continue)
+        .unwrap();
     assert_eq!(outcome, SignalOutcome::Continued);
 }
 
@@ -448,20 +492,38 @@ fn test_signal_handler_default_actions() {
     let handler = SignalHandler::new();
 
     // Fatal signals should terminate
-    assert_eq!(handler.default_action(Signal::SIGKILL), SignalAction::Terminate);
-    assert_eq!(handler.default_action(Signal::SIGSEGV), SignalAction::Terminate);
-    assert_eq!(handler.default_action(Signal::SIGILL), SignalAction::Terminate);
+    assert_eq!(
+        handler.default_action(Signal::SIGKILL),
+        SignalAction::Terminate
+    );
+    assert_eq!(
+        handler.default_action(Signal::SIGSEGV),
+        SignalAction::Terminate
+    );
+    assert_eq!(
+        handler.default_action(Signal::SIGILL),
+        SignalAction::Terminate
+    );
 
     // Stop signals should stop
     assert_eq!(handler.default_action(Signal::SIGSTOP), SignalAction::Stop);
     assert_eq!(handler.default_action(Signal::SIGTSTP), SignalAction::Stop);
 
     // Continue signal
-    assert_eq!(handler.default_action(Signal::SIGCONT), SignalAction::Continue);
+    assert_eq!(
+        handler.default_action(Signal::SIGCONT),
+        SignalAction::Continue
+    );
 
     // User signals ignored by default
-    assert_eq!(handler.default_action(Signal::SIGUSR1), SignalAction::Ignore);
-    assert_eq!(handler.default_action(Signal::SIGUSR2), SignalAction::Ignore);
+    assert_eq!(
+        handler.default_action(Signal::SIGUSR1),
+        SignalAction::Ignore
+    );
+    assert_eq!(
+        handler.default_action(Signal::SIGUSR2),
+        SignalAction::Ignore
+    );
 }
 
 #[test]
@@ -472,7 +534,9 @@ fn test_process_not_found_errors() {
     // All operations should fail with ProcessNotFound
     assert!(manager.send(1, nonexistent, Signal::SIGUSR1).is_err());
     assert!(manager.deliver_pending(nonexistent).is_err());
-    assert!(manager.register_handler(nonexistent, Signal::SIGUSR1, SignalAction::Ignore).is_err());
+    assert!(manager
+        .register_handler(nonexistent, Signal::SIGUSR1, SignalAction::Ignore)
+        .is_err());
     assert!(manager.block_signal(nonexistent, Signal::SIGINT).is_err());
     assert!(manager.clear_pending(nonexistent).is_err());
 }
@@ -635,9 +699,8 @@ fn test_callback_registry_handler_errors() {
     let registry = CallbackRegistry::new();
 
     // Register handler that returns error
-    let handler_id = registry.register(|_, _| {
-        Err(SignalError::HandlerError("Test error".to_string()))
-    });
+    let handler_id =
+        registry.register(|_, _| Err(SignalError::HandlerError("Test error".to_string())));
 
     // Execution should propagate the error
     let result = registry.execute(handler_id, 1, Signal::SIGUSR1);
@@ -740,10 +803,10 @@ fn test_priority_queue_ordering() {
     manager.initialize_process(target).unwrap();
 
     // Send signals in mixed priority order
-    manager.send(sender, target, Signal::SIGUSR1).unwrap();  // Priority 10
+    manager.send(sender, target, Signal::SIGUSR1).unwrap(); // Priority 10
     manager.send(sender, target, Signal::SIGRT(63)).unwrap(); // Priority 1063
     manager.send(sender, target, Signal::SIGRT(34)).unwrap(); // Priority 1034
-    manager.send(sender, target, Signal::SIGTERM).unwrap();   // Priority 15
+    manager.send(sender, target, Signal::SIGTERM).unwrap(); // Priority 15
 
     // Deliver and check they come out in priority order
     let pending = manager.pending_signals(target);
@@ -832,7 +895,9 @@ fn test_handler_with_executable_callback() {
     });
 
     // Register handler with signal manager
-    manager.register_handler(target, Signal::SIGUSR1, SignalAction::Handler(handler_id)).unwrap();
+    manager
+        .register_handler(target, Signal::SIGUSR1, SignalAction::Handler(handler_id))
+        .unwrap();
 
     // Send signal
     manager.send(sender, target, Signal::SIGUSR1).unwrap();
@@ -855,11 +920,12 @@ fn test_handler_execution_failure() {
 
     // Register callback that fails
     let callbacks = manager.callbacks();
-    let handler_id = callbacks.register(|_, _| {
-        Err(SignalError::HandlerError("Intentional failure".to_string()))
-    });
+    let handler_id = callbacks
+        .register(|_, _| Err(SignalError::HandlerError("Intentional failure".to_string())));
 
-    manager.register_handler(target, Signal::SIGUSR1, SignalAction::Handler(handler_id)).unwrap();
+    manager
+        .register_handler(target, Signal::SIGUSR1, SignalAction::Handler(handler_id))
+        .unwrap();
 
     // Send signal
     manager.send(sender, target, Signal::SIGUSR1).unwrap();
@@ -967,7 +1033,6 @@ fn test_delivery_hook_pending_count() {
 
 #[test]
 fn test_outcome_to_state_terminated() {
-    use crate::process::types::ProcessState;
 
     let outcome = SignalOutcome::Terminated;
     let state = outcome_to_state(outcome);
@@ -978,7 +1043,6 @@ fn test_outcome_to_state_terminated() {
 
 #[test]
 fn test_outcome_to_state_stopped() {
-    use crate::process::types::ProcessState;
 
     let outcome = SignalOutcome::Stopped;
     let state = outcome_to_state(outcome);
@@ -989,7 +1053,6 @@ fn test_outcome_to_state_stopped() {
 
 #[test]
 fn test_outcome_to_state_continued() {
-    use crate::process::types::ProcessState;
 
     let outcome = SignalOutcome::Continued;
     let state = outcome_to_state(outcome);
@@ -1012,7 +1075,9 @@ fn test_requires_immediate_action() {
     assert!(requires_immediate_action(&SignalOutcome::Terminated));
     assert!(requires_immediate_action(&SignalOutcome::Stopped));
     assert!(requires_immediate_action(&SignalOutcome::Continued));
-    assert!(!requires_immediate_action(&SignalOutcome::HandlerInvoked(1)));
+    assert!(!requires_immediate_action(&SignalOutcome::HandlerInvoked(
+        1
+    )));
     assert!(!requires_immediate_action(&SignalOutcome::Ignored));
 }
 
@@ -1051,8 +1116,12 @@ fn test_full_rt_signal_workflow() {
     });
 
     // Register handler for multiple RT signals
-    manager.register_handler(target, Signal::SIGRT(40), SignalAction::Handler(handler_id)).unwrap();
-    manager.register_handler(target, Signal::SIGRT(50), SignalAction::Handler(handler_id)).unwrap();
+    manager
+        .register_handler(target, Signal::SIGRT(40), SignalAction::Handler(handler_id))
+        .unwrap();
+    manager
+        .register_handler(target, Signal::SIGRT(50), SignalAction::Handler(handler_id))
+        .unwrap();
 
     // Send RT signals in reverse priority order
     manager.send(sender, target, Signal::SIGRT(40)).unwrap();
@@ -1087,11 +1156,17 @@ fn test_mixed_signals_with_callbacks() {
     });
 
     // Register handlers for different signals
-    manager.register_handler(target, Signal::SIGUSR1, SignalAction::Handler(handler_id)).unwrap();
-    manager.register_handler(target, Signal::SIGRT(40), SignalAction::Handler(handler_id)).unwrap();
+    manager
+        .register_handler(target, Signal::SIGUSR1, SignalAction::Handler(handler_id))
+        .unwrap();
+    manager
+        .register_handler(target, Signal::SIGRT(40), SignalAction::Handler(handler_id))
+        .unwrap();
 
     // Ignore one signal
-    manager.register_handler(target, Signal::SIGUSR2, SignalAction::Ignore).unwrap();
+    manager
+        .register_handler(target, Signal::SIGUSR2, SignalAction::Ignore)
+        .unwrap();
 
     // Send mixed signals
     manager.send(sender, target, Signal::SIGUSR1).unwrap();

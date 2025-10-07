@@ -8,8 +8,7 @@ use super::fifo::FifoQueue;
 use super::priority::PriorityQueue;
 use super::pubsub::PubSubQueue;
 use super::types::{
-    QueueMessage, QueueStats, MAX_MESSAGE_SIZE, MAX_QUEUES_PER_PROCESS,
-    MAX_QUEUE_CAPACITY,
+    QueueMessage, QueueStats, MAX_MESSAGE_SIZE, MAX_QUEUES_PER_PROCESS, MAX_QUEUE_CAPACITY,
 };
 use crate::core::types::{Pid, Priority, Size};
 use crate::memory::MemoryManager;
@@ -109,11 +108,10 @@ impl QueueManager {
         self.queues.insert(queue_id, queue);
 
         // Use alter() for atomic insertion - more efficient than entry() for simple updates
-        self.process_queues
-            .alter(&owner_pid, |_, mut queues| {
-                queues.insert(queue_id);
-                queues
-            });
+        self.process_queues.alter(&owner_pid, |_, mut queues| {
+            queues.insert(queue_id);
+            queues
+        });
 
         info!(
             "PID {} created {:?} queue {} (capacity: {})",
@@ -141,11 +139,10 @@ impl QueueManager {
 
         // Allocate memory and write data through MemoryManager (unified storage)
         let data_len = data.len();
-        let data_address = self.memory_manager
+        let data_address = self
+            .memory_manager
             .allocate(data_len, from_pid)
-            .map_err(|e| {
-                IpcError::InvalidOperation(format!("Memory allocation failed: {}", e))
-            })?;
+            .map_err(|e| IpcError::InvalidOperation(format!("Memory allocation failed: {}", e)))?;
 
         // Write data to allocated memory
         if data_len > 0 {
@@ -163,10 +160,11 @@ impl QueueManager {
             from_pid,
             data_address,
             data_len,
-            priority.unwrap_or(0)
+            priority.unwrap_or(0),
         );
 
-        let mut queue = self.queues
+        let mut queue = self
+            .queues
             .get_mut(&queue_id)
             .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id)))?;
 
@@ -207,7 +205,8 @@ impl QueueManager {
         }
 
         // For FIFO and Priority queues
-        let mut queue = self.queues
+        let mut queue = self
+            .queues
             .get_mut(&queue_id)
             .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id)))?;
 
@@ -224,7 +223,8 @@ impl QueueManager {
     /// Read message data from MemoryManager and deallocate
     pub fn read_message_data(&self, message: &QueueMessage) -> IpcResult<Vec<u8>> {
         // Read data from MemoryManager
-        let data = self.memory_manager
+        let data = self
+            .memory_manager
             .read_bytes(message.data_address, message.data_length)
             .map_err(|e| {
                 IpcError::InvalidOperation(format!("Failed to read message data: {}", e))
@@ -243,7 +243,8 @@ impl QueueManager {
 
     /// Subscribe to PubSub queue
     pub fn subscribe(&self, queue_id: QueueId, pid: Pid) -> IpcResult<()> {
-        let mut queue = self.queues
+        let mut queue = self
+            .queues
             .get_mut(&queue_id)
             .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id)))?;
 
@@ -260,7 +261,8 @@ impl QueueManager {
 
     /// Unsubscribe from PubSub queue
     pub fn unsubscribe(&self, queue_id: QueueId, pid: Pid) -> IpcResult<()> {
-        let mut queue = self.queues
+        let mut queue = self
+            .queues
             .get_mut(&queue_id)
             .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id)))?;
 
@@ -280,14 +282,16 @@ impl QueueManager {
         // Check if we have a PubSub receiver
         let receiver_key = (queue_id, pid);
         if let Some(mut rx) = self.pubsub_receivers.get_mut(&receiver_key) {
-            return rx.recv()
+            return rx
+                .recv()
                 .await
                 .ok_or_else(|| IpcError::Closed("Subscription closed".into()));
         }
 
         // For FIFO/Priority queues, poll with notify
         let notify = {
-            let queue = self.queues
+            let queue = self
+                .queues
                 .get(&queue_id)
                 .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id)))?;
 
@@ -312,7 +316,8 @@ impl QueueManager {
             notify.notified().await;
 
             // Check if queue was closed
-            let queue = self.queues
+            let queue = self
+                .queues
                 .get(&queue_id)
                 .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id)))?;
 
@@ -330,7 +335,8 @@ impl QueueManager {
 
     /// Close queue
     pub fn close(&self, queue_id: QueueId, pid: Pid) -> IpcResult<()> {
-        let mut queue = self.queues
+        let mut queue = self
+            .queues
             .get_mut(&queue_id)
             .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id)))?;
 
@@ -348,7 +354,8 @@ impl QueueManager {
 
     /// Destroy queue
     pub fn destroy(&self, queue_id: QueueId, pid: Pid) -> IpcResult<()> {
-        let mut queue = self.queues
+        let mut queue = self
+            .queues
             .get_mut(&queue_id)
             .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id)))?;
 
@@ -404,7 +411,8 @@ impl QueueManager {
 
     /// Get queue statistics
     pub fn stats(&self, queue_id: QueueId) -> IpcResult<QueueStats> {
-        let queue = self.queues
+        let queue = self
+            .queues
             .get(&queue_id)
             .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id)))?;
 
@@ -444,7 +452,8 @@ impl QueueManager {
     /// Clean up process queues
     pub fn cleanup_process(&self, pid: Pid) -> Size {
         let mut freed = 0;
-        let queue_ids: Vec<QueueId> = self.process_queues
+        let queue_ids: Vec<QueueId> = self
+            .process_queues
             .get(&pid)
             .map(|qs| qs.iter().copied().collect())
             .unwrap_or_default();
@@ -521,10 +530,12 @@ mod tests {
             .unwrap();
 
         let msg1 = manager.receive(queue_id, 1).unwrap().unwrap();
-        assert_eq!(msg1.data, b"message1");
+        let data1 = manager.read_message_data(&msg1).unwrap();
+        assert_eq!(data1, b"message1");
 
         let msg2 = manager.receive(queue_id, 1).unwrap().unwrap();
-        assert_eq!(msg2.data, b"message2");
+        let data2 = manager.read_message_data(&msg2).unwrap();
+        assert_eq!(data2, b"message2");
     }
 
     #[tokio::test]
@@ -542,11 +553,13 @@ mod tests {
             .unwrap();
 
         let msg1 = manager.receive(queue_id, 1).unwrap().unwrap();
-        assert_eq!(msg1.data, b"high");
+        let data1 = manager.read_message_data(&msg1).unwrap();
+        assert_eq!(data1, b"high");
         assert_eq!(msg1.priority, 10);
 
         let msg2 = manager.receive(queue_id, 1).unwrap().unwrap();
-        assert_eq!(msg2.data, b"medium");
+        let data2 = manager.read_message_data(&msg2).unwrap();
+        assert_eq!(data2, b"medium");
         assert_eq!(msg2.priority, 5);
     }
 

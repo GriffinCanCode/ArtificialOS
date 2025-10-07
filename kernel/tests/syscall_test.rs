@@ -3,6 +3,7 @@
  * Tests for sandboxed system call execution
  */
 
+use ai_os_kernel::security::traits::SandboxProvider;
 use ai_os_kernel::security::{Capability, SandboxConfig, SandboxManager};
 use ai_os_kernel::syscalls::{Syscall, SyscallExecutor, SyscallResult};
 use pretty_assertions::assert_eq;

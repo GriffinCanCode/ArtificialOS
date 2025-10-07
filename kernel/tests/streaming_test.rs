@@ -4,6 +4,7 @@
  */
 
 use ai_os_kernel::api::streaming::StreamingManager;
+use ai_os_kernel::security::traits::SandboxProvider;
 use ai_os_kernel::security::{Capability, SandboxConfig, SandboxManager};
 use ai_os_kernel::syscalls::SyscallExecutor;
 use futures::StreamExt;
@@ -130,9 +131,7 @@ async fn test_stream_file_write_large() {
     let test_file = temp_dir.path().join("large_output.txt");
 
     // Create 10 chunks of 10KB each
-    let chunks: Vec<Vec<u8>> = (0..10)
-        .map(|_| vec![b'Y'; 10 * 1024])
-        .collect();
+    let chunks: Vec<Vec<u8>> = (0..10).map(|_| vec![b'Y'; 10 * 1024]).collect();
 
     let data_stream = futures::stream::iter(chunks);
 
