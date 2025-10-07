@@ -15,44 +15,49 @@ pub const MAX_MESSAGE_SIZE: usize = 1024 * 1024; // 1MB
 pub const MAX_QUEUES_PER_PROCESS: usize = 100;
 pub const GLOBAL_QUEUE_MEMORY_LIMIT: usize = 100 * 1024 * 1024; // 100MB
 
-/// Queue message with metadata
+/// Queue message with metadata (data stored in MemoryManager)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QueueMessage {
     pub id: u64,
     pub from: Pid,
-    pub data: Vec<u8>,
+    /// Memory address where data is stored (via MemoryManager)
+    #[serde(skip)]
+    pub data_address: usize,
+    /// Length of data stored at data_address
+    pub data_length: usize,
     pub priority: u8,
     pub timestamp: SystemTime,
-    /// Memory address for data allocation (tracked through MemoryManager)
-    #[serde(skip)]
-    pub data_address: Option<usize>,
 }
 
 impl QueueMessage {
-    pub fn new(id: u64, from: Pid, data: Vec<u8>, priority: u8) -> Self {
+    pub fn new(id: u64, from: Pid, data_address: usize, data_length: usize, priority: u8) -> Self {
         Self {
             id,
             from,
-            data,
+            data_address,
+            data_length,
             priority,
             timestamp: SystemTime::now(),
-            data_address: None,
-        }
-    }
-
-    pub fn with_address(id: u64, from: Pid, data: Vec<u8>, priority: u8, address: usize) -> Self {
-        Self {
-            id,
-            from,
-            data,
-            priority,
-            timestamp: SystemTime::now(),
-            data_address: Some(address),
         }
     }
 
     pub fn size(&self) -> usize {
-        std::mem::size_of::<Self>() + self.data.len()
+        // Metadata size only - actual data is in MemoryManager
+        std::mem::size_of::<Self>()
+    }
+
+    pub fn data_size(&self) -> usize {
+        self.data_length
+    }
+
+    /// Read the actual data from MemoryManager
+    pub fn read_data(&self, memory_manager: &crate::memory::MemoryManager) -> Result<Vec<u8>, String> {
+        if self.data_length == 0 {
+            return Ok(Vec::new());
+        }
+        memory_manager
+            .read_bytes(self.data_address, self.data_length)
+            .map_err(|e| format!("Failed to read message data: {}", e))
     }
 }
 

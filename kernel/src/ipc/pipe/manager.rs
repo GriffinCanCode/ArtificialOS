@@ -7,7 +7,7 @@ use super::super::traits::PipeChannel;
 use super::super::types::{IpcResult, PipeId};
 use super::pipe::Pipe;
 use super::types::{
-    PipeError, PipeStats, DEFAULT_PIPE_CAPACITY, GLOBAL_PIPE_MEMORY_LIMIT, MAX_PIPES_PER_PROCESS,
+    PipeError, PipeStats, DEFAULT_PIPE_CAPACITY, MAX_PIPES_PER_PROCESS,
     MAX_PIPE_CAPACITY,
 };
 use crate::core::types::{Pid, Size};
@@ -15,11 +15,7 @@ use crate::memory::MemoryManager;
 use log::{info, warn};
 use parking_lot::RwLock;
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-
-// Global pipe memory tracking
-static GLOBAL_PIPE_MEMORY: AtomicUsize = AtomicUsize::new(0);
 
 /// Pipe manager
 pub struct PipeManager {
@@ -33,9 +29,8 @@ pub struct PipeManager {
 impl PipeManager {
     pub fn new(memory_manager: MemoryManager) -> Self {
         info!(
-            "Pipe manager initialized (capacity: {}, limit: {} MB)",
-            DEFAULT_PIPE_CAPACITY,
-            GLOBAL_PIPE_MEMORY_LIMIT / (1024 * 1024)
+            "Pipe manager initialized (capacity: {})",
+            DEFAULT_PIPE_CAPACITY
         );
         Self {
             pipes: Arc::new(RwLock::new(HashMap::new())),
@@ -68,17 +63,9 @@ impl PipeManager {
         }
         drop(process_pipes);
 
-        // Check global memory limit
-        let current_global = GLOBAL_PIPE_MEMORY.load(Ordering::Acquire);
-        if current_global + capacity > GLOBAL_PIPE_MEMORY_LIMIT {
-            return Err(PipeError::GlobalMemoryExceeded(
-                current_global,
-                GLOBAL_PIPE_MEMORY_LIMIT,
-            ));
-        }
-
         // Allocate memory through MemoryManager (unified memory accounting)
         // Use writer_pid as the owner for accounting purposes
+        // MemoryManager will handle global memory limits
         let address = self
             .memory_manager
             .allocate(capacity, writer_pid)
@@ -108,12 +95,10 @@ impl PipeManager {
         *process_pipes.entry(writer_pid).or_insert(0) += 1;
         drop(process_pipes);
 
-        // Update global memory
-        GLOBAL_PIPE_MEMORY.fetch_add(capacity, Ordering::Release);
-
+        let (_, used, _) = self.memory_manager.info();
         info!(
-            "Created pipe {} (reader: {}, writer: {}, capacity: {} bytes, address: 0x{:x})",
-            pipe_id, reader_pid, writer_pid, capacity, address
+            "Created pipe {} (reader: {}, writer: {}, capacity: {} bytes, address: 0x{:x}, {} bytes used memory)",
+            pipe_id, reader_pid, writer_pid, capacity, address, used
         );
 
         Ok(pipe_id)
@@ -217,15 +202,13 @@ impl PipeManager {
         }
         drop(process_pipes);
 
-        // Reclaim global memory
-        GLOBAL_PIPE_MEMORY.fetch_sub(capacity, Ordering::Release);
-
+        let (_, used, _) = self.memory_manager.info();
         info!(
-            "Destroyed pipe {} (reclaimed {} bytes at 0x{:x}, {} bytes global memory)",
+            "Destroyed pipe {} (reclaimed {} bytes at 0x{:x}, {} bytes used memory)",
             pipe_id,
             capacity,
             address,
-            GLOBAL_PIPE_MEMORY.load(Ordering::Relaxed)
+            used
         );
 
         Ok(())
@@ -270,7 +253,8 @@ impl PipeManager {
     }
 
     pub fn get_global_memory_usage(&self) -> Size {
-        GLOBAL_PIPE_MEMORY.load(Ordering::Relaxed)
+        let (_, used, _) = self.memory_manager.info();
+        used
     }
 }
 

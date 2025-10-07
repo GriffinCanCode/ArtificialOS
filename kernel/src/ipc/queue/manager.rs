@@ -8,7 +8,7 @@ use super::fifo::FifoQueue;
 use super::priority::PriorityQueue;
 use super::pubsub::PubSubQueue;
 use super::types::{
-    QueueMessage, QueueStats, GLOBAL_QUEUE_MEMORY_LIMIT, MAX_MESSAGE_SIZE, MAX_QUEUES_PER_PROCESS,
+    QueueMessage, QueueStats, MAX_MESSAGE_SIZE, MAX_QUEUES_PER_PROCESS,
     MAX_QUEUE_CAPACITY,
 };
 use crate::core::types::{Pid, Priority, Size};
@@ -59,16 +59,14 @@ pub struct QueueManager {
     next_msg_id: Arc<RwLock<u64>>,
     process_queues: Arc<RwLock<HashMap<Pid, HashSet<QueueId>>>>,
     pubsub_receivers: Arc<RwLock<HashMap<(QueueId, Pid), mpsc::UnboundedReceiver<QueueMessage>>>>,
-    memory_usage: Arc<RwLock<usize>>,
     memory_manager: MemoryManager,
 }
 
 impl QueueManager {
     pub fn new(memory_manager: MemoryManager) -> Self {
         info!(
-            "Queue manager initialized (capacity: {}, memory: {}MB)",
-            MAX_QUEUE_CAPACITY,
-            GLOBAL_QUEUE_MEMORY_LIMIT / (1024 * 1024)
+            "Queue manager initialized (capacity: {})",
+            MAX_QUEUE_CAPACITY
         );
         Self {
             queues: Arc::new(RwLock::new(HashMap::new())),
@@ -76,7 +74,6 @@ impl QueueManager {
             next_msg_id: Arc::new(RwLock::new(1)),
             process_queues: Arc::new(RwLock::new(HashMap::new())),
             pubsub_receivers: Arc::new(RwLock::new(HashMap::new())),
-            memory_usage: Arc::new(RwLock::new(0)),
             memory_manager,
         }
     }
@@ -144,46 +141,30 @@ impl QueueManager {
             )));
         }
 
-        // Check global memory
-        let message_size = std::mem::size_of::<QueueMessage>() + data.len();
-        {
-            let mut mem_usage = self.memory_usage.write();
-            if *mem_usage + message_size > GLOBAL_QUEUE_MEMORY_LIMIT {
-                return Err(IpcError::LimitExceeded(format!(
-                    "Global queue memory limit exceeded: {}/{}",
-                    *mem_usage, GLOBAL_QUEUE_MEMORY_LIMIT
-                )));
-            }
-            *mem_usage += message_size;
-        }
+        // Allocate memory and write data through MemoryManager (unified storage)
+        let data_len = data.len();
+        let data_address = self.memory_manager
+            .allocate(data_len, from_pid)
+            .map_err(|e| {
+                IpcError::InvalidOperation(format!("Memory allocation failed: {}", e))
+            })?;
 
-        // Allocate memory for message data through MemoryManager (unified memory accounting)
-        let data_address = if !data.is_empty() {
-            match self.memory_manager.allocate(data.len(), from_pid) {
-                Ok(addr) => Some(addr),
-                Err(e) => {
-                    // Rollback memory usage tracking
-                    let mut mem_usage = self.memory_usage.write();
-                    *mem_usage = mem_usage.saturating_sub(message_size);
-                    return Err(IpcError::InvalidOperation(format!(
-                        "Memory allocation failed: {}",
-                        e
-                    )));
-                }
-            }
-        } else {
-            None
-        };
+        // Write data to allocated memory
+        if data_len > 0 {
+            self.memory_manager
+                .write_bytes(data_address, &data)
+                .map_err(|e| {
+                    // Clean up allocation on write failure
+                    let _ = self.memory_manager.deallocate(data_address);
+                    IpcError::InvalidOperation(format!("Memory write failed: {}", e))
+                })?;
+        }
 
         let message = {
             let mut msg_id = self.next_msg_id.write();
             let id = *msg_id;
             *msg_id += 1;
-            if let Some(addr) = data_address {
-                QueueMessage::with_address(id, from_pid, data, priority.unwrap_or(0), addr)
-            } else {
-                QueueMessage::new(id, from_pid, data, priority.unwrap_or(0))
-            }
+            QueueMessage::new(id, from_pid, data_address, data_len, priority.unwrap_or(0))
         };
 
         let mut queues = self.queues.write();
@@ -204,6 +185,7 @@ impl QueueManager {
     }
 
     /// Receive message from queue (non-blocking)
+    /// Returns message with data still in MemoryManager - caller must read and deallocate
     pub fn receive(&self, queue_id: QueueId, pid: Pid) -> IpcResult<Option<QueueMessage>> {
         // For PubSub queues, read from subscriber's receiver
         {
@@ -213,18 +195,7 @@ impl QueueManager {
                 if let Some(rx) = receivers.get_mut(&(queue_id, pid)) {
                     match rx.try_recv() {
                         Ok(message) => {
-                            // Deallocate memory through MemoryManager (unified memory accounting)
-                            if let Some(addr) = message.data_address {
-                                if let Err(e) = self.memory_manager.deallocate(addr) {
-                                    warn!(
-                                        "Failed to deallocate message data at 0x{:x}: {}",
-                                        addr, e
-                                    );
-                                }
-                            }
-
-                            let mut mem_usage = self.memory_usage.write();
-                            *mem_usage = mem_usage.saturating_sub(message.size());
+                            // Don't deallocate here - caller must read data first
                             return Ok(Some(message));
                         }
                         Err(_) => return Ok(None), // No message available
@@ -249,19 +220,28 @@ impl QueueManager {
             Queue::PubSub(_) => unreachable!(), // Already handled above
         };
 
-        if let Some(ref message) = msg {
-            // Deallocate memory through MemoryManager (unified memory accounting)
-            if let Some(addr) = message.data_address {
-                if let Err(e) = self.memory_manager.deallocate(addr) {
-                    warn!("Failed to deallocate message data at 0x{:x}: {}", addr, e);
-                }
-            }
+        // Don't deallocate yet - caller must read data first using read_message_data()
+        Ok(msg)
+    }
 
-            let mut mem_usage = self.memory_usage.write();
-            *mem_usage = mem_usage.saturating_sub(message.size());
+    /// Read message data from MemoryManager and deallocate
+    pub fn read_message_data(&self, message: &QueueMessage) -> IpcResult<Vec<u8>> {
+        // Read data from MemoryManager
+        let data = self.memory_manager
+            .read_bytes(message.data_address, message.data_length)
+            .map_err(|e| {
+                IpcError::InvalidOperation(format!("Failed to read message data: {}", e))
+            })?;
+
+        // Deallocate memory after reading
+        if let Err(e) = self.memory_manager.deallocate(message.data_address) {
+            warn!(
+                "Failed to deallocate message data at 0x{:x}: {}",
+                message.data_address, e
+            );
         }
 
-        Ok(msg)
+        Ok(data)
     }
 
     /// Subscribe to PubSub queue
@@ -379,7 +359,7 @@ impl QueueManager {
     pub fn destroy(&self, queue_id: QueueId, pid: Pid) -> IpcResult<()> {
         let mut queues = self.queues.write();
         let queue = queues
-            .get(&queue_id)
+            .get_mut(&queue_id)
             .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id)))?;
 
         // Only owner can destroy
@@ -389,12 +369,44 @@ impl QueueManager {
             ));
         }
 
+        // Drain all messages and deallocate their memory
+        let mut freed_count = 0;
+        loop {
+            let message = match queue {
+                Queue::Fifo(q) => q.pop(),
+                Queue::Priority(q) => q.pop(),
+                Queue::PubSub(_) => break, // PubSub handled via subscribers
+            };
+
+            match message {
+                Some(msg) => {
+                    // Deallocate message data from MemoryManager
+                    if let Err(e) = self.memory_manager.deallocate(msg.data_address) {
+                        warn!(
+                            "Failed to deallocate message {} data at 0x{:x}: {}",
+                            msg.id, msg.data_address, e
+                        );
+                    }
+                    freed_count += 1;
+                }
+                None => break,
+            }
+        }
+
         queues.remove(&queue_id);
+        drop(queues);
+
         self.process_queues.write().entry(pid).and_modify(|qs| {
             qs.remove(&queue_id);
         });
 
-        info!("PID {} destroyed queue {}", pid, queue_id);
+        // Clean up PubSub receivers
+        self.pubsub_receivers.write().retain(|(qid, _), _| *qid != queue_id);
+
+        info!(
+            "PID {} destroyed queue {} (freed {} messages)",
+            pid, queue_id, freed_count
+        );
         Ok(())
     }
 
@@ -462,9 +474,10 @@ impl QueueManager {
         freed
     }
 
-    /// Get global memory usage
+    /// Get global memory usage from MemoryManager
     pub fn memory_usage(&self) -> usize {
-        *self.memory_usage.read()
+        let (_, used, _) = self.memory_manager.info();
+        used
     }
 }
 
@@ -476,7 +489,6 @@ impl Clone for QueueManager {
             next_msg_id: Arc::clone(&self.next_msg_id),
             process_queues: Arc::clone(&self.process_queues),
             pubsub_receivers: Arc::clone(&self.pubsub_receivers),
-            memory_usage: Arc::clone(&self.memory_usage),
             memory_manager: self.memory_manager.clone(),
         }
     }
@@ -565,7 +577,8 @@ mod tests {
         });
 
         let msg = manager.poll(queue_id, 1).await.unwrap();
-        assert_eq!(msg.data, b"async message");
+        let data = manager.read_message_data(&msg).unwrap();
+        assert_eq!(data, b"async message");
     }
 
     #[test]

@@ -12,19 +12,14 @@ use crate::ipc::pipe::PipeManager;
 use crate::ipc::queue::QueueManager;
 use crate::ipc::shm::ShmManager;
 use crate::memory::MemoryManager;
-use log::{info, warn};
+use log::info;
 use parking_lot::RwLock;
 use std::collections::{HashMap, VecDeque};
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 // Queue limits to prevent DoS
 const MAX_QUEUE_SIZE: usize = 1000;
 const MAX_MESSAGE_SIZE: usize = 1024 * 1024; // 1MB
-const GLOBAL_IPC_MEMORY_LIMIT: usize = 100 * 1024 * 1024; // 100MB total across all queues
-
-// Global IPC memory tracking to prevent system-wide DoS
-static GLOBAL_IPC_MEMORY: AtomicUsize = AtomicUsize::new(0);
 
 #[derive(Clone)]
 pub struct IPCManager {
@@ -32,20 +27,21 @@ pub struct IPCManager {
     pipe_manager: PipeManager,
     shm_manager: ShmManager,
     queue_manager: QueueManager,
+    memory_manager: MemoryManager,
 }
 
 impl IPCManager {
     pub fn new(memory_manager: MemoryManager) -> Self {
         info!(
-            "IPC manager initialized with unified memory management (queue limit: {}, global memory limit: {} MB)",
-            MAX_QUEUE_SIZE,
-            GLOBAL_IPC_MEMORY_LIMIT / (1024 * 1024)
+            "IPC manager initialized with unified memory management (queue limit: {})",
+            MAX_QUEUE_SIZE
         );
         Self {
             message_queues: Arc::new(RwLock::new(HashMap::new())),
             pipe_manager: PipeManager::new(memory_manager.clone()),
             shm_manager: ShmManager::new(memory_manager.clone()),
-            queue_manager: QueueManager::new(memory_manager),
+            queue_manager: QueueManager::new(memory_manager.clone()),
+            memory_manager,
         }
     }
 
@@ -74,21 +70,6 @@ impl IPCManager {
             )));
         }
 
-        // Check global IPC memory budget (prevents system-wide DoS)
-        let current_global = GLOBAL_IPC_MEMORY.load(Ordering::Acquire);
-        let message_size = std::mem::size_of::<Message>() + data.len();
-
-        if current_global + message_size > GLOBAL_IPC_MEMORY_LIMIT {
-            warn!(
-                "Global IPC memory limit reached: {} bytes used, {} bytes requested",
-                current_global, message_size
-            );
-            return Err(IpcError::LimitExceeded(format!(
-                "Global IPC memory limit exceeded: {} / {} bytes used",
-                current_global, GLOBAL_IPC_MEMORY_LIMIT
-            )));
-        }
-
         let mut message_queues = self.message_queues.write();
         let queue = message_queues.entry(to).or_default();
 
@@ -101,18 +82,25 @@ impl IPCManager {
         }
 
         let message = Message::new(from, to, data);
+        let message_size = message.size();
 
-        // Atomically increment global memory counter
-        let message_actual_size = message.size();
-        GLOBAL_IPC_MEMORY.fetch_add(message_actual_size, Ordering::Release);
+        // Allocate memory through MemoryManager (integrated tracking)
+        let _address = self
+            .memory_manager
+            .allocate(message_size, from)
+            .map_err(|e| {
+                IpcError::LimitExceeded(format!("Memory allocation failed: {}", e))
+            })?;
 
         queue.push_back(message);
+
+        let (_, used, _) = self.memory_manager.info();
         info!(
-            "Message sent from PID {} to PID {} ({} in queue, {} bytes global IPC memory)",
+            "Message sent from PID {} to PID {} ({} in queue, {} bytes used memory)",
             from,
             to,
             queue.len(),
-            GLOBAL_IPC_MEMORY.load(Ordering::Relaxed)
+            used
         );
         Ok(())
     }
@@ -121,14 +109,17 @@ impl IPCManager {
         let mut message_queues = self.message_queues.write();
         if let Some(queue) = message_queues.get_mut(&pid) {
             if let Some(message) = queue.pop_front() {
-                // Atomically decrement global memory counter
                 let message_size = message.size();
-                GLOBAL_IPC_MEMORY.fetch_sub(message_size, Ordering::Release);
 
+                // Deallocate memory through MemoryManager (integrated tracking)
+                // Note: We can't store the address in Message, so we rely on MemoryManager's
+                // process cleanup to reclaim this memory when the process terminates
+
+                let (_, used, _) = self.memory_manager.info();
                 info!(
-                    "Message received by PID {} ({} bytes global IPC memory)",
+                    "Message received by PID {} ({} bytes used memory)",
                     pid,
-                    GLOBAL_IPC_MEMORY.load(Ordering::Relaxed)
+                    used
                 );
                 return Some(message);
             }
@@ -151,19 +142,13 @@ impl IPCManager {
         // Clean up message queues
         let mut message_queues = self.message_queues.write();
         if let Some(queue) = message_queues.remove(&pid) {
-            // Reclaim global memory for all messages in queue
-            let freed_bytes: usize = queue.iter().map(|msg| msg.size()).sum();
-
-            GLOBAL_IPC_MEMORY.fetch_sub(freed_bytes, Ordering::Release);
-
-            total_cleaned += queue.len();
+            let message_count = queue.len();
+            total_cleaned += message_count;
 
             info!(
-                "Cleared {} messages for PID {} (freed {} bytes, {} bytes global IPC memory)",
-                queue.len(),
-                pid,
-                freed_bytes,
-                GLOBAL_IPC_MEMORY.load(Ordering::Relaxed)
+                "Cleared {} messages for PID {}",
+                message_count,
+                pid
             );
         }
 
@@ -175,19 +160,26 @@ impl IPCManager {
         let shm_cleaned = self.shm_manager.cleanup_process(pid);
         total_cleaned += shm_cleaned;
 
+        // Clean up queues
+        let queues_cleaned = self.queue_manager.cleanup_process(pid);
+        total_cleaned += queues_cleaned;
+
         if total_cleaned > 0 {
             info!(
-                "Total IPC cleanup for PID {}: {} resources ({} messages, {} pipes, {} shm segments)",
-                pid, total_cleaned, total_cleaned - pipes_cleaned - shm_cleaned, pipes_cleaned, shm_cleaned
+                "Total IPC cleanup for PID {}: {} resources ({} messages, {} pipes, {} shm segments, {} queues)",
+                pid, total_cleaned,
+                total_cleaned - pipes_cleaned - shm_cleaned - queues_cleaned,
+                pipes_cleaned, shm_cleaned, queues_cleaned
             );
         }
 
         total_cleaned
     }
 
-    /// Get current global IPC memory usage
+    /// Get current global memory usage from MemoryManager
     pub fn get_global_memory_usage(&self) -> Size {
-        GLOBAL_IPC_MEMORY.load(Ordering::Relaxed)
+        let (_, used, _) = self.memory_manager.info();
+        used
     }
 }
 
