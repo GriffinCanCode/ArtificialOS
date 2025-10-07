@@ -1,14 +1,19 @@
 /**
  * Electron Main Process - Modern Implementation
- * Manages application lifecycle, window creation, and system integration
+ *
+ * Manages application lifecycle, window creation, and system integration with
+ * enterprise-grade security, performance, and reliability features.
  *
  * Features:
- * - Window state persistence
- * - Single instance lock
- * - Enhanced security
- * - Native menu integration
- * - Crash recovery
- * - Performance optimizations
+ * - Window state persistence with automatic save/restore
+ * - Single instance lock preventing multiple app instances
+ * - Enhanced security with sandbox and IPC validation
+ * - Native menu integration with platform-specific items
+ * - Crash recovery with user dialog and auto-reload
+ * - Performance optimizations and hardware acceleration control
+ *
+ * @module main
+ * @version 2.0.0
  */
 
 const { app, BrowserWindow, ipcMain, Menu, shell, dialog, nativeTheme } = require('electron');
@@ -20,7 +25,30 @@ const log = require('electron-log');
 // CONFIGURATION & CONSTANTS
 // ============================================================================
 
+/**
+ * @typedef {Object} WindowState
+ * @property {number} width - Window width in pixels
+ * @property {number} height - Window height in pixels
+ * @property {number} [x] - Window x position (undefined for center)
+ * @property {number} [y] - Window y position (undefined for center)
+ * @property {boolean} isMaximized - Whether window is maximized
+ */
+
+/**
+ * @typedef {Object} SystemInfo
+ * @property {string} platform - Operating system platform
+ * @property {string} arch - CPU architecture
+ * @property {string} version - Application version
+ * @property {string} electron - Electron version
+ * @property {string} chrome - Chrome version
+ * @property {string} node - Node.js version
+ * @property {boolean} isDev - Development mode flag
+ */
+
+/** @type {boolean} Development mode flag based on package status */
 const isDev = !app.isPackaged;
+
+/** @type {string} Path to window state persistence file */
 const WINDOW_STATE_FILE = path.join(app.getPath('userData'), 'window-state.json');
 
 // Configure electron-log with rotation and better formatting
@@ -52,8 +80,20 @@ log.info('='.repeat(80));
 // WINDOW STATE MANAGEMENT
 // ============================================================================
 
+/**
+ * Manages window state persistence across application restarts.
+ * Automatically saves window size, position, and maximized state to disk
+ * and restores it on next launch.
+ *
+ * @class WindowStateManager
+ */
 class WindowStateManager {
+  /**
+   * Creates a new WindowStateManager instance
+   * @constructor
+   */
   constructor() {
+    /** @type {WindowState} Default window state for first launch */
     this.defaultState = {
       width: 1400,
       height: 900,
@@ -61,9 +101,15 @@ class WindowStateManager {
       y: undefined,
       isMaximized: false,
     };
+    /** @type {WindowState} Current window state */
     this.state = this.loadState();
   }
 
+  /**
+   * Loads window state from disk
+   * Falls back to default state if file doesn't exist or is corrupted
+   * @returns {WindowState} Loaded or default window state
+   */
   loadState() {
     try {
       if (fs.existsSync(WINDOW_STATE_FILE)) {
@@ -78,6 +124,10 @@ class WindowStateManager {
     return { ...this.defaultState };
   }
 
+  /**
+   * Saves current window state to disk
+   * @param {BrowserWindow} window - The window to save state from
+   */
   saveState(window) {
     try {
       if (!window) return;
@@ -98,6 +148,11 @@ class WindowStateManager {
     }
   }
 
+  /**
+   * Tracks window events and automatically saves state on changes
+   * Also restores maximized state if window was maximized on last close
+   * @param {BrowserWindow} window - The window to track
+   */
   track(window) {
     // Save state on window events
     const saveHandler = () => this.saveState(window);
@@ -114,17 +169,36 @@ class WindowStateManager {
     }
   }
 
+  /**
+   * Gets the current window state
+   * @returns {WindowState} Current window state
+   */
   getState() {
     return this.state;
   }
 }
 
+/** @type {WindowStateManager} Global window state manager instance */
 const windowStateManager = new WindowStateManager();
 
 // ============================================================================
 // APPLICATION MENU
 // ============================================================================
 
+/**
+ * Creates and sets the native application menu.
+ * Includes File, Edit, View, Window, and Help menus with platform-specific
+ * items (e.g., different accelerators for macOS vs Windows/Linux).
+ *
+ * Menu structure:
+ * - File: Reload, Quit
+ * - Edit: Undo, Redo, Cut, Copy, Paste, Select All
+ * - View: Zoom controls, Toggle Fullscreen, Toggle DevTools (dev only)
+ * - Window: Minimize, Zoom/Maximize, Close, macOS-specific items
+ * - Help: Learn More, Toggle Developer Tools
+ *
+ * @function createApplicationMenu
+ */
 function createApplicationMenu() {
   const template = [
     {
@@ -216,8 +290,35 @@ function createApplicationMenu() {
 // WINDOW CREATION
 // ============================================================================
 
+/**
+ * @type {BrowserWindow | null}
+ * Reference to the main application window
+ */
 let mainWindow = null;
 
+/**
+ * Creates the main application window with enhanced security and performance settings.
+ *
+ * Security features:
+ * - Context isolation and sandbox enabled
+ * - Node integration disabled
+ * - Web security enforced
+ * - Navigation and window opening restrictions
+ *
+ * Performance features:
+ * - ready-to-show pattern to prevent flickering
+ * - Background throttling disabled for UI responsiveness
+ * - Periodic cache clearing in development mode
+ *
+ * Window features:
+ * - Frameless with custom title bar
+ * - Persistent state (size, position, maximized)
+ * - Crash recovery with user dialog
+ * - DevTools auto-open in development
+ *
+ * @function createWindow
+ * @returns {BrowserWindow} The created main window instance
+ */
 function createWindow() {
   log.info('Creating main window');
 
@@ -355,14 +456,36 @@ function createWindow() {
 // IPC HANDLERS
 // ============================================================================
 
+/**
+ * Registers all IPC handlers for communication between main and renderer processes.
+ *
+ * Registered handlers:
+ * - minimize-window: Minimizes the main window
+ * - maximize-window: Toggles window maximize/unmaximize state
+ * - close-window: Closes the main window
+ * - get-system-info: Returns system and application information
+ * - get-native-theme: Returns current system theme (dark/light)
+ * - set-native-theme: Sets the application theme
+ *
+ * All handlers are validated in the preload script via channel whitelist.
+ *
+ * @function setupIpcHandlers
+ */
 function setupIpcHandlers() {
-  // Window controls
+  /**
+   * IPC Handler: Minimize window
+   * @returns {Promise<boolean>} Success status
+   */
   ipcMain.handle('minimize-window', () => {
     log.debug('IPC: minimize-window');
     mainWindow?.minimize();
     return true;
   });
 
+  /**
+   * IPC Handler: Toggle maximize/unmaximize window
+   * @returns {Promise<boolean>} New maximized state
+   */
   ipcMain.handle('maximize-window', () => {
     const isMaximized = mainWindow?.isMaximized();
     log.debug(`IPC: maximize-window (currently: ${isMaximized})`);
@@ -377,13 +500,20 @@ function setupIpcHandlers() {
     return !isMaximized;
   });
 
+  /**
+   * IPC Handler: Close window
+   * @returns {Promise<boolean>} Success status
+   */
   ipcMain.handle('close-window', () => {
     log.debug('IPC: close-window');
     mainWindow?.close();
     return true;
   });
 
-  // System information
+  /**
+   * IPC Handler: Get system information
+   * @returns {Promise<SystemInfo>} System and application information
+   */
   ipcMain.handle('get-system-info', () => {
     log.debug('IPC: get-system-info');
     return {
@@ -397,11 +527,19 @@ function setupIpcHandlers() {
     };
   });
 
-  // Theme
+  /**
+   * IPC Handler: Get native system theme
+   * @returns {Promise<'dark'|'light'>} Current system theme
+   */
   ipcMain.handle('get-native-theme', () => {
     return nativeTheme.shouldUseDarkColors ? 'dark' : 'light';
   });
 
+  /**
+   * IPC Handler: Set application theme
+   * @param {Electron.IpcMainEvent} event - IPC event object
+   * @param {'system'|'light'|'dark'} theme - Theme to set
+   */
   ipcMain.on('set-native-theme', (event, theme) => {
     nativeTheme.themeSource = theme;
   });
@@ -413,7 +551,13 @@ function setupIpcHandlers() {
 // APP LIFECYCLE
 // ============================================================================
 
-// Single instance lock
+/**
+ * Single instance lock to prevent multiple instances of the application.
+ * If another instance is already running, this instance will quit immediately
+ * and focus the existing instance instead.
+ *
+ * @type {boolean}
+ */
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
