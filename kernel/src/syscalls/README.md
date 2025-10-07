@@ -26,13 +26,31 @@ The module defines fine-grained trait interfaces for different categories of sys
 
 ### Types (`types.rs`)
 
-Core data structures and types:
+Core data structures and types with modern serde patterns:
 
 - **`SyscallError`** - Strongly-typed error enum using `thiserror`
-- **`SyscallResult`** - Result type for syscall operations (maintains backward compatibility)
+  - Uses `#[serde(tag = "error_type", content = "details")]` for structured errors
+  - Includes helper constructors for ergonomic error creation
+  - Marked `#[non_exhaustive]` for forward compatibility
+  
+- **`SyscallResult`** - Result type for syscall operations
+  - Uses `#[skip_serializing_none]` from `serde_with` for cleaner JSON
+  - Tagged union format for type-safe deserialization
+  - Maintains backward compatibility with existing code
+  
 - **`Syscall`** - Enum of all available system calls
+  - Comprehensive documentation on all variants
+  - Uses `#[serde_as]` for enhanced serde_with support
+  - Optional fields use `#[serde(skip_serializing_if)]` to reduce payload size
+  - Default values with `#[serde(default)]` for optional parameters
+  - Marked `#[non_exhaustive]` for extensibility
+  
 - **`ProcessOutput`** - Process execution output structure
+  - Skips empty stdout/stderr in serialization
+  - Includes helper methods: `is_success()`, `is_empty()`
+  
 - **`SystemInfo`** - System information structure
+  - Includes `current()` helper for runtime introspection
 
 ### Implementation
 
@@ -127,6 +145,54 @@ The module uses two error types:
 - **`SyscallResult`** - Enum-based results for external API (backward compatible)
 
 `SyscallError` automatically converts to `SyscallResult` when needed.
+
+## Serde Best Practices
+
+The syscalls module uses modern serde patterns for optimal serialization:
+
+### Attributes Used
+
+1. **`#[skip_serializing_none]`** - Omits `None` values from JSON output
+   - Reduces payload size
+   - Cleaner JSON representation
+   - From `serde_with` crate
+
+2. **`#[serde_as]`** - Enables advanced serde_with conversions
+   - Prepares for future type conversions
+   - Better PathBuf/Duration handling
+
+3. **`#[serde(default)]`** - Provides default values on deserialization
+   - Makes fields optional in JSON
+   - Backward compatible with older clients
+
+4. **`#[serde(skip_serializing_if = "Option::is_none")]`** - Conditional serialization
+   - Used on optional syscall parameters
+   - Reduces JSON payload size
+
+5. **`#[non_exhaustive]`** - Forward compatibility
+   - Allows adding variants without breaking changes
+   - Recommended for public APIs
+
+### Type Patterns
+
+- **Tagged Unions**: Use `#[serde(tag = "type")]` for type discrimination
+- **Flattening**: Avoid unless necessary (breaks type safety)
+- **String Validation**: Use custom deserializers for constrained strings
+- **Helper Methods**: Add ergonomic constructors and queries
+
+### Example
+
+```rust
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MyStruct {
+    #[serde(default)]
+    optional_field: Option<String>,
+    
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    items: Vec<Item>,
+}
+```
 
 ## Extension
 

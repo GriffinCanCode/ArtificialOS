@@ -22,11 +22,7 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied("Missing SystemInfo capability");
         }
 
-        let info = SystemInfo {
-            os: std::env::consts::OS.to_string(),
-            arch: std::env::consts::ARCH.to_string(),
-            family: std::env::consts::FAMILY.to_string(),
-        };
+        let info = SystemInfo::current();
 
         info!("PID {} retrieved system info", pid);
         match serde_json::to_vec(&info) {
