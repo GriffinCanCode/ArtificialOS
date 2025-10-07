@@ -3,6 +3,7 @@
  * Handles system metrics collection and display
  */
 
+import { formatBytes, formatDuration, formatCompact } from "../../../../../core/utils/math";
 import { logger } from "../../../../../core/utils/monitoring/logger";
 import { getAllMetrics } from "../../../../../core/monitoring";
 import { formatTime } from "../../../../../core/utils/dates";
@@ -410,7 +411,7 @@ export class AnalysisExecutor implements AsyncExecutor {
 
     // Bytes
     if (key.includes("bytes") || key.includes("size")) {
-      return this.formatBytes(value);
+      return formatBytes(value);
     }
 
     // Milliseconds
@@ -466,38 +467,17 @@ export class AnalysisExecutor implements AsyncExecutor {
   }
 
   /**
-   * Format uptime duration
+   * Format uptime duration (seconds to ms for formatDuration utility)
    */
   private formatUptime(seconds: number): string {
-    if (seconds < 60) return `${Math.floor(seconds)}s`;
-
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m`;
-
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ${minutes % 60}m`;
-
-    const days = Math.floor(hours / 24);
-    return `${days}d ${hours % 24}h`;
+    return formatDuration(seconds * 1000);
   }
 
   /**
-   * Format byte values
-   */
-  private formatBytes(bytes: number): string {
-    if (bytes < 1024) return `${bytes}B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)}KB`;
-    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(2)}MB`;
-    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)}GB`;
-  }
-
-  /**
-   * Format large numbers
+   * Format large numbers using shared utility
    */
   private formatNumber(num: number): string {
-    if (num >= 1000000) return `${(num / 1000000).toFixed(2)}M`;
-    if (num >= 1000) return `${(num / 1000).toFixed(2)}K`;
-    return num.toString();
+    return formatCompact(num, 2);
   }
 
   /**

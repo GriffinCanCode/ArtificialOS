@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useCallback, useRef } from "react";
+import { randomId } from "../../../core/utils/math";
 import { Dropzone } from "./Dropzone";
 import type { FileDropConfig, DropResult, FileValidator } from "../core/types";
 import { formatFileSize } from "../core/utils";
@@ -75,7 +76,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
   // Generate unique ID for each file
   const generateFileId = useCallback(() => {
-    return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    return randomId();
   }, []);
 
   // Upload a single file

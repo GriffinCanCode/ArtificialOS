@@ -3,6 +3,7 @@
  * Helper functions for size estimation and measurements
  */
 
+import { clamp } from "../utils/math";
 import type { SizeEstimator, AutoSizeConfig, MeasuredSize } from "./types";
 
 // ============================================================================
@@ -33,7 +34,7 @@ export const autoSize = (config: AutoSizeConfig): SizeEstimator => {
   const { minSize = 0, maxSize = Infinity, defaultSize } = config;
   return () => {
     const size = defaultSize;
-    return Math.max(minSize, Math.min(maxSize, size));
+    return clamp(size, minSize, maxSize);
   };
 };
 

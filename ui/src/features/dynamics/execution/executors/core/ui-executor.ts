@@ -3,6 +3,7 @@
  * Handles generic UI state manipulation
  */
 
+import { evaluateExpression } from "../../../../../core/utils/math";
 import { logger } from "../../../../../core/utils/monitoring/logger";
 import { ExecutorContext, BaseExecutor } from "./types";
 
@@ -78,38 +79,18 @@ export class UIExecutor implements BaseExecutor {
         const computeKey = params.key || params.target || "display";
         const expression = params.expression || this.context.componentState.get(computeKey, "");
 
-        try {
-          // Sanitize and evaluate
-          const sanitized = String(expression)
-            .replace(/×/g, "*")
-            .replace(/÷/g, "/")
-            .replace(/−/g, "-");
+        // Use secure math utility (replaces dangerous eval)
+        // Supports advanced functions: sqrt, sin, cos, tan, log, exp, pi, e, etc.
+        const resultStr = String(evaluateExpression(expression));
 
-          // Basic security: only allow numbers, operators, parentheses, and whitespace
-          if (!/^[\d\s+\-*/.()]+$/.test(sanitized)) {
-            throw new Error("Invalid expression");
-          }
-
-          const result = eval(sanitized);
-          const resultStr = String(result);
-
-          this.context.componentState.set(computeKey, resultStr);
-          logger.debug("Expression evaluated", {
-            component: "UIExecutor",
-            key: computeKey,
-            expression,
-            result: resultStr,
-          });
-          return resultStr;
-        } catch (error) {
-          const errorMsg = "Error";
-          this.context.componentState.set(computeKey, errorMsg);
-          logger.error("Expression evaluation failed", error as Error, {
-            component: "UIExecutor",
-            expression,
-          });
-          return errorMsg;
-        }
+        this.context.componentState.set(computeKey, resultStr);
+        logger.debug("Expression evaluated", {
+          component: "UIExecutor",
+          key: computeKey,
+          expression,
+          result: resultStr,
+        });
+        return resultStr;
 
       case "toggle":
         // Generic boolean toggle

@@ -178,53 +178,10 @@ export function fillGaps(
 /**
  * Calculate percentiles
  */
-export function percentile(data: number[], p: number): number {
-  const sorted = [...data].sort((a, b) => a - b);
-  const index = (sorted.length - 1) * (p / 100);
-  const lower = Math.floor(index);
-  const upper = Math.ceil(index);
-  const weight = index % 1;
-
-  if (lower === upper) return sorted[lower];
-  return sorted[lower] * (1 - weight) + sorted[upper] * weight;
-}
-
 /**
- * Calculate statistics summary
+ * @deprecated Use statisticsSummary from core/utils/math instead
  */
-export function statistics(data: number[]): {
-  min: number;
-  max: number;
-  mean: number;
-  median: number;
-  p95: number;
-  p99: number;
-  stdDev: number;
-} {
-  if (data.length === 0) {
-    return { min: 0, max: 0, mean: 0, median: 0, p95: 0, p99: 0, stdDev: 0 };
-  }
-
-  const sorted = [...data].sort((a, b) => a - b);
-  const sum = sorted.reduce((a, b) => a + b, 0);
-  const mean = sum / sorted.length;
-  const median = percentile(sorted, 50);
-  const p95 = percentile(sorted, 95);
-  const p99 = percentile(sorted, 99);
-
-  const variance = sorted.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / sorted.length;
-  const stdDev = Math.sqrt(variance);
-
-  return {
-    min: sorted[0],
-    max: sorted[sorted.length - 1],
-    mean,
-    median,
-    p95,
-    p99,
-    stdDev,
-  };
-}
+export { percentile, statisticsSummary as statistics } from "../../../core/utils/math";
 
 // ============================================================================
 // Format Converters

@@ -3,6 +3,7 @@
  * Kept for backward compatibility - use ui.* tools instead
  */
 
+import { evaluateExpression } from "../../../../../core/utils/math";
 import { logger } from "../../../../../core/utils/monitoring/logger";
 import { ExecutorContext, BaseExecutor } from "../core/types";
 
@@ -55,21 +56,12 @@ export class CalcExecutor implements BaseExecutor {
         return newDisplay;
 
       case "evaluate":
-        try {
-          const expression = this.context.componentState.get("display", "0");
-          // Simple eval (in production, use a proper math parser!)
-          const sanitized = expression.replace(/×/g, "*").replace(/÷/g, "/").replace(/−/g, "-");
-          const result = eval(sanitized);
-          this.context.componentState.set("display", String(result));
-          logger.debug("Calculator evaluated", { component: "CalcExecutor", expression, result });
-          return result;
-        } catch (error) {
-          this.context.componentState.set("display", "Error");
-          logger.error("Calculator evaluation error", error as Error, {
-            component: "CalcExecutor",
-          });
-          return "Error";
-        }
+        const expression = this.context.componentState.get("display", "0");
+        // Use secure math utility (replaces dangerous eval)
+        const result = evaluateExpression(expression);
+        this.context.componentState.set("display", String(result));
+        logger.debug("Calculator evaluated", { component: "CalcExecutor", expression, result });
+        return result;
 
       default:
         return null;
