@@ -143,7 +143,8 @@
                   "style": {
                     "display": "grid",
                     "gridTemplateColumns": "repeat(auto-fit, minmax(220px, 1fr))",
-                    "gap": "1rem"
+                    "gap": "1rem",
+                    "marginBottom": "1.5rem"
                   }
                 },
                 "children": [
@@ -320,6 +321,189 @@
                     ]
                   }
                 ]
+              },
+              {
+                "type": "container",
+                "id": "charts-row",
+                "props": {
+                  "layout": "vertical",
+                  "spacing": "large"
+                },
+                "children": [
+                  {
+                    "type": "card",
+                    "id": "performance-chart-card",
+                    "props": {
+                      "style": {
+                        "background": "rgba(26, 26, 26, 0.8)",
+                        "border": "1px solid rgba(255,255,255,0.1)",
+                        "borderRadius": "12px",
+                        "padding": "1.5rem"
+                      }
+                    },
+                    "children": [
+                      {
+                        "type": "text",
+                        "id": "performance-chart-title",
+                        "props": {
+                          "content": "⚡ Performance Trend",
+                          "variant": "h3",
+                          "style": {
+                            "fontSize": "1.1rem",
+                            "fontWeight": "600",
+                            "marginBottom": "1rem",
+                            "color": "#667eea"
+                          }
+                        }
+                      },
+                      {
+                        "type": "area-chart",
+                        "id": "performance-chart",
+                        "props": {
+                          "dimensions": {
+                            "height": 300
+                          },
+                          "data": [],
+                          "series": [
+                            {
+                              "dataKey": "latency",
+                              "name": "Latency (ms)",
+                              "color": "#667eea"
+                            }
+                          ],
+                          "xAxis": {
+                            "dataKey": "timestamp",
+                            "label": "Time"
+                          },
+                          "yAxis": {
+                            "label": "Latency (ms)"
+                          },
+                          "smooth": true,
+                          "theme": "dark",
+                          "grid": {
+                            "show": true
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "container",
+                    "id": "dual-charts",
+                    "props": {
+                      "layout": "horizontal",
+                      "spacing": "large",
+                      "style": {
+                        "display": "grid",
+                        "gridTemplateColumns": "1fr 1fr",
+                        "gap": "1.5rem"
+                      }
+                    },
+                    "children": [
+                      {
+                        "type": "card",
+                        "id": "requests-chart-card",
+                        "props": {
+                          "style": {
+                            "background": "rgba(26, 26, 26, 0.8)",
+                            "border": "1px solid rgba(255,255,255,0.1)",
+                            "borderRadius": "12px",
+                            "padding": "1.5rem"
+                          }
+                        },
+                        "children": [
+                          {
+                            "type": "text",
+                            "id": "requests-chart-title",
+                            "props": {
+                              "content": "📈 Request Rate",
+                              "variant": "h3",
+                              "style": {
+                                "fontSize": "1.1rem",
+                                "fontWeight": "600",
+                                "marginBottom": "1rem",
+                                "color": "#4facfe"
+                              }
+                            }
+                          },
+                          {
+                            "type": "line-chart",
+                            "id": "requests-chart",
+                            "props": {
+                              "dimensions": {
+                                "height": 250
+                              },
+                              "data": [],
+                              "series": [
+                                {
+                                  "dataKey": "requests",
+                                  "name": "Requests/sec",
+                                  "color": "#4facfe"
+                                }
+                              ],
+                              "xAxis": {
+                                "dataKey": "timestamp"
+                              },
+                              "yAxis": {
+                                "label": "Requests"
+                              },
+                              "smooth": true,
+                              "theme": "dark"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "card",
+                        "id": "service-distribution-card",
+                        "props": {
+                          "style": {
+                            "background": "rgba(26, 26, 26, 0.8)",
+                            "border": "1px solid rgba(255,255,255,0.1)",
+                            "borderRadius": "12px",
+                            "padding": "1.5rem"
+                          }
+                        },
+                        "children": [
+                          {
+                            "type": "text",
+                            "id": "service-dist-title",
+                            "props": {
+                              "content": "🎯 Service Load",
+                              "variant": "h3",
+                              "style": {
+                                "fontSize": "1.1rem",
+                                "fontWeight": "600",
+                                "marginBottom": "1rem",
+                                "color": "#43e97b"
+                              }
+                            }
+                          },
+                          {
+                            "type": "pie-chart",
+                            "id": "service-distribution",
+                            "props": {
+                              "dimensions": {
+                                "height": 250
+                              },
+                              "data": [],
+                              "dataKey": "value",
+                              "nameKey": "name",
+                              "colors": [
+                                "#667eea",
+                                "#4facfe",
+                                "#43e97b",
+                                "#fee140"
+                              ],
+                              "innerRadius": 50,
+                              "theme": "dark"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
               }
             ]
           },
@@ -339,6 +523,70 @@
             "children": [
               {
                 "type": "card",
+                "id": "backend-latency-card",
+                "props": {
+                  "style": {
+                    "background": "rgba(26, 26, 26, 0.8)",
+                    "border": "1px solid rgba(255,255,255,0.1)",
+                    "borderRadius": "12px",
+                    "padding": "1.5rem",
+                    "marginBottom": "1.5rem"
+                  }
+                },
+                "children": [
+                  {
+                    "type": "text",
+                    "id": "backend-latency-title",
+                    "props": {
+                      "content": "🔧 Backend Response Times",
+                      "variant": "h3",
+                      "style": {
+                        "fontSize": "1.1rem",
+                        "fontWeight": "600",
+                        "marginBottom": "1rem",
+                        "color": "#667eea"
+                      }
+                    }
+                  },
+                  {
+                    "type": "line-chart",
+                    "id": "backend-latency-chart",
+                    "props": {
+                      "dimensions": {
+                        "height": 300
+                      },
+                      "data": [],
+                      "series": [
+                        {
+                          "dataKey": "p50",
+                          "name": "p50",
+                          "color": "#667eea"
+                        },
+                        {
+                          "dataKey": "p95",
+                          "name": "p95",
+                          "color": "#4facfe"
+                        },
+                        {
+                          "dataKey": "p99",
+                          "name": "p99",
+                          "color": "#fa709a"
+                        }
+                      ],
+                      "xAxis": {
+                        "dataKey": "timestamp"
+                      },
+                      "yAxis": {
+                        "label": "Latency (ms)"
+                      },
+                      "smooth": true,
+                      "theme": "dark"
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "card",
                 "id": "backend-metrics",
                 "props": {
                   "style": {
@@ -353,7 +601,7 @@
                     "type": "text",
                     "id": "backend-title",
                     "props": {
-                      "content": "🔧 Backend (Go) Metrics",
+                      "content": "📊 Backend Metrics Summary",
                       "variant": "h3",
                       "style": {
                         "fontSize": "1.1rem",
@@ -391,6 +639,59 @@
             "children": [
               {
                 "type": "card",
+                "id": "kernel-operations-card",
+                "props": {
+                  "style": {
+                    "background": "rgba(26, 26, 26, 0.8)",
+                    "border": "1px solid rgba(255,255,255,0.1)",
+                    "borderRadius": "12px",
+                    "padding": "1.5rem",
+                    "marginBottom": "1.5rem"
+                  }
+                },
+                "children": [
+                  {
+                    "type": "text",
+                    "id": "kernel-ops-title",
+                    "props": {
+                      "content": "⚙️ Kernel Operations",
+                      "variant": "h3",
+                      "style": {
+                        "fontSize": "1.1rem",
+                        "fontWeight": "600",
+                        "marginBottom": "1rem",
+                        "color": "#f59e0b"
+                      }
+                    }
+                  },
+                  {
+                    "type": "bar-chart",
+                    "id": "kernel-ops-chart",
+                    "props": {
+                      "dimensions": {
+                        "height": 300
+                      },
+                      "data": [],
+                      "series": [
+                        {
+                          "dataKey": "count",
+                          "name": "Operations",
+                          "color": "#f59e0b"
+                        }
+                      ],
+                      "xAxis": {
+                        "dataKey": "operation"
+                      },
+                      "yAxis": {
+                        "label": "Count"
+                      },
+                      "theme": "dark"
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "card",
                 "id": "kernel-metrics",
                 "props": {
                   "style": {
@@ -405,7 +706,7 @@
                     "type": "text",
                     "id": "kernel-title",
                     "props": {
-                      "content": "⚙️ Kernel (Rust) Metrics",
+                      "content": "📊 Kernel Metrics Summary",
                       "variant": "h3",
                       "style": {
                         "fontSize": "1.1rem",
@@ -442,6 +743,121 @@
             },
             "children": [
               {
+                "type": "container",
+                "id": "ai-charts-row",
+                "props": {
+                  "layout": "horizontal",
+                  "spacing": "large",
+                  "style": {
+                    "display": "grid",
+                    "gridTemplateColumns": "1fr 1fr",
+                    "gap": "1.5rem",
+                    "marginBottom": "1.5rem"
+                  }
+                },
+                "children": [
+                  {
+                    "type": "card",
+                    "id": "ai-throughput-card",
+                    "props": {
+                      "style": {
+                        "background": "rgba(26, 26, 26, 0.8)",
+                        "border": "1px solid rgba(255,255,255,0.1)",
+                        "borderRadius": "12px",
+                        "padding": "1.5rem"
+                      }
+                    },
+                    "children": [
+                      {
+                        "type": "text",
+                        "id": "ai-throughput-title",
+                        "props": {
+                          "content": "🤖 AI Request Throughput",
+                          "variant": "h3",
+                          "style": {
+                            "fontSize": "1.1rem",
+                            "fontWeight": "600",
+                            "marginBottom": "1rem",
+                            "color": "#10b981"
+                          }
+                        }
+                      },
+                      {
+                        "type": "area-chart",
+                        "id": "ai-throughput-chart",
+                        "props": {
+                          "dimensions": {
+                            "height": 250
+                          },
+                          "data": [],
+                          "series": [
+                            {
+                              "dataKey": "requests",
+                              "name": "Requests",
+                              "color": "#10b981"
+                            }
+                          ],
+                          "xAxis": {
+                            "dataKey": "timestamp"
+                          },
+                          "yAxis": {
+                            "label": "Requests"
+                          },
+                          "smooth": true,
+                          "theme": "dark"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "card",
+                    "id": "ai-cache-card",
+                    "props": {
+                      "style": {
+                        "background": "rgba(26, 26, 26, 0.8)",
+                        "border": "1px solid rgba(255,255,255,0.1)",
+                        "borderRadius": "12px",
+                        "padding": "1.5rem"
+                      }
+                    },
+                    "children": [
+                      {
+                        "type": "text",
+                        "id": "ai-cache-title",
+                        "props": {
+                          "content": "💾 Cache Performance",
+                          "variant": "h3",
+                          "style": {
+                            "fontSize": "1.1rem",
+                            "fontWeight": "600",
+                            "marginBottom": "1rem",
+                            "color": "#43e97b"
+                          }
+                        }
+                      },
+                      {
+                        "type": "pie-chart",
+                        "id": "ai-cache-chart",
+                        "props": {
+                          "dimensions": {
+                            "height": 250
+                          },
+                          "data": [],
+                          "dataKey": "value",
+                          "nameKey": "name",
+                          "colors": [
+                            "#43e97b",
+                            "#fa709a"
+                          ],
+                          "innerRadius": 50,
+                          "theme": "dark"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
                 "type": "card",
                 "id": "ai-metrics",
                 "props": {
@@ -457,7 +873,7 @@
                     "type": "text",
                     "id": "ai-title",
                     "props": {
-                      "content": "🤖 AI Service (Python) Metrics",
+                      "content": "📊 AI Service Metrics Summary",
                       "variant": "h3",
                       "style": {
                         "fontSize": "1.1rem",

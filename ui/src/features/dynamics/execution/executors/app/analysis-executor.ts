@@ -11,6 +11,8 @@ import { ExecutorContext, AsyncExecutor } from "../core/types";
 export class AnalysisExecutor implements AsyncExecutor {
   private context: ExecutorContext;
   private refreshInterval: number | null = null;
+  private metricsHistory: any[] = [];
+  private readonly MAX_HISTORY = 60; // Keep last 60 data points
 
   constructor(context: ExecutorContext) {
     this.context = context;
@@ -46,8 +48,22 @@ export class AnalysisExecutor implements AsyncExecutor {
       // Fetch metrics from all services
       const allMetrics = await getAllMetrics();
 
+      // Add to history
+      this.metricsHistory.push({
+        timestamp: Date.now(),
+        metrics: allMetrics,
+      });
+
+      // Trim history to max size
+      if (this.metricsHistory.length > this.MAX_HISTORY) {
+        this.metricsHistory = this.metricsHistory.slice(-this.MAX_HISTORY);
+      }
+
       // Update summary cards
       this.updateSummaryCards(allMetrics);
+
+      // Update charts
+      this.updateCharts();
 
       // Update detailed metrics lists
       this.updateBackendMetrics(allMetrics.backend);
@@ -156,6 +172,80 @@ export class AnalysisExecutor implements AsyncExecutor {
     // Active apps/connections - from summary
     const activeApps = summary.active_connections || backend.active_connections || 0;
     this.context.componentState.set("apps-value", activeApps.toString());
+  }
+
+  /**
+   * Update all charts with historical data
+   */
+  private updateCharts(): void {
+    if (this.metricsHistory.length === 0) return;
+
+    const formatTimestamp = (ts: number) => {
+      const date = new Date(ts);
+      return `${date.getHours()}:${date.getMinutes().toString().padStart(2, "0")}`;
+    };
+
+    // Performance chart (overview)
+    const performanceData = this.metricsHistory.map((h) => ({
+      timestamp: formatTimestamp(h.timestamp),
+      latency: h.metrics.summary?.average_latency_ms || 0,
+    }));
+    this.context.componentState.set("performance-chart.data", performanceData);
+
+    // Requests chart (overview)
+    const requestsData = this.metricsHistory.map((h) => ({
+      timestamp: formatTimestamp(h.timestamp),
+      requests: h.metrics.summary?.requests_per_second || 0,
+    }));
+    this.context.componentState.set("requests-chart.data", requestsData);
+
+    // Service distribution (overview) - latest snapshot
+    const latest = this.metricsHistory[this.metricsHistory.length - 1].metrics;
+    const serviceDistribution = [
+      { name: "Backend", value: latest.backend?.total_requests || 0 },
+      { name: "Kernel", value: latest.kernel?.total_syscalls || 0 },
+      { name: "AI Service", value: latest.aiService?.total_requests || 0 },
+      { name: "UI", value: latest.ui?.counters?.tool_executions_total || 0 },
+    ].filter((s) => s.value > 0);
+    this.context.componentState.set("service-distribution.data", serviceDistribution);
+
+    // Backend latency chart (multi-series)
+    const backendLatencyData = this.metricsHistory.map((h) => {
+      const backend = h.metrics.backend || {};
+      return {
+        timestamp: formatTimestamp(h.timestamp),
+        p50: backend.p50_latency_ms || 0,
+        p95: backend.p95_latency_ms || 0,
+        p99: backend.p99_latency_ms || 0,
+      };
+    });
+    this.context.componentState.set("backend-latency-chart.data", backendLatencyData);
+
+    // Kernel operations chart (bar)
+    const kernelOps = latest.kernel?.operations || {};
+    const kernelOpsData = Object.entries(kernelOps)
+      .map(([operation, count]) => ({
+        operation: operation.replace(/_/g, " "),
+        count: count as number,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+    this.context.componentState.set("kernel-ops-chart.data", kernelOpsData);
+
+    // AI throughput chart
+    const aiThroughputData = this.metricsHistory.map((h) => ({
+      timestamp: formatTimestamp(h.timestamp),
+      requests: h.metrics.aiService?.requests_per_minute || 0,
+    }));
+    this.context.componentState.set("ai-throughput-chart.data", aiThroughputData);
+
+    // AI cache chart (pie)
+    const aiCache = latest.aiService?.cache || {};
+    const aiCacheData = [
+      { name: "Hits", value: aiCache.hits || 0 },
+      { name: "Misses", value: aiCache.misses || 0 },
+    ].filter((s) => s.value > 0);
+    this.context.componentState.set("ai-cache-chart.data", aiCacheData);
   }
 
   /**

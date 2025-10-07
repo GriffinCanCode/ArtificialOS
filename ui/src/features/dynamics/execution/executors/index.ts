@@ -26,6 +26,8 @@ export * from "./data/data-executor";
 export * from "./data/list-executor";
 export * from "./data/filesystem-executor";
 export * from "./data/form-executor";
+export * from "./data/chart-executor";
+export * from "./data/graph-executor";
 
 // System integrations - OS-level features
 export * from "./system/clipboard-executor";

@@ -28,6 +28,8 @@ import {
   CalcExecutor,
   NotesExecutor,
   AnalysisExecutor,
+  ChartExecutor,
+  GraphExecutor,
 } from "./executors";
 
 // ============================================================================
@@ -61,6 +63,8 @@ export class ToolExecutor {
   private calcExecutor: CalcExecutor;
   private notesExecutor: NotesExecutor;
   private analysisExecutor: AnalysisExecutor;
+  private chartExecutor: ChartExecutor;
+  private graphExecutor: GraphExecutor;
 
   constructor(componentState: ComponentState) {
     this.componentState = componentState;
@@ -91,6 +95,8 @@ export class ToolExecutor {
     this.calcExecutor = new CalcExecutor(this.context);
     this.notesExecutor = new NotesExecutor(this.context, this.serviceExecutor);
     this.analysisExecutor = new AnalysisExecutor(this.context);
+    this.chartExecutor = new ChartExecutor(this.context);
+    this.graphExecutor = new GraphExecutor(this.context);
 
     this.setupStateManagement();
   }
@@ -216,6 +222,12 @@ export class ToolExecutor {
             break;
           case "analysis":
             result = await this.analysisExecutor.execute(toolId.split(".")[1], params);
+            break;
+          case "chart":
+            result = this.chartExecutor.execute(toolId.split(".")[1], params);
+            break;
+          case "graph":
+            result = this.graphExecutor.execute(toolId.split(".")[1], params);
             break;
 
           // Legacy specific tools - kept for backward compatibility but deprecated

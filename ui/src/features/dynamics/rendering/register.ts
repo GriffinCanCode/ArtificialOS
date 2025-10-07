@@ -37,6 +37,12 @@ import { AppShortcut } from "../components/special/AppShortcut";
 import { Iframe } from "../components/special/Iframe";
 import { Progress } from "../components/special/Progress";
 
+import { LineChart } from "../../visualization/components/LineChart";
+import { BarChart } from "../../visualization/components/BarChart";
+import { AreaChart } from "../../visualization/components/AreaChart";
+import { PieChart } from "../../visualization/components/PieChart";
+import { Graph } from "../../visualization/components/Graph";
+
 // Import validation schemas
 import {
   buttonSchema,
@@ -56,6 +62,14 @@ import { imageSchema, videoSchema, audioSchema, canvasSchema } from "../schemas/
 import { badgeSchema, cardSchema, dividerSchema, modalSchema, tabsSchema } from "../schemas/ui";
 
 import { appShortcutSchema, iframeSchema, progressSchema } from "../schemas/special";
+
+import {
+  lineChartSchema,
+  barChartSchema,
+  areaChartSchema,
+  pieChartSchema,
+  graphSchema,
+} from "../schemas/visualization";
 
 // ============================================================================
 // Component Registry Definitions
@@ -96,6 +110,13 @@ const componentRenderers: ComponentRenderer[] = [
   { type: "app-shortcut", render: AppShortcut, schema: appShortcutSchema, category: "special" },
   { type: "iframe", render: Iframe, schema: iframeSchema, category: "special" },
   { type: "progress", render: Progress, schema: progressSchema, category: "special" },
+
+  // Visualization
+  { type: "line-chart", render: LineChart, schema: lineChartSchema, category: "ui" },
+  { type: "bar-chart", render: BarChart, schema: barChartSchema, category: "ui" },
+  { type: "area-chart", render: AreaChart, schema: areaChartSchema, category: "ui" },
+  { type: "pie-chart", render: PieChart, schema: pieChartSchema, category: "ui" },
+  { type: "graph", render: Graph, schema: graphSchema, category: "ui" },
 ];
 
 // ============================================================================

@@ -1,0 +1,235 @@
+/**
+ * Visualization Styles
+ * Styles for charts and graphs
+ */
+
+/* ============================================================================
+   Chart Container
+   ============================================================================ */
+
+.chart-container {
+  @apply relative;
+  @apply w-full;
+  @apply overflow-hidden;
+  @apply rounded-lg;
+}
+
+/* Ensure charts respect their container */
+.chart-container > div {
+  @apply w-full h-full;
+}
+
+/* ============================================================================
+   Graph Container
+   ============================================================================ */
+
+.graph-container {
+  @apply relative;
+  @apply w-full;
+  @apply overflow-hidden;
+  @apply rounded-lg;
+  @apply border border-gray-800;
+}
+
+/* ReactFlow specific styles */
+.graph-container .react-flow__node {
+  @apply rounded-lg;
+  @apply border-2;
+  @apply px-4 py-2;
+  @apply shadow-lg;
+  @apply transition-all duration-200;
+}
+
+.graph-container .react-flow__node:hover {
+  @apply shadow-xl;
+  @apply scale-105;
+}
+
+.graph-container .react-flow__node.selected {
+  @apply border-purple-500;
+  @apply shadow-purple-500/50;
+}
+
+.graph-container .react-flow__edge {
+  @apply transition-all duration-200;
+}
+
+.graph-container .react-flow__edge.selected {
+  @apply opacity-100;
+}
+
+.graph-container .react-flow__edge-path {
+  @apply transition-all duration-200;
+}
+
+/* Controls styling */
+.graph-container .react-flow__controls {
+  @apply border border-gray-800;
+  @apply rounded-lg;
+  @apply shadow-lg;
+  @apply bg-gray-900/90;
+  @apply backdrop-blur-sm;
+}
+
+.graph-container .react-flow__controls-button {
+  @apply bg-gray-800;
+  @apply border-gray-700;
+  @apply text-gray-300;
+  @apply transition-all duration-200;
+}
+
+.graph-container .react-flow__controls-button:hover {
+  @apply bg-gray-700;
+  @apply text-white;
+}
+
+/* Minimap styling */
+.graph-container .react-flow__minimap {
+  @apply border border-gray-800;
+  @apply rounded-lg;
+  @apply shadow-lg;
+  @apply bg-gray-900/90;
+  @apply backdrop-blur-sm;
+}
+
+/* ============================================================================
+   Recharts Customization
+   ============================================================================ */
+
+/* Tooltip */
+.recharts-tooltip-wrapper {
+  @apply z-50;
+}
+
+.recharts-default-tooltip {
+  @apply rounded-lg !important;
+  @apply shadow-xl !important;
+  @apply border-2 !important;
+  @apply backdrop-blur-sm !important;
+}
+
+/* Legend */
+.recharts-legend-wrapper {
+  @apply select-none;
+}
+
+.recharts-legend-item {
+  @apply cursor-pointer;
+  @apply transition-opacity duration-200;
+}
+
+.recharts-legend-item:hover {
+  @apply opacity-70;
+}
+
+/* Grid lines */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  @apply opacity-20;
+}
+
+/* Axis */
+.recharts-cartesian-axis-tick {
+  @apply select-none;
+}
+
+/* ============================================================================
+   Loading States
+   ============================================================================ */
+
+.chart-loading {
+  @apply flex items-center justify-center;
+  @apply w-full h-full;
+  @apply bg-gray-900/50;
+  @apply backdrop-blur-sm;
+  @apply rounded-lg;
+}
+
+.chart-loading::after {
+  content: "Loading chart...";
+  @apply text-gray-400;
+  @apply text-sm;
+}
+
+/* ============================================================================
+   Empty States
+   ============================================================================ */
+
+.chart-empty {
+  @apply flex items-center justify-center;
+  @apply w-full h-full;
+  @apply border-2 border-dashed border-gray-800;
+  @apply rounded-lg;
+  @apply text-gray-500;
+}
+
+.chart-empty::after {
+  content: "No data available";
+  @apply text-sm;
+}
+
+/* ============================================================================
+   Animations
+   ============================================================================ */
+
+@keyframes chartFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.chart-container > div {
+  animation: chartFadeIn 0.3s ease-out;
+}
+
+/* ============================================================================
+   Responsive
+   ============================================================================ */
+
+@media (max-width: 640px) {
+  .chart-container {
+    @apply text-xs;
+  }
+
+  .recharts-cartesian-axis-tick {
+    @apply text-xs;
+  }
+}
+
+/* ============================================================================
+   Dark Theme Enhancements
+   ============================================================================ */
+
+.chart-container {
+  /* Chart background glow effect */
+  @apply bg-gradient-to-br from-gray-900/50 to-gray-950/50;
+}
+
+.chart-container::before {
+  content: "";
+  @apply absolute inset-0;
+  @apply bg-gradient-to-br from-purple-500/5 to-blue-500/5;
+  @apply pointer-events-none;
+  @apply rounded-lg;
+}
+
+/* ============================================================================
+   Print Styles
+   ============================================================================ */
+
+@media print {
+  .chart-container {
+    @apply bg-white;
+    @apply text-black;
+  }
+
+  .graph-container .react-flow__controls,
+  .graph-container .react-flow__minimap {
+    @apply hidden;
+  }
+}
