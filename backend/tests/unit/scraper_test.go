@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/GriffinCanCode/AgentOS/backend/internal/providers"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/scraper"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -120,7 +120,7 @@ const (
 
 // TestScraperProviderDefinition tests the provider metadata
 func TestScraperProviderDefinition(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	def := scraper.Definition()
 
 	assert.Equal(t, "scraper", def.ID)
@@ -161,7 +161,7 @@ func TestScraperProviderDefinition(t *testing.T) {
 
 // TestContentExtractText tests text extraction
 func TestContentExtractText(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -180,7 +180,7 @@ func TestContentExtractText(t *testing.T) {
 
 // TestContentExtractTitle tests title extraction
 func TestContentExtractTitle(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -197,7 +197,7 @@ func TestContentExtractTitle(t *testing.T) {
 
 // TestContentExtractLinks tests link extraction
 func TestContentExtractLinks(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -217,7 +217,7 @@ func TestContentExtractLinks(t *testing.T) {
 
 // TestContentExtractLinksAbsoluteOnly tests absolute link extraction
 func TestContentExtractLinksAbsoluteOnly(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -237,7 +237,7 @@ func TestContentExtractLinksAbsoluteOnly(t *testing.T) {
 
 // TestContentExtractImages tests image extraction
 func TestContentExtractImages(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -254,7 +254,7 @@ func TestContentExtractImages(t *testing.T) {
 
 // TestContentCSSSelect tests CSS selector queries
 func TestContentCSSSelect(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -286,7 +286,7 @@ func TestContentCSSSelect(t *testing.T) {
 
 // TestContentExtractAttributes tests attribute extraction
 func TestContentExtractAttributes(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -306,7 +306,7 @@ func TestContentExtractAttributes(t *testing.T) {
 
 // TestXPathQuery tests XPath queries
 func TestXPathQuery(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -338,7 +338,7 @@ func TestXPathQuery(t *testing.T) {
 
 // TestXPathText tests XPath text extraction
 func TestXPathText(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -356,7 +356,7 @@ func TestXPathText(t *testing.T) {
 
 // TestXPathAttribute tests XPath attribute extraction
 func TestXPathAttribute(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -376,7 +376,7 @@ func TestXPathAttribute(t *testing.T) {
 
 // TestExtractArticle tests smart article extraction
 func TestExtractArticle(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -394,7 +394,7 @@ func TestExtractArticle(t *testing.T) {
 
 // TestCleanHTML tests HTML sanitization
 func TestCleanHTML(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -414,7 +414,7 @@ func TestCleanHTML(t *testing.T) {
 
 // TestExtractSummary tests summary extraction
 func TestExtractSummary(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -432,7 +432,7 @@ func TestExtractSummary(t *testing.T) {
 
 // TestFindForm tests form finding
 func TestFindForm(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -452,7 +452,7 @@ func TestFindForm(t *testing.T) {
 
 // TestGetFormFields tests form field extraction
 func TestGetFormFields(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -471,7 +471,7 @@ func TestGetFormFields(t *testing.T) {
 
 // TestFindAllForms tests finding all forms
 func TestFindAllForms(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -489,7 +489,7 @@ func TestFindAllForms(t *testing.T) {
 
 // TestExtractMetadata tests metadata extraction
 func TestExtractMetadata(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -511,7 +511,7 @@ func TestExtractMetadata(t *testing.T) {
 
 // TestExtractHeadings tests heading extraction
 func TestExtractHeadings(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -539,7 +539,7 @@ func TestExtractHeadings(t *testing.T) {
 
 // TestExtractJSONLD tests JSON-LD extraction
 func TestExtractJSONLD(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -560,7 +560,7 @@ func TestExtractJSONLD(t *testing.T) {
 
 // TestExtractMicrodata tests microdata extraction
 func TestExtractMicrodata(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -582,7 +582,7 @@ func TestExtractMicrodata(t *testing.T) {
 
 // TestExtractOpenGraph tests Open Graph extraction
 func TestExtractOpenGraph(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -600,7 +600,7 @@ func TestExtractOpenGraph(t *testing.T) {
 
 // TestExtractPhones tests phone number extraction
 func TestExtractPhones(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -617,7 +617,7 @@ func TestExtractPhones(t *testing.T) {
 
 // TestMatchPattern tests custom regex pattern matching
 func TestMatchPattern(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -636,7 +636,7 @@ func TestMatchPattern(t *testing.T) {
 
 // TestExtractBetween tests text extraction between delimiters
 func TestExtractBetween(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -659,7 +659,7 @@ func TestExtractBetween(t *testing.T) {
 
 // TestExtractIPs tests IP address extraction
 func TestExtractIPs(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -677,7 +677,7 @@ func TestExtractIPs(t *testing.T) {
 
 // TestExtractTable tests table extraction
 func TestExtractTable(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -706,7 +706,7 @@ func TestExtractTable(t *testing.T) {
 
 // TestExtractEmails tests email extraction
 func TestExtractEmails(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -725,7 +725,7 @@ func TestExtractEmails(t *testing.T) {
 
 // TestExtractURLs tests URL extraction
 func TestExtractURLs(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -743,7 +743,7 @@ func TestExtractURLs(t *testing.T) {
 
 // TestExtractLists tests list extraction
 func TestExtractLists(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -762,7 +762,7 @@ func TestExtractLists(t *testing.T) {
 
 // TestErrorHandling tests error handling for invalid inputs
 func TestErrorHandling(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -813,7 +813,7 @@ func TestErrorHandling(t *testing.T) {
 
 // TestUnknownTool tests handling of unknown tool IDs
 func TestUnknownTool(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -828,7 +828,7 @@ func TestUnknownTool(t *testing.T) {
 
 // TestHTMLSizeLimit tests that oversized HTML is rejected
 func TestHTMLSizeLimit(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -846,7 +846,7 @@ func TestHTMLSizeLimit(t *testing.T) {
 
 // TestCharsetDetection tests charset detection with non-UTF8 content
 func TestCharsetDetection(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 
@@ -866,7 +866,7 @@ func TestCharsetDetection(t *testing.T) {
 
 // TestNormalization tests text normalization
 func TestNormalization(t *testing.T) {
-	scraper := providers.NewScraper()
+	scraper := scraper.NewProvider()
 	ctx := context.Background()
 	appCtx := &types.Context{}
 

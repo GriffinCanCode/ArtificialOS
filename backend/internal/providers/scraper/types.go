@@ -43,10 +43,16 @@ func Success(data map[string]interface{}) (*types.Result, error) {
 	return &types.Result{Success: true, Data: data}, nil
 }
 
-// Failure creates failed result
+// Failure creates failed result for validation/expected errors
 func Failure(message string) (*types.Result, error) {
 	msg := message
 	return &types.Result{Success: false, Error: &msg}, nil
+}
+
+// UnknownToolFailure creates failed result with error for unknown tools
+func UnknownToolFailure(toolID string) (*types.Result, error) {
+	msg := fmt.Sprintf("unknown tool: %s", toolID)
+	return &types.Result{Success: false, Error: &msg}, fmt.Errorf("%s", msg)
 }
 
 // GetString extracts string from params with validation

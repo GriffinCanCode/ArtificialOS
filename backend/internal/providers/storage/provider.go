@@ -252,35 +252,84 @@ func (s *Provider) remove(ctx context.Context, appID string, params map[string]i
 }
 
 func (s *Provider) list(ctx context.Context, appID string) (*types.Result, error) {
-	// TODO: Implement directory listing via kernel
-	// For now, return cached keys
-	var keys []string
-	prefix := s.cacheKey(appID, "")
+	// Use kernel to list directory for the app's storage path
+	appDir := filepath.Join(s.storagePath, "storage", appID)
 
-	s.cache.Range(func(key, _ interface{}) bool {
-		keyStr := key.(string)
-		if len(keyStr) > len(prefix) && keyStr[:len(prefix)] == prefix {
-			keys = append(keys, keyStr[len(prefix):])
+	var keys []string
+
+	if s.kernel != nil {
+		// Try to list directory via kernel
+		data, err := s.kernel.ExecuteSyscall(ctx, s.storagePID, "list_directory", map[string]interface{}{
+			"path": appDir,
+		})
+
+		if err == nil {
+			// Parse directory listing
+			var entries []string
+			if err := json.Unmarshal(data, &entries); err == nil {
+				// Extract keys from filenames (remove .json extension)
+				for _, entry := range entries {
+					if filepath.Ext(entry) == ".json" {
+						key := entry[:len(entry)-5] // Remove ".json" extension
+						keys = append(keys, key)
+					}
+				}
+			}
+		} else {
+			// Fallback to cached keys if directory doesn't exist or can't be read
+			prefix := s.cacheKey(appID, "")
+			s.cache.Range(func(key, _ interface{}) bool {
+				keyStr := key.(string)
+				if len(keyStr) > len(prefix) && keyStr[:len(prefix)] == prefix {
+					keys = append(keys, keyStr[len(prefix):])
+				}
+				return true
+			})
 		}
-		return true
-	})
+	} else {
+		// Fallback to cached keys if kernel not available
+		prefix := s.cacheKey(appID, "")
+		s.cache.Range(func(key, _ interface{}) bool {
+			keyStr := key.(string)
+			if len(keyStr) > len(prefix) && keyStr[:len(prefix)] == prefix {
+				keys = append(keys, keyStr[len(prefix):])
+			}
+			return true
+		})
+	}
 
 	return success(map[string]interface{}{"keys": keys})
 }
 
 func (s *Provider) clear(ctx context.Context, appID string) (*types.Result, error) {
-	// Delete all keys for this app
+	// Delete all keys for this app from both cache and filesystem
 	prefix := s.cacheKey(appID, "")
 	var toDelete []interface{}
+	var keysToDelete []string
 
 	s.cache.Range(func(key, _ interface{}) bool {
 		keyStr := key.(string)
 		if len(keyStr) > len(prefix) && keyStr[:len(prefix)] == prefix {
 			toDelete = append(toDelete, key)
+			// Extract the actual key name (after the appID: prefix)
+			actualKey := keyStr[len(prefix):]
+			keysToDelete = append(keysToDelete, actualKey)
 		}
 		return true
 	})
 
+	// Delete files from filesystem
+	if s.kernel != nil {
+		for _, key := range keysToDelete {
+			path := s.keyPath(appID, key)
+			s.kernel.ExecuteSyscall(ctx, s.storagePID, "delete_file", map[string]interface{}{
+				"path": path,
+			})
+			// Ignore errors - file might not exist
+		}
+	}
+
+	// Remove from cache
 	for _, key := range toDelete {
 		s.cache.Delete(key)
 	}

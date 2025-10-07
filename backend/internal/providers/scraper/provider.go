@@ -2,7 +2,6 @@ package scraper
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/types"
 )
@@ -144,6 +143,6 @@ func (s *Provider) Execute(ctx context.Context, toolID string, params map[string
 		return s.structured.ExtractLists(ctx, params, appCtx)
 
 	default:
-		return Failure(fmt.Sprintf("unknown tool: %s", toolID))
+		return UnknownToolFailure(toolID)
 	}
 }

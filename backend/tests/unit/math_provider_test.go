@@ -5,7 +5,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/GriffinCanCode/AgentOS/backend/internal/providers"
+	mathprovider "github.com/GriffinCanCode/AgentOS/backend/internal/providers/math"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/types"
 	"github.com/GriffinCanCode/AgentOS/backend/tests/helpers/testutil"
 	"github.com/stretchr/testify/assert"
@@ -13,7 +13,7 @@ import (
 )
 
 func TestMathProvider(t *testing.T) {
-	mathProvider := providers.NewMath()
+	mathProvider := mathprovider.NewProvider()
 	ctx := context.Background()
 
 	t.Run("Arithmetic Operations", func(t *testing.T) {

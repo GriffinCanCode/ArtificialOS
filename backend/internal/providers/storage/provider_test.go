@@ -31,6 +31,10 @@ func (m *mockKernel) ExecuteSyscall(ctx context.Context, pid uint32, syscallType
 			return nil, &MockError{"file not found"}
 		}
 		return data, nil
+	case "delete_file":
+		path := params["path"].(string)
+		delete(m.storage, path)
+		return []byte{}, nil
 	}
 	return []byte{}, nil
 }
@@ -109,8 +113,18 @@ func TestStorageComplex(t *testing.T) {
 	if retrieved["name"].(string) != "test" {
 		t.Errorf("Expected name 'test', got %v", retrieved["name"])
 	}
-	if retrieved["count"].(float64) != 42 {
-		t.Errorf("Expected count 42, got %v", retrieved["count"])
+	// Handle both int and float64 types from JSON unmarshaling
+	var count float64
+	switch v := retrieved["count"].(type) {
+	case int:
+		count = float64(v)
+	case float64:
+		count = v
+	default:
+		t.Errorf("Expected count to be numeric, got %T", retrieved["count"])
+	}
+	if count != 42 {
+		t.Errorf("Expected count 42, got %v", count)
 	}
 }
 

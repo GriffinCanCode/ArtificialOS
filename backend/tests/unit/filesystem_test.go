@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/GriffinCanCode/AgentOS/backend/internal/providers"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/filesystem"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/types"
 	"github.com/GriffinCanCode/AgentOS/backend/tests/helpers/testutil"
 	"github.com/stretchr/testify/assert"
@@ -15,7 +15,7 @@ import (
 // TestFilesystemDefinition tests the service definition
 func TestFilesystemDefinition(t *testing.T) {
 	mockKernel := testutil.NewMockKernelClient(t)
-	fs := providers.NewFilesystem(mockKernel, 1, "/storage")
+	fs := filesystem.NewProvider(mockKernel, 1, "/storage")
 
 	def := fs.Definition()
 
@@ -67,7 +67,7 @@ func TestFilesystemDefinition(t *testing.T) {
 // TestFilesystemReadExecute tests the read file operation
 func TestFilesystemReadExecute(t *testing.T) {
 	mockKernel := new(testutil.MockKernelClient)
-	fs := providers.NewFilesystem(mockKernel, 1, "/storage")
+	fs := filesystem.NewProvider(mockKernel, 1, "/storage")
 
 	ctx := context.Background()
 	testContent := "Hello, World!"
@@ -91,7 +91,7 @@ func TestFilesystemReadExecute(t *testing.T) {
 // TestFilesystemWriteExecute tests the write file operation
 func TestFilesystemWriteExecute(t *testing.T) {
 	mockKernel := testutil.NewMockKernelClient(t)
-	fs := providers.NewFilesystem(mockKernel, 1, "/storage")
+	fs := filesystem.NewProvider(mockKernel, 1, "/storage")
 
 	ctx := context.Background()
 	testContent := "Hello, World!"
@@ -115,7 +115,7 @@ func TestFilesystemWriteExecute(t *testing.T) {
 // TestFilesystemListExecute tests the list directory operation
 func TestFilesystemListExecute(t *testing.T) {
 	mockKernel := new(testutil.MockKernelClient)
-	fs := providers.NewFilesystem(mockKernel, 1, "/storage")
+	fs := filesystem.NewProvider(mockKernel, 1, "/storage")
 
 	ctx := context.Background()
 	files := []string{"file1.txt", "file2.txt", "dir1"}
@@ -139,7 +139,7 @@ func TestFilesystemListExecute(t *testing.T) {
 // TestFilesystemCreateDirectoryExecute tests the create directory operation
 func TestFilesystemCreateDirectoryExecute(t *testing.T) {
 	mockKernel := testutil.NewMockKernelClient(t)
-	fs := providers.NewFilesystem(mockKernel, 1, "/storage")
+	fs := filesystem.NewProvider(mockKernel, 1, "/storage")
 
 	ctx := context.Background()
 
@@ -161,7 +161,7 @@ func TestFilesystemCreateDirectoryExecute(t *testing.T) {
 // TestFilesystemCopyExecute tests the copy file operation
 func TestFilesystemCopyExecute(t *testing.T) {
 	mockKernel := testutil.NewMockKernelClient(t)
-	fs := providers.NewFilesystem(mockKernel, 1, "/storage")
+	fs := filesystem.NewProvider(mockKernel, 1, "/storage")
 
 	ctx := context.Background()
 
@@ -183,7 +183,7 @@ func TestFilesystemCopyExecute(t *testing.T) {
 // TestFilesystemMoveExecute tests the move file operation
 func TestFilesystemMoveExecute(t *testing.T) {
 	mockKernel := testutil.NewMockKernelClient(t)
-	fs := providers.NewFilesystem(mockKernel, 1, "/storage")
+	fs := filesystem.NewProvider(mockKernel, 1, "/storage")
 
 	ctx := context.Background()
 
@@ -205,7 +205,7 @@ func TestFilesystemMoveExecute(t *testing.T) {
 // TestFilesystemStatExecute tests the stat operation
 func TestFilesystemStatExecute(t *testing.T) {
 	mockKernel := testutil.NewMockKernelClient(t)
-	fs := providers.NewFilesystem(mockKernel, 1, "/storage")
+	fs := filesystem.NewProvider(mockKernel, 1, "/storage")
 
 	ctx := context.Background()
 
@@ -236,7 +236,7 @@ func TestFilesystemStatExecute(t *testing.T) {
 // TestFilesystemReadJSONExecute tests the read JSON operation
 func TestFilesystemReadJSONExecute(t *testing.T) {
 	mockKernel := new(testutil.MockKernelClient)
-	fs := providers.NewFilesystem(mockKernel, 1, "/storage")
+	fs := filesystem.NewProvider(mockKernel, 1, "/storage")
 
 	ctx := context.Background()
 
@@ -264,7 +264,7 @@ func TestFilesystemReadJSONExecute(t *testing.T) {
 // TestFilesystemUnknownTool tests unknown tool execution
 func TestFilesystemUnknownTool(t *testing.T) {
 	mockKernel := new(testutil.MockKernelClient)
-	fs := providers.NewFilesystem(mockKernel, 1, "/storage")
+	fs := filesystem.NewProvider(mockKernel, 1, "/storage")
 
 	ctx := context.Background()
 
@@ -283,7 +283,7 @@ func TestFilesystemUnknownTool(t *testing.T) {
 // TestFilesystemWithAppContext tests operations with app context
 func TestFilesystemWithAppContext(t *testing.T) {
 	mockKernel := new(testutil.MockKernelClient)
-	fs := providers.NewFilesystem(mockKernel, 1, "/storage")
+	fs := filesystem.NewProvider(mockKernel, 1, "/storage")
 
 	ctx := context.Background()
 	sandboxPID := uint32(999)
@@ -307,7 +307,7 @@ func TestFilesystemWithAppContext(t *testing.T) {
 // TestFilesystemExistsExecute tests the exists operation
 func TestFilesystemExistsExecute(t *testing.T) {
 	mockKernel := new(testutil.MockKernelClient)
-	fs := providers.NewFilesystem(mockKernel, 1, "/storage")
+	fs := filesystem.NewProvider(mockKernel, 1, "/storage")
 
 	ctx := context.Background()
 
@@ -328,7 +328,7 @@ func TestFilesystemExistsExecute(t *testing.T) {
 // TestFilesystemDeleteExecute tests the delete operation
 func TestFilesystemDeleteExecute(t *testing.T) {
 	mockKernel := testutil.NewMockKernelClient(t)
-	fs := providers.NewFilesystem(mockKernel, 1, "/storage")
+	fs := filesystem.NewProvider(mockKernel, 1, "/storage")
 
 	ctx := context.Background()
 
@@ -385,7 +385,7 @@ func TestFilesystemErrorHandling(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockKernel := testutil.NewMockKernelClient(t)
-			fs := providers.NewFilesystem(mockKernel, 1, "/storage")
+			fs := filesystem.NewProvider(mockKernel, 1, "/storage")
 
 			ctx := context.Background()
 			result, err := fs.Execute(ctx, tt.toolID, tt.params, nil)
