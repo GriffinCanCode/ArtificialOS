@@ -8,21 +8,19 @@
  * - Hardware abstraction
  */
 
-use log::info;
 use std::error::Error;
+use tracing::info;
 
 use ai_os_kernel::{
-    start_grpc_server, IPCManager, LocalFS, MemFS, MemoryManager, MmapManager, MountManager,
-    Policy, ProcessManager, SandboxManager, SyscallExecutor,
+    start_grpc_server, init_tracing, IPCManager, LocalFS, MemFS, MemoryManager, MmapManager,
+    MountManager, Policy, ProcessManager, SandboxManager, SyscallExecutor,
 };
 use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    // Initialize logger
-    env_logger::Builder::from_default_env()
-        .filter_level(log::LevelFilter::Info)
-        .init();
+    // Initialize structured tracing
+    init_tracing();
 
     info!("AgentOS Kernel starting...");
     info!("================================================");
@@ -55,9 +53,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Mount local filesystem at /storage for persistent data
     let storage_path =
         std::env::var("KERNEL_STORAGE_PATH").unwrap_or_else(|_| "/tmp/ai-os-storage".to_string());
-    info!("Mounting local filesystem at /storage -> {}", storage_path);
+    info!(storage_path = %storage_path, "Mounting local filesystem at /storage");
     if let Err(e) = std::fs::create_dir_all(&storage_path) {
-        log::warn!("Could not create storage directory: {}", e);
+        tracing::warn!(error = %e, "Could not create storage directory");
     }
     vfs.mount("/storage", Arc::new(LocalFS::new(&storage_path)))
         .expect("Failed to mount /storage");
@@ -95,7 +93,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let grpc_addr = match "0.0.0.0:50051".parse() {
         Ok(addr) => addr,
         Err(e) => {
-            log::error!("Failed to parse gRPC address: {}", e);
+            tracing::error!(error = %e, "Failed to parse gRPC address");
             return Err(format!("Failed to parse gRPC address: {}", e).into());
         }
     };
@@ -103,7 +101,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let grpc_process_manager = process_manager.clone();
     let grpc_sandbox_manager = sandbox_manager.clone();
 
-    info!("Starting gRPC server on {}", grpc_addr);
+    info!(addr = %grpc_addr, "Starting gRPC server");
 
     // Spawn gRPC server as a background task
     tokio::spawn(async move {
@@ -115,7 +113,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         )
         .await
         {
-            log::error!("gRPC server error: {}", e);
+            tracing::error!(error = %e, "gRPC server error");
         }
     });
 

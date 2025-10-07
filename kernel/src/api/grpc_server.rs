@@ -3,12 +3,13 @@
  * Exposes kernel syscalls to AI service via gRPC
  */
 
-use log::info;
+use tracing::{debug, error, info, warn, instrument};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use tonic::{transport::Server, Request, Response, Status};
 
+use crate::monitoring::{span_grpc, GrpcSpan};
 use crate::process::ProcessManagerImpl as ProcessManager;
 use crate::security::{
     Capability as SandboxCapability, NetworkRule, SandboxConfig, SandboxManager, SandboxProvider,
@@ -67,14 +68,22 @@ impl KernelService for KernelServiceImpl {
     type StreamSyscallStream =
         tokio_stream::wrappers::ReceiverStream<Result<StreamSyscallChunk, Status>>;
 
+    #[instrument(skip(self, request), fields(pid, syscall_type, trace_id))]
     async fn execute_syscall(
         &self,
         request: Request<SyscallRequest>,
     ) -> Result<Response<SyscallResponse>, Status> {
+        let span = span_grpc("execute_syscall");
+        let _guard = span.enter();
+
         let req = request.into_inner();
         let pid = req.pid;
 
-        info!("gRPC: Executing syscall for PID {}", pid);
+        info!(
+            pid = pid,
+            trace_id = %span.trace_id(),
+            "gRPC: Executing syscall"
+        );
 
         // Convert proto syscall to internal syscall
         let syscall = match req.syscall {
@@ -429,13 +438,23 @@ impl KernelService for KernelServiceImpl {
         Ok(Response::new(response))
     }
 
+    #[instrument(skip(self, request), fields(process_name, priority, sandbox_level, trace_id))]
     async fn create_process(
         &self,
         request: Request<CreateProcessRequest>,
     ) -> Result<Response<CreateProcessResponse>, Status> {
+        let span = span_grpc("create_process");
+        let _guard = span.enter();
+
         let req = request.into_inner();
 
-        info!("gRPC: Creating process: {}", req.name);
+        info!(
+            process_name = %req.name,
+            priority = req.priority,
+            sandbox_level = %req.sandbox_level,
+            trace_id = %span.trace_id(),
+            "gRPC: Creating process"
+        );
 
         // Build execution config if command provided
         let exec_config = if let Some(command) = req.command {
@@ -815,12 +834,22 @@ impl KernelService for KernelServiceImpl {
         )))
     }
 
+    #[instrument(skip(self, request), fields(pid, task_id, trace_id))]
     async fn execute_syscall_async(
         &self,
         request: Request<SyscallRequest>,
     ) -> Result<Response<AsyncSyscallResponse>, Status> {
+        let span = span_grpc("execute_syscall_async");
+        let _guard = span.enter();
+
         let req = request.into_inner();
         let pid = req.pid;
+
+        info!(
+            pid = pid,
+            trace_id = %span.trace_id(),
+            "gRPC: Submitting async syscall"
+        );
 
         // Convert proto syscall to internal (reuse existing logic)
         let syscall = match self.proto_to_syscall(&req) {
@@ -879,11 +908,22 @@ impl KernelService for KernelServiceImpl {
         }
     }
 
+    #[instrument(skip(self, request), fields(task_id, trace_id))]
     async fn cancel_async(
         &self,
         request: Request<AsyncCancelRequest>,
     ) -> Result<Response<AsyncCancelResponse>, Status> {
+        let span = span_grpc("cancel_async");
+        let _guard = span.enter();
+
         let req = request.into_inner();
+
+        info!(
+            task_id = %req.task_id,
+            trace_id = %span.trace_id(),
+            "gRPC: Cancelling async task"
+        );
+
         let cancelled = self.async_manager.cancel(&req.task_id);
 
         Ok(Response::new(AsyncCancelResponse {
@@ -896,12 +936,24 @@ impl KernelService for KernelServiceImpl {
         }))
     }
 
+    #[instrument(skip(self, request), fields(batch_size, parallel, trace_id))]
     async fn execute_syscall_batch(
         &self,
         request: Request<BatchSyscallRequest>,
     ) -> Result<Response<BatchSyscallResponse>, Status> {
+        let span = span_grpc("execute_syscall_batch");
+        let _guard = span.enter();
+
         let req = request.into_inner();
         let parallel = req.parallel;
+        let batch_size = req.requests.len();
+
+        info!(
+            batch_size = batch_size,
+            parallel = parallel,
+            trace_id = %span.trace_id(),
+            "gRPC: Executing batch syscalls"
+        );
 
         let mut syscalls = Vec::new();
         for syscall_req in req.requests {

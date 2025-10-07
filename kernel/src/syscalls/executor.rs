@@ -4,10 +4,10 @@
  */
 
 use crate::core::types::Pid;
-use crate::monitoring::MetricsCollector;
+use crate::monitoring::{MetricsCollector, span_syscall, SyscallSpan};
 use crate::permissions::PermissionManager;
 use crate::security::SandboxManager;
-use log::info;
+use tracing::{debug, error, info, warn};
 use std::sync::{Arc, OnceLock};
 use std::time::Instant;
 
@@ -148,9 +148,22 @@ impl SyscallExecutor {
 
     /// Execute a system call with sandboxing
     pub fn execute(&self, pid: Pid, syscall: Syscall) -> SyscallResult {
-        info!("Executing syscall for PID {}: {:?}", pid, syscall);
+        // Create a rich structured span for this syscall
+        let syscall_name = syscall.name();
+        let span = span_syscall(syscall_name, pid);
+        let _guard = span.enter();
 
-        match syscall {
+        info!(
+            pid = pid,
+            syscall = syscall_name,
+            trace_id = %span.trace_id(),
+            "Executing syscall"
+        );
+
+        // Record syscall details
+        span.record_debug("syscall_details", &syscall);
+
+        let result = match syscall {
             // File operations
             Syscall::ReadFile { ref path } => self.read_file(pid, path),
             Syscall::WriteFile { ref path, ref data } => self.write_file(pid, path, data),
@@ -365,6 +378,24 @@ impl SyscallExecutor {
             Syscall::Dup2 { oldfd, newfd } => self.dup2(pid, oldfd, newfd),
             Syscall::Lseek { fd, offset, whence } => self.lseek(pid, fd, offset, whence),
             Syscall::Fcntl { fd, cmd, arg } => self.fcntl(pid, fd, cmd, arg),
+        };
+
+        // Record result in span for structured tracing
+        match &result {
+            SyscallResult::Success { data } => {
+                span.record_result(true);
+                if let Some(d) = data {
+                    span.record("data_size", d.len());
+                }
+            }
+            SyscallResult::Error { message } => {
+                span.record_error(message);
+            }
+            SyscallResult::PermissionDenied { reason } => {
+                span.record_error(&format!("Permission denied: {}", reason));
+            }
         }
+
+        result
     }
 }

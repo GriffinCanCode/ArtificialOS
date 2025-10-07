@@ -17,6 +17,7 @@ mod system;
 mod time;
 pub mod traits;
 pub mod types;
+mod types_ext; // Syscall type extensions for tracing
 mod vfs_adapter;
 
 // Re-export public API

@@ -34,7 +34,7 @@ pub use ipc::{
 pub use memory::{MemoryBlock, MemoryError, MemoryManager, MemoryStats, ProcessMemoryStats};
 
 // Monitoring
-pub use monitoring::{MetricsCollector, MetricsSnapshot};
+pub use monitoring::{init_tracing, MetricsCollector, MetricsSnapshot};
 
 // Process
 pub use process::{
