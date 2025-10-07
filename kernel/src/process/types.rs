@@ -108,6 +108,8 @@ pub struct ExecutionConfig {
     pub working_dir: Option<String>,
     #[serde(skip_serializing_if = "is_false")]
     pub capture_output: bool,
+    #[serde(skip_serializing_if = "is_none")]
+    pub limits: Option<crate::security::types::Limits>,
 }
 
 impl ExecutionConfig {
@@ -118,6 +120,7 @@ impl ExecutionConfig {
             env_vars: vec![],
             working_dir: None,
             capture_output: true,
+            limits: None,
         }
     }
 
@@ -138,6 +141,11 @@ impl ExecutionConfig {
 
     pub fn with_output_capture(mut self, capture: bool) -> Self {
         self.capture_output = capture;
+        self
+    }
+
+    pub fn with_limits(mut self, limits: crate::security::types::Limits) -> Self {
+        self.limits = Some(limits);
         self
     }
 }

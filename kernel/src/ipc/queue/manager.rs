@@ -16,7 +16,7 @@ use dashmap::DashMap;
 use log::{debug, info, warn};
 use std::collections::HashSet;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
 
 /// Unified queue wrapper
@@ -60,12 +60,14 @@ pub struct QueueManager {
     process_queues: Arc<DashMap<Pid, HashSet<QueueId>>>,
     pubsub_receivers: Arc<DashMap<(QueueId, Pid), mpsc::UnboundedReceiver<QueueMessage>>>,
     memory_manager: MemoryManager,
+    // Free IDs for recycling (prevents ID exhaustion)
+    free_ids: Arc<Mutex<Vec<QueueId>>>,
 }
 
 impl QueueManager {
     pub fn new(memory_manager: MemoryManager) -> Self {
         info!(
-            "Queue manager initialized (capacity: {})",
+            "Queue manager initialized with ID recycling (capacity: {})",
             MAX_QUEUE_CAPACITY
         );
         Self {
@@ -75,6 +77,7 @@ impl QueueManager {
             process_queues: Arc::new(DashMap::new()),
             pubsub_receivers: Arc::new(DashMap::new()),
             memory_manager,
+            free_ids: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
@@ -94,7 +97,16 @@ impl QueueManager {
             )));
         }
 
-        let queue_id = self.next_id.fetch_add(1, Ordering::SeqCst) as u32;
+        // Try to recycle an ID from the free list, otherwise allocate new
+        let queue_id = {
+            let mut free_ids = self.free_ids.lock().unwrap();
+            if let Some(recycled_id) = free_ids.pop() {
+                info!("Recycled queue ID {} for PID {}", recycled_id, owner_pid);
+                recycled_id
+            } else {
+                self.next_id.fetch_add(1, Ordering::SeqCst) as u32
+            }
+        };
 
         let capacity = capacity.unwrap_or(1000);
         let queue = match queue_type {
@@ -393,6 +405,13 @@ impl QueueManager {
         drop(queue);
         self.queues.remove(&queue_id);
 
+        // Add queue ID to free list for recycling
+        {
+            let mut free_ids = self.free_ids.lock().unwrap();
+            free_ids.push(queue_id);
+            info!("Added queue ID {} to free list for recycling", queue_id);
+        }
+
         // Use alter() for atomic removal - more efficient than entry().and_modify()
         self.process_queues.alter(&pid, |_, mut qs| {
             qs.remove(&queue_id);
@@ -505,6 +524,7 @@ impl Clone for QueueManager {
             process_queues: Arc::clone(&self.process_queues),
             pubsub_receivers: Arc::clone(&self.pubsub_receivers),
             memory_manager: self.memory_manager.clone(),
+            free_ids: Arc::clone(&self.free_ids),
         }
     }
 }

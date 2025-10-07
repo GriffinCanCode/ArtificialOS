@@ -191,17 +191,25 @@ impl ProcessManager {
         let pid = self.next_pid.fetch_add(1, Ordering::SeqCst);
 
         // Spawn OS process if command provided and executor available
-        let os_pid = if let Some(cfg) = config {
+        let os_pid = if let Some(mut cfg) = config {
             if let Some(ref executor) = self.executor {
+                // Calculate resource limits based on priority BEFORE spawning
+                // This ensures limits are applied atomically during spawn
+                let limits = self.priority_to_limits(priority);
+
+                // Add limits to config so they're applied in pre-exec hook
+                cfg = cfg.with_limits(limits.clone());
+
                 match executor.spawn(pid, name.clone(), cfg) {
                     Ok(os_pid) => {
-                        info!("Spawned OS process {} for PID {}", os_pid, pid);
+                        info!("Spawned OS process {} for PID {} with resource limits", os_pid, pid);
 
-                        // Apply resource limits based on priority
+                        // Apply cgroup limits as a fallback/supplement
+                        // Cgroups provide additional controls (CPU shares) not available via rlimits
+                        // This happens AFTER spawn but the critical limits are already enforced
                         if let Some(ref limit_mgr) = self.limit_manager {
-                            let limits = self.priority_to_limits(priority);
                             if let Err(e) = limit_mgr.apply(os_pid, &limits) {
-                                log::warn!("Failed to apply limits: {}", e);
+                                log::warn!("Failed to apply cgroup limits (non-critical): {}", e);
                             }
                         }
 
@@ -247,12 +255,14 @@ impl ProcessManager {
             0..=3 => Limits::new()
                 .with_memory(128 * 1024 * 1024) // 128 MB
                 .with_cpu_shares(50)
-                .with_max_pids(5),
-            4..=7 => Limits::default(), // 512 MB, 100 shares
+                .with_max_pids(5)
+                .with_max_open_files(100),
+            4..=7 => Limits::default(), // 512 MB, 100 shares, 1024 files
             _ => Limits::new()
                 .with_memory(2 * 1024 * 1024 * 1024) // 2 GB
                 .with_cpu_shares(200)
-                .with_max_pids(50),
+                .with_max_pids(50)
+                .with_max_open_files(2048),
         }
     }
 
