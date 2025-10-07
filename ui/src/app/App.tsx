@@ -6,6 +6,7 @@ import React, { useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Save, Sparkles, CheckCircle } from "lucide-react";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "sonner";
 import ThoughtStream from "../ui/components/chat/ThoughtStream";
 import TitleBar from "../ui/components/layout/TitleBar";
 import { Desktop } from "../ui/components/layout/Desktop";
@@ -23,6 +24,7 @@ import { useFadeIn, useSlideInUp } from "../ui/hooks/useGSAP";
 import { queryClient } from "../core/lib/queryClient";
 import { shouldIgnoreKeyboardEvent } from "../features/input";
 import "./App.css";
+import "../core/toast/styles.css";
 import { initWebVitals } from "../core/monitoring";
 
 interface SpotlightFormData {
@@ -253,6 +255,16 @@ function AppContent() {
 
   return (
     <div className="app os-interface">
+      {/* Toast Container */}
+      <Toaster
+        position="bottom-right"
+        expand={false}
+        richColors
+        closeButton
+        duration={4000}
+        theme="dark"
+      />
+
       {/* Minimal Title Bar - just window controls */}
       <TitleBar sessionManager={sessionManager} />
 

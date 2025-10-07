@@ -32,6 +32,7 @@ export * from "./data/graph-executor";
 // System integrations - OS-level features
 export * from "./system/clipboard-executor";
 export * from "./system/notification-executor";
+export * from "./system/toast-executor";
 export * from "./system/network-executor";
 export * from "./system/timer-executor";
 

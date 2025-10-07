@@ -1,0 +1,266 @@
+/**
+ * Toast Styles
+ * Custom styling for Sonner toast notifications
+ */
+
+/* Override Sonner defaults with our theme */
+[data-sonner-toaster] {
+  --normal-bg: rgba(15, 15, 25, 0.95);
+  --normal-border: rgba(139, 92, 246, 0.3);
+  --normal-text: rgba(255, 255, 255, 0.95);
+
+  --success-bg: rgba(34, 197, 94, 0.15);
+  --success-border: rgba(34, 197, 94, 0.5);
+  --success-text: rgba(34, 197, 94, 1);
+
+  --error-bg: rgba(239, 68, 68, 0.15);
+  --error-border: rgba(239, 68, 68, 0.5);
+  --error-text: rgba(239, 68, 68, 1);
+
+  --warning-bg: rgba(251, 191, 36, 0.15);
+  --warning-border: rgba(251, 191, 36, 0.5);
+  --warning-text: rgba(251, 191, 36, 1);
+
+  --info-bg: rgba(59, 130, 246, 0.15);
+  --info-border: rgba(59, 130, 246, 0.5);
+  --info-text: rgba(59, 130, 246, 1);
+}
+
+/* Toast container positioning */
+[data-sonner-toaster] {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
+    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+}
+
+/* Individual toast styling */
+[data-sonner-toast] {
+  background: var(--normal-bg);
+  border: 1px solid var(--normal-border);
+  color: var(--normal-text);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 64px;
+  gap: 12px;
+}
+
+/* Toast with icon */
+[data-sonner-toast] [data-icon] {
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+/* Success toast */
+[data-sonner-toast][data-type="success"] {
+  background: var(--success-bg);
+  border-color: var(--success-border);
+  color: var(--normal-text);
+}
+
+[data-sonner-toast][data-type="success"] [data-icon] {
+  color: var(--success-text);
+}
+
+/* Error toast */
+[data-sonner-toast][data-type="error"] {
+  background: var(--error-bg);
+  border-color: var(--error-border);
+  color: var(--normal-text);
+}
+
+[data-sonner-toast][data-type="error"] [data-icon] {
+  color: var(--error-text);
+}
+
+/* Warning toast */
+[data-sonner-toast][data-type="warning"] {
+  background: var(--warning-bg);
+  border-color: var(--warning-border);
+  color: var(--normal-text);
+}
+
+[data-sonner-toast][data-type="warning"] [data-icon] {
+  color: var(--warning-text);
+}
+
+/* Info toast */
+[data-sonner-toast][data-type="info"] {
+  background: var(--info-bg);
+  border-color: var(--info-border);
+  color: var(--normal-text);
+}
+
+[data-sonner-toast][data-type="info"] [data-icon] {
+  color: var(--info-text);
+}
+
+/* Loading toast */
+[data-sonner-toast][data-type="loading"] {
+  background: var(--normal-bg);
+  border-color: rgba(139, 92, 246, 0.5);
+}
+
+[data-sonner-toast][data-type="loading"] [data-icon] {
+  color: rgba(139, 92, 246, 1);
+}
+
+/* Toast title */
+[data-sonner-toast] [data-title] {
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.01em;
+}
+
+/* Toast description */
+[data-sonner-toast] [data-description] {
+  font-size: 13px;
+  opacity: 0.85;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+/* Toast close button */
+[data-sonner-toast] [data-close-button] {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.7);
+  transition: all 0.2s ease;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+[data-sonner-toast] [data-close-button]:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 1);
+  transform: scale(1.05);
+}
+
+/* Toast action buttons */
+[data-sonner-toast] [data-button] {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  background: rgba(139, 92, 246, 0.15);
+  color: rgba(139, 92, 246, 1);
+}
+
+[data-sonner-toast] [data-button]:hover {
+  background: rgba(139, 92, 246, 0.25);
+  border-color: rgba(139, 92, 246, 0.5);
+  transform: translateY(-1px);
+}
+
+[data-sonner-toast] [data-button]:active {
+  transform: translateY(0);
+}
+
+/* Cancel button variant */
+[data-sonner-toast] [data-cancel] {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+[data-sonner-toast] [data-cancel]:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 1);
+}
+
+/* Progress bar for promise toasts */
+[data-sonner-toast] [data-progress] {
+  height: 3px;
+  background: rgba(139, 92, 246, 0.3);
+  border-radius: 2px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+[data-sonner-toast] [data-progress] [data-progress-bar] {
+  height: 100%;
+  background: linear-gradient(90deg, #8b5cf6 0%, #a78bfa 100%);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* Animations */
+@keyframes toast-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes toast-out {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+[data-sonner-toast][data-mounted] {
+  animation: toast-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+[data-sonner-toast][data-removing] {
+  animation: toast-out 0.2s ease forwards;
+}
+
+/* Expand/collapse animations */
+[data-sonner-toast][data-expanded] {
+  max-height: 500px;
+}
+
+[data-sonner-toast]:not([data-expanded]) {
+  max-height: 80px;
+}
+
+/* Important toast - more prominent */
+[data-sonner-toast][data-important] {
+  border-width: 2px;
+  box-shadow: 0 12px 48px rgba(139, 92, 246, 0.3);
+}
+
+/* Mobile responsive */
+@media (max-width: 640px) {
+  [data-sonner-toaster] {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+  }
+
+  [data-sonner-toast] {
+    padding: 12px;
+    font-size: 13px;
+    min-height: 56px;
+  }
+
+  [data-sonner-toast] [data-title] {
+    font-size: 13px;
+  }
+
+  [data-sonner-toast] [data-description] {
+    font-size: 12px;
+  }
+}

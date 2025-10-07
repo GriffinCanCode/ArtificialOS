@@ -19,6 +19,7 @@ import {
   GameExecutor,
   ClipboardExecutor,
   NotificationExecutor,
+  ToastExecutor,
   FormExecutor,
   DataExecutor,
   ListExecutor,
@@ -54,6 +55,7 @@ export class ToolExecutor {
   private gameExecutor: GameExecutor;
   private clipboardExecutor: ClipboardExecutor;
   private notificationExecutor: NotificationExecutor;
+  private toastExecutor: ToastExecutor;
   private formExecutor: FormExecutor;
   private dataExecutor: DataExecutor;
   private listExecutor: ListExecutor;
@@ -86,6 +88,7 @@ export class ToolExecutor {
     this.gameExecutor = new GameExecutor(this.context);
     this.clipboardExecutor = new ClipboardExecutor(this.context);
     this.notificationExecutor = new NotificationExecutor(this.context);
+    this.toastExecutor = new ToastExecutor(this.context);
     this.formExecutor = new FormExecutor(this.context);
     this.dataExecutor = new DataExecutor(this.context);
     this.listExecutor = new ListExecutor(this.context);
@@ -216,6 +219,9 @@ export class ToolExecutor {
             break;
           case "notification":
             result = this.notificationExecutor.execute(toolId.split(".")[1], params);
+            break;
+          case "toast":
+            result = this.toastExecutor.execute(toolId.split(".")[1], params);
             break;
           case "notes":
             result = await this.notesExecutor.execute(toolId.split(".")[1], params);
