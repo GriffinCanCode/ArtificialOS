@@ -1,15 +1,32 @@
 /*!
- * SIMD-Accelerated Memory Operations
+ * SIMD-Accelerated Operations
  *
- * High-performance memory operations using SIMD instructions for bulk data transfer.
- * Provides optimized implementations of memcpy, memmove, memcmp, and memset.
+ * High-performance operations using AVX-512/AVX2/SSE2 SIMD instructions.
+ * Provides memory, search, math, and text operations with automatic CPU feature detection.
  */
 
+mod calc;
+mod find;
 mod operations;
 mod platform;
+mod text;
 
-pub use operations::{simd_memcpy, simd_memmove, simd_memcmp, simd_memset};
+// Memory operations
+pub use operations::{simd_memcmp, simd_memcpy, simd_memmove, simd_memset};
+
+// CPU detection
 pub use platform::{detect_simd_support, SimdCapabilities};
+
+// Search operations
+pub use find::{contains_byte, count_byte, find_byte, rfind_byte};
+
+// Math operations
+pub use calc::{avg_u64, max_u64, min_u64, sum_u32, sum_u64};
+
+// Text operations
+pub use text::{
+    ascii_to_lower, ascii_to_upper, count_whitespace, is_ascii, trim, trim_end, trim_start,
+};
 
 use std::sync::OnceLock;
 
@@ -25,8 +42,13 @@ pub fn init_simd() -> &'static SimdCapabilities {
             sse4_2 = caps.sse4_2,
             avx = caps.avx,
             avx2 = caps.avx2,
-            avx512 = caps.avx512,
+            avx512f = caps.avx512f,
+            avx512bw = caps.avx512bw,
+            avx512dq = caps.avx512dq,
+            avx512vl = caps.avx512vl,
+            avx512_full = caps.has_avx512_full(),
             neon = caps.neon,
+            max_vector_bytes = caps.max_vector_bytes(),
             "SIMD capabilities detected"
         );
         caps

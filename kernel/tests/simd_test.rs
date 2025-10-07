@@ -1,9 +1,20 @@
 /*!
- * SIMD Memory Operations Tests
- * Tests for SIMD-accelerated memory operations
+ * SIMD Operations Tests
+ * Tests for all SIMD-accelerated operations
  */
 
-use ai_os_kernel::memory::{simd_memcpy, simd_memmove, simd_memcmp, simd_memset, init_simd};
+use ai_os_kernel::memory::{
+    // Memory operations
+    simd_memcmp, simd_memcpy, simd_memmove, simd_memset,
+    // CPU detection
+    init_simd,
+    // Search operations
+    contains_byte, count_byte, find_byte, rfind_byte,
+    // Math operations
+    avg_u64, max_u64, min_u64, sum_u32, sum_u64,
+    // Text operations
+    ascii_to_lower, ascii_to_upper, is_ascii, trim,
+};
 use std::cmp::Ordering;
 
 #[test]
@@ -251,5 +262,241 @@ fn test_simd_all_operations_consistency() {
     // Test memset
     simd_memset(&mut dst1, 0x55);
     assert_eq!(simd_memcmp(&dst1, &src), Ordering::Equal);
+}
+
+// ============================================================================
+// Search Operations Tests
+// ============================================================================
+
+#[test]
+fn test_find_byte_basic() {
+    let data = b"hello world";
+    assert_eq!(find_byte(data, b'h'), Some(0));
+    assert_eq!(find_byte(data, b'w'), Some(6));
+    assert_eq!(find_byte(data, b'd'), Some(10));
+    assert_eq!(find_byte(data, b'x'), None);
+}
+
+#[test]
+fn test_find_byte_large() {
+    let mut data = vec![0u8; 10000];
+    data[5000] = 42;
+    data[8000] = 42;
+    assert_eq!(find_byte(&data, 42), Some(5000));
+    assert_eq!(find_byte(&data, 99), None);
+}
+
+#[test]
+fn test_rfind_byte() {
+    let data = b"hello world hello";
+    assert_eq!(rfind_byte(data, b'h'), Some(12));
+    assert_eq!(rfind_byte(data, b'l'), Some(15));
+    assert_eq!(rfind_byte(data, b'o'), Some(16));
+}
+
+#[test]
+fn test_count_byte() {
+    let data = b"hello world";
+    assert_eq!(count_byte(data, b'l'), 3);
+    assert_eq!(count_byte(data, b'o'), 2);
+    assert_eq!(count_byte(data, b'x'), 0);
+
+    let large = vec![42u8; 10000];
+    assert_eq!(count_byte(&large, 42), 10000);
+}
+
+#[test]
+fn test_contains_byte() {
+    let data = b"hello world";
+    assert!(contains_byte(data, b'h'));
+    assert!(contains_byte(data, b'w'));
+    assert!(!contains_byte(data, b'x'));
+}
+
+// ============================================================================
+// Math Operations Tests
+// ============================================================================
+
+#[test]
+fn test_sum_u64_basic() {
+    let data = vec![1u64, 2, 3, 4, 5];
+    assert_eq!(sum_u64(&data), 15);
+
+    let empty: Vec<u64> = vec![];
+    assert_eq!(sum_u64(&empty), 0);
+}
+
+#[test]
+fn test_sum_u64_large() {
+    let data: Vec<u64> = (1..=1000).collect();
+    let expected: u64 = (1..=1000).sum();
+    assert_eq!(sum_u64(&data), expected);
+}
+
+#[test]
+fn test_sum_u32() {
+    let data = vec![10u32, 20, 30, 40, 50];
+    assert_eq!(sum_u32(&data), 150);
+
+    let large = vec![1u32; 10000];
+    assert_eq!(sum_u32(&large), 10000);
+}
+
+#[test]
+fn test_min_max_u64() {
+    let data = vec![5u64, 2, 9, 1, 7, 3];
+    assert_eq!(min_u64(&data), Some(1));
+    assert_eq!(max_u64(&data), Some(9));
+
+    let single = vec![42u64];
+    assert_eq!(min_u64(&single), Some(42));
+    assert_eq!(max_u64(&single), Some(42));
+
+    let empty: Vec<u64> = vec![];
+    assert_eq!(min_u64(&empty), None);
+    assert_eq!(max_u64(&empty), None);
+}
+
+#[test]
+fn test_min_max_large() {
+    let mut data: Vec<u64> = (0..10000).collect();
+    assert_eq!(min_u64(&data), Some(0));
+    assert_eq!(max_u64(&data), Some(9999));
+
+    data.reverse();
+    assert_eq!(min_u64(&data), Some(0));
+    assert_eq!(max_u64(&data), Some(9999));
+}
+
+#[test]
+fn test_avg_u64() {
+    let data = vec![1u64, 2, 3, 4, 5];
+    assert_eq!(avg_u64(&data), Some(3));
+
+    let data2 = vec![10u64, 20, 30, 40];
+    assert_eq!(avg_u64(&data2), Some(25));
+
+    let empty: Vec<u64> = vec![];
+    assert_eq!(avg_u64(&empty), None);
+}
+
+// ============================================================================
+// Text Operations Tests
+// ============================================================================
+
+#[test]
+fn test_ascii_to_lower() {
+    let mut data = b"HELLO WORLD".to_vec();
+    ascii_to_lower(&mut data);
+    assert_eq!(&data, b"hello world");
+
+    let mut mixed = b"HeLLo 123 WoRLd".to_vec();
+    ascii_to_lower(&mut mixed);
+    assert_eq!(&mixed, b"hello 123 world");
+}
+
+#[test]
+fn test_ascii_to_upper() {
+    let mut data = b"hello world".to_vec();
+    ascii_to_upper(&mut data);
+    assert_eq!(&data, b"HELLO WORLD");
+
+    let mut mixed = b"HeLLo 123 WoRLd".to_vec();
+    ascii_to_upper(&mut mixed);
+    assert_eq!(&mixed, b"HELLO 123 WORLD");
+}
+
+#[test]
+fn test_case_conversion_large() {
+    let mut data = vec![b'A'; 10000];
+    ascii_to_lower(&mut data);
+    assert!(data.iter().all(|&b| b == b'a'));
+
+    ascii_to_upper(&mut data);
+    assert!(data.iter().all(|&b| b == b'A'));
+}
+
+#[test]
+fn test_is_ascii() {
+    assert!(is_ascii(b"hello world 123"));
+    assert!(is_ascii(b"ABC xyz !@#"));
+    assert!(!is_ascii(&[0xFF, 0xFE]));
+    assert!(!is_ascii(b"hello\x80world"));
+
+    let large = vec![b'a'; 10000];
+    assert!(is_ascii(&large));
+}
+
+#[test]
+fn test_trim() {
+    assert_eq!(trim(b"  hello  "), b"hello");
+    assert_eq!(trim(b"hello"), b"hello");
+    assert_eq!(trim(b"   "), b"");
+    assert_eq!(trim(b""), b"");
+    assert_eq!(trim(b"\t\nhello\r\n"), b"hello");
+}
+
+// ============================================================================
+// Integration Tests
+// ============================================================================
+
+#[test]
+fn test_combined_operations() {
+    // Create and transform a large dataset
+    let mut data = vec![b'A'; 1000];
+
+    // Convert to lowercase
+    ascii_to_lower(&mut data);
+    assert!(data.iter().all(|&b| b == b'a'));
+
+    // Find specific byte
+    data[500] = b'x';
+    assert_eq!(find_byte(&data, b'x'), Some(500));
+    assert_eq!(count_byte(&data, b'a'), 999);
+    assert_eq!(count_byte(&data, b'x'), 1);
+}
+
+#[test]
+fn test_avx512_detection() {
+    let caps = init_simd();
+
+    // Log capabilities for debugging
+    println!("SSE2: {}", caps.sse2);
+    println!("SSE4.2: {}", caps.sse4_2);
+    println!("AVX: {}", caps.avx);
+    println!("AVX2: {}", caps.avx2);
+    println!("AVX-512F: {}", caps.avx512f);
+    println!("AVX-512BW: {}", caps.avx512bw);
+    println!("AVX-512DQ: {}", caps.avx512dq);
+    println!("AVX-512VL: {}", caps.avx512vl);
+    println!("AVX-512 Full: {}", caps.has_avx512_full());
+    println!("Max vector bytes: {}", caps.max_vector_bytes());
+    println!("Optimal alignment: {}", caps.optimal_alignment());
+}
+
+#[test]
+fn test_performance_comparison() {
+    use std::time::Instant;
+
+    let size = 1_000_000;
+    let data = vec![42u8; size];
+
+    // Test find_byte performance
+    let start = Instant::now();
+    let pos = find_byte(&data, 43);
+    let simd_time = start.elapsed();
+    assert_eq!(pos, None);
+
+    println!("SIMD find_byte (1MB, not found): {:?}", simd_time);
+
+    // Test sum performance
+    let numbers: Vec<u64> = (0..100_000).collect();
+    let start = Instant::now();
+    let sum = sum_u64(&numbers);
+    let sum_time = start.elapsed();
+
+    println!("SIMD sum_u64 (100K elements): {:?}", sum_time);
+    let expected_sum: u64 = numbers.iter().sum();
+    assert_eq!(sum, expected_sum);
 }
 

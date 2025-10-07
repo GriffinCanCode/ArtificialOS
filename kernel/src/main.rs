@@ -12,7 +12,7 @@ use std::error::Error;
 use tracing::info;
 
 use ai_os_kernel::{
-    start_grpc_server, init_tracing, IPCManager, LocalFS, MemFS, MemoryManager, MmapManager,
+    start_grpc_server, init_tracing, init_simd, IPCManager, LocalFS, MemFS, MemoryManager, MmapManager,
     MountManager, SchedulingPolicy as Policy, ProcessManager, SandboxManager, SyscallExecutor,
 };
 use std::sync::Arc;
@@ -24,6 +24,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     info!("AgentOS Kernel starting...");
     info!("================================================");
+
+    // Detect SIMD capabilities
+    info!("Detecting SIMD capabilities...");
+    let simd_caps = init_simd();
+    info!(
+        "SIMD ready: AVX-512={}, AVX2={}, SSE2={}, NEON={}, max_vector={}B",
+        simd_caps.has_avx512_full(),
+        simd_caps.avx2,
+        simd_caps.sse2,
+        simd_caps.neon,
+        simd_caps.max_vector_bytes()
+    );
 
     // Initialize monitoring
     info!("Initializing performance monitoring...");

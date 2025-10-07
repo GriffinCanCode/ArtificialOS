@@ -27,6 +27,11 @@ pub fn simd_memcpy(dst: &mut [u8], src: &[u8]) -> usize {
 
     #[cfg(target_arch = "x86_64")]
     {
+        if is_x86_feature_detected!("avx512f")
+            && is_x86_feature_detected!("avx512bw")
+        {
+            unsafe { return simd_memcpy_avx512(dst, src, len); }
+        }
         if is_x86_feature_detected!("avx2") {
             unsafe { return simd_memcpy_avx2(dst, src, len); }
         }
@@ -98,6 +103,15 @@ pub fn simd_memcmp(a: &[u8], b: &[u8]) -> Ordering {
 
     #[cfg(target_arch = "x86_64")]
     {
+        if is_x86_feature_detected!("avx512f")
+            && is_x86_feature_detected!("avx512bw")
+        {
+            unsafe {
+                if let Some(ord) = simd_memcmp_avx512(a, b, len) {
+                    return ord;
+                }
+            }
+        }
         if is_x86_feature_detected!("avx2") {
             unsafe {
                 if let Some(ord) = simd_memcmp_avx2(a, b, len) {
@@ -130,6 +144,11 @@ pub fn simd_memset(dst: &mut [u8], value: u8) -> usize {
 
     #[cfg(target_arch = "x86_64")]
     {
+        if is_x86_feature_detected!("avx512f")
+            && is_x86_feature_detected!("avx512bw")
+        {
+            unsafe { return simd_memset_avx512(dst, value, len); }
+        }
         if is_x86_feature_detected!("avx2") {
             unsafe { return simd_memset_avx2(dst, value, len); }
         }
@@ -147,6 +166,34 @@ pub fn simd_memset(dst: &mut [u8], value: u8) -> usize {
 
     // Fallback
     dst.fill(value);
+    len
+}
+
+// x86_64 AVX-512 implementations
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx512f,avx512bw")]
+unsafe fn simd_memcpy_avx512(dst: &mut [u8], src: &[u8], len: usize) -> usize {
+    use std::arch::x86_64::*;
+
+    let mut offset = 0;
+
+    // Process 64 bytes at a time with AVX-512
+    while offset + 64 <= len {
+        let src_ptr = src.as_ptr().add(offset) as *const __m512i;
+        let dst_ptr = dst.as_mut_ptr().add(offset) as *mut __m512i;
+
+        let data = _mm512_loadu_si512(src_ptr);
+        _mm512_storeu_si512(dst_ptr, data);
+
+        offset += 64;
+    }
+
+    // Handle remaining bytes with scalar copy
+    while offset < len {
+        *dst.get_unchecked_mut(offset) = *src.get_unchecked(offset);
+        offset += 1;
+    }
+
     len
 }
 
@@ -203,6 +250,40 @@ unsafe fn simd_memcpy_sse2(dst: &mut [u8], src: &[u8], len: usize) -> usize {
     }
 
     len
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx512f,avx512bw")]
+unsafe fn simd_memcmp_avx512(a: &[u8], b: &[u8], len: usize) -> Option<Ordering> {
+    use std::arch::x86_64::*;
+
+    let mut offset = 0;
+
+    // Process 64 bytes at a time
+    while offset + 64 <= len {
+        let a_ptr = a.as_ptr().add(offset) as *const __m512i;
+        let b_ptr = b.as_ptr().add(offset) as *const __m512i;
+
+        let a_data = _mm512_loadu_si512(a_ptr);
+        let b_data = _mm512_loadu_si512(b_ptr);
+
+        let mask = _mm512_cmpeq_epi8_mask(a_data, b_data);
+
+        if mask != 0xFFFFFFFFFFFFFFFF {
+            // Found difference - do byte-by-byte comparison
+            for i in offset..offset + 64 {
+                match a[i].cmp(&b[i]) {
+                    Ordering::Equal => continue,
+                    other => return Some(other),
+                }
+            }
+        }
+
+        offset += 64;
+    }
+
+    // Handle remaining bytes
+    Some(a[offset..len].cmp(&b[offset..len]))
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -273,6 +354,30 @@ unsafe fn simd_memcmp_sse2(a: &[u8], b: &[u8], len: usize) -> Option<Ordering> {
 
     // Handle remaining bytes
     Some(a[offset..len].cmp(&b[offset..len]))
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx512f,avx512bw")]
+unsafe fn simd_memset_avx512(dst: &mut [u8], value: u8, len: usize) -> usize {
+    use std::arch::x86_64::*;
+
+    let pattern = _mm512_set1_epi8(value as i8);
+    let mut offset = 0;
+
+    // Process 64 bytes at a time
+    while offset + 64 <= len {
+        let dst_ptr = dst.as_mut_ptr().add(offset) as *mut __m512i;
+        _mm512_storeu_si512(dst_ptr, pattern);
+        offset += 64;
+    }
+
+    // Handle remaining bytes
+    while offset < len {
+        *dst.get_unchecked_mut(offset) = value;
+        offset += 1;
+    }
+
+    len
 }
 
 #[cfg(target_arch = "x86_64")]

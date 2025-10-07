@@ -34,7 +34,12 @@ pub use ipc::{
 // Memory
 pub use memory::{
     MemoryBlock, MemoryError, MemoryManager, MemoryStats, ProcessMemoryStats,
-    init_simd, simd_capabilities, simd_memcpy, simd_memmove, simd_memcmp, simd_memset, SimdCapabilities,
+    // SIMD operations
+    init_simd, simd_capabilities, SimdCapabilities,
+    simd_memcpy, simd_memmove, simd_memcmp, simd_memset,
+    find_byte, contains_byte, count_byte, rfind_byte,
+    sum_u64, sum_u32, min_u64, max_u64, avg_u64,
+    ascii_to_lower, ascii_to_upper, is_ascii, trim,
 };
 
 // Monitoring

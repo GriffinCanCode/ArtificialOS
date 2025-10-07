@@ -9,7 +9,6 @@ pub mod errors;
 pub mod hints;
 pub mod json;
 pub mod serde;
-pub mod simd;
 pub mod traits;
 pub mod types;
 

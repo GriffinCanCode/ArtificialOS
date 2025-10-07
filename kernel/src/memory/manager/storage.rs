@@ -6,6 +6,7 @@
 use super::super::types::{MemoryError, MemoryResult};
 use super::MemoryManager;
 use crate::core::types::{Address, Size};
+use crate::memory::{simd_memcpy, simd_memset};
 use log::info;
 
 impl MemoryManager {
@@ -40,9 +41,9 @@ impl MemoryManager {
                 if block_data.len() < block_size {
                     block_data.resize(block_size, 0u8);
                 }
-                // Write data at the offset
+                // Write data at the offset using SIMD-accelerated copy
                 let end = offset + data.len();
-                block_data[offset..end].copy_from_slice(data);
+                simd_memcpy(&mut block_data[offset..end], data);
                 block_data
             });
 
@@ -84,12 +85,16 @@ impl MemoryManager {
 
             // Get storage for this block
             let data = if let Some(block_data) = self.memory_storage.get(&base_addr) {
-                // Read data from the stored bytes
+                // Read data from the stored bytes using SIMD-accelerated copy
                 let end = offset + size;
-                block_data[offset..end].to_vec()
+                let mut result = vec![0u8; size];
+                simd_memcpy(&mut result, &block_data[offset..end]);
+                result
             } else {
-                // Block has no data written yet, return zeros
-                vec![0u8; size]
+                // Block has no data written yet, return zeros using SIMD-accelerated fill
+                let mut result = vec![0u8; size];
+                simd_memset(&mut result, 0);
+                result
             };
 
             info!(
