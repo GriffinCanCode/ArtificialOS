@@ -6,6 +6,8 @@
 mod executor;
 mod fd;
 mod fs;
+mod handler;
+mod handlers;
 mod ipc;
 mod memory;
 mod mmap;
@@ -22,6 +24,7 @@ mod vfs_adapter;
 
 // Re-export public API
 pub use executor::SyscallExecutor;
+pub use handler::{SyscallHandler, SyscallHandlerRegistry};
 pub use traits::*;
 pub use types::{ProcessOutput, Syscall, SyscallError, SyscallResult, SystemInfo};
 
