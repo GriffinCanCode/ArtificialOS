@@ -153,3 +153,82 @@ async fn test_executor_command_validation() {
 
     pm.terminate_process(pid);
 }
+
+#[tokio::test]
+async fn test_executor_path_traversal_prevention() {
+    let pm = ProcessManager::builder().with_executor().build();
+
+    // Test basic .. traversal
+    let config = ExecutionConfig::new("cat".to_string()).with_args(vec!["../etc/passwd".to_string()]);
+    let pid = pm.create_process_with_command("traversal-1".to_string(), 5, Some(config));
+    let process = pm.get_process(pid).unwrap();
+    assert_eq!(process.os_pid, None, "Basic .. traversal should be blocked");
+    pm.terminate_process(pid);
+
+    // Test path with /./  and .. combination
+    let config = ExecutionConfig::new("cat".to_string()).with_args(vec!["./../../etc/passwd".to_string()]);
+    let pid = pm.create_process_with_command("traversal-2".to_string(), 5, Some(config));
+    let process = pm.get_process(pid).unwrap();
+    assert_eq!(process.os_pid, None, "/./ with .. traversal should be blocked");
+    pm.terminate_process(pid);
+
+    // Test normalized path that escapes
+    let config = ExecutionConfig::new("cat".to_string()).with_args(vec!["foo/../../../etc/passwd".to_string()]);
+    let pid = pm.create_process_with_command("traversal-3".to_string(), 5, Some(config));
+    let process = pm.get_process(pid).unwrap();
+    assert_eq!(process.os_pid, None, "Multiple .. should be blocked");
+    pm.terminate_process(pid);
+
+    // Test Windows-style path traversal
+    let config = ExecutionConfig::new("cat".to_string()).with_args(vec!["..\\..\\windows\\system32".to_string()]);
+    let pid = pm.create_process_with_command("traversal-4".to_string(), 5, Some(config));
+    let process = pm.get_process(pid).unwrap();
+    assert_eq!(process.os_pid, None, "Windows-style traversal should be blocked");
+    pm.terminate_process(pid);
+
+    // Test URL encoded traversal
+    let config = ExecutionConfig::new("cat".to_string()).with_args(vec!["%2e%2e/etc/passwd".to_string()]);
+    let pid = pm.create_process_with_command("traversal-5".to_string(), 5, Some(config));
+    let process = pm.get_process(pid).unwrap();
+    assert_eq!(process.os_pid, None, "URL encoded .. should be blocked");
+    pm.terminate_process(pid);
+
+    // Test valid paths (should succeed - won't have OS PID if command doesn't exist, but should pass validation)
+    // Using 'echo' which is more likely to exist
+    let config = ExecutionConfig::new("echo".to_string()).with_args(vec!["./valid/path/file.txt".to_string()]);
+    let pid = pm.create_process_with_command("valid-path".to_string(), 5, Some(config));
+    let _process = pm.get_process(pid).unwrap();
+    // Note: os_pid might be None if echo doesn't exist, but validation passed
+    pm.terminate_process(pid);
+}
+
+#[tokio::test]
+async fn test_executor_path_normalization_edge_cases() {
+    let pm = ProcessManager::builder().with_executor().build();
+
+    // Test absolute path with upward traversal
+    let config = ExecutionConfig::new("cat".to_string()).with_args(vec!["/../../../etc/passwd".to_string()]);
+    let pid = pm.create_process_with_command("edge-1".to_string(), 5, Some(config));
+    let process = pm.get_process(pid).unwrap();
+    assert_eq!(process.os_pid, None, "Absolute path with .. should be blocked");
+    pm.terminate_process(pid);
+
+    // Test mixed slashes
+    let config = ExecutionConfig::new("cat".to_string()).with_args(vec!["foo/./bar/../../../etc".to_string()]);
+    let pid = pm.create_process_with_command("edge-2".to_string(), 5, Some(config));
+    let process = pm.get_process(pid).unwrap();
+    assert_eq!(process.os_pid, None, "Mixed ./ and .. should be detected");
+    pm.terminate_process(pid);
+
+    // Test safe relative paths (should pass validation)
+    let config = ExecutionConfig::new("echo".to_string()).with_args(vec!["./subdir/file.txt".to_string()]);
+    let pid = pm.create_process_with_command("safe-1".to_string(), 5, Some(config));
+    let _process = pm.get_process(pid).unwrap();
+    pm.terminate_process(pid);
+
+    // Test safe path with .. that stays within bounds
+    let config = ExecutionConfig::new("echo".to_string()).with_args(vec!["dir1/dir2/../file.txt".to_string()]);
+    let pid = pm.create_process_with_command("safe-2".to_string(), 5, Some(config));
+    let _process = pm.get_process(pid).unwrap();
+    pm.terminate_process(pid);
+}

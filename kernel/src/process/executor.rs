@@ -5,10 +5,14 @@
 
 use super::types::{ExecutionConfig, ProcessError, ProcessResult};
 use crate::core::types::Pid;
+use crate::security::types::Limits;
 use dashmap::DashMap;
 use log::{error, info, warn};
 use std::process::{Child, Command, Stdio};
 use std::sync::Arc;
+
+#[cfg(unix)]
+use std::os::unix::process::CommandExt;
 
 /// Represents an executing OS process
 #[derive(Debug)]
@@ -38,6 +42,11 @@ impl ProcessExecutor {
         // Validate command
         self.validate_command(&config.command)?;
 
+        // Validate arguments for path traversal and injection attacks
+        for arg in &config.args {
+            self.validate_argument(arg)?;
+        }
+
         // Build command
         let mut cmd = Command::new(&config.command);
 
@@ -66,6 +75,16 @@ impl ProcessExecutor {
             cmd.stdin(Stdio::null())
                 .stdout(Stdio::inherit())
                 .stderr(Stdio::inherit());
+        }
+
+        // Apply resource limits atomically via pre-exec hook (Unix only)
+        // This ensures limits are in place BEFORE the process runs
+        #[cfg(unix)]
+        if let Some(ref limits) = config.limits {
+            let limits_clone = limits.clone();
+            unsafe {
+                cmd.pre_exec(move || Self::apply_rlimits_preexec(&limits_clone));
+            }
         }
 
         // Spawn process
@@ -166,11 +185,182 @@ impl ProcessExecutor {
             ));
         }
 
-        // Command traversal prevention
+        // Path traversal prevention - comprehensive checks
+        // Check for direct .. usage
         if command.contains("..") {
             return Err(ProcessError::PermissionDenied(
                 "Command contains path traversal".to_string(),
             ));
+        }
+
+        // Check for encoded dots and traversal bypass attempts
+        let bypass_patterns = [
+            "%2e%2e",  // URL encoded ..
+            "%252e",   // Double encoded .
+            "..%2f",   // Encoded slash variants
+            "%2e.",    // Partial encoding
+            ".%2e",    // Partial encoding
+            "..\\",    // Windows-style path traversal
+            "\\..",    // Windows-style path traversal
+            "%5c..",   // Encoded backslash
+            "..%5c",   // Encoded backslash
+            "\u{2024}\u{2024}", // Unicode two dot leader (could be used as lookalike)
+        ];
+
+        let command_lower = command.to_lowercase();
+        for pattern in &bypass_patterns {
+            if command_lower.contains(&pattern.to_lowercase()) {
+                return Err(ProcessError::PermissionDenied(
+                    "Command contains path traversal attempt".to_string(),
+                ));
+            }
+        }
+
+        // Validate path components by splitting on common delimiters
+        // This catches cases where normalization might expose traversal
+        for word in command.split_whitespace() {
+            // Skip if it's clearly not a path (no slashes)
+            if word.contains('/') || word.contains('\\') {
+                // Check if normalizing this path component would result in upward traversal
+                if Self::contains_path_traversal(word) {
+                    return Err(ProcessError::PermissionDenied(
+                        "Command contains path traversal pattern".to_string(),
+                    ));
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Validate command argument for security
+    fn validate_argument(&self, arg: &str) -> ProcessResult<()> {
+        // Check for direct .. usage
+        if arg.contains("..") {
+            return Err(ProcessError::PermissionDenied(
+                "Argument contains path traversal".to_string(),
+            ));
+        }
+
+        // Check for encoded dots and traversal bypass attempts
+        let bypass_patterns = [
+            "%2e%2e",  // URL encoded ..
+            "%252e",   // Double encoded .
+            "..%2f",   // Encoded slash variants
+            "%2e.",    // Partial encoding
+            ".%2e",    // Partial encoding
+            "..\\",    // Windows-style path traversal
+            "\\..",    // Windows-style path traversal
+            "%5c..",   // Encoded backslash
+            "..%5c",   // Encoded backslash
+        ];
+
+        let arg_lower = arg.to_lowercase();
+        for pattern in &bypass_patterns {
+            if arg_lower.contains(&pattern.to_lowercase()) {
+                return Err(ProcessError::PermissionDenied(
+                    "Argument contains path traversal attempt".to_string(),
+                ));
+            }
+        }
+
+        // Validate path components by splitting on common delimiters
+        for word in arg.split_whitespace() {
+            // Skip if it's clearly not a path (no slashes)
+            if word.contains('/') || word.contains('\\') {
+                // Check if normalizing this path component would result in upward traversal
+                if Self::contains_path_traversal(word) {
+                    return Err(ProcessError::PermissionDenied(
+                        "Argument contains path traversal pattern".to_string(),
+                    ));
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Check if a path string contains traversal patterns after normalization
+    fn contains_path_traversal(path: &str) -> bool {
+        use std::path::{Path, Component};
+
+        // Parse the path and check for ParentDir components
+        let p = Path::new(path);
+        let mut depth = 0i32;
+
+        for component in p.components() {
+            match component {
+                Component::ParentDir => {
+                    depth -= 1;
+                    // If we go negative, we're trying to escape
+                    if depth < 0 {
+                        return true;
+                    }
+                }
+                Component::Normal(_) => {
+                    depth += 1;
+                }
+                Component::RootDir => {
+                    // Absolute paths reset depth
+                    depth = 0;
+                }
+                Component::CurDir | Component::Prefix(_) => {
+                    // These don't affect traversal
+                }
+            }
+        }
+
+        false
+    }
+
+    /// Apply resource limits in pre-exec hook (Unix only)
+    /// This is called AFTER fork() but BEFORE exec(), ensuring limits are atomic
+    #[cfg(unix)]
+    fn apply_rlimits_preexec(limits: &Limits) -> std::io::Result<()> {
+        use nix::libc::{rlimit, setrlimit, RLIMIT_AS, RLIMIT_NPROC, RLIMIT_NOFILE};
+
+        // Memory limit (address space)
+        if let Some(memory_bytes) = limits.memory_bytes {
+            let rlim = rlimit {
+                rlim_cur: memory_bytes,
+                rlim_max: memory_bytes,
+            };
+            unsafe {
+                if setrlimit(RLIMIT_AS, &rlim) != 0 {
+                    return Err(std::io::Error::last_os_error());
+                }
+            }
+        }
+
+        // CPU time limit (convert from shares to seconds - rough approximation)
+        // Note: cpu_shares is for cgroups, not directly mappable to RLIMIT_CPU
+        // We skip this for now as it needs different handling via cgroups
+
+        // Process/thread limit
+        if let Some(max_pids) = limits.max_pids {
+            let rlim = rlimit {
+                rlim_cur: max_pids as u64,
+                rlim_max: max_pids as u64,
+            };
+            unsafe {
+                if setrlimit(RLIMIT_NPROC, &rlim) != 0 {
+                    // Non-fatal, log would go to stderr
+                    eprintln!("Warning: Failed to set RLIMIT_NPROC");
+                }
+            }
+        }
+
+        // File descriptor limit
+        if let Some(max_files) = limits.max_open_files {
+            let rlim = rlimit {
+                rlim_cur: max_files as u64,
+                rlim_max: max_files as u64,
+            };
+            unsafe {
+                if setrlimit(RLIMIT_NOFILE, &rlim) != 0 {
+                    eprintln!("Warning: Failed to set RLIMIT_NOFILE");
+                }
+            }
         }
 
         Ok(())
@@ -283,5 +473,99 @@ mod tests {
         assert_eq!(executor.get_os_pid(1), Some(os_pid));
 
         executor.kill(1).ok();
+    }
+
+    #[test]
+    fn test_path_traversal_detection() {
+        // Test basic .. detection
+        assert!(ProcessExecutor::contains_path_traversal("../etc/passwd"));
+        assert!(ProcessExecutor::contains_path_traversal("../../etc/passwd"));
+
+        // Test with ./ sequences (the bypass mentioned)
+        assert!(ProcessExecutor::contains_path_traversal("./../../etc/passwd"));
+        assert!(ProcessExecutor::contains_path_traversal("foo/./bar/../../../etc"));
+
+        // Test absolute paths with traversal
+        assert!(ProcessExecutor::contains_path_traversal("/../../../etc/passwd"));
+
+        // Test multiple traversals that escape
+        assert!(ProcessExecutor::contains_path_traversal("a/../../../b"));
+
+        // Safe paths - should NOT be detected as traversal
+        assert!(!ProcessExecutor::contains_path_traversal("./valid/path.txt"));
+        assert!(!ProcessExecutor::contains_path_traversal("./subdir/file.txt"));
+        assert!(!ProcessExecutor::contains_path_traversal("dir1/dir2/../file.txt")); // stays within bounds
+        assert!(!ProcessExecutor::contains_path_traversal("dir1/dir2/dir3/../../file.txt")); // stays within bounds
+        assert!(!ProcessExecutor::contains_path_traversal("/absolute/path/file.txt"));
+        assert!(!ProcessExecutor::contains_path_traversal("relative/path/file.txt"));
+    }
+
+    #[test]
+    fn test_command_validation_path_traversal() {
+        let executor = ProcessExecutor::new();
+
+        // Test command with .. in argument
+        let config = ExecutionConfig::new("cat".to_string())
+            .with_args(vec!["../etc/passwd".to_string()]);
+        let result = executor.spawn(1, "test-traversal".to_string(), config);
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), ProcessError::PermissionDenied(_)));
+
+        // Test command with /./ and .. combination (the bypass)
+        let config = ExecutionConfig::new("cat".to_string())
+            .with_args(vec!["./../../etc/passwd".to_string()]);
+        let result = executor.spawn(2, "test-bypass".to_string(), config);
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), ProcessError::PermissionDenied(_)));
+
+        // Test URL encoded traversal
+        let config = ExecutionConfig::new("cat".to_string())
+            .with_args(vec!["%2e%2e/etc/passwd".to_string()]);
+        let result = executor.spawn(3, "test-encoded".to_string(), config);
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), ProcessError::PermissionDenied(_)));
+
+        // Test Windows-style traversal
+        let config = ExecutionConfig::new("cat".to_string())
+            .with_args(vec!["..\\..\\windows\\system32".to_string()]);
+        let result = executor.spawn(4, "test-windows".to_string(), config);
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), ProcessError::PermissionDenied(_)));
+
+        // Test safe path - should succeed (or fail for other reasons, but not path validation)
+        let config = ExecutionConfig::new("echo".to_string())
+            .with_args(vec!["./valid/path.txt".to_string()]);
+        let result = executor.spawn(5, "test-safe".to_string(), config);
+        // Should not fail due to path validation
+        // (might fail if echo doesn't exist, but that's ok)
+        if result.is_err() {
+            // If it fails, it should NOT be due to permission denied for path traversal
+            assert!(!matches!(result.unwrap_err(), ProcessError::PermissionDenied(_)));
+        }
+    }
+
+    #[test]
+    fn test_command_validation_encoding_bypass() {
+        let executor = ProcessExecutor::new();
+
+        let bypass_attempts = vec![
+            "%2e%2e/etc/passwd",      // URL encoded
+            "%252e%252e/etc/passwd",  // Double encoded
+            "..%2fetc/passwd",        // Encoded slash
+            "%2e./etc/passwd",        // Partial encoding
+            ".%2e/etc/passwd",        // Partial encoding
+            "..%5cetc",               // Encoded backslash
+        ];
+
+        for (i, attempt) in bypass_attempts.iter().enumerate() {
+            let config = ExecutionConfig::new("cat".to_string())
+                .with_args(vec![attempt.to_string()]);
+            let result = executor.spawn(100 + i as u32, format!("bypass-{}", i), config);
+            assert!(result.is_err(), "Failed to block bypass attempt: {}", attempt);
+            assert!(
+                matches!(result.unwrap_err(), ProcessError::PermissionDenied(_)),
+                "Wrong error type for bypass attempt: {}", attempt
+            );
+        }
     }
 }
