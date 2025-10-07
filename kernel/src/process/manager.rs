@@ -3,7 +3,9 @@
  * Handles process creation, scheduling, and lifecycle
  */
 
+use super::cleanup;
 use super::preemption::PreemptionController;
+use super::priority;
 use super::types::{ExecutionConfig, ProcessInfo, ProcessState, SchedulingPolicy};
 use crate::core::types::{Pid, Priority};
 use crate::ipc::IPCManager;
@@ -11,7 +13,7 @@ use crate::memory::MemoryManager;
 use crate::process::executor::ProcessExecutor;
 use crate::process::scheduler::Scheduler;
 use crate::process::scheduler_task::SchedulerTask;
-use crate::security::{LimitManager, Limits};
+use crate::security::LimitManager;
 use ahash::RandomState;
 use dashmap::DashMap;
 use log::info;
@@ -217,7 +219,7 @@ impl ProcessManager {
             if let Some(ref executor) = self.executor {
                 // Calculate resource limits based on priority BEFORE spawning
                 // This ensures limits are applied atomically during spawn
-                let limits = self.priority_to_limits(priority);
+                let limits = priority::priority_to_limits(priority);
 
                 // Add limits to config so they're applied in pre-exec hook
                 cfg = cfg.with_limits(limits.clone());
@@ -272,22 +274,6 @@ impl ProcessManager {
     }
 
     /// Convert priority to resource limits
-    fn priority_to_limits(&self, priority: Priority) -> Limits {
-        match priority {
-            0..=3 => Limits::new()
-                .with_memory(128 * 1024 * 1024) // 128 MB
-                .with_cpu_shares(50)
-                .with_max_pids(5)
-                .with_max_open_files(100),
-            4..=7 => Limits::default(), // 512 MB, 100 shares, 1024 files
-            _ => Limits::new()
-                .with_memory(2 * 1024 * 1024 * 1024) // 2 GB
-                .with_cpu_shares(200)
-                .with_max_pids(50)
-                .with_max_open_files(2048),
-        }
-    }
-
     pub fn get_process(&self, pid: Pid) -> Option<ProcessInfo> {
         self.processes.get(&pid).map(|r| r.value().clone())
     }
@@ -296,50 +282,11 @@ impl ProcessManager {
         if let Some((_, process)) = self.processes.remove(&pid) {
             info!("Terminating process: PID {}", pid);
 
-            // Kill OS process if it exists
-            if let Some(os_pid) = process.os_pid {
-                if let Some(ref executor) = self.executor {
-                    if let Err(e) = executor.kill(pid) {
-                        log::warn!("Failed to kill OS process: {}", e);
-                    }
-
-                    // Remove resource limits
-                    if let Some(ref limit_mgr) = self.limit_manager {
-                        if let Err(e) = limit_mgr.remove(os_pid) {
-                            log::warn!("Failed to remove limits: {}", e);
-                        }
-                    }
-                }
-            }
-
-            // Clean up memory if memory manager is available
-            if let Some(ref mem_mgr) = self.memory_manager {
-                let freed = mem_mgr.free_process_memory(pid);
-                if freed > 0 {
-                    info!("Freed {} bytes from terminated PID {}", freed, pid);
-                }
-            }
-
-            // Clean up IPC resources if IPC manager is available
-            if let Some(ref ipc_mgr) = self.ipc_manager {
-                let cleaned = ipc_mgr.clear_process_queue(pid);
-                if cleaned > 0 {
-                    info!(
-                        "Cleaned up {} IPC resources for terminated PID {}",
-                        cleaned, pid
-                    );
-                }
-            }
-
-            // Remove from scheduler if available
-            if let Some(ref scheduler) = self.scheduler {
-                scheduler.read().remove(pid);
-            }
-
-            // Notify preemption controller if available
-            if let Some(ref preemption) = self.preemption {
-                preemption.cleanup_process(pid);
-            }
+            cleanup::cleanup_os_process(&process, pid, &self.executor, &self.limit_manager);
+            cleanup::cleanup_memory(pid, &self.memory_manager);
+            cleanup::cleanup_ipc(pid, &self.ipc_manager);
+            cleanup::cleanup_scheduler(pid, &self.scheduler);
+            cleanup::cleanup_preemption(pid, &self.preemption);
 
             true
         } else {
@@ -471,7 +418,7 @@ impl ProcessManager {
         // Update resource limits if executor and limit manager available
         if let Some(os_pid) = os_pid {
             if let (Some(ref limit_mgr), Some(_)) = (&self.limit_manager, &self.executor) {
-                let new_limits = self.priority_to_limits(new_priority);
+                let new_limits = priority::priority_to_limits(new_priority);
                 if let Err(e) = limit_mgr.apply(os_pid, &new_limits) {
                     log::warn!("Failed to update resource limits for PID {}: {}", pid, e);
                 } else {

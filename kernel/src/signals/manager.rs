@@ -5,80 +5,17 @@
 
 use super::callbacks::CallbackRegistry;
 use super::handler::{SignalHandler, SignalOutcome};
+use super::internal_types::{PrioritySignal, ProcessSignals, MAX_HANDLERS_PER_PROCESS};
 use super::traits::*;
 use super::types::*;
 use crate::core::types::Pid;
-use ahash::{HashMap, RandomState};
+use ahash::RandomState;
 use dashmap::DashMap;
 use log::{debug, info, warn};
 use parking_lot::RwLock;
-use std::cmp::Ordering;
-use std::collections::{BinaryHeap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering as AtomicOrdering};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
-
-// Configuration constants
-const MAX_PENDING_SIGNALS: usize = 128;
-const MAX_HANDLERS_PER_PROCESS: usize = 32;
-
-/// Pending signal with priority (for heap ordering)
-#[derive(Debug, Clone)]
-struct PrioritySignal {
-    signal: PendingSignal,
-    priority: u32,
-}
-
-impl PartialEq for PrioritySignal {
-    fn eq(&self, other: &Self) -> bool {
-        self.priority == other.priority
-    }
-}
-
-impl Eq for PrioritySignal {}
-
-impl PartialOrd for PrioritySignal {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for PrioritySignal {
-    fn cmp(&self, other: &Self) -> Ordering {
-        // Higher priority first, then older timestamp
-        self.priority
-            .cmp(&other.priority)
-            .then_with(|| other.signal.timestamp.cmp(&self.signal.timestamp))
-    }
-}
-
-/// Process signal information
-#[derive(Debug, Clone)]
-struct ProcessSignals {
-    pid: Pid,
-    pending: BinaryHeap<PrioritySignal>, // Priority queue for RT signals
-    blocked: HashSet<Signal>,
-    handlers: HashMap<Signal, SignalAction>,
-}
-
-impl ProcessSignals {
-    fn new(pid: Pid) -> Self {
-        Self {
-            pid,
-            pending: BinaryHeap::new(),
-            blocked: HashSet::new(),
-            handlers: HashMap::default(),
-        }
-    }
-
-    fn has_pending(&self) -> bool {
-        !self.pending.is_empty()
-    }
-
-    fn can_queue(&self) -> bool {
-        self.pending.len() < MAX_PENDING_SIGNALS
-    }
-}
 
 /// Signal manager implementation
 #[derive(Clone)]

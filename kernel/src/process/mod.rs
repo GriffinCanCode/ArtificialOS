@@ -3,13 +3,16 @@
  * Process management, execution, and scheduling
  */
 
+mod cleanup;
 pub mod executor;
 pub mod manager;
 pub mod preemption;
+mod priority;
 pub mod scheduler;
 pub mod scheduler_task;
 pub mod traits;
 pub mod types;
+mod validation;
 
 // Re-export types for convenience
 pub use types::*;

@@ -4,6 +4,7 @@
  */
 
 use super::types::{ExecutionConfig, ProcessError, ProcessResult};
+use super::validation;
 use crate::core::types::Pid;
 use crate::security::types::Limits;
 use dashmap::DashMap;
@@ -41,11 +42,11 @@ impl ProcessExecutor {
     /// Spawn a new OS process
     pub fn spawn(&self, pid: Pid, name: String, config: ExecutionConfig) -> ProcessResult<u32> {
         // Validate command
-        self.validate_command(&config.command)?;
+        validation::validate_command(&config.command)?;
 
         // Validate arguments for path traversal and injection attacks
         for arg in &config.args {
-            self.validate_argument(arg)?;
+            validation::validate_argument(arg)?;
         }
 
         // Build command
@@ -171,69 +172,6 @@ impl ProcessExecutor {
         self.processes.len()
     }
 
-    /// Validate command for security
-    fn validate_command(&self, command: &str) -> ProcessResult<()> {
-        // Empty command
-        if command.trim().is_empty() {
-            return Err(ProcessError::InvalidCommand("Empty command".to_string()));
-        }
-
-        // Shell injection prevention
-        let dangerous_chars = [';', '|', '&', '\n', '\r', '\0', '`', '$', '(', ')'];
-        if dangerous_chars.iter().any(|&c| command.contains(c)) {
-            return Err(ProcessError::PermissionDenied(
-                "Command contains dangerous characters".to_string(),
-            ));
-        }
-
-        // Path traversal prevention - comprehensive checks
-        // Check for direct .. usage
-        if command.contains("..") {
-            return Err(ProcessError::PermissionDenied(
-                "Command contains path traversal".to_string(),
-            ));
-        }
-
-        // Check for encoded dots and traversal bypass attempts
-        let bypass_patterns = [
-            "%2e%2e",  // URL encoded ..
-            "%252e",   // Double encoded .
-            "..%2f",   // Encoded slash variants
-            "%2e.",    // Partial encoding
-            ".%2e",    // Partial encoding
-            "..\\",    // Windows-style path traversal
-            "\\..",    // Windows-style path traversal
-            "%5c..",   // Encoded backslash
-            "..%5c",   // Encoded backslash
-            "\u{2024}\u{2024}", // Unicode two dot leader (could be used as lookalike)
-        ];
-
-        let command_lower = command.to_lowercase();
-        for pattern in &bypass_patterns {
-            if command_lower.contains(&pattern.to_lowercase()) {
-                return Err(ProcessError::PermissionDenied(
-                    "Command contains path traversal attempt".to_string(),
-                ));
-            }
-        }
-
-        // Validate path components by splitting on common delimiters
-        // This catches cases where normalization might expose traversal
-        for word in command.split_whitespace() {
-            // Skip if it's clearly not a path (no slashes)
-            if word.contains('/') || word.contains('\\') {
-                // Check if normalizing this path component would result in upward traversal
-                if Self::contains_path_traversal(word) {
-                    return Err(ProcessError::PermissionDenied(
-                        "Command contains path traversal pattern".to_string(),
-                    ));
-                }
-            }
-        }
-
-        Ok(())
-    }
-
     /// Apply resource limits in pre-exec hook (Unix only)
     /// This is called AFTER fork() but BEFORE exec(), ensuring limits are atomic
     #[cfg(unix)]
@@ -323,92 +261,6 @@ impl ProcessExecutor {
         if count > 0 {
             info!("Cleanup: {} active processes remain", count);
         }
-    }
-
-    /// Validate command argument for security
-    fn validate_argument(&self, arg: &str) -> ProcessResult<()> {
-        // Check for direct .. usage
-        if arg.contains("..") {
-            return Err(ProcessError::PermissionDenied(
-                "Argument contains path traversal".to_string(),
-            ));
-        }
-
-        // Check for encoded dots and traversal bypass attempts
-        let bypass_patterns = [
-            "%2e%2e",  // URL encoded ..
-            "%252e",   // Double encoded .
-            "..%2f",   // Encoded slash variants
-            "%2e.",    // Partial encoding
-            ".%2e",    // Partial encoding
-            "..\\",    // Windows-style path traversal
-            "\\..",    // Windows-style path traversal
-            "%5c..",   // Encoded backslash
-            "..%5c",   // Encoded backslash
-        ];
-
-        let arg_lower = arg.to_lowercase();
-        for pattern in &bypass_patterns {
-            if arg_lower.contains(&pattern.to_lowercase()) {
-                return Err(ProcessError::PermissionDenied(
-                    "Argument contains path traversal attempt".to_string(),
-                ));
-            }
-        }
-
-        // Shell injection prevention
-        let dangerous_chars = [';', '|', '&', '\n', '\r', '\0', '`', '$'];
-        if dangerous_chars.iter().any(|&c| arg.contains(c)) {
-            return Err(ProcessError::PermissionDenied(
-                "Argument contains shell injection characters".to_string(),
-            ));
-        }
-
-        // Check for encoded shell metacharacters
-        let encoded_dangerous = [
-            "%3b",  // ;
-            "%7c",  // |
-            "%26",  // &
-            "%24",  // $
-            "%60",  // `
-        ];
-        for pattern in &encoded_dangerous {
-            if arg_lower.contains(pattern) {
-                return Err(ProcessError::PermissionDenied(
-                    "Argument contains encoded shell metacharacters".to_string(),
-                ));
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Helper to detect path traversal patterns
-    fn contains_path_traversal(path: &str) -> bool {
-        // Try to normalize the path and see if it goes upward
-        let parts: Vec<&str> = path.split('/').collect();
-        let mut depth = 0;
-
-        for part in parts {
-            match part {
-                ".." => {
-                    if depth > 0 {
-                        depth -= 1;
-                    } else {
-                        // Attempting to go above root
-                        return true;
-                    }
-                }
-                "." | "" => {
-                    // Current dir or empty, no change
-                }
-                _ => {
-                    depth += 1;
-                }
-            }
-        }
-
-        false
     }
 }
 

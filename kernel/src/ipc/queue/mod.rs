@@ -4,9 +4,12 @@
  */
 
 pub mod fifo;
+pub mod lifecycle;
 pub mod manager;
+pub mod operations;
 pub mod priority;
 pub mod pubsub;
+pub mod subscription;
 pub mod types;
 
 // Re-export public API
