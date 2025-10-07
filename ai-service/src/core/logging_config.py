@@ -8,7 +8,12 @@ import sys
 from typing import Any, MutableMapping
 
 import structlog
-from pythonjsonlogger import jsonlogger
+
+try:
+    from pythonjsonlogger.json import JsonFormatter
+except ImportError:
+    from pythonjsonlogger import jsonlogger
+    JsonFormatter = jsonlogger.JsonFormatter  # type: ignore
 
 
 def configure_logging(level: str = "INFO", json_logs: bool = False) -> None:
@@ -24,7 +29,7 @@ def configure_logging(level: str = "INFO", json_logs: bool = False) -> None:
     # Configure standard logging
     if json_logs:
         handler = logging.StreamHandler(sys.stdout)
-        formatter = jsonlogger.JsonFormatter("%(timestamp)s %(level)s %(name)s %(message)s")
+        formatter = JsonFormatter("%(timestamp)s %(level)s %(name)s %(message)s")
         handler.setFormatter(formatter)
         logging.basicConfig(level=log_level, handlers=[handler])
     else:

@@ -22,19 +22,35 @@ export const Tooltip: React.FC<TooltipProps> = React.memo(
       onOpenChange,
     });
 
+    console.log('[Tooltip] Render', { content, isOpen: tooltip.isOpen, hasChildren: !!children });
+
     if (!content) {
       return children;
     }
 
+    const referenceProps = tooltip.getReferenceProps({
+      ref: tooltip.refs.setReference,
+      ...children.props,
+    });
+
+    console.log('[Tooltip] Reference props:', Object.keys(referenceProps));
+
+    // Wrap handlers with logging
+    const wrappedProps = {
+      ...referenceProps,
+      onPointerEnter: (e: any) => {
+        console.log('[Tooltip] onPointerEnter fired!', content);
+        referenceProps.onPointerEnter?.(e);
+      },
+      onMouseMove: (e: any) => {
+        console.log('[Tooltip] onMouseMove fired!', content);
+        referenceProps.onMouseMove?.(e);
+      },
+    };
+
     return (
       <>
-        {cloneElement(
-          children,
-          tooltip.getReferenceProps({
-            ref: tooltip.refs.setReference,
-            ...children.props,
-          })
-        )}
+        {cloneElement(children, wrappedProps)}
         {tooltip.isOpen && (
           <FloatingPortal>
             <div

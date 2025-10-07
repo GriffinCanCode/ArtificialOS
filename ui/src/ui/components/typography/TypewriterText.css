@@ -1,0 +1,22 @@
+/* TypewriterText Component Styles */
+
+.typewriter-text {
+  display: inline-block;
+}
+
+.typewriter-cursor {
+  display: inline-block;
+  animation: cursorBlink 1s step-end infinite;
+  margin-left: 2px;
+  color: currentColor;
+}
+
+@keyframes cursorBlink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}

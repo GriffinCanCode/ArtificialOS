@@ -3,11 +3,13 @@
  * Main OS desktop with menu bar and sortable dock
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { shouldIgnoreKeyboardEvent } from "../../../features/input";
 import { formatDate, formatTime } from "../../../core/utils/dates";
 import { Sortable, useDockItems, useDockActions } from "../../../features/dnd";
 import type { SortResult } from "../../../features/dnd";
+import { Tooltip } from "../../../features/floating";
+import { BrandLogo } from "../typography/BrandLogo";
 import { DockItem } from "./DockItem";
 import "./Desktop.css";
 
@@ -58,13 +60,13 @@ export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpen
   };
 
   // Handle dock item click
-  const handleDockItemClick = (action: string) => {
+  const handleDockItemClick = useCallback((action: string) => {
     if (action === "hub") {
       onOpenHub();
     } else {
       onLaunchApp(action);
     }
-  };
+  }, [onOpenHub, onLaunchApp]);
 
   return (
     <div className="desktop">
@@ -76,9 +78,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpen
       {/* Top Menu Bar */}
       <div className="desktop-menubar">
         <div className="menubar-left">
-          <button className="menubar-item logo" onClick={onOpenHub}>
-            ✨ AgentOS
-          </button>
+          <BrandLogo size="small" onClick={onOpenHub} />
           <button className="menubar-item" onClick={onOpenHub}>
             Hub
           </button>
@@ -104,11 +104,14 @@ export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpen
           className="dock-container"
         />
         <div className="dock-separator" />
-        <Tooltip content="Create (⌘K)" delay={500}>
-          <button className="dock-item dock-creator" onClick={onOpenCreator} aria-label="Create">
-            <span className="dock-icon">✨</span>
-          </button>
-        </Tooltip>
+        <button
+          className="dock-item dock-creator"
+          onClick={onOpenCreator}
+          aria-label="Create"
+          title="Create (⌘K)"
+        >
+          <span className="dock-icon">✨</span>
+        </button>
       </div>
 
       {/* Hint Overlay */}

@@ -21,6 +21,20 @@ from .json import (
 )
 from .hash import Algorithm, hash_string, hash_bytes, hash_fields
 from .cache import LRUCache, Stats
+from .tracing import (
+    Tracer,
+    Span,
+    init_tracer,
+    get_tracer,
+    trace_operation,
+    trace_operation_async,
+    trace_grpc_call,
+    extract_trace_context,
+    inject_trace_context,
+    get_trace_id,
+    get_span_id,
+    set_trace_context,
+)
 
 
 def create_container(backend_url: str = "http://localhost:8000"):
@@ -57,6 +71,19 @@ __all__ = [
     "JSONParseError",
     "validate_json_size",
     "validate_json_depth",
+    # Tracing
+    "Tracer",
+    "Span",
+    "init_tracer",
+    "get_tracer",
+    "trace_operation",
+    "trace_operation_async",
+    "trace_grpc_call",
+    "extract_trace_context",
+    "inject_trace_context",
+    "get_trace_id",
+    "get_span_id",
+    "set_trace_context",
     # DI
     "create_container",
     # Hashing

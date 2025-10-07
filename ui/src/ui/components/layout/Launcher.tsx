@@ -139,27 +139,10 @@ export const Launcher: React.FC<LauncherProps> = React.memo(({ onAppLaunch, onCr
       ) : (
         <div className="app-grid">
           {apps.map((app) => (
-            <ContextMenu
-              key={app.id}
-              items={getAppContextMenuItems(app.id)}
-              onSelect={(action) => handleAppContextMenu(app.id, action)}
-            >
-              <HoverCard
-                content={
-                  <div style={{ padding: "0.5rem" }}>
-                    <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "1rem" }}>{app.name}</h4>
-                    <p style={{ margin: "0 0 0.5rem 0", fontSize: "0.875rem", opacity: 0.8 }}>
-                      {app.description}
-                    </p>
-                    <div style={{ fontSize: "0.75rem", opacity: 0.6 }}>
-                      <div>Category: {app.category}</div>
-                      <div>Version: v{app.version}</div>
-                      {app.author && <div>Author: {app.author}</div>}
-                    </div>
-                  </div>
-                }
-                openDelay={700}
-                closeDelay={300}
+            <div key={app.id} className="app-grid-item">
+              <ContextMenu
+                items={getAppContextMenuItems(app.id)}
+                onSelect={(action) => handleAppContextMenu(app.id, action)}
               >
                 <div
                   className={cn(
@@ -171,6 +154,7 @@ export const Launcher: React.FC<LauncherProps> = React.memo(({ onAppLaunch, onCr
                     })
                   )}
                   onClick={() => handleLaunchApp(app.id)}
+                  title={`${app.name} - ${app.description}`}
                 >
                   <Tooltip content="Delete app" delay={500}>
                     <button
@@ -189,8 +173,8 @@ export const Launcher: React.FC<LauncherProps> = React.memo(({ onAppLaunch, onCr
                     <span className="app-version">v{app.version}</span>
                   </div>
                 </div>
-              </HoverCard>
-            </ContextMenu>
+              </ContextMenu>
+            </div>
           ))}
 
           <div

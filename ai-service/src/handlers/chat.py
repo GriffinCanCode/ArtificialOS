@@ -5,10 +5,11 @@ from collections.abc import AsyncGenerator
 import ai_pb2
 
 from core import get_logger, ChatRequest, ValidationError
+from core.tracing import trace_operation_async
 from agents.chat import ChatAgent, ChatHistory, ChatMessage
 from models.loader import ModelLoader
 from models.config import GeminiConfig
-from monitoring import metrics_collector, trace_operation
+from monitoring import metrics_collector
 
 
 logger = get_logger(__name__)
@@ -28,7 +29,7 @@ class ChatHandler:
             validated = ChatRequest(message=request.message, history_count=len(request.history))
             logger.info("chat", message=validated.message[:50])
 
-            with trace_operation("chat_streaming", message=validated.message[:50]):
+            async with trace_operation_async("chat_streaming", message=validated.message[:50]):
                 # Build history
                 history = ChatHistory()
                 for msg in request.history:

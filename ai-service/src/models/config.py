@@ -3,10 +3,10 @@ Model configuration with strong typing.
 Centralized settings for Gemini API.
 """
 
-from enum import Enum
 import os
+from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class GeminiModel(str, Enum):
@@ -20,6 +20,8 @@ class GeminiModel(str, Enum):
 
 class GeminiConfig(BaseModel):
     """Type-safe Gemini API configuration."""
+
+    model_config = ConfigDict(frozen=True, use_enum_values=True)
 
     # Model selection
     model_name: str = Field(default=GeminiModel.FLASH_EXP.value)
@@ -37,12 +39,6 @@ class GeminiConfig(BaseModel):
     # JSON mode
     json_mode: bool = Field(default=False)
     response_schema: dict | None = Field(default=None)
-
-    class Config:
-        """Pydantic config."""
-
-        frozen = True  # Immutable for thread safety
-        use_enum_values = True
 
     def __init__(self, **data):
         """Initialize config with API key from environment if not provided."""
@@ -90,15 +86,13 @@ class ModelConfig(BaseModel):
     Kept for backwards compatibility during migration.
     """
 
+    model_config = ConfigDict(frozen=True, use_enum_values=True)
+
     backend: ModelBackend = Field(default=ModelBackend.GEMINI)
     size: ModelSize = Field(default=ModelSize.SMALL)
     temperature: float = Field(default=0.1, ge=0.0, le=2.0)
     max_tokens: int = Field(default=8192, ge=1, le=8192)
     streaming: bool = Field(default=True)
-
-    class Config:
-        frozen = True
-        use_enum_values = True
 
     def to_gemini_config(self) -> GeminiConfig:
         """Convert legacy ModelConfig to GeminiConfig."""

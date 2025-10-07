@@ -1,0 +1,154 @@
+/* BrandLogo Component Styles */
+
+.brand-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.brand-logo::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(139, 92, 246, 0.1) 0%,
+    rgba(236, 72, 153, 0.1) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  border-radius: 8px;
+}
+
+.brand-logo:hover::before {
+  opacity: 1;
+}
+
+.brand-logo:hover {
+  transform: translateY(-1px);
+}
+
+.brand-logo-icon {
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.brand-logo:hover .brand-logo-icon {
+  transform: scale(1.1) rotate(10deg);
+}
+
+.brand-logo-text {
+  display: flex;
+  align-items: baseline;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: -0.02em;
+}
+
+.brand-logo-agent {
+  background: linear-gradient(
+    135deg,
+    #8b5cf6 0%,
+    #a78bfa 50%,
+    #ec4899 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  background-size: 200% 100%;
+  transition: background-position 0.5s ease;
+}
+
+.brand-logo-os {
+  background: linear-gradient(
+    135deg,
+    #ec4899 0%,
+    #f472b6 50%,
+    #fb7185 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  background-size: 200% 100%;
+  transition: background-position 0.5s ease;
+}
+
+.brand-logo:hover .brand-logo-agent,
+.brand-logo:hover .brand-logo-os {
+  background-position: -100% 0;
+}
+
+/* Animated variant */
+.brand-logo-animated .brand-logo-agent {
+  animation: gradientShift 4s ease-in-out infinite;
+}
+
+.brand-logo-animated .brand-logo-os {
+  animation: gradientShift 4s ease-in-out infinite;
+  animation-delay: 0.5s;
+}
+
+@keyframes gradientShift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Size variants */
+.brand-logo-small {
+  padding: 4px 12px;
+  gap: 6px;
+}
+
+.brand-logo-small .brand-logo-icon {
+  font-size: 16px;
+}
+
+.brand-logo-small .brand-logo-text {
+  font-size: 12px;
+}
+
+.brand-logo-medium {
+  padding: 6px 16px;
+  gap: 8px;
+}
+
+.brand-logo-medium .brand-logo-icon {
+  font-size: 20px;
+}
+
+.brand-logo-medium .brand-logo-text {
+  font-size: 14px;
+}
+
+.brand-logo-large {
+  padding: 10px 24px;
+  gap: 12px;
+}
+
+.brand-logo-large .brand-logo-icon {
+  font-size: 28px;
+}
+
+.brand-logo-large .brand-logo-text {
+  font-size: 18px;
+}
+
+/* Glow effect on hover */
+.brand-logo:hover {
+  filter: drop-shadow(0 0 12px rgba(139, 92, 246, 0.3));
+}

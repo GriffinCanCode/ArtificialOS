@@ -26,5 +26,8 @@ class Blueprint(BaseModel):
     service_bindings: dict[str, str] = Field(default_factory=dict)
     lifecycle_hooks: dict[str, list[str]] = Field(default_factory=dict)
 
+    # Store the complete blueprint JSON (with app/services/ui structure) for sending to backend
+    _raw_blueprint_json: str | None = None
+
 
 BlueprintComponent.model_rebuild()

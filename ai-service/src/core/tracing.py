@@ -1,18 +1,31 @@
 """
 Distributed Tracing
-Lightweight tracing for AI service operations.
+Lightweight tracing for AI service operations with gRPC integration.
 """
 
 import contextvars
+import functools
+import logging
 import time
 import uuid
 from collections.abc import Callable
+from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, AsyncGenerator, TypeVar
 
-from core import get_logger
+import structlog
 
-logger = get_logger(__name__)
+logger: structlog.BoundLogger | None = None
+
+
+def _get_logger() -> structlog.BoundLogger:
+    """Get or create logger instance."""
+    global logger
+    if logger is None:
+        logger = structlog.get_logger(__name__)
+    return logger
+
+F = TypeVar("F", bound=Callable[..., Any])
 
 # Context variables for trace propagation
 _trace_id: contextvars.ContextVar[str] = contextvars.ContextVar("trace_id", default="")
@@ -65,7 +78,7 @@ class Tracer:
     def __init__(self, service: str) -> None:
         self.service = service
 
-    def start_span(self, name: str) -> Span:
+    def start_span(self, name: str, **tags: str) -> Span:
         """Create a new span."""
         trace_id = _trace_id.get() or str(uuid.uuid4())
         parent_id = _span_id.get()
@@ -78,6 +91,7 @@ class Tracer:
             name=name,
             service=self.service,
             start_time=time.time(),
+            tags=tags,
         )
 
         # Set span in context
@@ -88,6 +102,7 @@ class Tracer:
 
     def submit(self, span: Span) -> None:
         """Process completed span."""
+        log = _get_logger()
         fields = {
             "trace_id": span.trace_id,
             "span_id": span.span_id,
@@ -95,15 +110,94 @@ class Tracer:
             "duration_ms": span.duration * 1000,
             "service": span.service,
             "status_code": span.status_code,
+            **span.tags,
         }
 
         if span.parent_id:
             fields["parent_id"] = span.parent_id
 
         if span.error:
-            logger.error("span_completed_with_error", error=str(span.error), **fields)
+            log.error("span_completed_with_error", error=str(span.error), **fields)
         else:
-            logger.info("span_completed", **fields)
+            if span.duration > 1.0:
+                log.warning("span_completed_slow", **fields)
+            else:
+                log.info("span_completed", **fields)
+
+
+# Global tracer instance
+_tracer: Tracer | None = None
+
+
+def init_tracer(service: str) -> Tracer:
+    """Initialize global tracer."""
+    global _tracer
+    _tracer = Tracer(service)
+    return _tracer
+
+
+def get_tracer() -> Tracer:
+    """Get global tracer instance."""
+    if _tracer is None:
+        raise RuntimeError("Tracer not initialized. Call init_tracer() first.")
+    return _tracer
+
+
+@contextmanager
+def trace_operation(operation: str, **kwargs: Any):
+    """Context manager for tracing operations."""
+    if _tracer is None:
+        yield
+        return
+
+    span = _tracer.start_span(operation, **{k: str(v) for k, v in kwargs.items()})
+    try:
+        yield span
+    except Exception as e:
+        span.set_error(e)
+        raise
+    finally:
+        span.finish()
+        _tracer.submit(span)
+
+
+@asynccontextmanager
+async def trace_operation_async(operation: str, **kwargs: Any) -> AsyncGenerator[Span, None]:
+    """Async context manager for tracing operations."""
+    if _tracer is None:
+        yield None  # type: ignore
+        return
+
+    span = _tracer.start_span(operation, **{k: str(v) for k, v in kwargs.items()})
+    try:
+        yield span
+    except Exception as e:
+        span.set_error(e)
+        raise
+    finally:
+        span.finish()
+        _tracer.submit(span)
+
+
+def trace_grpc_call(method: str) -> Callable[[F], F]:
+    """Decorator for tracing gRPC calls."""
+
+    def decorator(func: F) -> F:
+        @functools.wraps(func)
+        async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
+            async with trace_operation_async("grpc_call", method=method):
+                return await func(*args, **kwargs)
+
+        @functools.wraps(func)
+        def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
+            with trace_operation("grpc_call", method=method):
+                return func(*args, **kwargs)
+
+        if functools.iscoroutinefunction(func):
+            return async_wrapper  # type: ignore
+        return sync_wrapper  # type: ignore
+
+    return decorator
 
 
 def extract_trace_context(metadata: dict[str, list[str]]) -> tuple[str, str]:
@@ -135,41 +229,8 @@ def get_span_id() -> str:
 
 
 def set_trace_context(trace_id: str, span_id: str) -> None:
-    """Set trace context."""
+    """Set trace context for distributed tracing."""
     if trace_id:
         _trace_id.set(trace_id)
     if span_id:
         _span_id.set(span_id)
-
-
-def traced(name: str | None = None) -> Callable:
-    """Decorator for automatic span creation."""
-
-    def decorator(func: Callable) -> Callable:
-        span_name = name or f"{func.__module__}.{func.__name__}"
-
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            from core import get_container
-
-            container = get_container()
-            if not hasattr(container, "tracer"):
-                # Tracing not initialized
-                return func(*args, **kwargs)
-
-            tracer = container.tracer
-            span = tracer.start_span(span_name)
-
-            try:
-                result = func(*args, **kwargs)
-                span.set_status(200)
-                return result
-            except Exception as e:
-                span.set_error(e)
-                raise
-            finally:
-                span.finish()
-                tracer.submit(span)
-
-        return wrapper
-
-    return decorator

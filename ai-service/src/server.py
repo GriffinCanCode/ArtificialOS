@@ -1,6 +1,6 @@
 """
 gRPC Server
-Modern async gRPC server with grpc.aio.
+Modern async gRPC server with grpc.aio and distributed tracing.
 """
 
 import asyncio
@@ -8,11 +8,13 @@ import signal
 from collections.abc import AsyncIterator
 
 import grpc
+from grpc import aio
 
 import ai_pb2
 import ai_pb2_grpc
 
 from core import configure_logging, get_logger, get_settings, create_container
+from core.tracing import init_tracer, extract_trace_context, set_trace_context
 from handlers import UIHandler, ChatHandler
 from models.loader import ModelLoader
 from agents.ui_generator import UIGenerator
@@ -60,12 +62,32 @@ class AsyncAIService(ai_pb2_grpc.AIServiceServicer):
             yield token
 
 
+async def tracing_interceptor(
+    continuation, handler_call_details: grpc.HandlerCallDetails
+) -> grpc.RpcMethodHandler:
+    """gRPC interceptor for distributed tracing."""
+    # Extract trace context from metadata
+    metadata = dict(handler_call_details.invocation_metadata)
+    metadata_dict = {k: [v] for k, v in metadata.items()}
+    trace_id, span_id = extract_trace_context(metadata_dict)
+
+    if trace_id and span_id:
+        set_trace_context(trace_id, span_id)
+        logger.debug("trace_context_extracted", trace_id=trace_id, parent_span_id=span_id)
+
+    return await continuation(handler_call_details)
+
+
 async def serve_async():
     """Start async gRPC server."""
     settings = get_settings()
     configure_logging(settings.log_level, settings.json_logs)
 
     logger.info("starting", port=settings.grpc_port)
+
+    # Initialize distributed tracing
+    init_tracer("ai-service")
+    logger.info("tracing_initialized")
 
     # Start metrics HTTP server
     start_metrics_server(port=50053)
@@ -79,8 +101,9 @@ async def serve_async():
     chat_handler = ChatHandler(ModelLoader)
     service = AsyncAIService(ui_handler, chat_handler)
 
-    # Create async server with keepalive options
-    server = grpc.aio.server(
+    # Create async server with keepalive options and tracing interceptor
+    server = aio.server(
+        interceptors=[tracing_interceptor],
         options=[
             # Keepalive settings to match client expectations
             ("grpc.keepalive_time_ms", 10000),  # 10 seconds

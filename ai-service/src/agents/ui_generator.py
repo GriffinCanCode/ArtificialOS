@@ -197,6 +197,9 @@ class UIGenerator:
             ui_spec_dict = package_dict.get("ui_spec", {})
             ui_spec = Blueprint.model_validate(ui_spec_dict)
 
+            # Store the raw complete blueprint JSON for sending to backend
+            ui_spec._raw_blueprint_json = json_content
+
             logger.info("llm_parse_success", components=len(ui_spec.components))
         except Exception as e:
             logger.error("llm_parse_failed", error=str(e), content_preview=content[:500])
@@ -234,6 +237,8 @@ class UIGenerator:
         try:
             package_dict = parse_blueprint(blueprint_json)
             ui_spec = Blueprint.model_validate(package_dict.get("ui_spec", {}))
+            # Store the raw complete blueprint JSON for sending to backend
+            ui_spec._raw_blueprint_json = blueprint_json
             if self.cache:
                 self.cache.set(request, ui_spec)
             yield ui_spec

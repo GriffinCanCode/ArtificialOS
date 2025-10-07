@@ -20,10 +20,17 @@ export async function syncWindow(
   position: Position,
   size: Size
 ): Promise<void> {
+  // Backend expects integer values, so round all numbers
   const payload: SyncPayload = {
     window_id: windowId,
-    position,
-    size,
+    position: {
+      x: Math.round(position.x),
+      y: Math.round(position.y),
+    },
+    size: {
+      width: Math.round(size.width),
+      height: Math.round(size.height),
+    },
   };
 
   try {
@@ -34,6 +41,10 @@ export async function syncWindow(
     });
 
     if (!response.ok) {
+      // 404 means app was already closed - this is expected during cleanup
+      if (response.status === 404) {
+        return;
+      }
       console.error(`Failed to sync window state: ${response.status} ${response.statusText}`);
     }
   } catch (error) {

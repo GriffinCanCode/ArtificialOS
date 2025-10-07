@@ -23,6 +23,9 @@ import { formatRelativeTime } from "../core/utils/dates";
 import { useFadeIn, useSlideInUp } from "../ui/hooks/useGSAP";
 import { queryClient } from "../core/lib/queryClient";
 import { shouldIgnoreKeyboardEvent } from "../features/input";
+import { Tooltip } from "../features/floating";
+import { AnimatedTitle } from "../ui/components/typography";
+import { TypewriterText } from "../ui/components/typography/TypewriterText";
 import "./App.css";
 import "../core/toast/styles.css";
 import { initWebVitals } from "../core/monitoring";
@@ -272,10 +275,21 @@ function AppContent() {
       {showWelcome && (
         <div className={`welcome-screen ${!showWelcome ? "exiting" : ""}`}>
           <div className="welcome-content">
-            <div className="welcome-icon">AgentOS</div>
-            <h1 className="welcome-title">Welcome to Griffin's AgentOS</h1>
+            <div className="welcome-icon">✨</div>
+            <h1 className="welcome-title">
+              <AnimatedTitle
+                text="AgentOS"
+                preset="hero"
+                effect="gradient"
+                animationDelay={200}
+              />
+            </h1>
             <p className="welcome-subtitle">
-              Press <kbd>⌘K</kbd> or click below to create something
+              <TypewriterText
+                text="Press ⌘K to create something amazing"
+                speed={40}
+                delay={800}
+              />
             </p>
           </div>
         </div>
@@ -304,8 +318,15 @@ function AppContent() {
         <div className="creator-overlay">
           <div className="creator-backdrop" onClick={() => setShowCreator(false)} />
           <div className="creator-content">
-            <div className="welcome-icon">AgentOS</div>
-            <h1 className="welcome-title">What would you like to create?</h1>
+            <div className="welcome-icon">✨</div>
+            <h1 className="welcome-title">
+              <AnimatedTitle
+                text="What would you like to create?"
+                preset="title"
+                effect="glow"
+                animationDelay={0}
+              />
+            </h1>
             <div
               ref={spotlightContainerRef}
               className={`spotlight-input-container creator ${inputFocused ? "focused" : ""}`}

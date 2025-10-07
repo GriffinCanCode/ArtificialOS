@@ -1,0 +1,98 @@
+/* AnimatedTitle Component Styles */
+
+.animated-title {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animated-title.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Shimmer effect */
+.animated-title.shimmer {
+  background: linear-gradient(
+    90deg,
+    #fcd34d 0%,
+    #fbbf24 25%,
+    #f59e0b 50%,
+    #fbbf24 75%,
+    #fcd34d 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3s linear infinite;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Split character animation */
+.animated-title.split .char,
+.animated-title.wave .char {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: charReveal 0.6s ease-out forwards;
+}
+
+.animated-title.wave .char {
+  animation: charWave 2s ease-in-out infinite;
+}
+
+@keyframes charReveal {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes charWave {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Glow effect enhancement */
+.animated-title.glow {
+  filter: drop-shadow(0 0 20px rgba(167, 139, 250, 0.6));
+  animation: glowPulse 2s ease-in-out infinite;
+}
+
+@keyframes glowPulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 20px rgba(167, 139, 250, 0.6));
+  }
+  50% {
+    filter: drop-shadow(0 0 30px rgba(167, 139, 250, 0.8));
+  }
+}
+
+/* Typewriter cursor */
+.animated-title.typewriter::after {
+  content: '|';
+  animation: blink 1s step-end infinite;
+  margin-left: 2px;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}

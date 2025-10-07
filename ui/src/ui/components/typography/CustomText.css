@@ -1,0 +1,34 @@
+/* CustomText Component Styles */
+
+.custom-text {
+  display: inline-block;
+  max-width: 100%;
+}
+
+.custom-text-fallback {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  transition: opacity 0.3s ease;
+  opacity: 0.9;
+}
+
+.custom-text g {
+  transform-origin: center;
+}
+
+/* Smooth rendering */
+.custom-text path {
+  vector-effect: non-scaling-stroke;
+  shape-rendering: geometricPrecision;
+}
+
+/* Hover effects */
+.custom-text-interactive {
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.custom-text-interactive:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+}

@@ -6,8 +6,9 @@ from typing import Iterator
 import ai_pb2
 
 from core import get_logger, UIGenerationRequest, ValidationError
+from core.tracing import trace_operation
 from agents.ui_generator import UIGenerator
-from monitoring import metrics_collector, trace_operation
+from monitoring import metrics_collector
 
 
 logger = get_logger(__name__)
@@ -38,9 +39,16 @@ class UIHandler:
                 duration = time.time() - start_time
                 metrics_collector.record_ui_request("success", duration, "generate")
 
+                # Use the raw blueprint JSON if available (has app/services/ui structure)
+                # Otherwise fall back to just the UI spec
+                if hasattr(package, '_raw_blueprint_json') and package._raw_blueprint_json:
+                    ui_spec_str = package._raw_blueprint_json
+                else:
+                    ui_spec_str = package.model_dump_json()
+
                 return ai_pb2.UIResponse(
                     app_id=package.app_id,
-                    ui_spec=package.model_dump_json(),
+                    ui_spec=ui_spec_str,
                     thoughts=[],  # Non-streaming doesn't track thoughts
                 )
 
@@ -78,8 +86,13 @@ class UIHandler:
                 # Generate with streaming
                 package = self.ui_generator.generate(validated.message, context=validated.context)
 
-                # Stream UI spec (in production, this would stream incrementally)
-                ui_spec_str = package.model_dump_json()
+                # Stream UI spec - use the raw blueprint JSON if available (has app/services/ui structure)
+                # Otherwise fall back to just the UI spec
+                if hasattr(package, '_raw_blueprint_json') and package._raw_blueprint_json:
+                    ui_spec_str = package._raw_blueprint_json
+                else:
+                    ui_spec_str = package.model_dump_json()
+
                 yield ai_pb2.UIToken(
                     type=ai_pb2.UIToken.TOKEN,
                     content=ui_spec_str,
