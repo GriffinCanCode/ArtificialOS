@@ -98,6 +98,10 @@ impl Default for FileType {
 }
 
 /// File permissions (Unix-style) with validation
+///
+/// # Performance
+/// - Packed C layout for efficient permission checks
+#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Permissions {
     #[serde(deserialize_with = "deserialize_permission_mode")]
@@ -136,13 +140,20 @@ impl Permissions {
     }
 
     /// Check if permissions are read-only (no write bits set)
-    #[inline]
+    /// 
+    /// # Performance
+    /// Hot path - frequently called in VFS operations
+    #[inline(always)]
     #[must_use]
     pub const fn is_readonly(&self) -> bool {
         self.mode & 0o200 == 0
     }
 
     /// Set read-only mode by clearing all write bits
+    /// 
+    /// # Performance
+    /// Hot path - called during permission modifications
+    #[inline(always)]
     pub fn set_readonly(&mut self, readonly: bool) {
         if readonly {
             self.mode &= !0o222;
@@ -152,7 +163,10 @@ impl Permissions {
     }
 
     /// Check if any execute bit is set
-    #[inline]
+    /// 
+    /// # Performance
+    /// Hot path - frequently checked in process execution
+    #[inline(always)]
     #[must_use]
     pub const fn is_executable(&self) -> bool {
         self.mode & 0o111 != 0
@@ -225,25 +239,29 @@ pub struct Metadata {
 impl Metadata {
     /// Check if this is a directory
     #[inline]
-    pub fn is_dir(&self) -> bool {
-        self.file_type == FileType::Directory
+    #[must_use]
+    pub const fn is_dir(&self) -> bool {
+        matches!(self.file_type, FileType::Directory)
     }
 
     /// Check if this is a regular file
     #[inline]
-    pub fn is_file(&self) -> bool {
-        self.file_type == FileType::File
+    #[must_use]
+    pub const fn is_file(&self) -> bool {
+        matches!(self.file_type, FileType::File)
     }
 
     /// Check if this is a symbolic link
     #[inline]
-    pub fn is_symlink(&self) -> bool {
-        self.file_type == FileType::Symlink
+    #[must_use]
+    pub const fn is_symlink(&self) -> bool {
+        matches!(self.file_type, FileType::Symlink)
     }
 
     /// Check if this is a special file (device, fifo, socket)
     #[inline]
-    pub fn is_special(&self) -> bool {
+    #[must_use]
+    pub const fn is_special(&self) -> bool {
         matches!(
             self.file_type,
             FileType::BlockDevice | FileType::CharDevice | FileType::Fifo | FileType::Socket
@@ -265,6 +283,7 @@ pub struct Entry {
 
 impl Entry {
     /// Create a new directory entry with validation
+    #[must_use = "validation result must be checked"]
     pub fn new(name: String, file_type: FileType) -> Result<Self, VfsError> {
         if name.is_empty() {
             return Err(VfsError::InvalidPath("entry name cannot be empty".into()));
@@ -288,28 +307,35 @@ impl Entry {
     }
 
     /// Create a file entry
+    #[inline]
+    #[must_use = "validation result must be checked"]
     pub fn file(name: String) -> Result<Self, VfsError> {
         Self::new(name, FileType::File)
     }
 
     /// Create a directory entry
+    #[inline]
+    #[must_use = "validation result must be checked"]
     pub fn directory(name: String) -> Result<Self, VfsError> {
         Self::new(name, FileType::Directory)
     }
 
     /// Check if this is a directory entry
     #[inline]
-    pub fn is_dir(&self) -> bool {
-        self.file_type == FileType::Directory
+    #[must_use]
+    pub const fn is_dir(&self) -> bool {
+        matches!(self.file_type, FileType::Directory)
     }
 
     /// Check if this is a file entry
     #[inline]
-    pub fn is_file(&self) -> bool {
-        self.file_type == FileType::File
+    #[must_use]
+    pub const fn is_file(&self) -> bool {
+        matches!(self.file_type, FileType::File)
     }
 
     /// Validate entry name
+    #[must_use = "validation result must be checked"]
     pub fn validate_name(name: &str) -> Result<(), VfsError> {
         if name.is_empty() {
             return Err(VfsError::InvalidPath("entry name cannot be empty".into()));
@@ -354,6 +380,10 @@ where
 ///
 /// Using serde default and skip_serializing_if to create compact JSON representations.
 /// Only true flags are serialized, reducing payload size significantly.
+///
+/// # Performance
+/// - Packed C layout for efficient passing to VFS operations
+#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case", default, deny_unknown_fields)]
 pub struct OpenFlags {
@@ -373,6 +403,8 @@ pub struct OpenFlags {
 
 impl OpenFlags {
     /// Create read-only flags
+    #[inline]
+    #[must_use]
     pub fn read_only() -> Self {
         Self {
             read: true,
@@ -381,6 +413,8 @@ impl OpenFlags {
     }
 
     /// Create write-only flags
+    #[inline]
+    #[must_use]
     pub fn write_only() -> Self {
         Self {
             write: true,
@@ -389,6 +423,8 @@ impl OpenFlags {
     }
 
     /// Create read-write flags
+    #[inline]
+    #[must_use]
     pub fn read_write() -> Self {
         Self {
             read: true,
@@ -398,6 +434,8 @@ impl OpenFlags {
     }
 
     /// Create flags for creating a new file (write + create)
+    #[inline]
+    #[must_use]
     pub fn create() -> Self {
         Self {
             write: true,
@@ -407,6 +445,8 @@ impl OpenFlags {
     }
 
     /// Create flags for creating a new file exclusively (write + create_new)
+    #[inline]
+    #[must_use]
     pub fn create_new() -> Self {
         Self {
             write: true,
@@ -416,6 +456,8 @@ impl OpenFlags {
     }
 
     /// Create flags for appending (write + append)
+    #[inline]
+    #[must_use]
     pub fn append_only() -> Self {
         Self {
             write: true,
@@ -425,12 +467,16 @@ impl OpenFlags {
     }
 
     /// Check if any write operation is possible
-    pub fn is_writable(&self) -> bool {
+    #[inline]
+    #[must_use]
+    pub const fn is_writable(&self) -> bool {
         self.write || self.append
     }
 
     /// Check if this will create a file
-    pub fn will_create(&self) -> bool {
+    #[inline]
+    #[must_use]
+    pub const fn will_create(&self) -> bool {
         self.create || self.create_new
     }
 
@@ -484,6 +530,7 @@ impl OpenFlags {
     }
 
     /// Validate flag combinations
+    #[must_use = "validation result must be checked"]
     pub fn validate(&self) -> Result<(), VfsError> {
         // Cannot have both create_new and create without create_new implying create
         if self.create_new && !self.write {
@@ -517,28 +564,36 @@ pub struct OpenMode {
 
 impl OpenMode {
     /// Create mode with specified permissions
-    pub fn new(mode: u32) -> Self {
+    #[inline]
+    #[must_use]
+    pub const fn new(mode: u32) -> Self {
         Self {
             permissions: Permissions::new(mode),
         }
     }
 
     /// Create mode with read-only permissions
-    pub fn readonly() -> Self {
+    #[inline]
+    #[must_use]
+    pub const fn readonly() -> Self {
         Self {
             permissions: Permissions::readonly(),
         }
     }
 
     /// Create mode with read-write permissions
-    pub fn readwrite() -> Self {
+    #[inline]
+    #[must_use]
+    pub const fn readwrite() -> Self {
         Self {
             permissions: Permissions::readwrite(),
         }
     }
 
     /// Create mode with executable permissions
-    pub fn executable() -> Self {
+    #[inline]
+    #[must_use]
+    pub const fn executable() -> Self {
         Self {
             permissions: Permissions::executable(),
         }

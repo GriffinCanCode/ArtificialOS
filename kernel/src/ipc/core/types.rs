@@ -83,6 +83,11 @@ pub enum QueueType {
 impl crate::core::traits::BincodeSerializable for QueueType {}
 
 /// IPC message
+///
+/// # Performance
+/// - Cache-line aligned for fast message passing
+/// - C-compatible layout for predictable memory layout
+#[repr(C, align(64))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Message {
     pub from: Pid,
@@ -104,7 +109,11 @@ impl Message {
         }
     }
 
-    #[inline]
+    /// Get message size
+    ///
+    /// # Performance
+    /// Hot path - called frequently for size calculations and limits
+    #[inline(always)]
     #[must_use]
     pub fn size(&self) -> usize {
         std::mem::size_of::<Self>() + self.data.len()

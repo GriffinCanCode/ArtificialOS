@@ -150,6 +150,8 @@ pub enum Capability {
 
 impl Capability {
     /// Check if this capability matches or is more permissive than another
+    #[inline]
+    #[must_use]
     pub fn grants(&self, required: &Capability) -> bool {
         match (self, required) {
             (Capability::ReadFile(None), Capability::ReadFile(_)) => true,
@@ -215,6 +217,7 @@ pub struct SandboxConfig {
 
 impl SandboxConfig {
     /// Create a minimal sandbox (most restrictive)
+    #[must_use]
     pub fn minimal(pid: Pid) -> Self {
         let mut config = Self {
             pid,
@@ -237,6 +240,7 @@ impl SandboxConfig {
     }
 
     /// Create a standard sandbox (balanced)
+    #[must_use]
     pub fn standard(pid: Pid) -> Self {
         let mut capabilities = HashSet::new();
         capabilities.insert(Capability::ReadFile(None));
@@ -259,6 +263,7 @@ impl SandboxConfig {
     }
 
     /// Create a privileged sandbox (for trusted apps)
+    #[must_use]
     pub fn privileged(pid: Pid) -> Self {
         let mut capabilities = HashSet::new();
         capabilities.insert(Capability::ReadFile(None));
@@ -310,7 +315,9 @@ pub struct Limits {
 }
 
 impl Limits {
-    pub fn new() -> Self {
+    #[inline]
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             memory_bytes: None,
             cpu_shares: None,
@@ -319,21 +326,29 @@ impl Limits {
         }
     }
 
+    #[inline]
+    #[must_use]
     pub fn with_memory(mut self, bytes: u64) -> Self {
         self.memory_bytes = Some(bytes);
         self
     }
 
+    #[inline]
+    #[must_use]
     pub fn with_cpu_shares(mut self, shares: u32) -> Self {
         self.cpu_shares = Some(shares);
         self
     }
 
+    #[inline]
+    #[must_use]
     pub fn with_max_pids(mut self, pids: u32) -> Self {
         self.max_pids = Some(pids);
         self
     }
 
+    #[inline]
+    #[must_use]
     pub fn with_max_open_files(mut self, files: u32) -> Self {
         self.max_open_files = Some(files);
         self

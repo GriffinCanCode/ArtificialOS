@@ -71,6 +71,10 @@ pub enum SchedulingPolicy {
 }
 
 /// Process metadata
+///
+/// # Performance
+/// - Cache-line aligned for frequent scheduler access
+#[repr(C, align(64))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct ProcessInfo {
@@ -83,6 +87,8 @@ pub struct ProcessInfo {
 }
 
 impl ProcessInfo {
+    #[inline]
+    #[must_use]
     pub fn new(pid: Pid, name: String, priority: Priority) -> Self {
         Self {
             pid,
@@ -93,6 +99,8 @@ impl ProcessInfo {
         }
     }
 
+    #[inline]
+    #[must_use]
     pub fn with_os_pid(mut self, os_pid: u32) -> Self {
         self.os_pid = Some(os_pid);
         self
@@ -117,6 +125,8 @@ pub struct ExecutionConfig {
 }
 
 impl ExecutionConfig {
+    #[inline]
+    #[must_use]
     pub fn new(command: String) -> Self {
         Self {
             command,
@@ -128,26 +138,36 @@ impl ExecutionConfig {
         }
     }
 
+    #[inline]
+    #[must_use]
     pub fn with_args(mut self, args: Vec<String>) -> Self {
         self.args = args;
         self
     }
 
+    #[inline]
+    #[must_use]
     pub fn with_env(mut self, env_vars: Vec<(String, String)>) -> Self {
         self.env_vars = env_vars;
         self
     }
 
+    #[inline]
+    #[must_use]
     pub fn with_working_dir(mut self, dir: String) -> Self {
         self.working_dir = Some(dir);
         self
     }
 
+    #[inline]
+    #[must_use]
     pub fn with_output_capture(mut self, capture: bool) -> Self {
         self.capture_output = capture;
         self
     }
 
+    #[inline]
+    #[must_use]
     pub fn with_limits(mut self, limits: crate::security::types::Limits) -> Self {
         self.limits = Some(limits);
         self
@@ -155,6 +175,10 @@ impl ExecutionConfig {
 }
 
 /// Scheduler statistics
+///
+/// # Performance
+/// - Cache-line aligned for frequent reads by monitoring
+#[repr(C, align(64))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct SchedulerStats {
@@ -171,6 +195,10 @@ pub struct SchedulerStats {
 }
 
 /// Per-process CPU usage statistics
+///
+/// # Performance
+/// - Packed C layout for efficient copying in scheduler
+#[repr(C)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct ProcessStats {
@@ -185,11 +213,23 @@ pub struct ProcessStats {
 }
 
 impl ProcessStats {
-    pub fn cpu_time(&self) -> Duration {
+    /// Get CPU time as Duration
+    ///
+    /// # Performance
+    /// Hot path - frequently called by scheduler
+    #[inline(always)]
+    #[must_use]
+    pub const fn cpu_time(&self) -> Duration {
         Duration::from_micros(self.cpu_time_micros)
     }
 
-    pub fn cpu_time_ms(&self) -> f64 {
+    /// Get CPU time in milliseconds
+    ///
+    /// # Performance
+    /// Hot path - frequently called for scheduling decisions
+    #[inline(always)]
+    #[must_use]
+    pub const fn cpu_time_ms(&self) -> f64 {
         self.cpu_time_micros as f64 / 1000.0
     }
 }
@@ -210,7 +250,9 @@ pub struct ExecutionStats {
 }
 
 impl ExecutionStats {
-    pub fn new(pid: Pid, os_pid: Option<u32>) -> Self {
+    #[inline]
+    #[must_use]
+    pub const fn new(pid: Pid, os_pid: Option<u32>) -> Self {
         Self {
             pid,
             os_pid,
@@ -220,7 +262,9 @@ impl ExecutionStats {
         }
     }
 
-    pub fn cpu_usage_percent(&self) -> f64 {
+    #[inline]
+    #[must_use]
+    pub const fn cpu_usage_percent(&self) -> f64 {
         if self.wall_time_micros == 0 {
             0.0
         } else {
@@ -245,7 +289,9 @@ pub struct ProcessResources {
 }
 
 impl ProcessResources {
-    pub fn new(pid: Pid) -> Self {
+    #[inline]
+    #[must_use]
+    pub const fn new(pid: Pid) -> Self {
         Self {
             pid,
             memory_bytes: 0,

@@ -5,6 +5,7 @@
 
 use crate::core::serde::{is_default, is_none, is_zero_usize};
 use crate::core::types::{Address, Pid, Size};
+use miette::Diagnostic;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -15,11 +16,15 @@ use thiserror::Error;
 #[must_use = "memory operations can fail and must be handled"]
 pub type MemoryResult<T> = Result<T, MemoryError>;
 
-/// Memory errors
-#[derive(Error, Debug, Clone, Serialize, Deserialize)]
+/// Memory errors with miette diagnostics
+#[derive(Error, Debug, Clone, Serialize, Deserialize, Diagnostic)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum MemoryError {
     #[error("Out of memory: requested {requested} bytes, available {available} bytes ({used} used / {total} total)")]
+    #[diagnostic(
+        code(memory::out_of_memory),
+        help("System is low on memory. Free up memory by terminating processes or wait for garbage collection.")
+    )]
     OutOfMemory {
         requested: Size,
         available: Size,
@@ -29,6 +34,10 @@ pub enum MemoryError {
     },
 
     #[error("Process memory limit exceeded: requested {requested} bytes, limit {limit} bytes, current {current} bytes")]
+    #[diagnostic(
+        code(memory::process_limit_exceeded),
+        help("Process has exceeded its memory allocation limit. Increase the limit or optimize memory usage.")
+    )]
     ProcessLimitExceeded {
         requested: Size,
         limit: Size,
@@ -37,19 +46,42 @@ pub enum MemoryError {
     },
 
     #[error("Invalid memory address: 0x{0:x}")]
+    #[diagnostic(
+        code(memory::invalid_address),
+        help("The memory address is invalid or out of bounds. Check pointer validity.")
+    )]
     InvalidAddress(Address),
 
     #[error("Memory corruption detected at 0x{0:x}")]
+    #[diagnostic(
+        code(memory::corruption_detected),
+        severity(Error),
+        help("Memory corruption detected. This may indicate a buffer overflow or use-after-free bug.")
+    )]
     CorruptionDetected(Address),
 
     #[error("Alignment error: address 0x{address:x}, required alignment {alignment}")]
+    #[diagnostic(
+        code(memory::alignment_error),
+        help("Memory address does not meet alignment requirements. Ensure proper alignment.")
+    )]
     AlignmentError { address: Address, alignment: Size },
 
     #[error("Memory protection violation: {0}")]
+    #[diagnostic(
+        code(memory::protection_violation),
+        severity(Error),
+        help("Attempted to access memory without proper permissions. Check read/write permissions.")
+    )]
     ProtectionViolation(String),
 }
 
 /// Memory block metadata
+///
+/// # Performance
+/// - Cache-line aligned (64 bytes) for optimal CPU cache performance
+/// - C-compatible layout for predictable memory layout
+#[repr(C, align(64))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct MemoryBlock {
@@ -84,7 +116,9 @@ impl Default for MemoryBlock {
 
 impl MemoryBlock {
     /// Create a new allocated memory block
-    pub fn new(address: Address, size: Size, owner_pid: Pid) -> Self {
+    #[inline]
+    #[must_use]
+    pub const fn new(address: Address, size: Size, owner_pid: Pid) -> Self {
         Self {
             address,
             size,
@@ -94,7 +128,9 @@ impl MemoryBlock {
     }
 
     /// Create an unowned memory block
-    pub fn unowned(address: Address, size: Size) -> Self {
+    #[inline]
+    #[must_use]
+    pub const fn unowned(address: Address, size: Size) -> Self {
         Self {
             address,
             size,
@@ -104,26 +140,39 @@ impl MemoryBlock {
     }
 
     /// Mark block as deallocated
+    ///
+    /// # Performance
+    /// Hot path - called frequently during deallocation
+    #[inline(always)]
     pub fn free(&mut self) {
         self.allocated = false;
     }
 
     /// Check if block is allocated
-    #[inline]
+    ///
+    /// # Performance
+    /// Hot path - called frequently during allocation checks
+    #[inline(always)]
     #[must_use]
     pub const fn is_allocated(&self) -> bool {
         self.allocated
     }
 
     /// Get owner PID if any
-    #[inline]
+    ///
+    /// # Performance
+    /// Hot path - frequently checked for ownership validation
+    #[inline(always)]
     #[must_use]
     pub const fn owner(&self) -> Option<Pid> {
         self.owner_pid
     }
 
     /// Check if block is owned by a specific process
-    #[inline]
+    ///
+    /// # Performance
+    /// Hot path - frequently used in permission checks
+    #[inline(always)]
     #[must_use]
     pub const fn is_owned_by(&self, pid: Pid) -> bool {
         matches!(self.owner_pid, Some(p) if p == pid)
@@ -131,6 +180,10 @@ impl MemoryBlock {
 }
 
 /// Memory statistics
+///
+/// # Performance
+/// - Cache-line aligned for frequent reads
+#[repr(C, align(64))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct MemoryStats {
@@ -161,6 +214,8 @@ impl Default for MemoryStats {
 
 impl MemoryStats {
     /// Create new memory stats
+    #[inline]
+    #[must_use]
     pub fn new(total_memory: Size, used_memory: Size) -> Self {
         let available_memory = total_memory.saturating_sub(used_memory);
         let usage_percentage = if total_memory > 0 {
@@ -180,7 +235,10 @@ impl MemoryStats {
     }
 
     /// Get memory pressure level
-    #[inline]
+    ///
+    /// # Performance
+    /// Hot path - frequently called to check system memory status
+    #[inline(always)]
     #[must_use]
     pub fn memory_pressure(&self) -> MemoryPressure {
         if self.usage_percentage >= 95.0 {
@@ -195,20 +253,28 @@ impl MemoryStats {
     }
 
     /// Check if memory is low (>=60% usage)
-    #[inline]
+    ///
+    /// # Performance
+    /// Hot path - frequently called in allocation decisions
+    #[inline(always)]
     #[must_use]
     pub const fn is_low_memory(&self) -> bool {
         self.usage_percentage >= 60.0
     }
 
     /// Check if memory is critical (>=95% usage)
-    #[inline]
+    ///
+    /// # Performance
+    /// Hot path - frequently called in critical allocation paths
+    #[inline(always)]
     #[must_use]
     pub const fn is_critical(&self) -> bool {
         self.usage_percentage >= 95.0
     }
 
     /// Get fragmentation ratio
+    #[inline]
+    #[must_use]
     pub fn fragmentation_ratio(&self) -> f64 {
         let total_blocks = self.allocated_blocks + self.fragmented_blocks;
         if total_blocks == 0 {
@@ -241,6 +307,11 @@ impl std::fmt::Display for MemoryPressure {
 }
 
 /// Memory allocation request
+///
+/// # Performance
+/// - Packed C layout for predictable memory layout
+/// - Frequently passed across function boundaries
+#[repr(C)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct AllocationRequest {
@@ -264,7 +335,9 @@ fn is_default_alignment(value: &Size) -> bool {
 }
 
 impl AllocationRequest {
-    pub fn new(size: Size, pid: Pid) -> Self {
+    #[inline]
+    #[must_use]
+    pub const fn new(size: Size, pid: Pid) -> Self {
         Self {
             size,
             alignment: std::mem::align_of::<usize>(),
@@ -272,6 +345,8 @@ impl AllocationRequest {
         }
     }
 
+    #[inline]
+    #[must_use]
     pub fn with_alignment(mut self, alignment: usize) -> Self {
         self.alignment = alignment;
         self
@@ -279,6 +354,10 @@ impl AllocationRequest {
 }
 
 /// Process memory statistics
+///
+/// # Performance
+/// - Packed C layout for efficient copying
+#[repr(C)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct ProcessMemoryStats {
@@ -299,7 +378,9 @@ impl Default for ProcessMemoryStats {
 
 impl ProcessMemoryStats {
     /// Create new process memory stats
-    pub fn new(pid: Pid) -> Self {
+    #[inline]
+    #[must_use]
+    pub const fn new(pid: Pid) -> Self {
         Self {
             pid,
             allocated_bytes: 0,
@@ -309,6 +390,8 @@ impl ProcessMemoryStats {
     }
 
     /// Calculate utilization ratio
+    #[inline]
+    #[must_use]
     pub fn utilization_ratio(&self) -> f64 {
         if self.peak_bytes == 0 {
             0.0
@@ -318,7 +401,9 @@ impl ProcessMemoryStats {
     }
 
     /// Get average allocation size
-    pub fn avg_allocation_size(&self) -> Size {
+    #[inline]
+    #[must_use]
+    pub const fn avg_allocation_size(&self) -> Size {
         if self.allocation_count == 0 {
             0
         } else {

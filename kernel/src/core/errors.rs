@@ -1,8 +1,9 @@
 /*!
  * Error Types
- * Centralized error handling with thiserror and serde support
+ * Centralized error handling with thiserror, miette, and serde support
  */
 
+use miette::Diagnostic;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -16,25 +17,49 @@ pub use crate::security::types::SandboxError;
 pub use crate::syscalls::types::SyscallError;
 
 /// Process-related errors with serialization support
-#[derive(Error, Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Diagnostic)]
 #[serde(tag = "error_type", content = "details", rename_all = "snake_case")]
 pub enum ProcessError {
     #[error("Process {0} not found")]
+    #[diagnostic(
+        code(process::not_found),
+        help("The process may have terminated or never existed. Check PID validity.")
+    )]
     NotFound(u32),
 
     #[error("Failed to create process: {0}")]
+    #[diagnostic(
+        code(process::creation_failed),
+        help("Check system resources and permissions. View logs for details.")
+    )]
     CreationFailed(String),
 
     #[error("Memory allocation failed: {0}")]
+    #[diagnostic(
+        code(process::memory_allocation_failed),
+        help("System may be low on memory. Consider freeing resources.")
+    )]
     MemoryAllocationFailed(String),
 
     #[error("Invalid process state: {0}")]
+    #[diagnostic(
+        code(process::invalid_state),
+        help("Operation cannot be performed in current process state.")
+    )]
     InvalidState(String),
 
     #[error("Process limit reached: {0}")]
+    #[diagnostic(
+        code(process::limit_reached),
+        help("Maximum number of processes reached. Terminate unused processes.")
+    )]
     LimitReached(String),
 
     #[error("Permission denied: {0}")]
+    #[diagnostic(
+        code(process::permission_denied),
+        help("Insufficient permissions to perform this operation.")
+    )]
     PermissionDenied(String),
 }
 
@@ -46,36 +71,62 @@ impl From<MemoryError> for ProcessError {
 }
 
 /// Scheduler-related errors with serialization support
-#[derive(Error, Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Diagnostic)]
 #[serde(tag = "error_type", content = "details", rename_all = "snake_case")]
 pub enum SchedulerError {
     #[error("Process {0} not found in scheduler")]
+    #[diagnostic(
+        code(scheduler::process_not_found),
+        help("Process may not be scheduled or has been removed.")
+    )]
     ProcessNotFound(u32),
 
     #[error("Scheduler queue full: {0}")]
+    #[diagnostic(
+        code(scheduler::queue_full),
+        help("Too many processes in scheduler queue. Wait for processes to complete.")
+    )]
     QueueFull(String),
 
     #[error("Invalid scheduling policy: {0}")]
+    #[diagnostic(
+        code(scheduler::invalid_policy),
+        help("Use RoundRobin, Priority, or Fair scheduling policy.")
+    )]
     InvalidPolicy(String),
 
     #[error("Cannot schedule: {0}")]
+    #[diagnostic(
+        code(scheduler::scheduling_failed),
+        help("Scheduling operation failed. Check system state and resources.")
+    )]
     SchedulingFailed(String),
 
     #[error("Priority out of range: {0}")]
+    #[diagnostic(
+        code(scheduler::invalid_priority),
+        help("Priority must be between 0 and 255.")
+    )]
     InvalidPriority(String),
 
     #[error("Deadlock detected: {0}")]
+    #[diagnostic(
+        code(scheduler::deadlock_detected),
+        help("Circular dependency detected between processes. Review process dependencies.")
+    )]
     DeadlockDetected(String),
 }
 
-/// Unified kernel error type
+/// Unified kernel error type with miette diagnostics
 /// Note: Some variants don't support Serialize due to complex error types
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Diagnostic)]
 pub enum KernelError {
     #[error("Memory error: {0}")]
+    #[diagnostic(transparent)]
     Memory(#[from] MemoryError),
 
     #[error("Process error: {0}")]
+    #[diagnostic(transparent)]
     Process(#[from] ProcessError),
 
     #[error("Sandbox error: {0}")]
@@ -85,24 +136,49 @@ pub enum KernelError {
     Syscall(#[from] SyscallError),
 
     #[error("Scheduler error: {0}")]
+    #[diagnostic(transparent)]
     Scheduler(#[from] SchedulerError),
 
     #[error("gRPC error: {0}")]
+    #[diagnostic(
+        code(kernel::grpc_error),
+        help("Network or gRPC communication failed. Check connectivity.")
+    )]
     Grpc(#[from] tonic::Status),
 
     #[error("Internal error: {0}")]
+    #[diagnostic(
+        code(kernel::internal_error),
+        help("An unexpected internal error occurred. Please report this issue.")
+    )]
     Internal(String),
 
     #[error("I/O error: {0}")]
+    #[diagnostic(
+        code(kernel::io_error),
+        help("Filesystem or I/O operation failed. Check file permissions and disk space.")
+    )]
     Io(String),
 
     #[error("Configuration error: {0}")]
+    #[diagnostic(
+        code(kernel::configuration_error),
+        help("Invalid configuration. Review configuration parameters.")
+    )]
     Configuration(String),
 
     #[error("Not supported: {0}")]
+    #[diagnostic(
+        code(kernel::not_supported),
+        help("This operation is not supported on this platform or configuration.")
+    )]
     NotSupported(String),
 
     #[error("Timeout: {0}")]
+    #[diagnostic(
+        code(kernel::timeout),
+        help("Operation exceeded timeout limit. Try increasing timeout or check system load.")
+    )]
     Timeout(String),
 }
 

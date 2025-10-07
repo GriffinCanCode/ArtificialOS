@@ -10,6 +10,10 @@ use std::fmt;
 use thiserror::Error;
 
 /// Signal operation result
+///
+/// # Must Use
+/// Signal operations can fail and must be handled to prevent undefined behavior
+#[must_use = "signal operations can fail and must be handled"]
 pub type SignalResult<T> = Result<T, SignalError>;
 
 /// Signal errors
@@ -85,6 +89,7 @@ pub const SIGRTMAX: u32 = 63;
 
 impl Signal {
     /// Convert from signal number
+    #[must_use]
     pub fn from_number(n: u32) -> SignalResult<Self> {
         match n {
             1 => Ok(Signal::SIGHUP),
@@ -123,7 +128,9 @@ impl Signal {
     }
 
     /// Get signal number
-    pub fn number(&self) -> u32 {
+    #[inline]
+    #[must_use]
+    pub const fn number(&self) -> u32 {
         match self {
             Signal::SIGHUP => 1,
             Signal::SIGINT => 2,
@@ -160,11 +167,15 @@ impl Signal {
     }
 
     /// Check if this is a real-time signal
-    pub fn is_realtime(&self) -> bool {
+    #[inline]
+    #[must_use]
+    pub const fn is_realtime(&self) -> bool {
         matches!(self, Signal::SIGRT(_))
     }
 
     /// Get priority (higher = more urgent, RT signals > standard)
+    #[inline]
+    #[must_use]
     pub fn priority(&self) -> u32 {
         match self {
             Signal::SIGRT(n) => 1000 + n, // RT signals always higher priority
@@ -173,12 +184,16 @@ impl Signal {
     }
 
     /// Check if signal can be caught/blocked
-    pub fn can_catch(&self) -> bool {
+    #[inline]
+    #[must_use]
+    pub const fn can_catch(&self) -> bool {
         !matches!(self, Signal::SIGKILL | Signal::SIGSTOP)
     }
 
     /// Check if signal is fatal by default
-    pub fn is_fatal(&self) -> bool {
+    #[inline]
+    #[must_use]
+    pub const fn is_fatal(&self) -> bool {
         matches!(
             self,
             Signal::SIGKILL
@@ -194,6 +209,7 @@ impl Signal {
     }
 
     /// Get human-readable description
+    #[must_use]
     pub fn description(&self) -> String {
         match self {
             Signal::SIGHUP => "Hangup".to_string(),
@@ -281,7 +297,9 @@ pub enum SignalAction {
 
 impl SignalAction {
     /// Get disposition from action
-    pub fn disposition(&self) -> SignalDisposition {
+    #[inline]
+    #[must_use]
+    pub const fn disposition(&self) -> SignalDisposition {
         match self {
             SignalAction::Default => SignalDisposition::Default,
             SignalAction::Ignore => SignalDisposition::Ignore,

@@ -57,6 +57,8 @@ pub struct SystemInfo {
 
 impl SystemInfo {
     /// Create a new SystemInfo with the given parameters
+    #[inline]
+    #[must_use]
     pub fn new(
         os_name: String,
         os_version: String,
@@ -77,6 +79,11 @@ impl SystemInfo {
 }
 
 /// Resource limits for processes
+///
+/// # Performance
+/// - Packed C layout for frequent limit checks
+/// - Copy-optimized for stack allocation
+#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct ResourceLimits {
@@ -128,26 +135,30 @@ impl ResourceLimits {
     }
 
     /// Check if this limit allows unlimited resources (0 = unlimited for numeric fields)
-    #[inline]
+    ///
+    /// # Performance
+    /// Hot path - frequently checked in scheduling and resource management
+    #[inline(always)]
     #[must_use]
     pub const fn is_unlimited_cpu(&self) -> bool {
         self.max_cpu_time_ms == 0
     }
 
     /// Validate that all limits are within reasonable bounds
-    pub fn validate(&self) -> Result<(), String> {
+    #[must_use = "validation result must be checked"]
+    pub const fn validate(&self) -> Result<(), &'static str> {
         if self.max_memory_bytes > 10 * 1024 * 1024 * 1024 {
             // 10GB max
-            return Err("max_memory_bytes exceeds 10GB".to_string());
+            return Err("max_memory_bytes exceeds 10GB");
         }
         if self.max_file_descriptors > 100_000 {
-            return Err("max_file_descriptors exceeds 100,000".to_string());
+            return Err("max_file_descriptors exceeds 100,000");
         }
         if self.max_processes > 10_000 {
-            return Err("max_processes exceeds 10,000".to_string());
+            return Err("max_processes exceeds 10,000");
         }
         if self.max_network_connections > 100_000 {
-            return Err("max_network_connections exceeds 100,000".to_string());
+            return Err("max_network_connections exceeds 100,000");
         }
         Ok(())
     }
@@ -168,6 +179,8 @@ pub struct ExecutionConfig {
 
 impl ExecutionConfig {
     /// Create a new execution configuration with the given command
+    #[inline]
+    #[must_use]
     pub fn new(command: String) -> Self {
         Self {
             command,
@@ -178,36 +191,47 @@ impl ExecutionConfig {
     }
 
     /// Add arguments to the execution configuration (builder pattern)
+    #[inline]
+    #[must_use]
     pub fn with_args(mut self, args: Vec<String>) -> Self {
         self.args = args;
         self
     }
 
     /// Add a single argument to the execution configuration
+    #[inline]
+    #[must_use]
     pub fn with_arg(mut self, arg: String) -> Self {
         self.args.push(arg);
         self
     }
 
     /// Add environment variables to the execution configuration (builder pattern)
+    #[inline]
+    #[must_use]
     pub fn with_env(mut self, env: Vec<(String, String)>) -> Self {
         self.env = env;
         self
     }
 
     /// Add a single environment variable to the execution configuration
+    #[inline]
+    #[must_use]
     pub fn with_env_var(mut self, key: String, value: String) -> Self {
         self.env.push((key, value));
         self
     }
 
     /// Set the working directory for the execution configuration (builder pattern)
+    #[inline]
+    #[must_use]
     pub fn with_working_dir(mut self, dir: String) -> Self {
         self.working_dir = Some(dir);
         self
     }
 
     /// Validate the execution configuration
+    #[must_use = "validation result must be checked"]
     pub fn validate(&self) -> Result<(), String> {
         if self.command.is_empty() {
             return Err("command cannot be empty".to_string());
