@@ -53,7 +53,9 @@ impl SchedulerTask {
 
     /// Update the scheduling quantum (triggers immediate reconfiguration)
     pub fn update_quantum(&self, quantum_micros: u64) {
-        let _ = self.command_tx.send(SchedulerCommand::UpdateQuantum(quantum_micros));
+        let _ = self
+            .command_tx
+            .send(SchedulerCommand::UpdateQuantum(quantum_micros));
     }
 
     /// Pause automatic scheduling (processes can still yield manually)
@@ -99,10 +101,7 @@ async fn run_scheduler_loop(
     let mut interval = tokio::time::interval(Duration::from_micros(initial_quantum));
     interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
-    info!(
-        "Scheduler loop started with {}μs quantum",
-        initial_quantum
-    );
+    info!("Scheduler loop started with {}μs quantum", initial_quantum);
 
     loop {
         tokio::select! {

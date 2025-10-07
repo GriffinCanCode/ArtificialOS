@@ -83,6 +83,7 @@ def get_system_prompt_template(prompt_type: str = "ui_generation") -> str:
 
     if prompt_type == "ui_generation":
         from agents.prompt import get_ui_generation_prompt
+
         # Return base UI generation prompt without tools/context
         return get_ui_generation_prompt("", "")
 
@@ -98,6 +99,7 @@ Follow best practices and modern conventions for the specified language."""
 
     elif prompt_type == "blueprint_generation":
         from agents.prompt import BLUEPRINT_DOCUMENTATION
+
         return BLUEPRINT_DOCUMENTATION
 
     else:

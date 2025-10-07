@@ -15,6 +15,8 @@ import { Toolbar } from './components/Toolbar';
 import { PathBar } from './components/PathBar';
 import { FileList } from './components/FileList';
 import { ContextMenu } from './components/ContextMenu';
+import { InputDialog } from './components/InputDialog';
+import { ConfirmDialog } from './components/ConfirmDialog';
 import './styles/App.css';
 
 export default function FileExplorerApp({ context }: NativeAppProps) {
@@ -36,6 +38,21 @@ export default function FileExplorerApp({ context }: NativeAppProps) {
     x: number;
     y: number;
     entry: FileEntry | null;
+  } | null>(null);
+
+  // Dialog states
+  const [inputDialog, setInputDialog] = useState<{
+    title: string;
+    label: string;
+    defaultValue?: string;
+    onConfirm: (value: string) => void;
+  } | null>(null);
+
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    message: string;
+    variant?: 'default' | 'danger';
+    onConfirm: () => void;
   } | null>(null);
 
   // Process entries (sort & filter)
@@ -369,14 +386,18 @@ export default function FileExplorerApp({ context }: NativeAppProps) {
    * Handle new folder
    */
   const handleNewFolder = useCallback(async () => {
-    const name = prompt('Folder name:');
-    if (name && name.trim()) {
-      try {
-        await fs.createFolder(name.trim());
-      } catch (err) {
-        alert((err as Error).message);
-      }
-    }
+    setInputDialog({
+      title: 'New Folder',
+      label: 'Folder name:',
+      onConfirm: async (name: string) => {
+        setInputDialog(null);
+        try {
+          await fs.createFolder(name);
+        } catch (err) {
+          alert((err as Error).message);
+        }
+      },
+    });
   }, [fs]);
 
   /**
@@ -406,19 +427,22 @@ export default function FileExplorerApp({ context }: NativeAppProps) {
     const paths = Array.from(selection.selected);
     if (paths.length === 0) return;
 
-    const confirmed = confirm(
-      `Delete ${paths.length} item${paths.length > 1 ? 's' : ''}?`
-    );
-    if (!confirmed) return;
-
-    try {
-      for (const path of paths) {
-        await fs.deleteEntry(path);
-      }
-      selection.clearSelection();
-    } catch (err) {
-      alert((err as Error).message);
-    }
+    setConfirmDialog({
+      title: 'Delete Items',
+      message: `Delete ${paths.length} item${paths.length > 1 ? 's' : ''}?`,
+      variant: 'danger',
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          for (const path of paths) {
+            await fs.deleteEntry(path);
+          }
+          selection.clearSelection();
+        } catch (err) {
+          alert((err as Error).message);
+        }
+      },
+    });
   }, [selection, fs]);
 
   /**
@@ -475,14 +499,20 @@ export default function FileExplorerApp({ context }: NativeAppProps) {
 
         case 'rename':
           if (contextMenu?.entry) {
-            const newName = prompt('New name:', contextMenu.entry.name);
-            if (newName && newName.trim()) {
-              try {
-                await fs.renameEntry(contextMenu.entry.path, newName.trim());
-              } catch (err) {
-                alert((err as Error).message);
-              }
-            }
+            const entryToRename = contextMenu.entry;
+            setInputDialog({
+              title: 'Rename',
+              label: 'New name:',
+              defaultValue: entryToRename.name,
+              onConfirm: async (newName: string) => {
+                setInputDialog(null);
+                try {
+                  await fs.renameEntry(entryToRename.path, newName);
+                } catch (err) {
+                  alert((err as Error).message);
+                }
+              },
+            });
           }
           break;
 
@@ -575,6 +605,29 @@ export default function FileExplorerApp({ context }: NativeAppProps) {
           {clipboard.canPaste && ` • ${clipboard.clipboard.paths.length} in clipboard`}
         </span>
       </div>
+
+      {/* Input dialog */}
+      {inputDialog && (
+        <InputDialog
+          title={inputDialog.title}
+          label={inputDialog.label}
+          defaultValue={inputDialog.defaultValue}
+          onConfirm={inputDialog.onConfirm}
+          onCancel={() => setInputDialog(null)}
+        />
+      )}
+
+      {/* Confirm dialog */}
+      {confirmDialog && (
+        <ConfirmDialog
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          variant={confirmDialog.variant}
+          confirmText="Delete"
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+        />
+      )}
     </div>
   );
 }

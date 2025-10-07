@@ -6,9 +6,9 @@
  * They are full React applications with complete freedom to use any npm packages.
  */
 
-import { ComponentState } from '../../features/dynamics/state/state';
-import { ToolExecutor } from '../../features/dynamics/execution/executor';
-import { logger } from '../utils/monitoring/logger';
+import { ComponentState } from "../../features/dynamics/state/state";
+import { ToolExecutor } from "../../features/dynamics/execution/executor";
+import { logger } from "../utils/monitoring/logger";
 
 // ============================================================================
 // Type Definitions
@@ -91,10 +91,7 @@ export abstract class NativeApp {
   /**
    * Subscribe to state changes
    */
-  protected subscribeState<T = any>(
-    key: string,
-    callback: (value: T) => void
-  ): () => void {
+  protected subscribeState<T = any>(key: string, callback: (value: T) => void): () => void {
     return this.context.state.subscribe(key, callback);
   }
 
@@ -112,10 +109,7 @@ export abstract class NativeApp {
   /**
    * Execute a backend service/tool
    */
-  protected async callService(
-    toolId: string,
-    params: Record<string, any> = {}
-  ): Promise<any> {
+  protected async callService(toolId: string, params: Record<string, any> = {}): Promise<any> {
     try {
       return await this.context.executor.execute(toolId, params);
     } catch (error) {
@@ -132,22 +126,22 @@ export abstract class NativeApp {
    * Read file contents
    */
   protected async readFile(path: string): Promise<string> {
-    const result = await this.callService('filesystem.read', { path });
-    return result?.content || '';
+    const result = await this.callService("filesystem.read", { path });
+    return result?.content || "";
   }
 
   /**
    * Write file contents
    */
   protected async writeFile(path: string, content: string): Promise<void> {
-    await this.callService('filesystem.write', { path, content });
+    await this.callService("filesystem.write", { path, content });
   }
 
   /**
    * List directory contents
    */
   protected async listDirectory(path: string): Promise<any[]> {
-    const result = await this.callService('filesystem.list', { path });
+    const result = await this.callService("filesystem.list", { path });
     return result?.entries || [];
   }
 
@@ -155,21 +149,21 @@ export abstract class NativeApp {
    * Create directory
    */
   protected async createDirectory(path: string): Promise<void> {
-    await this.callService('filesystem.mkdir', { path });
+    await this.callService("filesystem.mkdir", { path });
   }
 
   /**
    * Delete file or directory
    */
   protected async deleteFile(path: string): Promise<void> {
-    await this.callService('filesystem.delete', { path });
+    await this.callService("filesystem.delete", { path });
   }
 
   /**
    * Check if file exists
    */
   protected async fileExists(path: string): Promise<boolean> {
-    const result = await this.callService('filesystem.exists', { path });
+    const result = await this.callService("filesystem.exists", { path });
     return result?.exists || false;
   }
 
@@ -181,7 +175,7 @@ export abstract class NativeApp {
    * Get value from storage
    */
   protected async storageGet<T = any>(key: string): Promise<T | undefined> {
-    const result = await this.callService('storage.get', { key });
+    const result = await this.callService("storage.get", { key });
     return result?.value;
   }
 
@@ -189,21 +183,21 @@ export abstract class NativeApp {
    * Set value in storage
    */
   protected async storageSet(key: string, value: any): Promise<void> {
-    await this.callService('storage.set', { key, value });
+    await this.callService("storage.set", { key, value });
   }
 
   /**
    * Remove value from storage
    */
   protected async storageRemove(key: string): Promise<void> {
-    await this.callService('storage.remove', { key });
+    await this.callService("storage.remove", { key });
   }
 
   /**
    * List all storage keys
    */
   protected async storageList(): Promise<string[]> {
-    const result = await this.callService('storage.list', {});
+    const result = await this.callService("storage.list", {});
     return result?.keys || [];
   }
 
@@ -215,22 +209,22 @@ export abstract class NativeApp {
    * Get system information
    */
   protected async getSystemInfo(): Promise<any> {
-    return await this.callService('system.info', {});
+    return await this.callService("system.info", {});
   }
 
   /**
    * Get current time
    */
   protected async getSystemTime(): Promise<number> {
-    const result = await this.callService('system.time', {});
+    const result = await this.callService("system.time", {});
     return result?.timestamp || Date.now();
   }
 
   /**
    * Log message to system
    */
-  protected async log(level: 'debug' | 'info' | 'warn' | 'error', message: string): Promise<void> {
-    await this.callService('system.log', { level, message });
+  protected async log(level: "debug" | "info" | "warn" | "error", message: string): Promise<void> {
+    await this.callService("system.log", { level, message });
   }
 
   // ============================================================================
@@ -241,18 +235,14 @@ export abstract class NativeApp {
    * Make HTTP GET request
    */
   protected async httpGet(url: string, headers?: Record<string, string>): Promise<any> {
-    return await this.callService('http.get', { url, headers });
+    return await this.callService("http.get", { url, headers });
   }
 
   /**
    * Make HTTP POST request
    */
-  protected async httpPost(
-    url: string,
-    body: any,
-    headers?: Record<string, string>
-  ): Promise<any> {
-    return await this.callService('http.post', { url, body, headers });
+  protected async httpPost(url: string, body: any, headers?: Record<string, string>): Promise<any> {
+    return await this.callService("http.post", { url, body, headers });
   }
 
   // ============================================================================
@@ -262,15 +252,18 @@ export abstract class NativeApp {
   /**
    * Show toast notification
    */
-  protected async showToast(message: string, variant?: 'success' | 'error' | 'info' | 'warning'): Promise<void> {
-    await this.callService('toast.show', { message, variant });
+  protected async showToast(
+    message: string,
+    variant?: "success" | "error" | "info" | "warning"
+  ): Promise<void> {
+    await this.callService("toast.show", { message, variant });
   }
 
   /**
    * Show system notification
    */
   protected async showNotification(title: string, body: string, icon?: string): Promise<void> {
-    await this.callService('notification.show', { title, body, icon });
+    await this.callService("notification.show", { title, body, icon });
   }
 
   // ============================================================================

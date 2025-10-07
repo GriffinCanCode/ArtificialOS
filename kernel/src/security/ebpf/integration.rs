@@ -181,8 +181,12 @@ impl IntegratedEbpfMonitor {
     /// Stop monitoring a process
     pub fn unmonitor_process(&self, pid: Pid) -> EbpfResult<()> {
         // Remove filters
-        self.ebpf.remove_filter(&format!("sandbox_block_write_{}", pid)).ok();
-        self.ebpf.remove_filter(&format!("sandbox_block_network_{}", pid)).ok();
+        self.ebpf
+            .remove_filter(&format!("sandbox_block_write_{}", pid))
+            .ok();
+        self.ebpf
+            .remove_filter(&format!("sandbox_block_network_{}", pid))
+            .ok();
 
         // Stop eBPF monitoring
         self.ebpf.unmonitor_process(pid)?;
@@ -198,7 +202,9 @@ impl IntegratedEbpfMonitor {
             syscall_count: self.ebpf.get_syscall_count(pid),
             network_events: self.ebpf.get_network_activity(pid).len() as u64,
             file_events: self.ebpf.get_file_activity(pid).len() as u64,
-            active_filters: self.ebpf.get_filters()
+            active_filters: self
+                .ebpf
+                .get_filters()
                 .iter()
                 .filter(|f| f.pid == Some(pid))
                 .count(),
@@ -242,8 +248,7 @@ mod tests {
     fn test_monitor_with_metrics() {
         let ebpf = EbpfManagerImpl::with_simulation();
         let metrics = Arc::new(MetricsCollector::new());
-        let monitor = IntegratedEbpfMonitor::new(ebpf)
-            .with_metrics(metrics);
+        let monitor = IntegratedEbpfMonitor::new(ebpf).with_metrics(metrics);
 
         assert!(monitor.init().is_ok());
         assert!(monitor.shutdown().is_ok());
@@ -268,8 +273,7 @@ mod tests {
     fn test_sandbox_sync() {
         let ebpf = EbpfManagerImpl::with_simulation();
         let sandbox = SandboxManager::new();
-        let monitor = IntegratedEbpfMonitor::new(ebpf)
-            .with_sandbox(sandbox);
+        let monitor = IntegratedEbpfMonitor::new(ebpf).with_sandbox(sandbox);
 
         monitor.init().unwrap();
 

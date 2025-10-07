@@ -87,9 +87,7 @@ impl IPCManager {
         let _address = self
             .memory_manager
             .allocate(message_size, from)
-            .map_err(|e| {
-                IpcError::LimitExceeded(format!("Memory allocation failed: {}", e))
-            })?;
+            .map_err(|e| IpcError::LimitExceeded(format!("Memory allocation failed: {}", e)))?;
 
         queue.push_back(message);
 
@@ -116,8 +114,7 @@ impl IPCManager {
                 let (_, used, _) = self.memory_manager.info();
                 info!(
                     "Message received by PID {} ({} bytes used memory)",
-                    pid,
-                    used
+                    pid, used
                 );
                 return Some(message);
             }
@@ -141,11 +138,7 @@ impl IPCManager {
             let message_count = queue.len();
             total_cleaned += message_count;
 
-            info!(
-                "Cleared {} messages for PID {}",
-                message_count,
-                pid
-            );
+            info!("Cleared {} messages for PID {}", message_count, pid);
         }
 
         // Clean up pipes

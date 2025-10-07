@@ -3,7 +3,7 @@
  * Type definitions for the app registry/persistence layer
  */
 
-export type AppType = 'blueprint' | 'native_web' | 'native_proc';
+export type AppType = "blueprint" | "native_web" | "native_proc";
 
 export interface Package {
   id: string;

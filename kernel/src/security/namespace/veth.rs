@@ -33,8 +33,9 @@ impl VethManager {
     /// Initialize the netlink connection (must be called in async context)
     #[cfg(target_os = "linux")]
     pub async fn init(&mut self) -> NamespaceResult<()> {
-        let (connection, handle, _) = new_connection()
-            .map_err(|e| NamespaceError::NetworkError(format!("Failed to create netlink connection: {}", e)))?;
+        let (connection, handle, _) = new_connection().map_err(|e| {
+            NamespaceError::NetworkError(format!("Failed to create netlink connection: {}", e))
+        })?;
 
         // Spawn the connection in the background
         tokio::spawn(connection);
@@ -53,9 +54,11 @@ impl VethManager {
 
     #[cfg(target_os = "linux")]
     fn get_handle(&self) -> NamespaceResult<&Handle> {
-        self.handle
-            .as_ref()
-            .ok_or_else(|| NamespaceError::InvalidConfig("VethManager not initialized. Call init() first.".to_string()))
+        self.handle.as_ref().ok_or_else(|| {
+            NamespaceError::InvalidConfig(
+                "VethManager not initialized. Call init() first.".to_string(),
+            )
+        })
     }
 
     /// Create a veth pair connecting host and namespace
@@ -90,7 +93,11 @@ impl VethManager {
         debug!("Veth pair created: {} <-> {}", host_name, ns_name);
 
         // Get the peer interface index
-        let mut links = handle.link().get().match_name(ns_name.to_string()).execute();
+        let mut links = handle
+            .link()
+            .get()
+            .match_name(ns_name.to_string())
+            .execute();
         if let Some(link) = links.try_next().await.map_err(|e| {
             NamespaceError::NetworkError(format!("Failed to get link {}: {}", ns_name, e))
         })? {
@@ -120,7 +127,11 @@ impl VethManager {
         let handle = self.get_handle()?;
 
         // Get the link index
-        let mut links = handle.link().get().match_name(host_name.to_string()).execute();
+        let mut links = handle
+            .link()
+            .get()
+            .match_name(host_name.to_string())
+            .execute();
 
         if let Some(link) = links.try_next().await.map_err(|e| {
             NamespaceError::NetworkError(format!("Failed to find interface {}: {}", host_name, e))
@@ -141,7 +152,10 @@ impl VethManager {
             debug!("Veth pair deleted successfully");
             Ok(())
         } else {
-            Err(NamespaceError::NotFound(format!("Interface {} not found", host_name)))
+            Err(NamespaceError::NotFound(format!(
+                "Interface {} not found",
+                host_name
+            )))
         }
     }
 
@@ -161,7 +175,11 @@ impl VethManager {
         let handle = self.get_handle()?;
 
         // Get the link index
-        let mut links = handle.link().get().match_name(iface_name.to_string()).execute();
+        let mut links = handle
+            .link()
+            .get()
+            .match_name(iface_name.to_string())
+            .execute();
 
         if let Some(link) = links.try_next().await.map_err(|e| {
             NamespaceError::NetworkError(format!("Failed to find interface {}: {}", iface_name, e))
@@ -182,7 +200,10 @@ impl VethManager {
             debug!("IP address configured successfully");
             Ok(())
         } else {
-            Err(NamespaceError::NotFound(format!("Interface {} not found", iface_name)))
+            Err(NamespaceError::NotFound(format!(
+                "Interface {} not found",
+                iface_name
+            )))
         }
     }
 
@@ -195,7 +216,11 @@ impl VethManager {
         let handle = self.get_handle()?;
 
         // Get the link index
-        let mut links = handle.link().get().match_name(iface_name.to_string()).execute();
+        let mut links = handle
+            .link()
+            .get()
+            .match_name(iface_name.to_string())
+            .execute();
 
         if let Some(link) = links.try_next().await.map_err(|e| {
             NamespaceError::NetworkError(format!("Failed to find interface {}: {}", iface_name, e))
@@ -217,7 +242,10 @@ impl VethManager {
             debug!("Interface state changed successfully");
             Ok(())
         } else {
-            Err(NamespaceError::NotFound(format!("Interface {} not found", iface_name)))
+            Err(NamespaceError::NotFound(format!(
+                "Interface {} not found",
+                iface_name
+            )))
         }
     }
 
@@ -244,7 +272,9 @@ impl VethManager {
         let output = Command::new("ifconfig")
             .args(&[host_name, "create"])
             .output()
-            .map_err(|e| NamespaceError::NetworkError(format!("Failed to execute ifconfig: {}", e)))?;
+            .map_err(|e| {
+                NamespaceError::NetworkError(format!("Failed to execute ifconfig: {}", e))
+            })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -258,7 +288,9 @@ impl VethManager {
         let output = Command::new("ifconfig")
             .args(&[host_name, "peer", ns_name])
             .output()
-            .map_err(|e| NamespaceError::NetworkError(format!("Failed to execute ifconfig: {}", e)))?;
+            .map_err(|e| {
+                NamespaceError::NetworkError(format!("Failed to execute ifconfig: {}", e))
+            })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -279,7 +311,9 @@ impl VethManager {
         let output = Command::new("ifconfig")
             .args(&[host_name, "destroy"])
             .output()
-            .map_err(|e| NamespaceError::NetworkError(format!("Failed to execute ifconfig: {}", e)))?;
+            .map_err(|e| {
+                NamespaceError::NetworkError(format!("Failed to execute ifconfig: {}", e))
+            })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -325,7 +359,9 @@ impl VethManager {
             })
             .args(ip_str.split_whitespace())
             .output()
-            .map_err(|e| NamespaceError::NetworkError(format!("Failed to execute ifconfig: {}", e)))?;
+            .map_err(|e| {
+                NamespaceError::NetworkError(format!("Failed to execute ifconfig: {}", e))
+            })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -350,7 +386,9 @@ impl VethManager {
         let output = Command::new("ifconfig")
             .args(&[iface_name, state])
             .output()
-            .map_err(|e| NamespaceError::NetworkError(format!("Failed to execute ifconfig: {}", e)))?;
+            .map_err(|e| {
+                NamespaceError::NetworkError(format!("Failed to execute ifconfig: {}", e))
+            })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);

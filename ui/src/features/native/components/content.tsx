@@ -3,15 +3,15 @@
  * Routes window content to appropriate renderer based on app type
  */
 
-import React from 'react';
-import { Renderer as NativeRenderer } from './renderer';
-import { ComponentRenderer } from '../../dynamics/rendering/renderer';
-import { ComponentState } from '../../dynamics/state/state';
-import { ToolExecutor } from '../../dynamics/execution/executor';
-import type { Window } from '../../windows/core/types';
-import type { BlueprintComponent } from '../../../core/store/appStore';
-import { AppType } from '../core/types';
-import './content.css';
+import React from "react";
+import { Renderer as NativeRenderer } from "./renderer";
+import { ComponentRenderer } from "../../dynamics/rendering/renderer";
+import { ComponentState } from "../../dynamics/state/state";
+import { ToolExecutor } from "../../dynamics/execution/executor";
+import type { Window } from "../../windows/core/types";
+import type { BlueprintComponent } from "../../../core/store/appStore";
+import { AppType } from "../core/types";
+import "./content.css";
 
 // ============================================================================
 // Props
@@ -56,7 +56,7 @@ export const Content: React.FC<ContentProps> = ({ window, state, executor }) => 
   // Blueprint app (default)
   return (
     <div className="window-content blueprint">
-      <div className={`app-layout-${window.uiSpec.layout || 'vertical'}`}>
+      <div className={`app-layout-${window.uiSpec.layout || "vertical"}`}>
         {window.uiSpec.components.map((component: BlueprintComponent, idx: number) => (
           <ComponentRenderer
             key={`${component.id}-${idx}`}

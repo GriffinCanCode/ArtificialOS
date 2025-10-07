@@ -20,7 +20,11 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom right, var(--color-accent-alpha-10), var(--color-info-alpha-10));
+  background: linear-gradient(
+    to bottom right,
+    var(--color-accent-alpha-10),
+    var(--color-info-alpha-10)
+  );
   pointer-events: none;
   border-radius: 0.5rem;
 }

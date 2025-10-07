@@ -234,7 +234,7 @@ export class ToastExecutor implements BaseExecutor {
         onClick: () => {
           logger.info("Toast action clicked", {
             component: "ToastExecutor",
-            handler: params.action_handler
+            handler: params.action_handler,
           });
           // Execute the action handler
           this.executeActionHandler(params.action_handler, "action");
@@ -249,7 +249,7 @@ export class ToastExecutor implements BaseExecutor {
         onClick: () => {
           logger.info("Toast cancel clicked", {
             component: "ToastExecutor",
-            handler: params.cancel_handler
+            handler: params.cancel_handler,
           });
           // Execute the cancel handler
           this.executeActionHandler(params.cancel_handler, "cancel");
@@ -276,7 +276,7 @@ export class ToastExecutor implements BaseExecutor {
         logger.info("Action handler triggered", {
           component: "ToastExecutor",
           toolId: handler,
-          type: handlerType
+          type: handlerType,
         });
       } else if (typeof handler === "object" && handler.toolId) {
         // Object with tool ID and parameters
@@ -289,13 +289,13 @@ export class ToastExecutor implements BaseExecutor {
           component: "ToastExecutor",
           toolId: handler.toolId,
           params: handler.params,
-          type: handlerType
+          type: handlerType,
         });
       } else {
         logger.warn("Invalid action handler format", {
           component: "ToastExecutor",
           handler,
-          type: handlerType
+          type: handlerType,
         });
       }
     } catch (error) {
@@ -303,7 +303,7 @@ export class ToastExecutor implements BaseExecutor {
         component: "ToastExecutor",
         error,
         handler,
-        type: handlerType
+        type: handlerType,
       });
     }
   }

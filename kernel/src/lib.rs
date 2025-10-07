@@ -43,9 +43,9 @@ pub use process::{
 
 // Scheduler
 pub use scheduler::{
-    apply_priority_op, validate_priority, Policy as SchedulerPolicy, PriorityControl,
-    PriorityOp, SchedulerControl, SchedulerStats as SchedulerStatsTrait,
-    TimeQuantum, DEFAULT_PRIORITY, MAX_PRIORITY, MIN_PRIORITY,
+    apply_priority_op, validate_priority, Policy as SchedulerPolicy, PriorityControl, PriorityOp,
+    SchedulerControl, SchedulerStats as SchedulerStatsTrait, TimeQuantum, DEFAULT_PRIORITY,
+    MAX_PRIORITY, MIN_PRIORITY,
 };
 
 // Security

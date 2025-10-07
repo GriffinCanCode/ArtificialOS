@@ -12,11 +12,11 @@ import { toRgbaString, UI_COLORS, ALPHA_VALUES } from "../../../../../core/utils
 
 // Centralized color constants from core utilities
 const METRIC_COLORS = {
-  success: "#4ade80",  // green-400
-  warning: "#fbbf24",  // yellow-400
-  error: "#f87171",    // red-400
-  info: "#60a5fa",     // blue-400
-  neutral: "#ffffff",  // white
+  success: "#4ade80", // green-400
+  warning: "#fbbf24", // yellow-400
+  error: "#f87171", // red-400
+  info: "#60a5fa", // blue-400
+  neutral: "#ffffff", // white
 } as const;
 
 export class AnalysisExecutor implements AsyncExecutor {

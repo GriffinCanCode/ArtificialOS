@@ -43,7 +43,7 @@ import {
   BarChart,
   AreaChart,
   PieChart,
-  Graph
+  Graph,
 } from "../../visualization/components/LazyCharts";
 
 // Import validation schemas

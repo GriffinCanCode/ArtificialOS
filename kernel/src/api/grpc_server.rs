@@ -64,7 +64,8 @@ impl KernelServiceImpl {
 #[tonic::async_trait]
 impl KernelService for KernelServiceImpl {
     type StreamEventsStream = tokio_stream::wrappers::ReceiverStream<Result<KernelEvent, Status>>;
-    type StreamSyscallStream = tokio_stream::wrappers::ReceiverStream<Result<StreamSyscallChunk, Status>>;
+    type StreamSyscallStream =
+        tokio_stream::wrappers::ReceiverStream<Result<StreamSyscallChunk, Status>>;
 
     async fn execute_syscall(
         &self,
@@ -343,6 +344,36 @@ impl KernelService for KernelServiceImpl {
             Some(syscall_request::Syscall::YieldProcess(_)) => Syscall::YieldProcess,
             Some(syscall_request::Syscall::GetCurrentScheduled(_)) => Syscall::GetCurrentScheduled,
             Some(syscall_request::Syscall::GetSchedulerStats(_)) => Syscall::GetSchedulerStats,
+            Some(syscall_request::Syscall::SetSchedulingPolicy(call)) => {
+                Syscall::SetSchedulingPolicy {
+                    policy: call.policy,
+                }
+            }
+            Some(syscall_request::Syscall::GetSchedulingPolicy(_)) => Syscall::GetSchedulingPolicy,
+            Some(syscall_request::Syscall::SetTimeQuantum(call)) => Syscall::SetTimeQuantum {
+                quantum_micros: call.quantum_micros,
+            },
+            Some(syscall_request::Syscall::GetTimeQuantum(_)) => Syscall::GetTimeQuantum,
+            Some(syscall_request::Syscall::GetProcessSchedulerStats(_)) => {
+                // Not implemented yet - return error
+                return Err(Status::unimplemented(
+                    "GetProcessSchedulerStats not yet implemented",
+                ));
+            }
+            Some(syscall_request::Syscall::GetAllProcessSchedulerStats(_)) => {
+                // Not implemented yet - return error
+                return Err(Status::unimplemented(
+                    "GetAllProcessSchedulerStats not yet implemented",
+                ));
+            }
+            Some(syscall_request::Syscall::BoostPriority(_)) => {
+                // Not implemented yet - return error
+                return Err(Status::unimplemented("BoostPriority not yet implemented"));
+            }
+            Some(syscall_request::Syscall::LowerPriority(_)) => {
+                // Not implemented yet - return error
+                return Err(Status::unimplemented("LowerPriority not yet implemented"));
+            }
             None => {
                 return Err(Status::invalid_argument("No syscall provided"));
             }
@@ -504,7 +535,10 @@ impl KernelService for KernelServiceImpl {
         let req = request.into_inner();
         let event_types = req.event_types;
 
-        info!("gRPC: Event streaming requested for types: {:?}", event_types);
+        info!(
+            "gRPC: Event streaming requested for types: {:?}",
+            event_types
+        );
 
         let (tx, rx) = tokio::sync::mpsc::channel(100);
         let process_manager = self.process_manager.clone();
@@ -527,15 +561,14 @@ impl KernelService for KernelServiceImpl {
                 if event_types.is_empty() || event_types.contains(&"process_created".to_string()) {
                     // Get current processes
                     let processes = process_manager.list_processes();
-                    for proc in processes.iter().take(5) { // Limit to 5 for demo
+                    for proc in processes.iter().take(5) {
+                        // Limit to 5 for demo
                         let event = KernelEvent {
                             timestamp,
-                            event: Some(kernel_event::Event::ProcessCreated(
-                                ProcessCreatedEvent {
-                                    pid: proc.pid,
-                                    name: proc.name.clone(),
-                                },
-                            )),
+                            event: Some(kernel_event::Event::ProcessCreated(ProcessCreatedEvent {
+                                pid: proc.pid,
+                                name: proc.name.clone(),
+                            })),
                         };
 
                         if tx.send(Ok(event)).await.is_err() {
@@ -567,7 +600,8 @@ impl KernelService for KernelServiceImpl {
                 }
 
                 // Emit permission denied events (based on sandbox stats)
-                if event_types.is_empty() || event_types.contains(&"permission_denied".to_string()) {
+                if event_types.is_empty() || event_types.contains(&"permission_denied".to_string())
+                {
                     use crate::security::traits::SandboxProvider;
                     let sandbox_stats = sandbox_manager.stats();
                     if sandbox_stats.permission_denials > 0 {
@@ -710,7 +744,10 @@ impl KernelService for KernelServiceImpl {
                             None
                         };
 
-                        match streaming_manager.stream_file_read(req.pid, path, chunk_size).await {
+                        match streaming_manager
+                            .stream_file_read(req.pid, path, chunk_size)
+                            .await
+                        {
                             Ok(file_stream) => {
                                 use futures::StreamExt;
                                 tokio::pin!(file_stream);
@@ -729,9 +766,11 @@ impl KernelService for KernelServiceImpl {
                                 }
                             }
                             Err(e) => {
-                                let _ = tx.send(Ok(StreamSyscallChunk {
-                                    chunk: Some(stream_syscall_chunk::Chunk::Error(e)),
-                                })).await;
+                                let _ = tx
+                                    .send(Ok(StreamSyscallChunk {
+                                        chunk: Some(stream_syscall_chunk::Chunk::Error(e)),
+                                    }))
+                                    .await;
                                 return;
                             }
                         }
@@ -744,7 +783,9 @@ impl KernelService for KernelServiceImpl {
             }
         });
 
-        Ok(Response::new(tokio_stream::wrappers::ReceiverStream::new(rx)))
+        Ok(Response::new(tokio_stream::wrappers::ReceiverStream::new(
+            rx,
+        )))
     }
 
     async fn execute_syscall_async(
@@ -786,13 +827,16 @@ impl KernelService for KernelServiceImpl {
                 let (proto_status, result) = match status {
                     TaskStatus::Pending => (async_status_response::Status::Pending, None),
                     TaskStatus::Running => (async_status_response::Status::Running, None),
-                    TaskStatus::Completed(res) => {
-                        (async_status_response::Status::Completed, Some(self.syscall_result_to_proto(res)))
-                    }
+                    TaskStatus::Completed(res) => (
+                        async_status_response::Status::Completed,
+                        Some(self.syscall_result_to_proto(res)),
+                    ),
                     TaskStatus::Failed(msg) => (
                         async_status_response::Status::Failed,
                         Some(SyscallResponse {
-                            result: Some(syscall_response::Result::Error(ErrorResult { message: msg })),
+                            result: Some(syscall_response::Result::Error(ErrorResult {
+                                message: msg,
+                            })),
                         }),
                     ),
                     TaskStatus::Cancelled => (async_status_response::Status::Cancelled, None),
@@ -817,7 +861,11 @@ impl KernelService for KernelServiceImpl {
 
         Ok(Response::new(AsyncCancelResponse {
             cancelled,
-            error: if cancelled { String::new() } else { "Task not found or already completed".to_string() },
+            error: if cancelled {
+                String::new()
+            } else {
+                "Task not found or already completed".to_string()
+            },
         }))
     }
 
@@ -836,7 +884,9 @@ impl KernelService for KernelServiceImpl {
                 Err(e) => {
                     return Ok(Response::new(BatchSyscallResponse {
                         responses: vec![SyscallResponse {
-                            result: Some(syscall_response::Result::Error(ErrorResult { message: e })),
+                            result: Some(syscall_response::Result::Error(ErrorResult {
+                                message: e,
+                            })),
                         }],
                         success_count: 0,
                         failure_count: 1,
@@ -849,13 +899,16 @@ impl KernelService for KernelServiceImpl {
 
         let mut success_count = 0;
         let mut failure_count = 0;
-        let responses: Vec<_> = results.into_iter().map(|r| {
-            match &r {
-                SyscallResult::Success { .. } => success_count += 1,
-                _ => failure_count += 1,
-            }
-            self.syscall_result_to_proto(r)
-        }).collect();
+        let responses: Vec<_> = results
+            .into_iter()
+            .map(|r| {
+                match &r {
+                    SyscallResult::Success { .. } => success_count += 1,
+                    _ => failure_count += 1,
+                }
+                self.syscall_result_to_proto(r)
+            })
+            .collect();
 
         Ok(Response::new(BatchSyscallResponse {
             responses,

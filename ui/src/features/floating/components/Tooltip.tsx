@@ -13,7 +13,15 @@ import "./Tooltip.css";
 // Component
 // ============================================================================
 
-export const Tooltip: React.FC<TooltipProps> = ({ content, children, delay = 300, position, interaction, open, onOpenChange }) => {
+export const Tooltip: React.FC<TooltipProps> = ({
+  content,
+  children,
+  delay = 300,
+  position,
+  interaction,
+  open,
+  onOpenChange,
+}) => {
   // Memoize the interaction config to prevent hook re-initialization
   const interactionConfig = useMemo(
     () => ({ ...interaction, delay }),
@@ -47,7 +55,10 @@ export const Tooltip: React.FC<TooltipProps> = ({ content, children, delay = 300
             style={{
               ...tooltip.floatingStyles,
               // Hide until positioned (not at 0,0)
-              visibility: tooltip.floatingStyles.left === 0 && tooltip.floatingStyles.top === 0 ? 'hidden' : 'visible',
+              visibility:
+                tooltip.floatingStyles.left === 0 && tooltip.floatingStyles.top === 0
+                  ? "hidden"
+                  : "visible",
             }}
             className="tooltip"
             {...tooltip.getFloatingProps()}

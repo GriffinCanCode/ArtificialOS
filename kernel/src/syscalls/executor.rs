@@ -4,7 +4,7 @@
  */
 
 use crate::core::types::Pid;
-use crate::monitoring::{span_syscall, MetricsCollector};
+use crate::monitoring::MetricsCollector;
 use crate::security::SandboxManager;
 use log::info;
 use std::sync::{Arc, OnceLock};
@@ -238,7 +238,9 @@ impl SyscallExecutor {
             Syscall::GetSchedulerStats => self.get_scheduler_stats(pid),
             Syscall::SetSchedulingPolicy { ref policy } => self.set_scheduling_policy(pid, policy),
             Syscall::GetSchedulingPolicy => self.get_scheduling_policy(pid),
-            Syscall::SetTimeQuantum { quantum_micros } => self.set_time_quantum(pid, quantum_micros),
+            Syscall::SetTimeQuantum { quantum_micros } => {
+                self.set_time_quantum(pid, quantum_micros)
+            }
             Syscall::GetTimeQuantum => self.get_time_quantum(pid),
             Syscall::GetProcessSchedulerStats { target_pid } => {
                 self.get_process_scheduler_stats(pid, target_pid)

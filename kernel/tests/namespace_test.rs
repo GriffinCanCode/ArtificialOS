@@ -154,7 +154,11 @@ fn test_isolation_modes() {
         config.mode = *mode;
 
         let result = manager.create(config.clone());
-        assert!(result.is_ok(), "Failed to create namespace with mode {:?}", mode);
+        assert!(
+            result.is_ok(),
+            "Failed to create namespace with mode {:?}",
+            mode
+        );
 
         let info = manager.get_info(&config.id);
         assert!(info.is_some());

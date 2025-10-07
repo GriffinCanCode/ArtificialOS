@@ -61,9 +61,7 @@ export const VirtualList = <T,>({
       >
         {virtualItems.map((virtualItem) => {
           const item = items[virtualItem.index];
-          const key = getItemKey
-            ? getItemKey(virtualItem.index, item)
-            : virtualItem.index;
+          const key = getItemKey ? getItemKey(virtualItem.index, item) : virtualItem.index;
 
           const style: React.CSSProperties = {
             position: "absolute",
@@ -73,11 +71,7 @@ export const VirtualList = <T,>({
             width: horizontal ? `${virtualItem.size}px` : "100%",
           };
 
-          return (
-            <div key={key}>
-              {children({ item, index: virtualItem.index, style })}
-            </div>
-          );
+          return <div key={key}>{children({ item, index: virtualItem.index, style })}</div>;
         })}
       </div>
     </div>
@@ -98,14 +92,8 @@ interface SimpleListProps<T = any> extends Omit<VirtualListConfig<T>, "estimateS
 /**
  * Simplified virtual list with fixed item sizes
  */
-export const SimpleList = <T,>({
-  items,
-  itemSize = 60,
-  ...rest
-}: SimpleListProps<T>) => {
-  return (
-    <VirtualList items={items} estimateSize={() => itemSize} {...rest} />
-  );
+export const SimpleList = <T,>({ items, itemSize = 60, ...rest }: SimpleListProps<T>) => {
+  return <VirtualList items={items} estimateSize={() => itemSize} {...rest} />;
 };
 
 SimpleList.displayName = "SimpleList";
@@ -122,11 +110,7 @@ interface DynamicListProps<T = any> extends VirtualListConfig<T> {
 /**
  * Virtual list with dynamic content-based sizing
  */
-export const DynamicList = <T,>({
-  items,
-  defaultSize = 60,
-  ...rest
-}: DynamicListProps<T>) => {
+export const DynamicList = <T,>({ items, defaultSize = 60, ...rest }: DynamicListProps<T>) => {
   return (
     <VirtualList
       items={items}

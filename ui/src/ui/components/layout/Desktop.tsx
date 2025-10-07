@@ -60,25 +60,31 @@ export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpen
   };
 
   // Handle dock item click
-  const handleDockItemClick = useCallback((action: string) => {
-    if (action === "hub") {
-      onOpenHub();
-    } else {
-      onLaunchApp(action);
-    }
-  }, [onOpenHub, onLaunchApp]);
+  const handleDockItemClick = useCallback(
+    (action: string) => {
+      if (action === "hub") {
+        onOpenHub();
+      } else {
+        onLaunchApp(action);
+      }
+    },
+    [onOpenHub, onLaunchApp]
+  );
 
   // Handle context menu actions
-  const handleDockContextMenu = useCallback((action: string, itemId: string) => {
-    switch (action) {
-      case 'toggle-pin':
-        toggle(itemId);
-        break;
-      case 'remove':
-        remove(itemId);
-        break;
-    }
-  }, [toggle, remove]);
+  const handleDockContextMenu = useCallback(
+    (action: string, itemId: string) => {
+      switch (action) {
+        case "toggle-pin":
+          toggle(itemId);
+          break;
+        case "remove":
+          remove(itemId);
+          break;
+      }
+    },
+    [toggle, remove]
+  );
 
   return (
     <div className="desktop">

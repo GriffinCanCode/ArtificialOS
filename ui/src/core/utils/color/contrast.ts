@@ -61,10 +61,7 @@ export function contrast(foreground: ColorInput, background: ColorInput): number
 /**
  * Get detailed contrast information
  */
-export function contrastDetails(
-  foreground: ColorInput,
-  background: ColorInput
-): ContrastResult {
+export function contrastDetails(foreground: ColorInput, background: ColorInput): ContrastResult {
   const ratio = contrast(foreground, background);
 
   return {

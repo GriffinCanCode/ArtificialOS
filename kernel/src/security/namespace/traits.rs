@@ -5,6 +5,7 @@
 
 use super::types::*;
 use crate::core::types::Pid;
+use std::net::IpAddr;
 
 /// Core namespace management operations
 pub trait NamespaceProvider: Send + Sync {

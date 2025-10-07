@@ -251,7 +251,10 @@ impl ProcessMonitor for SimulationEbpfProvider {
     }
 
     fn get_monitored_pids(&self) -> Vec<Pid> {
-        self.monitored_pids.iter().map(|entry| *entry.key()).collect()
+        self.monitored_pids
+            .iter()
+            .map(|entry| *entry.key())
+            .collect()
     }
 
     fn get_syscall_count(&self, pid: Pid) -> u64 {

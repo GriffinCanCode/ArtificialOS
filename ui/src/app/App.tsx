@@ -240,7 +240,7 @@ function AppContent() {
             appId,
             appInstanceId: data.app_id,
             packageId: data.package_id,
-            bundlePath: data.bundle_path
+            bundlePath: data.bundle_path,
           });
 
           // Open window with native app metadata
@@ -306,19 +306,10 @@ function AppContent() {
           <div className="welcome-content">
             <div className="welcome-icon">✨</div>
             <h1 className="welcome-title">
-              <AnimatedTitle
-                text="AgentOS"
-                preset="hero"
-                effect="gradient"
-                animationDelay={200}
-              />
+              <AnimatedTitle text="AgentOS" preset="hero" effect="gradient" animationDelay={200} />
             </h1>
             <p className="welcome-subtitle">
-              <TypewriterText
-                text="Press ⌘K to create something amazing"
-                speed={40}
-                delay={800}
-              />
+              <TypewriterText text="Press ⌘K to create something amazing" speed={40} delay={800} />
             </p>
           </div>
         </div>

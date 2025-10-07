@@ -7,10 +7,10 @@ use super::manager::MemoryManager;
 use crate::core::serde::{is_zero_u64, is_zero_usize};
 use crate::core::types::{Pid, Size};
 use log::{info, warn};
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use parking_lot::RwLock;
 
 /// Global garbage collection strategy
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -96,7 +96,10 @@ impl GlobalGarbageCollector {
     /// Create a new global garbage collector
     pub fn new(memory_manager: MemoryManager) -> Self {
         let threshold = 100 * 1024 * 1024; // 100MB default threshold
-        info!("Global garbage collector initialized with threshold: {} bytes", threshold);
+        info!(
+            "Global garbage collector initialized with threshold: {} bytes",
+            threshold
+        );
 
         Self {
             memory_manager: Arc::new(RwLock::new(memory_manager)),
@@ -109,7 +112,10 @@ impl GlobalGarbageCollector {
     /// Run garbage collection with specified strategy
     pub fn collect(&self, strategy: GcStrategy) -> GcStats {
         let start = std::time::Instant::now();
-        info!("Starting global garbage collection with strategy: {:?}", strategy);
+        info!(
+            "Starting global garbage collection with strategy: {:?}",
+            strategy
+        );
 
         let mut stats = GcStats::new();
 
@@ -213,7 +219,10 @@ impl GlobalGarbageCollector {
         let freed_blocks = mm.force_collect();
         stats.freed_blocks = freed_blocks;
 
-        info!("Unreferenced GC: cleaned {} deallocated blocks", freed_blocks);
+        info!(
+            "Unreferenced GC: cleaned {} deallocated blocks",
+            freed_blocks
+        );
     }
 
     /// Check if GC should run based on time interval

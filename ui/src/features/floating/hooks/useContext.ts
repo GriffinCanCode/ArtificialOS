@@ -48,10 +48,7 @@ interface UseContextReturn {
 /**
  * Hook for creating context menus
  */
-export function useContext({
-  position,
-  onOpenChange,
-}: UseContextConfig = {}): UseContextReturn {
+export function useContext({ position, onOpenChange }: UseContextConfig = {}): UseContextReturn {
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [position2, setPosition] = useState({ x: 0, y: 0 });
@@ -91,13 +88,10 @@ export function useContext({
 
   const contextId = useMemo(() => generateId("context"), []);
 
-  const open = useCallback(
-    (x: number, y: number) => {
-      setPosition({ x, y });
-      setIsOpen(true);
-    },
-    []
-  );
+  const open = useCallback((x: number, y: number) => {
+    setPosition({ x, y });
+    setIsOpen(true);
+  }, []);
 
   return {
     refs: {

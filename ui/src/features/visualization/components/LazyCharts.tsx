@@ -11,34 +11,35 @@ import type { BaseComponentProps } from "../../dynamics/core/types";
 
 // Lazy load chart components
 const LineChartImpl = lazy(() =>
-  import("./LineChart").then(module => ({ default: module.LineChart }))
+  import("./LineChart").then((module) => ({ default: module.LineChart }))
 );
 
 const BarChartImpl = lazy(() =>
-  import("./BarChart").then(module => ({ default: module.BarChart }))
+  import("./BarChart").then((module) => ({ default: module.BarChart }))
 );
 
 const AreaChartImpl = lazy(() =>
-  import("./AreaChart").then(module => ({ default: module.AreaChart }))
+  import("./AreaChart").then((module) => ({ default: module.AreaChart }))
 );
 
 const PieChartImpl = lazy(() =>
-  import("./PieChart").then(module => ({ default: module.PieChart }))
+  import("./PieChart").then((module) => ({ default: module.PieChart }))
 );
 
-const GraphImpl = lazy(() =>
-  import("./Graph").then(module => ({ default: module.Graph }))
-);
+const GraphImpl = lazy(() => import("./Graph").then((module) => ({ default: module.Graph })));
 
 // Loading fallback
 const ChartLoader: React.FC = () => (
-  <div className="chart-loading" style={{
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: '200px',
-    color: '#888'
-  }}>
+  <div
+    className="chart-loading"
+    style={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      minHeight: "200px",
+      color: "#888",
+    }}
+  >
     Loading chart...
   </div>
 );

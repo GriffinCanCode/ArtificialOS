@@ -27,12 +27,7 @@ export type { ColorInput, ColorFormat, RGB, RGBA, HSL, HSLA, HSV } from "./core"
 
 // Contrast and accessibility
 export * from "./contrast";
-export type {
-  WCAGLevel,
-  WCAGSize,
-  ContrastResult,
-  AccessibilityResult,
-} from "./contrast";
+export type { WCAGLevel, WCAGSize, ContrastResult, AccessibilityResult } from "./contrast";
 
 // Gradient generation
 export * from "./gradients";

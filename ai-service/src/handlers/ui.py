@@ -41,7 +41,7 @@ class UIHandler:
 
                 # Use the raw blueprint JSON if available (has app/services/ui structure)
                 # Otherwise fall back to just the UI spec
-                if hasattr(package, '_raw_blueprint_json') and package._raw_blueprint_json:
+                if hasattr(package, "_raw_blueprint_json") and package._raw_blueprint_json:
                     ui_spec_str = package._raw_blueprint_json
                 else:
                     ui_spec_str = package.model_dump_json()
@@ -88,7 +88,7 @@ class UIHandler:
 
                 # Stream UI spec - use the raw blueprint JSON if available (has app/services/ui structure)
                 # Otherwise fall back to just the UI spec
-                if hasattr(package, '_raw_blueprint_json') and package._raw_blueprint_json:
+                if hasattr(package, "_raw_blueprint_json") and package._raw_blueprint_json:
                     ui_spec_str = package._raw_blueprint_json
                 else:
                     ui_spec_str = package.model_dump_json()

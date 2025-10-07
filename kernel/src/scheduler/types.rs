@@ -137,10 +137,7 @@ pub fn apply_priority_op(current: u8, op: PriorityOp) -> Result<u8, String> {
         PriorityOp::Boost => {
             let new_priority = (current + 1).min(MAX_PRIORITY);
             if new_priority == current {
-                Err(format!(
-                    "Already at maximum priority ({})",
-                    MAX_PRIORITY
-                ))
+                Err(format!("Already at maximum priority ({})", MAX_PRIORITY))
             } else {
                 Ok(new_priority)
             }

@@ -3,8 +3,8 @@
  * Animated typewriter effect for text
  */
 
-import React, { useEffect, useState } from 'react';
-import './TypewriterText.css';
+import React, { useEffect, useState } from "react";
+import "./TypewriterText.css";
 
 export interface TypewriterTextProps {
   text: string;
@@ -22,10 +22,10 @@ export const TypewriterText: React.FC<TypewriterTextProps> = ({
   delay = 0,
   cursor = true,
   onComplete,
-  className = '',
+  className = "",
   style = {},
 }) => {
-  const [displayText, setDisplayText] = useState('');
+  const [displayText, setDisplayText] = useState("");
   const [isComplete, setIsComplete] = useState(false);
 
   useEffect(() => {

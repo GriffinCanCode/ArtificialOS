@@ -712,7 +712,12 @@ export const particleBurst = (
   } = {}
 ) => {
   const count = options.count ?? 12;
-  const colors = options.colors ?? [THEME_COLORS.primary, THEME_COLORS.secondary, THEME_COLORS.accent, "#c084fc"];
+  const colors = options.colors ?? [
+    THEME_COLORS.primary,
+    THEME_COLORS.secondary,
+    THEME_COLORS.accent,
+    "#c084fc",
+  ];
   const duration = options.duration ?? 1.2;
 
   const tl = gsap.timeline({

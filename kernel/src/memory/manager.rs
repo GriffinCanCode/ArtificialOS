@@ -48,7 +48,10 @@ pub struct MemoryManager {
 impl MemoryManager {
     pub fn new() -> Self {
         let total = 1024 * 1024 * 1024; // 1GB simulated memory
-        info!("Memory manager initialized with {} bytes and address recycling enabled", total);
+        info!(
+            "Memory manager initialized with {} bytes and address recycling enabled",
+            total
+        );
         Self {
             // Use 128 shards for blocks - high contention data structure (default is 64)
             // More shards = better concurrent access performance
@@ -159,15 +162,14 @@ impl MemoryManager {
         self.blocks.insert(address, block);
 
         // Update per-process tracking using alter() for atomic operation
-        self.process_tracking
-            .alter(&pid, |_, mut track| {
-                track.current_bytes += size;
-                track.allocation_count += 1;
-                if track.current_bytes > track.peak_bytes {
-                    track.peak_bytes = track.current_bytes;
-                }
-                track
-            });
+        self.process_tracking.alter(&pid, |_, mut track| {
+            track.current_bytes += size;
+            track.allocation_count += 1;
+            if track.current_bytes > track.peak_bytes {
+                track.peak_bytes = track.current_bytes;
+            }
+            track
+        });
 
         // Log allocation with memory pressure warnings
         let used_val = used as usize + size;
@@ -297,7 +299,8 @@ impl MemoryManager {
         }
 
         if freed_bytes > 0 {
-            self.used_memory.fetch_sub(freed_bytes as u64, Ordering::SeqCst);
+            self.used_memory
+                .fetch_sub(freed_bytes as u64, Ordering::SeqCst);
 
             // Remove process tracking entry
             self.process_tracking.remove(&pid);
@@ -310,7 +313,10 @@ impl MemoryManager {
             }
 
             // Track deallocated blocks for GC
-            let dealloc_count = self.deallocated_count.fetch_add(freed_count, Ordering::SeqCst) + freed_count;
+            let dealloc_count = self
+                .deallocated_count
+                .fetch_add(freed_count, Ordering::SeqCst)
+                + freed_count;
 
             let used = self.used_memory.load(Ordering::SeqCst);
             info!(
@@ -332,7 +338,10 @@ impl MemoryManager {
                 // For large cleanups, shrink maps even without full GC
                 self.blocks.shrink_to_fit();
                 self.process_tracking.shrink_to_fit();
-                info!("Shrunk memory maps after large process cleanup ({} blocks freed)", freed_count);
+                info!(
+                    "Shrunk memory maps after large process cleanup ({} blocks freed)",
+                    freed_count
+                );
             }
         }
 
@@ -354,7 +363,11 @@ impl MemoryManager {
     /// Get detailed process memory stats including peak and allocation count
     pub fn get_process_memory_details(&self, pid: Pid) -> (Size, Size, usize) {
         if let Some(track) = self.process_tracking.get(&pid) {
-            (track.current_bytes, track.peak_bytes, track.allocation_count)
+            (
+                track.current_bytes,
+                track.peak_bytes,
+                track.allocation_count,
+            )
         } else {
             (0, 0, 0)
         }
@@ -370,8 +383,16 @@ impl MemoryManager {
     pub fn stats(&self) -> MemoryStats {
         let used = self.used_memory.load(Ordering::SeqCst) as usize;
 
-        let allocated_blocks = self.blocks.iter().filter(|entry| entry.value().allocated).count();
-        let fragmented_blocks = self.blocks.iter().filter(|entry| !entry.value().allocated).count();
+        let allocated_blocks = self
+            .blocks
+            .iter()
+            .filter(|entry| entry.value().allocated)
+            .count();
+        let fragmented_blocks = self
+            .blocks
+            .iter()
+            .filter(|entry| !entry.value().allocated)
+            .count();
 
         MemoryStats {
             total_memory: self.total_memory,
@@ -390,7 +411,8 @@ impl MemoryManager {
         let initial_count = self.blocks.len();
 
         // Collect addresses of deallocated blocks before removing them
-        let deallocated_addrs: Vec<Address> = self.blocks
+        let deallocated_addrs: Vec<Address> = self
+            .blocks
             .iter()
             .filter(|entry| !entry.value().allocated)
             .map(|entry| *entry.key())
@@ -464,7 +486,10 @@ impl MemoryManager {
     }
     /// Check if an address is valid and allocated
     pub fn is_valid(&self, address: Address) -> bool {
-        self.blocks.get(&address).map(|entry| entry.value().allocated).unwrap_or(false)
+        self.blocks
+            .get(&address)
+            .map(|entry| entry.value().allocated)
+            .unwrap_or(false)
     }
 
     /// Get the size of an allocated block
@@ -505,21 +530,23 @@ impl MemoryManager {
             let offset = address - base_addr;
 
             // Get or create storage for this block using alter() for atomic operation
-            self.memory_storage
-                .alter(&base_addr, |_, mut block_data| {
-                    // Ensure block_data is large enough
-                    if block_data.len() < block_size {
-                        block_data.resize(block_size, 0u8);
-                    }
-                    // Write data at the offset
-                    let end = offset + data.len();
-                    block_data[offset..end].copy_from_slice(data);
-                    block_data
-                });
+            self.memory_storage.alter(&base_addr, |_, mut block_data| {
+                // Ensure block_data is large enough
+                if block_data.len() < block_size {
+                    block_data.resize(block_size, 0u8);
+                }
+                // Write data at the offset
+                let end = offset + data.len();
+                block_data[offset..end].copy_from_slice(data);
+                block_data
+            });
 
             info!(
                 "Wrote {} bytes to address 0x{:x} (offset {} in block at 0x{:x})",
-                data.len(), address, offset, base_addr
+                data.len(),
+                address,
+                offset,
+                base_addr
             );
             Ok(())
         } else {

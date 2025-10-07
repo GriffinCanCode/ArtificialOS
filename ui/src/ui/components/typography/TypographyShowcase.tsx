@@ -4,16 +4,16 @@
  * Use this in development to test typography effects
  */
 
-import React, { useState } from 'react';
-import { CustomText } from './CustomText';
-import { AnimatedTitle } from './AnimatedTitle';
-import { BrandLogo } from './BrandLogo';
-import { WindowTitleBar } from './WindowTitleBar';
-import { TypewriterText } from './TypewriterText';
-import './TypographyShowcase.css';
+import React, { useState } from "react";
+import { CustomText } from "./CustomText";
+import { AnimatedTitle } from "./AnimatedTitle";
+import { BrandLogo } from "./BrandLogo";
+import { WindowTitleBar } from "./WindowTitleBar";
+import { TypewriterText } from "./TypewriterText";
+import "./TypographyShowcase.css";
 
 export const TypographyShowcase: React.FC = () => {
-  const [activeEffect, setActiveEffect] = useState<string>('gradient');
+  const [activeEffect, setActiveEffect] = useState<string>("gradient");
 
   return (
     <div className="typography-showcase">
@@ -101,20 +101,20 @@ export const TypographyShowcase: React.FC = () => {
         <h2>Interactive Demo</h2>
         <div className="interactive-controls">
           <button
-            className={activeEffect === 'gradient' ? 'active' : ''}
-            onClick={() => setActiveEffect('gradient')}
+            className={activeEffect === "gradient" ? "active" : ""}
+            onClick={() => setActiveEffect("gradient")}
           >
             Gradient
           </button>
           <button
-            className={activeEffect === 'glow' ? 'active' : ''}
-            onClick={() => setActiveEffect('glow')}
+            className={activeEffect === "glow" ? "active" : ""}
+            onClick={() => setActiveEffect("glow")}
           >
             Glow
           </button>
           <button
-            className={activeEffect === 'shimmer' ? 'active' : ''}
-            onClick={() => setActiveEffect('shimmer')}
+            className={activeEffect === "shimmer" ? "active" : ""}
+            onClick={() => setActiveEffect("shimmer")}
           >
             Shimmer
           </button>
@@ -137,7 +137,7 @@ export const TypographyShowcase: React.FC = () => {
               text="Purple Pink"
               preset="title"
               gradient={{
-                colors: ['#8B5CF6', '#EC4899'],
+                colors: ["#8B5CF6", "#EC4899"],
                 angle: 45,
               }}
             />
@@ -147,7 +147,7 @@ export const TypographyShowcase: React.FC = () => {
               text="Blue Cyan"
               preset="title"
               gradient={{
-                colors: ['#3B82F6', '#06B6D4'],
+                colors: ["#3B82F6", "#06B6D4"],
                 angle: 45,
               }}
             />
@@ -157,7 +157,7 @@ export const TypographyShowcase: React.FC = () => {
               text="Green Yellow"
               preset="title"
               gradient={{
-                colors: ['#10B981', '#FBBF24'],
+                colors: ["#10B981", "#FBBF24"],
                 angle: 45,
               }}
             />
@@ -167,7 +167,7 @@ export const TypographyShowcase: React.FC = () => {
               text="Orange Red"
               preset="title"
               gradient={{
-                colors: ['#F59E0B', '#EF4444'],
+                colors: ["#F59E0B", "#EF4444"],
                 angle: 45,
               }}
             />

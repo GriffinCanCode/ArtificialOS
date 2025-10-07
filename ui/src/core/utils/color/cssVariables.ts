@@ -15,8 +15,12 @@ import { toOklchString, supportsOklch } from "./oklch";
 /**
  * Generate CSS variables object from theme colors
  */
-export function generateCSSVariables(primaryColor: string, mode: "light" | "dark" = "dark"): Record<string, string> {
-  const theme = mode === "dark" ? generateDarkTheme(primaryColor) : generateLightTheme(primaryColor);
+export function generateCSSVariables(
+  primaryColor: string,
+  mode: "light" | "dark" = "dark"
+): Record<string, string> {
+  const theme =
+    mode === "dark" ? generateDarkTheme(primaryColor) : generateLightTheme(primaryColor);
   return themeToCssVars(theme);
 }
 
@@ -114,7 +118,11 @@ export function generateThemeCSS(primaryColor: string, mode: "light" | "dark" = 
 /**
  * Download theme CSS as a file
  */
-export function downloadThemeCSS(primaryColor: string, mode: "light" | "dark" = "dark", filename: string = "theme.css"): void {
+export function downloadThemeCSS(
+  primaryColor: string,
+  mode: "light" | "dark" = "dark",
+  filename: string = "theme.css"
+): void {
   const css = generateThemeCSS(primaryColor, mode);
   const blob = new Blob([css], { type: "text/css" });
   const url = URL.createObjectURL(blob);
@@ -196,7 +204,7 @@ export class ThemeManager {
    */
   private notifyListeners(): void {
     const theme = this.getTheme();
-    this.listeners.forEach(listener => listener(theme));
+    this.listeners.forEach((listener) => listener(theme));
   }
 
   /**

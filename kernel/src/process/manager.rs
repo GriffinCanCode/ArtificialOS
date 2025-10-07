@@ -14,8 +14,8 @@ use crate::security::{LimitManager, Limits};
 use dashmap::DashMap;
 use log::info;
 use parking_lot::RwLock;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::Arc;
 
 // Type alias for backwards compatibility
 pub type Process = ProcessInfo;
@@ -103,9 +103,9 @@ impl ProcessManagerBuilder {
             .map(|policy| Arc::new(RwLock::new(Scheduler::new(policy))));
 
         // Spawn autonomous scheduler task if scheduler is enabled
-        let scheduler_task = scheduler.as_ref().map(|sched| {
-            Arc::new(SchedulerTask::spawn(Arc::clone(sched)))
-        });
+        let scheduler_task = scheduler
+            .as_ref()
+            .map(|sched| Arc::new(SchedulerTask::spawn(Arc::clone(sched))));
 
         let mut features = Vec::new();
         if self.memory_manager.is_some() {
@@ -346,7 +346,8 @@ impl ProcessManager {
     /// Decrement child count for a PID
     fn decrement_child_count(&self, pid: Pid) {
         // Use alter() for atomic decrement
-        self.child_counts.alter(&pid, |_, count| count.saturating_sub(1));
+        self.child_counts
+            .alter(&pid, |_, count| count.saturating_sub(1));
     }
 
     /// Get scheduler statistics
@@ -437,7 +438,10 @@ impl ProcessManager {
                 if let Err(e) = limit_mgr.apply(os_pid, &new_limits) {
                     log::warn!("Failed to update resource limits for PID {}: {}", pid, e);
                 } else {
-                    info!("Updated resource limits for PID {} (OS PID {})", pid, os_pid);
+                    info!(
+                        "Updated resource limits for PID {} (OS PID {})",
+                        pid, os_pid
+                    );
                 }
             }
         }
@@ -447,7 +451,8 @@ impl ProcessManager {
 
     /// Boost process priority
     pub fn boost_process_priority(&self, pid: Pid) -> Result<Priority, String> {
-        let current_priority = self.processes
+        let current_priority = self
+            .processes
             .get(&pid)
             .map(|r| r.value().priority)
             .ok_or_else(|| format!("Process {} not found", pid))?;
@@ -466,7 +471,8 @@ impl ProcessManager {
 
     /// Lower process priority
     pub fn lower_process_priority(&self, pid: Pid) -> Result<Priority, String> {
-        let current_priority = self.processes
+        let current_priority = self
+            .processes
             .get(&pid)
             .map(|r| r.value().priority)
             .ok_or_else(|| format!("Process {} not found", pid))?;

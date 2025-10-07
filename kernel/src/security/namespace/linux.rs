@@ -7,7 +7,7 @@ use super::traits::*;
 use super::types::*;
 use crate::core::types::Pid;
 use dashmap::DashMap;
-use log::{debug, info, warn};
+use log::info;
 use std::sync::Arc;
 
 #[cfg(target_os = "linux")]
@@ -114,7 +114,10 @@ impl LinuxNamespaceManager {
         // In a production implementation, we would use rtnetlink here
         // For now, we'll use system commands as a reference
         debug!("Would create veth pair: {} <-> {}", host_veth, ns_veth);
-        debug!("Would configure IP: {}/{}", iface_config.ip_addr, iface_config.prefix_len);
+        debug!(
+            "Would configure IP: {}/{}",
+            iface_config.ip_addr, iface_config.prefix_len
+        );
 
         Ok(())
     }
@@ -187,9 +190,7 @@ impl NamespaceProvider for LinuxNamespaceManager {
     }
 
     fn get_stats(&self, id: &NamespaceId) -> Option<NamespaceStats> {
-        self.namespaces
-            .get(id)
-            .and_then(|info| info.stats.clone())
+        self.namespaces.get(id).and_then(|info| info.stats.clone())
     }
 
     fn is_supported(&self) -> bool {

@@ -47,8 +47,16 @@ mod tests {
         let mut caps = HashSet::new();
         caps.insert(Capability::ReadFile(Some(PathBuf::from("/tmp"))));
 
-        assert!(can_access_file(&caps, FileOperation::Read, Path::new("/tmp/test.txt")));
-        assert!(!can_access_file(&caps, FileOperation::Read, Path::new("/etc/passwd")));
+        assert!(can_access_file(
+            &caps,
+            FileOperation::Read,
+            Path::new("/tmp/test.txt")
+        ));
+        assert!(!can_access_file(
+            &caps,
+            FileOperation::Read,
+            Path::new("/etc/passwd")
+        ));
     }
 
     #[test]
@@ -56,7 +64,15 @@ mod tests {
         let mut caps = HashSet::new();
         caps.insert(Capability::ReadFile(None));
 
-        assert!(can_access_file(&caps, FileOperation::Read, Path::new("/tmp/test.txt")));
-        assert!(can_access_file(&caps, FileOperation::Read, Path::new("/etc/passwd")));
+        assert!(can_access_file(
+            &caps,
+            FileOperation::Read,
+            Path::new("/tmp/test.txt")
+        ));
+        assert!(can_access_file(
+            &caps,
+            FileOperation::Read,
+            Path::new("/etc/passwd")
+        ));
     }
 }

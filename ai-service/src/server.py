@@ -114,7 +114,7 @@ async def serve_async():
             # Message size limits
             ("grpc.max_send_message_length", 50 * 1024 * 1024),  # 50MB
             ("grpc.max_receive_message_length", 10 * 1024 * 1024),  # 10MB
-        ]
+        ],
     )
     ai_pb2_grpc.add_AIServiceServicer_to_server(service, server)
 

@@ -22,13 +22,19 @@ fn test_granular_file_capabilities() {
 
     // Should allow reading from /tmp
     assert!(
-        manager.check_permission(pid, &Capability::ReadFile(Some(PathBuf::from("/tmp/test.txt")))),
+        manager.check_permission(
+            pid,
+            &Capability::ReadFile(Some(PathBuf::from("/tmp/test.txt")))
+        ),
         "Should allow reading /tmp/test.txt"
     );
 
     // Should deny reading from /etc (not granted)
     assert!(
-        !manager.check_permission(pid, &Capability::ReadFile(Some(PathBuf::from("/etc/passwd")))),
+        !manager.check_permission(
+            pid,
+            &Capability::ReadFile(Some(PathBuf::from("/etc/passwd")))
+        ),
         "Should deny reading /etc/passwd"
     );
 
@@ -39,11 +45,17 @@ fn test_granular_file_capabilities() {
     manager.create_sandbox(config2);
 
     assert!(
-        manager.check_permission(200, &Capability::ReadFile(Some(PathBuf::from("/tmp/test.txt")))),
+        manager.check_permission(
+            200,
+            &Capability::ReadFile(Some(PathBuf::from("/tmp/test.txt")))
+        ),
         "Wildcard should allow /tmp"
     );
     assert!(
-        manager.check_permission(200, &Capability::ReadFile(Some(PathBuf::from("/etc/passwd")))),
+        manager.check_permission(
+            200,
+            &Capability::ReadFile(Some(PathBuf::from("/etc/passwd")))
+        ),
         "Wildcard should allow /etc"
     );
 }
@@ -98,19 +110,28 @@ fn test_multiple_granular_capabilities() {
 
     // Cannot write to /tmp (only read granted)
     assert!(
-        !manager.check_permission(pid, &Capability::WriteFile(Some(PathBuf::from("/tmp/data")))),
+        !manager.check_permission(
+            pid,
+            &Capability::WriteFile(Some(PathBuf::from("/tmp/data")))
+        ),
         "Should deny writing to /tmp"
     );
 
     // Can write to /var/log
     assert!(
-        manager.check_permission(pid, &Capability::WriteFile(Some(PathBuf::from("/var/log/app.log")))),
+        manager.check_permission(
+            pid,
+            &Capability::WriteFile(Some(PathBuf::from("/var/log/app.log")))
+        ),
         "Should allow writing to /var/log"
     );
 
     // Cannot read from /var/log (only write granted)
     assert!(
-        !manager.check_permission(pid, &Capability::ReadFile(Some(PathBuf::from("/var/log/app.log")))),
+        !manager.check_permission(
+            pid,
+            &Capability::ReadFile(Some(PathBuf::from("/var/log/app.log")))
+        ),
         "Should deny reading /var/log"
     );
 }
@@ -315,15 +336,24 @@ fn test_sandbox_lifecycle() {
 
     // Remove sandbox
     assert!(manager.remove_sandbox(pid), "Should remove sandbox");
-    assert!(!manager.has_sandbox(pid), "Sandbox should not exist after removal");
+    assert!(
+        !manager.has_sandbox(pid),
+        "Sandbox should not exist after removal"
+    );
 }
 
 #[test]
 fn test_sandbox_configs() {
     // Test minimal config
     let minimal = SandboxConfig::minimal(1);
-    assert!(minimal.capabilities.is_empty(), "Minimal should have no capabilities");
-    assert!(minimal.network_rules.is_empty(), "Minimal should have no network access");
+    assert!(
+        minimal.capabilities.is_empty(),
+        "Minimal should have no capabilities"
+    );
+    assert!(
+        minimal.network_rules.is_empty(),
+        "Minimal should have no network access"
+    );
 
     // Test standard config
     let standard = SandboxConfig::standard(2);

@@ -22,7 +22,13 @@ interface Store {
   nextZIndex: number;
 
   // Actions
-  open: (appId: string, title: string, uiSpec: Blueprint, icon?: string, metadata?: Partial<Metadata>) => string;
+  open: (
+    appId: string,
+    title: string,
+    uiSpec: Blueprint,
+    icon?: string,
+    metadata?: Partial<Metadata>
+  ) => string;
   close: (windowId: string) => void;
   minimize: (windowId: string) => void;
   restore: (windowId: string) => void;

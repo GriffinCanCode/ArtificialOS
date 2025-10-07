@@ -45,7 +45,7 @@ const WindowContent: React.FC<{ window: any }> = ({ window }) => {
 
   // Check if this is a native app
   const appType = (window.metadata as any)?.appType;
-  const isNativeApp = appType === AppType.NATIVE || appType === 'native_web';
+  const isNativeApp = appType === AppType.NATIVE || appType === "native_web";
 
   return (
     <Window window={window}>

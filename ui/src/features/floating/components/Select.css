@@ -74,10 +74,7 @@
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   color: var(--color-text-primary);
   border: 1px solid var(--color-secondary-alpha-30);
-  box-shadow:
-    var(--shadow-large),
-    var(--shadow-glow-secondary),
-    var(--shadow-inset-light);
+  box-shadow: var(--shadow-large), var(--shadow-glow-secondary), var(--shadow-inset-light);
   animation: select-slide-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 

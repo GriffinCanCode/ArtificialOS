@@ -107,7 +107,7 @@ export const advancedExamples = {
       });
 
       // Simulate step delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
     toast.dismiss("progress-demo");
@@ -119,7 +119,7 @@ export const advancedExamples = {
    */
   promiseLoading: () => {
     const fetchData = async () => {
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
       return { data: "Sample data" };
     };
 
@@ -165,7 +165,7 @@ export const realWorldExamples = {
         toast.progress(`Uploading ${file.name}`, i, {
           id: "file-upload",
         });
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise((resolve) => setTimeout(resolve, 200));
       }
 
       return { success: true, url: "/uploads/file.pdf" };
@@ -200,7 +200,7 @@ export const realWorldExamples = {
 
     try {
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise((resolve) => setTimeout(resolve, 1500));
 
       toast.dismiss(id);
       toast.success("Form submitted successfully!", {
@@ -230,7 +230,7 @@ export const realWorldExamples = {
         id: "bulk-delete",
       });
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
       deletedItems.push(itemIds[i]);
     }
 
@@ -286,7 +286,7 @@ export const realWorldExamples = {
           });
 
           // Simulate save
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise((resolve) => setTimeout(resolve, 500));
 
           toast.dismiss(id);
           toast.success("Saved", {
@@ -314,7 +314,7 @@ export const realWorldExamples = {
         description: "Please wait...",
       });
 
-      await new Promise(resolve => setTimeout(resolve, step.duration));
+      await new Promise((resolve) => setTimeout(resolve, step.duration));
       toast.dismiss(id);
     }
 
@@ -351,7 +351,7 @@ export const realWorldExamples = {
     for (const item of items) {
       try {
         // Simulate update
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
         results.success++;
       } catch {
         results.failed++;

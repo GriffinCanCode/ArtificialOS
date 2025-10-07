@@ -611,7 +611,11 @@ fn test_memfs_capacity_concurrent_writes() {
             total_size += metadata.size;
         }
     }
-    assert!(total_size <= 1000, "Total size {} exceeds capacity 1000", total_size);
+    assert!(
+        total_size <= 1000,
+        "Total size {} exceeds capacity 1000",
+        total_size
+    );
 }
 
 #[test]

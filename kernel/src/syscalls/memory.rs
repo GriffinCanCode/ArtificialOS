@@ -108,7 +108,7 @@ impl SyscallExecutor {
             }
             None => {
                 // Global GC - run comprehensive cleanup
-                use crate::memory::{GlobalGarbageCollector, GcStrategy};
+                use crate::memory::{GcStrategy, GlobalGarbageCollector};
 
                 info!("PID {} triggered global GC", pid);
 
@@ -120,7 +120,10 @@ impl SyscallExecutor {
 
                 info!(
                     "Global GC completed: freed {} bytes ({} blocks) from {} processes in {}ms",
-                    stats.freed_bytes, stats.freed_blocks, stats.processes_cleaned, stats.duration_ms
+                    stats.freed_bytes,
+                    stats.freed_blocks,
+                    stats.processes_cleaned,
+                    stats.duration_ms
                 );
 
                 let data = serde_json::to_vec(&serde_json::json!({

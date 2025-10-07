@@ -12,9 +12,9 @@
 
 /// <reference types="vite/client" />
 
-import { logger } from '../../../core/utils/monitoring/logger';
-import type { LoadedApp, CacheEntry } from './types';
-import { NativeAppError, ErrorCode } from './types';
+import { logger } from "../../../core/utils/monitoring/logger";
+import type { LoadedApp, CacheEntry } from "./types";
+import { NativeAppError, ErrorCode } from "./types";
 
 // ============================================================================
 // Constants
@@ -46,8 +46,8 @@ class Loader {
     if (cached) {
       cached.refCount++;
       cached.lastAccessed = Date.now();
-      logger.debug('Native app loaded from cache', {
-        component: 'NativeLoader',
+      logger.debug("Native app loaded from cache", {
+        component: "NativeLoader",
         packageId,
         refCount: cached.refCount,
       });
@@ -57,8 +57,8 @@ class Loader {
     // Check if already loading
     const existing = this.loading.get(packageId);
     if (existing) {
-      logger.debug('Native app load already in progress', {
-        component: 'NativeLoader',
+      logger.debug("Native app load already in progress", {
+        component: "NativeLoader",
         packageId,
       });
       return existing;
@@ -84,8 +84,8 @@ class Loader {
    * Load module from bundle path
    */
   private async loadModule(packageId: string, bundlePath: string): Promise<LoadedApp> {
-    logger.info('Loading native app module', {
-      component: 'NativeLoader',
+    logger.info("Loading native app module", {
+      component: "NativeLoader",
       packageId,
       bundlePath,
     });
@@ -93,6 +93,9 @@ class Loader {
     const startTime = performance.now();
 
     try {
+      // Load CSS first if it exists
+      await this.loadCSS(packageId, bundlePath);
+
       // Add timeout
       const module = await Promise.race([
         this.importModule(bundlePath),
@@ -109,7 +112,7 @@ class Loader {
       }
 
       // Validate component is a function
-      if (typeof module.default !== 'function') {
+      if (typeof module.default !== "function") {
         throw new NativeAppError(
           `Default export of ${packageId} is not a valid React component`,
           ErrorCode.INVALID_COMPONENT,
@@ -118,8 +121,8 @@ class Loader {
       }
 
       const loadTime = performance.now() - startTime;
-      logger.info('Native app loaded successfully', {
-        component: 'NativeLoader',
+      logger.info("Native app loaded successfully", {
+        component: "NativeLoader",
         packageId,
         loadTime: `${loadTime.toFixed(2)}ms`,
       });
@@ -132,8 +135,8 @@ class Loader {
       };
     } catch (error) {
       const loadTime = performance.now() - startTime;
-      logger.error('Failed to load native app', error as Error, {
-        component: 'NativeLoader',
+      logger.error("Failed to load native app", error as Error, {
+        component: "NativeLoader",
         packageId,
         bundlePath,
         loadTime: `${loadTime.toFixed(2)}ms`,
@@ -148,6 +151,76 @@ class Loader {
         ErrorCode.LOAD_FAILED,
         packageId
       );
+    }
+  }
+
+  /**
+   * Load CSS for native app
+   */
+  private async loadCSS(packageId: string, bundlePath: string): Promise<void> {
+    // Derive CSS path from bundle path
+    // bundlePath is like: /native-apps/file-explorer/index.js
+    // CSS path is like: /native-apps/file-explorer/assets/index.css
+    const basePath = bundlePath.substring(0, bundlePath.lastIndexOf("/"));
+    const cssPath = `${basePath}/assets/index.css`;
+
+    // Check if CSS already loaded
+    const existingLink = document.querySelector(`link[data-app-id="${packageId}"]`);
+    if (existingLink) {
+      logger.debug("CSS already loaded for app", {
+        component: "NativeLoader",
+        packageId,
+      });
+      return;
+    }
+
+    // Try to fetch CSS to see if it exists
+    try {
+      const response = await fetch(cssPath, { method: "HEAD" });
+      if (!response.ok) {
+        // CSS doesn't exist, which is fine - not all apps need CSS
+        logger.debug("No CSS file found for app (this is ok)", {
+          component: "NativeLoader",
+          packageId,
+          cssPath,
+        });
+        return;
+      }
+
+      // CSS exists, inject it
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = cssPath;
+      link.setAttribute("data-app-id", packageId);
+
+      // Wait for CSS to load
+      await new Promise<void>((resolve, reject) => {
+        link.onload = () => {
+          logger.debug("CSS loaded successfully", {
+            component: "NativeLoader",
+            packageId,
+            cssPath,
+          });
+          resolve();
+        };
+        link.onerror = () => {
+          // CSS load failed, but don't fail the whole module load
+          logger.warn("CSS load failed", {
+            component: "NativeLoader",
+            packageId,
+            cssPath,
+          });
+          resolve();
+        };
+        document.head.appendChild(link);
+      });
+    } catch (error) {
+      // Failed to check/load CSS, but don't fail the whole load
+      logger.debug("CSS check/load failed (non-critical)", {
+        component: "NativeLoader",
+        packageId,
+        error: (error as Error).message,
+      });
     }
   }
 
@@ -173,9 +246,7 @@ class Loader {
   private timeout(ms: number): Promise<never> {
     return new Promise((_, reject) => {
       setTimeout(() => {
-        reject(
-          new NativeAppError('Module load timeout', ErrorCode.TIMEOUT)
-        );
+        reject(new NativeAppError("Module load timeout", ErrorCode.TIMEOUT));
       }, ms);
     });
   }
@@ -195,8 +266,8 @@ class Loader {
       lastAccessed: Date.now(),
     });
 
-    logger.debug('Added to cache', {
-      component: 'NativeLoader',
+    logger.debug("Added to cache", {
+      component: "NativeLoader",
       packageId,
       cacheSize: this.cache.size,
     });
@@ -225,16 +296,20 @@ class Loader {
         try {
           entry.app.cleanup();
         } catch (error) {
-          logger.error('Cleanup failed during eviction', error as Error, {
-            component: 'NativeLoader',
+          logger.error("Cleanup failed during eviction", error as Error, {
+            component: "NativeLoader",
             packageId: oldestKey,
           });
         }
       }
+
+      // Remove CSS
+      this.removeCSS(oldestKey);
+
       this.cache.delete(oldestKey);
 
-      logger.debug('Evicted from cache', {
-        component: 'NativeLoader',
+      logger.debug("Evicted from cache", {
+        component: "NativeLoader",
         packageId: oldestKey,
       });
     }
@@ -249,8 +324,8 @@ class Loader {
     if (!entry) return;
 
     entry.refCount = Math.max(0, entry.refCount - 1);
-    logger.debug('Released app reference', {
-      component: 'NativeLoader',
+    logger.debug("Released app reference", {
+      component: "NativeLoader",
       packageId,
       refCount: entry.refCount,
     });
@@ -275,16 +350,20 @@ class Loader {
           try {
             entry.app.cleanup();
           } catch (error) {
-            logger.error('Cleanup failed', error as Error, {
-              component: 'NativeLoader',
+            logger.error("Cleanup failed", error as Error, {
+              component: "NativeLoader",
               packageId,
             });
           }
         }
+
+        // Remove CSS
+        this.removeCSS(packageId);
+
         this.cache.delete(packageId);
 
-        logger.debug('Cleaned up stale entry', {
-          component: 'NativeLoader',
+        logger.debug("Cleaned up stale entry", {
+          component: "NativeLoader",
           packageId,
         });
       }
@@ -306,6 +385,20 @@ class Loader {
   }
 
   /**
+   * Remove CSS for a specific app
+   */
+  private removeCSS(packageId: string): void {
+    const link = document.querySelector(`link[data-app-id="${packageId}"]`);
+    if (link) {
+      link.remove();
+      logger.debug("CSS removed", {
+        component: "NativeLoader",
+        packageId,
+      });
+    }
+  }
+
+  /**
    * Clear all cache
    */
   clearCache(): void {
@@ -314,17 +407,20 @@ class Loader {
         try {
           entry.app.cleanup();
         } catch (error) {
-          logger.error('Cleanup failed during clear', error as Error, {
-            component: 'NativeLoader',
+          logger.error("Cleanup failed during clear", error as Error, {
+            component: "NativeLoader",
             packageId,
           });
         }
       }
+
+      // Remove CSS
+      this.removeCSS(packageId);
     }
     this.cache.clear();
     this.loading.clear();
 
-    logger.info('Cache cleared', { component: 'NativeLoader' });
+    logger.info("Cache cleared", { component: "NativeLoader" });
   }
 
   /**

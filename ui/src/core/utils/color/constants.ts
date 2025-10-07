@@ -11,7 +11,9 @@ export const THEME_COLORS = {
   primary: "#667eea",
   secondary: "#764ba2",
   accent: "#f093fb",
-  get brand() { return this.primary; }, // Alias for brand color
+  get brand() {
+    return this.primary;
+  }, // Alias for brand color
 } as const;
 
 // ============================================================================

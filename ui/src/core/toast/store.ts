@@ -22,8 +22,7 @@ export const useToastStore = create<ToastStoreState>()(
       toasts: new Map(),
       position: "bottom-right",
 
-      setPosition: (position) =>
-        set({ position }, false, "toast/setPosition"),
+      setPosition: (position) => set({ position }, false, "toast/setPosition"),
 
       addToast: (toast) =>
         set(
@@ -47,8 +46,7 @@ export const useToastStore = create<ToastStoreState>()(
           "toast/removeToast"
         ),
 
-      clearAll: () =>
-        set({ toasts: new Map() }, false, "toast/clearAll"),
+      clearAll: () => set({ toasts: new Map() }, false, "toast/clearAll"),
     }),
     { name: "ToastStore" }
   )
@@ -56,9 +54,10 @@ export const useToastStore = create<ToastStoreState>()(
 
 // Selectors for performance optimization
 export const useToastPosition = () => useToastStore((state) => state.position);
-export const useToastActions = () => useToastStore((state) => ({
-  setPosition: state.setPosition,
-  addToast: state.addToast,
-  removeToast: state.removeToast,
-  clearAll: state.clearAll,
-}));
+export const useToastActions = () =>
+  useToastStore((state) => ({
+    setPosition: state.setPosition,
+    addToast: state.addToast,
+    removeToast: state.removeToast,
+    clearAll: state.clearAll,
+  }));

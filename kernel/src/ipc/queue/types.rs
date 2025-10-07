@@ -56,7 +56,10 @@ impl QueueMessage {
     }
 
     /// Read the actual data from MemoryManager
-    pub fn read_data(&self, memory_manager: &crate::memory::MemoryManager) -> Result<Vec<u8>, String> {
+    pub fn read_data(
+        &self,
+        memory_manager: &crate::memory::MemoryManager,
+    ) -> Result<Vec<u8>, String> {
         if self.data_length == 0 {
             return Ok(Vec::new());
         }

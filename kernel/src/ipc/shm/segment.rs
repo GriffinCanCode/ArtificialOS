@@ -79,7 +79,8 @@ impl SharedSegment {
 
         // Use memory manager to write data to the shared memory region
         // This writes to our simulated physical memory storage
-        self.memory_manager.write_bytes(write_address, data)
+        self.memory_manager
+            .write_bytes(write_address, data)
             .map_err(|_| ShmError::InvalidRange {
                 offset,
                 size: data.len(),
@@ -104,7 +105,9 @@ impl SharedSegment {
 
         // Use memory manager to read data from the shared memory region
         // This reads from our simulated physical memory storage
-        let data = self.memory_manager.read_bytes(read_address, size)
+        let data = self
+            .memory_manager
+            .read_bytes(read_address, size)
             .map_err(|_| ShmError::InvalidRange {
                 offset,
                 size,

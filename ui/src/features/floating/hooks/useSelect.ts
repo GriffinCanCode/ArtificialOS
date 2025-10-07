@@ -124,7 +124,9 @@ export function useSelect({
     : null;
 
   const interactions = useInteractions(
-    typeahead ? [click, dismiss, role, listNavigation, typeahead] : [click, dismiss, role, listNavigation]
+    typeahead
+      ? [click, dismiss, role, listNavigation, typeahead]
+      : [click, dismiss, role, listNavigation]
   );
 
   const selectId = useMemo(() => generateId("select"), []);

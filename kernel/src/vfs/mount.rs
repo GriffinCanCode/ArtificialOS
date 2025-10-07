@@ -79,7 +79,8 @@ impl MountManager {
             )));
         }
 
-        self.mounts.insert(mount_path.clone(), MountEntry { fs, readonly });
+        self.mounts
+            .insert(mount_path.clone(), MountEntry { fs, readonly });
 
         // Update mount order (longest paths first)
         let mut order = self.mount_order.write();

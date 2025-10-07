@@ -3,9 +3,9 @@
  * Renders text using OpenType.js with advanced typography features
  */
 
-import React, { useEffect, useRef, useState } from 'react';
-import { typography, TypographyOptions, typographyPresets } from '../../../core/utils/typography';
-import './CustomText.css';
+import React, { useEffect, useRef, useState } from "react";
+import { typography, TypographyOptions, typographyPresets } from "../../../core/utils/typography";
+import "./CustomText.css";
 
 export interface CustomTextProps extends TypographyOptions {
   text: string;
@@ -16,7 +16,7 @@ export interface CustomTextProps extends TypographyOptions {
   fill?: string;
   stroke?: string;
   strokeWidth?: number;
-  animate?: 'fadeIn' | 'slideUp' | 'draw' | 'morph' | 'glitch' | 'none';
+  animate?: "fadeIn" | "slideUp" | "draw" | "morph" | "glitch" | "none";
   animationDuration?: number;
   gradient?: {
     colors: string[];
@@ -37,14 +37,14 @@ export interface CustomTextProps extends TypographyOptions {
 
 export const CustomText: React.FC<CustomTextProps> = ({
   text,
-  fontName = 'system',
+  fontName = "system",
   preset,
-  className = '',
+  className = "",
   style = {},
-  fill = 'currentColor',
+  fill = "currentColor",
   stroke,
   strokeWidth = 0,
-  animate = 'none',
+  animate = "none",
   animationDuration = 1,
   gradient,
   shadow,
@@ -84,11 +84,7 @@ export const CustomText: React.FC<CustomTextProps> = ({
           setPathData(path);
 
           // Measure text for SVG viewBox
-          const measurements = typography.measureText(
-            text,
-            fontName,
-            options.fontSize || 72
-          );
+          const measurements = typography.measureText(text, fontName, options.fontSize || 72);
           setDimensions({
             width: measurements.width,
             height: measurements.height,
@@ -98,7 +94,7 @@ export const CustomText: React.FC<CustomTextProps> = ({
           onLoad?.();
         }
       } catch (error) {
-        console.error('Error rendering custom text:', error);
+        console.error("Error rendering custom text:", error);
         setIsLoaded(true);
       }
     };
@@ -126,7 +122,7 @@ export const CustomText: React.FC<CustomTextProps> = ({
     );
   }
 
-  const animationClass = animate !== 'none' ? `animate-${animate}` : '';
+  const animationClass = animate !== "none" ? `animate-${animate}` : "";
 
   return (
     <svg
@@ -134,19 +130,16 @@ export const CustomText: React.FC<CustomTextProps> = ({
       className={`custom-text ${animationClass} ${className}`}
       viewBox={`0 0 ${dimensions.width} ${dimensions.height * 1.2}`}
       style={{
-        width: '100%',
-        height: 'auto',
-        overflow: 'visible',
+        width: "100%",
+        height: "auto",
+        overflow: "visible",
         ...style,
       }}
     >
       <defs>
         {/* Gradient definition */}
         {gradient && (
-          <linearGradient
-            id={gradientId}
-            gradientTransform={`rotate(${gradient.angle || 0})`}
-          >
+          <linearGradient id={gradientId} gradientTransform={`rotate(${gradient.angle || 0})`}>
             {gradient.colors.map((color, index) => (
               <stop
                 key={index}
@@ -191,9 +184,7 @@ export const CustomText: React.FC<CustomTextProps> = ({
         fill={gradient ? `url(#${gradientId})` : fill}
         stroke={stroke}
         strokeWidth={strokeWidth}
-        filter={
-          shadow ? `url(#${shadowId})` : glow ? `url(#${glowId})` : undefined
-        }
+        filter={shadow ? `url(#${shadowId})` : glow ? `url(#${glowId})` : undefined}
         style={{
           animationDuration: `${animationDuration}s`,
         }}

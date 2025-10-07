@@ -69,7 +69,11 @@
   align-items: flex-start;
   gap: var(--space-md, 1rem);
   padding: 1.25rem;
-  background: linear-gradient(135deg, var(--color-primary-alpha-10) 0%, var(--color-secondary-alpha-10) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-alpha-10) 0%,
+    var(--color-secondary-alpha-10) 100%
+  );
   border-radius: 14px;
   animation:
     fade-in 0.4s ease-out,
@@ -77,9 +81,7 @@
   backdrop-filter: var(--backdrop-blur-light);
   -webkit-backdrop-filter: var(--backdrop-blur-light);
   /* Optimized box-shadow - kept minimal for performance */
-  box-shadow:
-    var(--shadow-inset-light),
-    var(--shadow-xs);
+  box-shadow: var(--shadow-inset-light), var(--shadow-xs);
   position: relative;
   overflow: hidden;
   contain: layout style paint;
@@ -230,9 +232,7 @@
   background: var(--bg-glass);
   backdrop-filter: var(--backdrop-blur-medium);
   -webkit-backdrop-filter: var(--backdrop-blur-medium);
-  box-shadow:
-    var(--shadow-large),
-    var(--shadow-inset-light);
+  box-shadow: var(--shadow-large), var(--shadow-inset-light);
 }
 
 /* Sophisticated multi-color gradient border for build preview */
@@ -285,15 +285,8 @@
 .building-app-preview:has(.building-app-container)::after {
   opacity: 0.3;
   background-image:
-    linear-gradient(
-      var(--color-info-alpha-10) 1px,
-      transparent 1px
-    ),
-    linear-gradient(
-      90deg,
-      var(--color-info-alpha-10) 1px,
-      transparent 1px
-    );
+    linear-gradient(var(--color-info-alpha-10) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-info-alpha-10) 1px, transparent 1px);
   animation: grid-scan 3s linear infinite;
 }
 
@@ -416,9 +409,7 @@
 .building-app-container:not(:empty) {
   background: var(--bg-glass);
   padding: 2.25rem;
-  box-shadow:
-    var(--shadow-inset-light),
-    var(--shadow-medium);
+  box-shadow: var(--shadow-inset-light), var(--shadow-medium);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 }

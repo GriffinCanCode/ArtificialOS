@@ -7,15 +7,14 @@ use super::super::traits::PipeChannel;
 use super::super::types::{IpcResult, PipeId};
 use super::pipe::Pipe;
 use super::types::{
-    PipeError, PipeStats, DEFAULT_PIPE_CAPACITY, MAX_PIPES_PER_PROCESS,
-    MAX_PIPE_CAPACITY,
+    PipeError, PipeStats, DEFAULT_PIPE_CAPACITY, MAX_PIPES_PER_PROCESS, MAX_PIPE_CAPACITY,
 };
 use crate::core::types::{Pid, Size};
 use crate::memory::MemoryManager;
 use dashmap::DashMap;
 use log::{info, warn};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::Arc;
 
 /// Pipe manager
 pub struct PipeManager {
@@ -24,6 +23,8 @@ pub struct PipeManager {
     // Track pipe count per process
     process_pipes: Arc<DashMap<Pid, Size>>,
     memory_manager: MemoryManager,
+    // Free IDs for recycling (prevents ID exhaustion)
+    free_ids: Arc<Mutex<Vec<PipeId>>>,
 }
 
 impl PipeManager {
@@ -53,8 +54,16 @@ impl PipeManager {
             .min(MAX_PIPE_CAPACITY);
 
         // Check per-process limits
-        let reader_count = self.process_pipes.get(&reader_pid).map(|r| *r.value()).unwrap_or(0);
-        let writer_count = self.process_pipes.get(&writer_pid).map(|r| *r.value()).unwrap_or(0);
+        let reader_count = self
+            .process_pipes
+            .get(&reader_pid)
+            .map(|r| *r.value())
+            .unwrap_or(0);
+        let writer_count = self
+            .process_pipes
+            .get(&writer_pid)
+            .map(|r| *r.value())
+            .unwrap_or(0);
 
         if reader_count >= MAX_PIPES_PER_PROCESS || writer_count >= MAX_PIPES_PER_PROCESS {
             return Err(PipeError::ProcessLimitExceeded(
@@ -97,7 +106,8 @@ impl PipeManager {
     }
 
     pub fn write(&self, pipe_id: PipeId, pid: Pid, data: &[u8]) -> Result<Size, PipeError> {
-        let mut pipe = self.pipes
+        let mut pipe = self
+            .pipes
             .get_mut(&pipe_id)
             .ok_or(PipeError::NotFound(pipe_id))?;
 
@@ -110,16 +120,15 @@ impl PipeManager {
 
         info!(
             "Pipe {} write: {} bytes ({} buffered)",
-            pipe_id,
-            written,
-            buffered
+            pipe_id, written, buffered
         );
 
         Ok(written)
     }
 
     pub fn read(&self, pipe_id: PipeId, pid: Pid, size: Size) -> Result<Vec<u8>, PipeError> {
-        let mut pipe = self.pipes
+        let mut pipe = self
+            .pipes
             .get_mut(&pipe_id)
             .ok_or(PipeError::NotFound(pipe_id))?;
 
@@ -141,7 +150,8 @@ impl PipeManager {
     }
 
     pub fn close(&self, pipe_id: PipeId, pid: Pid) -> Result<(), PipeError> {
-        let mut pipe = self.pipes
+        let mut pipe = self
+            .pipes
             .get_mut(&pipe_id)
             .ok_or(PipeError::NotFound(pipe_id))?;
 
@@ -159,7 +169,10 @@ impl PipeManager {
     }
 
     pub fn destroy(&self, pipe_id: PipeId) -> Result<(), PipeError> {
-        let (_, pipe) = self.pipes.remove(&pipe_id).ok_or(PipeError::NotFound(pipe_id))?;
+        let (_, pipe) = self
+            .pipes
+            .remove(&pipe_id)
+            .ok_or(PipeError::NotFound(pipe_id))?;
 
         let capacity = pipe.capacity;
         let address = pipe.address;
@@ -210,17 +223,17 @@ impl PipeManager {
         let (_, used, _) = self.memory_manager.info();
         info!(
             "Destroyed pipe {} (reclaimed {} bytes at 0x{:x}, {} bytes used memory)",
-            pipe_id,
-            capacity,
-            address,
-            used
+            pipe_id, capacity, address, used
         );
 
         Ok(())
     }
 
     pub fn stats(&self, pipe_id: PipeId) -> Result<PipeStats, PipeError> {
-        let pipe = self.pipes.get(&pipe_id).ok_or(PipeError::NotFound(pipe_id))?;
+        let pipe = self
+            .pipes
+            .get(&pipe_id)
+            .ok_or(PipeError::NotFound(pipe_id))?;
 
         Ok(PipeStats {
             id: pipe.id,
@@ -233,7 +246,8 @@ impl PipeManager {
     }
 
     pub fn cleanup_process(&self, pid: Pid) -> Size {
-        let pipe_ids: Vec<u32> = self.pipes
+        let pipe_ids: Vec<u32> = self
+            .pipes
             .iter()
             .filter(|entry| entry.reader_pid == pid || entry.writer_pid == pid)
             .map(|entry| entry.id)

@@ -29,7 +29,10 @@ impl MacOSNamespaceManager {
     fn create_macos_isolation(&self, config: &NamespaceConfig) -> NamespaceResult<()> {
         let ns_name = config.id.as_str();
 
-        info!("Creating macOS network isolation for PID {}: {}", config.pid, ns_name);
+        info!(
+            "Creating macOS network isolation for PID {}: {}",
+            config.pid, ns_name
+        );
 
         // macOS doesn't have true network namespaces, but we can:
         // 1. Use pfctl (packet filter) to create per-process rules
@@ -132,9 +135,7 @@ impl NamespaceProvider for MacOSNamespaceManager {
     }
 
     fn get_stats(&self, id: &NamespaceId) -> Option<NamespaceStats> {
-        self.namespaces
-            .get(id)
-            .and_then(|info| info.stats.clone())
+        self.namespaces.get(id).and_then(|info| info.stats.clone())
     }
 
     fn is_supported(&self) -> bool {

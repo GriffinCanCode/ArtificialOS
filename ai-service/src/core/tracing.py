@@ -25,6 +25,7 @@ def _get_logger() -> structlog.BoundLogger:
         logger = structlog.get_logger(__name__)
     return logger
 
+
 F = TypeVar("F", bound=Callable[..., Any])
 
 # Context variables for trace propagation

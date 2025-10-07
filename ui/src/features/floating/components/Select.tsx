@@ -15,7 +15,14 @@ import "./Select.css";
 // ============================================================================
 
 export const Select: React.FC<SelectProps> = React.memo(
-  ({ options, value, onChange, placeholder = "Select...", disabled = false, searchable = false }) => {
+  ({
+    options,
+    value,
+    onChange,
+    placeholder = "Select...",
+    disabled = false,
+    searchable = false,
+  }) => {
     const select = useSelect({
       searchable,
     });
@@ -31,8 +38,7 @@ export const Select: React.FC<SelectProps> = React.memo(
       }
       const query = select.searchQuery.toLowerCase();
       return options.filter(
-        (opt) =>
-          typeof opt.label === "string" && opt.label.toLowerCase().includes(query)
+        (opt) => typeof opt.label === "string" && opt.label.toLowerCase().includes(query)
       );
     }, [options, select.searchQuery, searchable]);
 
@@ -51,13 +57,8 @@ export const Select: React.FC<SelectProps> = React.memo(
           disabled={disabled}
           {...select.getReferenceProps()}
         >
-          <span className="select-value">
-            {selectedOption?.label || placeholder}
-          </span>
-          <ChevronDown
-            size={16}
-            className={`select-icon ${select.isOpen ? "rotate" : ""}`}
-          />
+          <span className="select-value">{selectedOption?.label || placeholder}</span>
+          <ChevronDown size={16} className={`select-icon ${select.isOpen ? "rotate" : ""}`} />
         </button>
         {select.isOpen && (
           <FloatingPortal>

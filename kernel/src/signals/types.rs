@@ -3,7 +3,7 @@
  * UNIX-style signal definitions and result types
  */
 
-use crate::core::serde::{is_false, is_zero_u64};
+use crate::core::serde::is_zero_u64;
 use crate::core::types::Pid;
 use serde::{Deserialize, Serialize};
 use std::fmt;

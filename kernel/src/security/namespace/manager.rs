@@ -34,7 +34,10 @@ impl NamespaceManager {
             NamespaceProviderImpl::MacOS(_) => "macOS (packet filters)",
             NamespaceProviderImpl::Simulation(_) => "Simulation",
         };
-        info!("Network namespace manager initialized using: {}", platform_name);
+        info!(
+            "Network namespace manager initialized using: {}",
+            platform_name
+        );
         Self { provider }
     }
 

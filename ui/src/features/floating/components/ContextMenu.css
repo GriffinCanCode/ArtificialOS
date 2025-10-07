@@ -14,10 +14,7 @@
   -webkit-backdrop-filter: var(--backdrop-blur-strong);
   color: var(--color-text-primary);
   border: 1px solid var(--color-primary-alpha-40);
-  box-shadow:
-    var(--shadow-large),
-    var(--shadow-glow-secondary),
-    var(--shadow-inset-light);
+  box-shadow: var(--shadow-large), var(--shadow-glow-secondary), var(--shadow-inset-light);
   animation: context-menu-fade-in 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 

@@ -76,7 +76,10 @@ export function complementary(baseColor: ColorInput): string[] {
  */
 export function splitComplementary(baseColor: ColorInput): string[] {
   const base = colord(baseColor);
-  return base.harmonies("double-split-complementary").slice(0, 3).map((c) => c.toHex());
+  return base
+    .harmonies("double-split-complementary")
+    .slice(0, 3)
+    .map((c) => c.toHex());
 }
 
 /**
@@ -118,7 +121,10 @@ export function harmony(baseColor: ColorInput, type: HarmonyType): string[] {
     case "complementary":
       return base.harmonies("complementary").map((c) => c.toHex());
     case "split-complementary":
-      return base.harmonies("double-split-complementary").slice(0, 3).map((c) => c.toHex());
+      return base
+        .harmonies("double-split-complementary")
+        .slice(0, 3)
+        .map((c) => c.toHex());
     case "triadic":
       return base.harmonies("triadic").map((c) => c.toHex());
     case "tetradic":
@@ -136,10 +142,7 @@ export function harmony(baseColor: ColorInput, type: HarmonyType): string[] {
 /**
  * Generate monochromatic palette (variations of single hue)
  */
-export function monochrome(
-  baseColor: ColorInput,
-  options: PaletteOptions = {}
-): string[] {
+export function monochrome(baseColor: ColorInput, options: PaletteOptions = {}): string[] {
   const { count = 5, variation = "mixed" } = options;
   const base = color(baseColor);
   const colors: string[] = [];

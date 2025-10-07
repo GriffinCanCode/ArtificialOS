@@ -3,9 +3,9 @@
  * Type definitions for native TypeScript/React applications
  */
 
-import type { ComponentState } from '../../dynamics/state/state';
-import type { ToolExecutor } from '../../dynamics/execution/executor';
-import type { NativeAppContext, NativeAppProps } from '../../../core/sdk';
+import type { ComponentState } from "../../dynamics/state/state";
+import type { ToolExecutor } from "../../dynamics/execution/executor";
+import type { NativeAppContext, NativeAppProps } from "../../../core/sdk";
 
 // ============================================================================
 // App Type Enum
@@ -16,11 +16,11 @@ import type { NativeAppContext, NativeAppProps } from '../../../core/sdk';
  */
 export enum AppType {
   /** Blueprint apps (JSON-based, AI-generated) */
-  BLUEPRINT = 'blueprint',
+  BLUEPRINT = "blueprint",
   /** Native web apps (TypeScript/React, custom components) */
-  NATIVE = 'native_web',
+  NATIVE = "native_web",
   /** Native process apps (OS executables) */
-  PROCESS = 'native_proc',
+  PROCESS = "native_proc",
 }
 
 // ============================================================================
@@ -70,7 +70,7 @@ export interface ProcessManifest {
   /** Working directory */
   workingDir: string;
   /** UI type */
-  uiType: 'terminal' | 'headless' | 'custom';
+  uiType: "terminal" | "headless" | "custom";
   /** Environment variables */
   env: Record<string, string>;
 }
@@ -128,7 +128,7 @@ export class NativeAppError extends Error {
     public appId?: string
   ) {
     super(message);
-    this.name = 'NativeAppError';
+    this.name = "NativeAppError";
   }
 }
 
@@ -136,11 +136,11 @@ export class NativeAppError extends Error {
  * Error codes
  */
 export enum ErrorCode {
-  LOAD_FAILED = 'LOAD_FAILED',
-  NO_DEFAULT_EXPORT = 'NO_DEFAULT_EXPORT',
-  INVALID_COMPONENT = 'INVALID_COMPONENT',
-  BUNDLE_NOT_FOUND = 'BUNDLE_NOT_FOUND',
-  TIMEOUT = 'TIMEOUT',
+  LOAD_FAILED = "LOAD_FAILED",
+  NO_DEFAULT_EXPORT = "NO_DEFAULT_EXPORT",
+  INVALID_COMPONENT = "INVALID_COMPONENT",
+  BUNDLE_NOT_FOUND = "BUNDLE_NOT_FOUND",
+  TIMEOUT = "TIMEOUT",
 }
 
 // ============================================================================

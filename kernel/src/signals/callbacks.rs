@@ -46,7 +46,10 @@ impl CallbackRegistry {
             SignalError::HandlerError(format!("Handler {} not found", handler_id))
         })?;
 
-        debug!("Executing handler {} for signal {:?} on PID {}", handler_id, signal, pid);
+        debug!(
+            "Executing handler {} for signal {:?} on PID {}",
+            handler_id, signal, pid
+        );
         handler(pid, signal)
     }
 

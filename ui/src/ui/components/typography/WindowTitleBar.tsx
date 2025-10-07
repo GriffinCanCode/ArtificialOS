@@ -3,8 +3,8 @@
  * Styled window title with typography effects
  */
 
-import React from 'react';
-import './WindowTitleBar.css';
+import React from "react";
+import "./WindowTitleBar.css";
 
 export interface WindowTitleBarProps {
   title: string;
@@ -17,13 +17,13 @@ export const WindowTitleBar: React.FC<WindowTitleBarProps> = ({
   title,
   icon,
   active = false,
-  className = '',
+  className = "",
 }) => {
   return (
-    <div className={`window-title-bar ${active ? 'active' : ''} ${className}`}>
+    <div className={`window-title-bar ${active ? "active" : ""} ${className}`}>
       {icon && <span className="window-title-icon">{icon}</span>}
       <span className="window-title-text">
-        {title.split('').map((char, index) => (
+        {title.split("").map((char, index) => (
           <span
             key={index}
             className="window-title-char"
@@ -31,7 +31,7 @@ export const WindowTitleBar: React.FC<WindowTitleBarProps> = ({
               animationDelay: `${index * 0.02}s`,
             }}
           >
-            {char === ' ' ? '\u00A0' : char}
+            {char === " " ? "\u00A0" : char}
           </span>
         ))}
       </span>

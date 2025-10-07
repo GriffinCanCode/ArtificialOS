@@ -22,7 +22,7 @@
   --color-primary-700: oklch(44% 0.17 270);
   --color-primary-800: oklch(36% 0.14 270);
   --color-primary-900: oklch(28% 0.12 270);
-  --color-primary-950: oklch(20% 0.10 270);
+  --color-primary-950: oklch(20% 0.1 270);
 
   /* Secondary Scale - Deep Purple */
   --color-secondary-50: oklch(98% 0.02 300);
@@ -35,12 +35,12 @@
   --color-secondary-700: oklch(42% 0.16 300);
   --color-secondary-800: oklch(34% 0.14 300);
   --color-secondary-900: oklch(26% 0.12 300);
-  --color-secondary-950: oklch(18% 0.10 300);
+  --color-secondary-950: oklch(18% 0.1 300);
 
   /* Accent Scale - Light Purple/Pink */
   --color-accent-50: oklch(98% 0.03 330);
   --color-accent-100: oklch(95% 0.05 330);
-  --color-accent-200: oklch(90% 0.10 330);
+  --color-accent-200: oklch(90% 0.1 330);
   --color-accent-300: oklch(85% 0.14 330);
   --color-accent-400: oklch(78% 0.17 330);
   --color-accent-500: oklch(75% 0.18 330); /* Base #f093fb */
@@ -65,7 +65,7 @@
   --color-success-700: oklch(54% 0.16 145);
   --color-success-800: oklch(46% 0.14 145);
   --color-success-900: oklch(38% 0.12 145);
-  --color-success-950: oklch(30% 0.10 145);
+  --color-success-950: oklch(30% 0.1 145);
 
   /* Warning - Yellow/Orange */
   --color-warning-50: oklch(98% 0.02 85);
@@ -78,7 +78,7 @@
   --color-warning-700: oklch(62% 0.16 85);
   --color-warning-800: oklch(54% 0.14 85);
   --color-warning-900: oklch(46% 0.12 85);
-  --color-warning-950: oklch(38% 0.10 85);
+  --color-warning-950: oklch(38% 0.1 85);
 
   /* Error/Danger - Red/Pink */
   --color-error-50: oklch(98% 0.02 25);
@@ -91,7 +91,7 @@
   --color-error-700: oklch(56% 0.16 25);
   --color-error-800: oklch(48% 0.14 25);
   --color-error-900: oklch(40% 0.12 25);
-  --color-error-950: oklch(32% 0.10 25);
+  --color-error-950: oklch(32% 0.1 25);
 
   /* Info - Blue */
   --color-info-50: oklch(98% 0.02 240);
@@ -104,7 +104,7 @@
   --color-info-700: oklch(52% 0.16 240);
   --color-info-800: oklch(44% 0.14 240);
   --color-info-900: oklch(36% 0.12 240);
-  --color-info-950: oklch(28% 0.10 240);
+  --color-info-950: oklch(28% 0.1 240);
 
   /* ============================================================================
      NEUTRAL/GRAY SCALE

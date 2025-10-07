@@ -7,12 +7,12 @@
 // Core
 // ============================================================================
 
-export * from './core/types';
-export { loader } from './core/loader';
+export * from "./core/types";
+export { loader } from "./core/loader";
 
 // ============================================================================
 // Components
 // ============================================================================
 
-export { Renderer } from './components/renderer';
-export { Content } from './components/content';
+export { Renderer } from "./components/renderer";
+export { Content } from "./components/content";

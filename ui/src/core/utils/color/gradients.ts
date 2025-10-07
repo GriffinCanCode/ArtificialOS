@@ -210,11 +210,7 @@ export function reverseGradient(gradientColors: string[]): string[] {
 /**
  * Create gradient with smooth transitions using bezier-like easing
  */
-export function smoothGradient(
-  from: ColorInput,
-  to: ColorInput,
-  steps: number = 10
-): string[] {
+export function smoothGradient(from: ColorInput, to: ColorInput, steps: number = 10): string[] {
   return gradient(from, to, steps, { easing: "ease-in-out" });
 }
 

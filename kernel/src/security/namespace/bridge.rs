@@ -36,8 +36,9 @@ impl BridgeManager {
     /// Initialize the netlink connection (must be called in async context)
     #[cfg(target_os = "linux")]
     pub async fn init(&mut self) -> NamespaceResult<()> {
-        let (connection, handle, _) = new_connection()
-            .map_err(|e| NamespaceError::NetworkError(format!("Failed to create netlink connection: {}", e)))?;
+        let (connection, handle, _) = new_connection().map_err(|e| {
+            NamespaceError::NetworkError(format!("Failed to create netlink connection: {}", e))
+        })?;
 
         // Spawn the connection in the background
         tokio::spawn(connection);
@@ -56,9 +57,11 @@ impl BridgeManager {
 
     #[cfg(target_os = "linux")]
     fn get_handle(&self) -> NamespaceResult<&Handle> {
-        self.handle
-            .as_ref()
-            .ok_or_else(|| NamespaceError::InvalidConfig("BridgeManager not initialized. Call init() first.".to_string()))
+        self.handle.as_ref().ok_or_else(|| {
+            NamespaceError::InvalidConfig(
+                "BridgeManager not initialized. Call init() first.".to_string(),
+            )
+        })
     }
 
     /// Create a network bridge
@@ -94,7 +97,11 @@ impl BridgeManager {
         let handle = self.get_handle()?;
 
         // Get the bridge index
-        let mut links = handle.link().get().match_name(bridge_name.to_string()).execute();
+        let mut links = handle
+            .link()
+            .get()
+            .match_name(bridge_name.to_string())
+            .execute();
 
         if let Some(link) = links.try_next().await.map_err(|e| {
             NamespaceError::NetworkError(format!("Failed to find bridge {}: {}", bridge_name, e))
@@ -115,28 +122,59 @@ impl BridgeManager {
             debug!("Bridge deleted successfully");
             Ok(())
         } else {
-            Err(NamespaceError::NotFound(format!("Bridge {} not found", bridge_name)))
+            Err(NamespaceError::NotFound(format!(
+                "Bridge {} not found",
+                bridge_name
+            )))
         }
     }
 
     /// Attach an interface to a bridge
     #[cfg(target_os = "linux")]
-    pub async fn attach_interface(&self, bridge_name: &str, iface_name: &str) -> NamespaceResult<()> {
+    pub async fn attach_interface(
+        &self,
+        bridge_name: &str,
+        iface_name: &str,
+    ) -> NamespaceResult<()> {
         info!("Attaching {} to bridge {}", iface_name, bridge_name);
 
         let handle = self.get_handle()?;
 
         // Get the bridge index
-        let mut bridge_links = handle.link().get().match_name(bridge_name.to_string()).execute();
-        let bridge_link = bridge_links.try_next().await.map_err(|e| {
-            NamespaceError::NetworkError(format!("Failed to find bridge {}: {}", bridge_name, e))
-        })?.ok_or_else(|| NamespaceError::NotFound(format!("Bridge {} not found", bridge_name)))?;
+        let mut bridge_links = handle
+            .link()
+            .get()
+            .match_name(bridge_name.to_string())
+            .execute();
+        let bridge_link = bridge_links
+            .try_next()
+            .await
+            .map_err(|e| {
+                NamespaceError::NetworkError(format!(
+                    "Failed to find bridge {}: {}",
+                    bridge_name, e
+                ))
+            })?
+            .ok_or_else(|| NamespaceError::NotFound(format!("Bridge {} not found", bridge_name)))?;
 
         // Get the interface index
-        let mut iface_links = handle.link().get().match_name(iface_name.to_string()).execute();
-        let iface_link = iface_links.try_next().await.map_err(|e| {
-            NamespaceError::NetworkError(format!("Failed to find interface {}: {}", iface_name, e))
-        })?.ok_or_else(|| NamespaceError::NotFound(format!("Interface {} not found", iface_name)))?;
+        let mut iface_links = handle
+            .link()
+            .get()
+            .match_name(iface_name.to_string())
+            .execute();
+        let iface_link = iface_links
+            .try_next()
+            .await
+            .map_err(|e| {
+                NamespaceError::NetworkError(format!(
+                    "Failed to find interface {}: {}",
+                    iface_name, e
+                ))
+            })?
+            .ok_or_else(|| {
+                NamespaceError::NotFound(format!("Interface {} not found", iface_name))
+            })?;
 
         // Set the interface's master to the bridge
         handle
@@ -164,7 +202,11 @@ impl BridgeManager {
         let handle = self.get_handle()?;
 
         // Get the interface index
-        let mut links = handle.link().get().match_name(iface_name.to_string()).execute();
+        let mut links = handle
+            .link()
+            .get()
+            .match_name(iface_name.to_string())
+            .execute();
 
         if let Some(link) = links.try_next().await.map_err(|e| {
             NamespaceError::NetworkError(format!("Failed to find interface {}: {}", iface_name, e))
@@ -186,7 +228,10 @@ impl BridgeManager {
             debug!("Interface detached from bridge successfully");
             Ok(())
         } else {
-            Err(NamespaceError::NotFound(format!("Interface {} not found", iface_name)))
+            Err(NamespaceError::NotFound(format!(
+                "Interface {} not found",
+                iface_name
+            )))
         }
     }
 
@@ -206,7 +251,11 @@ impl BridgeManager {
         let handle = self.get_handle()?;
 
         // Get the bridge index
-        let mut links = handle.link().get().match_name(bridge_name.to_string()).execute();
+        let mut links = handle
+            .link()
+            .get()
+            .match_name(bridge_name.to_string())
+            .execute();
 
         if let Some(link) = links.try_next().await.map_err(|e| {
             NamespaceError::NetworkError(format!("Failed to find bridge {}: {}", bridge_name, e))
@@ -241,7 +290,10 @@ impl BridgeManager {
             debug!("Bridge IP configured successfully");
             Ok(())
         } else {
-            Err(NamespaceError::NotFound(format!("Bridge {} not found", bridge_name)))
+            Err(NamespaceError::NotFound(format!(
+                "Bridge {} not found",
+                bridge_name
+            )))
         }
     }
 
@@ -252,22 +304,25 @@ impl BridgeManager {
 
         // Enable IP forwarding
         let ipv4_forward_path = "/proc/sys/net/ipv4/ip_forward";
-        if let Ok(mut file) = fs::OpenOptions::new()
-            .write(true)
-            .open(ipv4_forward_path)
-        {
+        if let Ok(mut file) = fs::OpenOptions::new().write(true).open(ipv4_forward_path) {
             if let Err(e) = file.write_all(b"1") {
                 warn!("Failed to enable IPv4 forwarding: {}", e);
             } else {
                 debug!("IPv4 forwarding enabled");
             }
         } else {
-            warn!("Unable to open {} for writing. May need elevated privileges.", ipv4_forward_path);
+            warn!(
+                "Unable to open {} for writing. May need elevated privileges.",
+                ipv4_forward_path
+            );
         }
 
         // Note: Setting up iptables rules requires external command execution
         // or using a library like iptables-rs. For now, we'll log what should be done.
-        debug!("Would configure iptables NAT rules for bridge {}", bridge_name);
+        debug!(
+            "Would configure iptables NAT rules for bridge {}",
+            bridge_name
+        );
         debug!("  - iptables -t nat -A POSTROUTING -s <bridge_subnet> -j MASQUERADE");
         debug!("  - iptables -A FORWARD -i {} -j ACCEPT", bridge_name);
         debug!("  - iptables -A FORWARD -o {} -j ACCEPT", bridge_name);
@@ -287,7 +342,9 @@ impl BridgeManager {
         let output = Command::new("ifconfig")
             .args(&["bridge", "create"])
             .output()
-            .map_err(|e| NamespaceError::NetworkError(format!("Failed to execute ifconfig: {}", e)))?;
+            .map_err(|e| {
+                NamespaceError::NetworkError(format!("Failed to execute ifconfig: {}", e))
+            })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -315,7 +372,9 @@ impl BridgeManager {
         let output = Command::new("ifconfig")
             .args(&[bridge_name, "destroy"])
             .output()
-            .map_err(|e| NamespaceError::NetworkError(format!("Failed to execute ifconfig: {}", e)))?;
+            .map_err(|e| {
+                NamespaceError::NetworkError(format!("Failed to execute ifconfig: {}", e))
+            })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -331,15 +390,24 @@ impl BridgeManager {
 
     /// Attach an interface to a bridge on macOS
     #[cfg(target_os = "macos")]
-    pub async fn attach_interface(&self, bridge_name: &str, iface_name: &str) -> NamespaceResult<()> {
-        info!("Attaching {} to bridge {} on macOS", iface_name, bridge_name);
+    pub async fn attach_interface(
+        &self,
+        bridge_name: &str,
+        iface_name: &str,
+    ) -> NamespaceResult<()> {
+        info!(
+            "Attaching {} to bridge {} on macOS",
+            iface_name, bridge_name
+        );
 
         use std::process::Command;
 
         let output = Command::new("ifconfig")
             .args(&[bridge_name, "addm", iface_name])
             .output()
-            .map_err(|e| NamespaceError::NetworkError(format!("Failed to execute ifconfig: {}", e)))?;
+            .map_err(|e| {
+                NamespaceError::NetworkError(format!("Failed to execute ifconfig: {}", e))
+            })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -369,7 +437,9 @@ impl BridgeManager {
         let output = Command::new("ifconfig")
             .args(&[iface_name, "down"])
             .output()
-            .map_err(|e| NamespaceError::NetworkError(format!("Failed to execute ifconfig: {}", e)))?;
+            .map_err(|e| {
+                NamespaceError::NetworkError(format!("Failed to execute ifconfig: {}", e))
+            })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -412,7 +482,9 @@ impl BridgeManager {
             })
             .args(ip_str.split_whitespace())
             .output()
-            .map_err(|e| NamespaceError::NetworkError(format!("Failed to execute ifconfig: {}", e)))?;
+            .map_err(|e| {
+                NamespaceError::NetworkError(format!("Failed to execute ifconfig: {}", e))
+            })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -426,7 +498,9 @@ impl BridgeManager {
         let output = Command::new("ifconfig")
             .args(&[bridge_name, "up"])
             .output()
-            .map_err(|e| NamespaceError::NetworkError(format!("Failed to execute ifconfig: {}", e)))?;
+            .map_err(|e| {
+                NamespaceError::NetworkError(format!("Failed to execute ifconfig: {}", e))
+            })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -448,7 +522,9 @@ impl BridgeManager {
         let output = Command::new("sysctl")
             .args(&["-w", "net.inet.ip.forwarding=1"])
             .output()
-            .map_err(|e| NamespaceError::NetworkError(format!("Failed to execute sysctl: {}", e)))?;
+            .map_err(|e| {
+                NamespaceError::NetworkError(format!("Failed to execute sysctl: {}", e))
+            })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -496,7 +572,11 @@ impl BridgeManager {
     }
 
     #[cfg(all(not(target_os = "linux"), not(target_os = "macos")))]
-    pub async fn attach_interface(&self, _bridge_name: &str, _iface_name: &str) -> NamespaceResult<()> {
+    pub async fn attach_interface(
+        &self,
+        _bridge_name: &str,
+        _iface_name: &str,
+    ) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
             "Network bridges not supported on this platform".to_string(),
         ))

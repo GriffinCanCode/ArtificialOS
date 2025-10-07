@@ -103,10 +103,7 @@ export const useMeasure = () => {
 /**
  * Hook for auto-calculating optimal overscan
  */
-export const useAutoOverscan = (
-  viewportSize: number,
-  itemSize: number
-): number => {
+export const useAutoOverscan = (viewportSize: number, itemSize: number): number => {
   const [overscan, setOverscan] = useState(5);
 
   useEffect(() => {
@@ -120,9 +117,7 @@ export const useAutoOverscan = (
 /**
  * Hook for virtual scroll to specific item
  */
-export const useScrollToItem = (
-  virtualizer: ReturnType<typeof useVirtualizer>
-) => {
+export const useScrollToItem = (virtualizer: ReturnType<typeof useVirtualizer>) => {
   const scrollToItem = useCallback(
     (index: number, options?: { align?: "start" | "center" | "end" | "auto" }) => {
       virtualizer.scrollToIndex(index, options);
@@ -181,9 +176,7 @@ export const useInfiniteScroll = (
 /**
  * Hook for virtual scroll metrics
  */
-export const useVirtualMetrics = (
-  virtualizer: ReturnType<typeof useVirtualizer>
-) => {
+export const useVirtualMetrics = (virtualizer: ReturnType<typeof useVirtualizer>) => {
   const virtualItems = virtualizer.getVirtualItems();
 
   return {

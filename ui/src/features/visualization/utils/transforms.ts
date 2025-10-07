@@ -215,7 +215,7 @@ export function pivotData(
     const value = row[valueKey];
 
     // Convert boolean to string for Map key compatibility
-    const index = typeof rawIndex === 'boolean' ? String(rawIndex) : (rawIndex as string | number);
+    const index = typeof rawIndex === "boolean" ? String(rawIndex) : (rawIndex as string | number);
 
     if (!pivoted.has(index)) {
       pivoted.set(index, { [indexKey]: rawIndex });

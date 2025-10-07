@@ -10,13 +10,13 @@
  * - Memory cleanup
  */
 
-import React, { useEffect, useState, useMemo } from 'react';
-import { loader } from '../core/loader';
-import { createAppContext } from '../../../core/sdk';
-import { useActions } from '../../windows';
-import { logger } from '../../../core/utils/monitoring/logger';
-import type { NativeAppContext, NativeAppProps } from '../../../core/sdk';
-import './renderer.css';
+import React, { useEffect, useState, useMemo } from "react";
+import { loader } from "../core/loader";
+import { createAppContext } from "../../../core/sdk";
+import { useActions } from "../../windows";
+import { logger } from "../../../core/utils/monitoring/logger";
+import type { NativeAppContext, NativeAppProps } from "../../../core/sdk";
+import "./renderer.css";
 
 // ============================================================================
 // Props
@@ -41,15 +41,8 @@ interface RendererProps {
  * Native App Renderer
  * Loads and renders native TypeScript/React applications
  */
-export const Renderer: React.FC<RendererProps> = ({
-  appId,
-  packageId,
-  bundlePath,
-  windowId,
-}) => {
-  const [Component, setComponent] = useState<React.ComponentType<NativeAppProps> | null>(
-    null
-  );
+export const Renderer: React.FC<RendererProps> = ({ appId, packageId, bundlePath, windowId }) => {
+  const [Component, setComponent] = useState<React.ComponentType<NativeAppProps> | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [loading, setLoading] = useState(true);
   const windowActions = useActions();
@@ -70,8 +63,8 @@ export const Renderer: React.FC<RendererProps> = ({
       setError(null);
 
       try {
-        logger.info('Rendering native app', {
-          component: 'NativeRenderer',
+        logger.info("Rendering native app", {
+          component: "NativeRenderer",
           appId,
           packageId,
           windowId,
@@ -82,8 +75,8 @@ export const Renderer: React.FC<RendererProps> = ({
         if (!mounted) return;
 
         const loadTime = performance.now() - loadStartTime;
-        logger.info('Native app render ready', {
-          component: 'NativeRenderer',
+        logger.info("Native app render ready", {
+          component: "NativeRenderer",
           packageId,
           loadTime: `${loadTime.toFixed(2)}ms`,
         });
@@ -93,8 +86,8 @@ export const Renderer: React.FC<RendererProps> = ({
         if (!mounted) return;
 
         const loadTime = performance.now() - loadStartTime;
-        logger.error('Native app render failed', err as Error, {
-          component: 'NativeRenderer',
+        logger.error("Native app render failed", err as Error, {
+          component: "NativeRenderer",
           packageId,
           loadTime: `${loadTime.toFixed(2)}ms`,
         });
@@ -117,8 +110,8 @@ export const Renderer: React.FC<RendererProps> = ({
   // Release app when unmounting
   useEffect(() => {
     return () => {
-      logger.debug('Releasing native app', {
-        component: 'NativeRenderer',
+      logger.debug("Releasing native app", {
+        component: "NativeRenderer",
         packageId,
       });
       loader.release(packageId);
@@ -142,12 +135,7 @@ export const Renderer: React.FC<RendererProps> = ({
   }
 
   if (!Component) {
-    return (
-      <ErrorState
-        error={new Error('Component not loaded')}
-        packageId={packageId}
-      />
-    );
+    return <ErrorState error={new Error("Component not loaded")} packageId={packageId} />;
   }
 
   // Render the native app
@@ -186,7 +174,7 @@ const ErrorState: React.FC<ErrorStateProps> = ({ error, packageId }) => (
     <details className="error-details">
       <summary>Technical Details</summary>
       <code className="error-stack">
-        <pre>{error.stack || 'No stack trace available'}</pre>
+        <pre>{error.stack || "No stack trace available"}</pre>
       </code>
     </details>
     <p className="error-package">Package: {packageId}</p>
@@ -207,10 +195,7 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-class ErrorBoundary extends React.Component<
-  ErrorBoundaryProps,
-  ErrorBoundaryState
-> {
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null };
@@ -221,8 +206,8 @@ class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    logger.error('Native app runtime error', error, {
-      component: 'NativeRenderer',
+    logger.error("Native app runtime error", error, {
+      component: "NativeRenderer",
       packageId: this.props.packageId,
       componentStack: errorInfo.componentStack,
     });
@@ -230,9 +215,7 @@ class ErrorBoundary extends React.Component<
 
   render() {
     if (this.state.hasError && this.state.error) {
-      return (
-        <ErrorState error={this.state.error} packageId={this.props.packageId} />
-      );
+      return <ErrorState error={this.state.error} packageId={this.props.packageId} />;
     }
 
     return this.props.children;

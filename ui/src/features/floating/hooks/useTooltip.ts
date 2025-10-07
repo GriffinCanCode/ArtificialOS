@@ -42,10 +42,7 @@ export function useTooltip({
 }: UseTooltipConfig = {}): UseTooltipReturn {
   const [isOpen, setIsOpen] = useState(initialOpen);
 
-  const delay = useMemo(
-    () => getDelay(interaction?.delay ?? 300),
-    [interaction?.delay]
-  );
+  const delay = useMemo(() => getDelay(interaction?.delay ?? 300), [interaction?.delay]);
 
   const data = useFloating({
     open: isOpen,

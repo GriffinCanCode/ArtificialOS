@@ -106,7 +106,7 @@
 .error-stack pre {
   margin: 0;
   color: var(--text-secondary, rgba(255, 255, 255, 0.7));
-  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+  font-family: "Monaco", "Menlo", "Consolas", monospace;
   font-size: 0.75rem;
   line-height: 1.5;
   white-space: pre-wrap;
@@ -117,7 +117,7 @@
   margin-top: 1rem;
   color: var(--text-tertiary, rgba(255, 255, 255, 0.5));
   font-size: 0.75rem;
-  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+  font-family: "Monaco", "Menlo", "Consolas", monospace;
 }
 
 /* ============================================================================

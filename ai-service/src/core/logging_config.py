@@ -13,6 +13,7 @@ try:
     from pythonjsonlogger.json import JsonFormatter
 except ImportError:
     from pythonjsonlogger import jsonlogger
+
     JsonFormatter = jsonlogger.JsonFormatter  # type: ignore
 
 

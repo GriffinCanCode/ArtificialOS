@@ -111,10 +111,10 @@ pub enum NetworkRule {
 #[serde(rename_all = "snake_case", tag = "capability", content = "scope")]
 pub enum Capability {
     // File system - granular per-path
-    ReadFile(Option<PathBuf>),    // None = all files
-    WriteFile(Option<PathBuf>),   // None = all files
-    CreateFile(Option<PathBuf>),  // None = anywhere
-    DeleteFile(Option<PathBuf>),  // None = anywhere
+    ReadFile(Option<PathBuf>),      // None = all files
+    WriteFile(Option<PathBuf>),     // None = all files
+    CreateFile(Option<PathBuf>),    // None = anywhere
+    DeleteFile(Option<PathBuf>),    // None = anywhere
     ListDirectory(Option<PathBuf>), // None = all dirs
 
     // Process
@@ -149,8 +149,12 @@ impl Capability {
             (Capability::DeleteFile(None), Capability::DeleteFile(_)) => true,
             (Capability::DeleteFile(Some(a)), Capability::DeleteFile(Some(b))) => b.starts_with(a),
             (Capability::ListDirectory(None), Capability::ListDirectory(_)) => true,
-            (Capability::ListDirectory(Some(a)), Capability::ListDirectory(Some(b))) => b.starts_with(a),
-            (Capability::NetworkAccess(NetworkRule::AllowAll), Capability::NetworkAccess(_)) => true,
+            (Capability::ListDirectory(Some(a)), Capability::ListDirectory(Some(b))) => {
+                b.starts_with(a)
+            }
+            (Capability::NetworkAccess(NetworkRule::AllowAll), Capability::NetworkAccess(_)) => {
+                true
+            }
             (Capability::BindPort(None), Capability::BindPort(_)) => true,
             (Capability::BindPort(Some(a)), Capability::BindPort(Some(b))) => a == b,
             (a, b) => a == b,

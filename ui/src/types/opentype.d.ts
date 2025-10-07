@@ -1,4 +1,4 @@
-declare module 'opentype.js' {
+declare module "opentype.js" {
   export interface Glyph {
     name: string;
     unicode?: number;

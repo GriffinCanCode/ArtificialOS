@@ -3,14 +3,14 @@
  * Advanced font manipulation and rendering
  */
 
-import opentype, { Font } from 'opentype.js';
+import opentype, { Font } from "opentype.js";
 
 export interface TypographyOptions {
   fontSize?: number;
   letterSpacing?: number;
   lineHeight?: number;
   fontWeight?: number;
-  fontStyle?: 'normal' | 'italic';
+  fontStyle?: "normal" | "italic";
   tracking?: number; // Additional character spacing
   baseline?: number;
   features?: {
@@ -25,7 +25,7 @@ export interface TypographyOptions {
 export interface TextPathOptions extends TypographyOptions {
   x?: number;
   y?: number;
-  align?: 'left' | 'center' | 'right';
+  align?: "left" | "center" | "right";
 }
 
 class TypographyManager {
@@ -72,25 +72,14 @@ class TypographyManager {
   /**
    * Convert text to SVG path
    */
-  textToPath(
-    text: string,
-    fontName: string,
-    options: TextPathOptions = {}
-  ): string | null {
+  textToPath(text: string, fontName: string, options: TextPathOptions = {}): string | null {
     const font = this.fonts.get(fontName);
     if (!font) {
       console.warn(`Font ${fontName} not loaded`);
       return null;
     }
 
-    const {
-      fontSize = 72,
-      x = 0,
-      y = 0,
-      letterSpacing = 0,
-      tracking = 0,
-      features = {},
-    } = options;
+    const { fontSize = 72, x = 0, y = 0, letterSpacing = 0, tracking = 0, features = {} } = options;
 
     try {
       const path = font.getPath(text, x, y, fontSize, {
@@ -105,19 +94,12 @@ class TypographyManager {
 
       // Apply additional letter spacing if needed
       if (letterSpacing !== 0 || tracking !== 0) {
-        return this.applyLetterSpacing(
-          font,
-          text,
-          x,
-          y,
-          fontSize,
-          letterSpacing + tracking
-        );
+        return this.applyLetterSpacing(font, text, x, y, fontSize, letterSpacing + tracking);
       }
 
       return path.toSVG(2); // 2 decimal places
     } catch (error) {
-      console.error('Error generating text path:', error);
+      console.error("Error generating text path:", error);
       return null;
     }
   }
@@ -146,7 +128,7 @@ class TypographyManager {
       currentX += (glyph.advanceWidth || 0) * scale + spacing;
     }
 
-    return `<path d="${paths.join(' ')}" />`;
+    return `<path d="${paths.join(" ")}" />`;
   }
 
   /**
@@ -158,7 +140,7 @@ class TypographyManager {
 
     const glyph = font.charToGlyph(char);
     return {
-      name: glyph.name || '',
+      name: glyph.name || "",
       unicode: glyph.unicode,
       index: glyph.index || 0,
       advanceWidth: glyph.advanceWidth || 0,
@@ -240,11 +222,11 @@ class TypographyManager {
 
     // Check common OpenType features
     if (font.tables.gsub) {
-      features.push('liga', 'calt', 'dlig', 'salt', 'swsh', 'cswh', 'frac', 'ordn');
+      features.push("liga", "calt", "dlig", "salt", "swsh", "cswh", "frac", "ordn");
     }
 
     if (font.tables.gpos) {
-      features.push('kern');
+      features.push("kern");
     }
 
     return features;

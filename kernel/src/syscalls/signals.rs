@@ -5,7 +5,9 @@
 
 use crate::core::types::Pid;
 use crate::security::Capability;
-use crate::signals::{Signal, SignalAction, SignalDelivery, SignalHandlerRegistry, SignalMasking, SignalQueue};
+use crate::signals::{
+    Signal, SignalAction, SignalDelivery, SignalHandlerRegistry, SignalMasking, SignalQueue,
+};
 use log::{error, info};
 
 use super::executor::SyscallExecutor;
@@ -71,7 +73,10 @@ impl SyscallExecutor {
 
         match signal_manager.register_handler(pid, signal_enum, SignalAction::Handler(handler_id)) {
             Ok(()) => {
-                info!("PID {} registered handler {} for signal {:?}", pid, handler_id, signal_enum);
+                info!(
+                    "PID {} registered handler {} for signal {:?}",
+                    pid, handler_id, signal_enum
+                );
                 SyscallResult::success()
             }
             Err(e) => SyscallResult::error(format!("Failed to register handler: {}", e)),

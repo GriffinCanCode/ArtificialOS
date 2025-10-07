@@ -277,7 +277,11 @@ fn test_pipe_global_memory_limit() {
     }
 
     // Should have created many pipes
-    assert!(created > 1000, "Should create at least 1000 pipes, created: {}", created);
+    assert!(
+        created > 1000,
+        "Should create at least 1000 pipes, created: {}",
+        created
+    );
 
     // Clean up - cleanup all processes used
     for i in 0..((created / 50) + 2) {
@@ -349,17 +353,24 @@ fn test_pipe_memory_tracking() {
 
     let after_create = pm.get_global_memory_usage();
     // Memory allocation through MemoryManager adds capacity amount
-    assert_eq!(after_create, initial + capacity,
+    assert_eq!(
+        after_create,
+        initial + capacity,
         "After create: {} should equal initial {} + capacity {}",
-        after_create, initial, capacity);
+        after_create,
+        initial,
+        capacity
+    );
 
     pm.destroy(pipe_id).unwrap();
 
     let after_destroy = pm.get_global_memory_usage();
     // Verify memory was reclaimed
-    assert_eq!(after_destroy, initial,
+    assert_eq!(
+        after_destroy, initial,
         "After destroy: {} should equal initial {}",
-        after_destroy, initial);
+        after_destroy, initial
+    );
 }
 
 #[test]
@@ -379,8 +390,8 @@ fn test_pipe_not_found() {
 
 #[test]
 fn test_pipe_concurrent_operations() {
-    use std::sync::Arc;
     use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::Arc;
     use std::thread;
     use std::time::Duration;
 
@@ -446,8 +457,16 @@ fn test_pipe_concurrent_operations() {
     let messages = reader.join().unwrap();
 
     // Verify successful communication (at least 5 messages to allow for timing issues)
-    assert!(written_count >= 5, "Writer should write at least 5 messages, wrote {}", written_count);
-    assert!(messages.len() >= 5, "Reader should read at least 5 messages, read {}", messages.len());
+    assert!(
+        written_count >= 5,
+        "Writer should write at least 5 messages, wrote {}",
+        written_count
+    );
+    assert!(
+        messages.len() >= 5,
+        "Reader should read at least 5 messages, read {}",
+        messages.len()
+    );
 
     // Verify message ordering
     for (i, msg) in messages.iter().enumerate() {

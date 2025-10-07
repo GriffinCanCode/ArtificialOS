@@ -143,7 +143,10 @@ export function colorFromValue(
  * Validate color contrast for accessibility
  * Ensures text is readable on given background
  */
-export function validateColorContrast(foreground: string, background: string): {
+export function validateColorContrast(
+  foreground: string,
+  background: string
+): {
   ratio: number;
   isAccessible: boolean;
   recommendation: string;

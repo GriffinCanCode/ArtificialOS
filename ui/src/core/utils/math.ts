@@ -67,10 +67,7 @@ export function evaluateExpression(expression: string): number | string {
  */
 export function isValidExpression(expression: string): boolean {
   try {
-    const sanitized = String(expression)
-      .replace(/×/g, "*")
-      .replace(/÷/g, "/")
-      .replace(/−/g, "-");
+    const sanitized = String(expression).replace(/×/g, "*").replace(/÷/g, "/").replace(/−/g, "-");
 
     evaluate(sanitized);
     return true;
@@ -224,9 +221,7 @@ export function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
 
-  return sorted.length % 2 === 0
-    ? (sorted[mid - 1] + sorted[mid]) / 2
-    : sorted[mid];
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 }
 
 /**
@@ -236,7 +231,7 @@ export function stdDev(values: number[]): number {
   if (values.length === 0) return 0;
 
   const avg = mean(values);
-  const squareDiffs = values.map(value => Math.pow(value - avg, 2));
+  const squareDiffs = values.map((value) => Math.pow(value - avg, 2));
   const variance = mean(squareDiffs);
 
   return Math.sqrt(variance);

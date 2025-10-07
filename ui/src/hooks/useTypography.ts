@@ -2,8 +2,8 @@
  * Typography hook for loading and using custom fonts
  */
 
-import { useEffect, useState } from 'react';
-import { typography } from '../core/utils/typography';
+import { useEffect, useState } from "react";
+import { typography } from "../core/utils/typography";
 
 export interface UseTypographyOptions {
   fonts?: Array<{ name: string; url: string }>;
@@ -23,12 +23,10 @@ export const useTypography = (options: UseTypographyOptions = {}) => {
 
     const loadFonts = async () => {
       try {
-        await Promise.all(
-          fonts.map(({ name, url }) => typography.loadFont(name, url))
-        );
+        await Promise.all(fonts.map(({ name, url }) => typography.loadFont(name, url)));
         setFontsLoaded(true);
       } catch (error) {
-        console.error('Error loading fonts:', error);
+        console.error("Error loading fonts:", error);
         setLoadingError(error as Error);
         setFontsLoaded(true); // Still set to true to allow fallback rendering
       }
@@ -45,7 +43,7 @@ export const useTypography = (options: UseTypographyOptions = {}) => {
 };
 
 // Hook for loading system fonts from Google Fonts or local
-export const useSystemFont = (fontFamily: string = 'Inter') => {
+export const useSystemFont = (fontFamily: string = "Inter") => {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -62,7 +60,7 @@ export const useSystemFont = (fontFamily: string = 'Inter') => {
         // Fallback to system font
         setLoaded(true);
       } catch (error) {
-        console.warn('Font loading failed, using system font:', error);
+        console.warn("Font loading failed, using system font:", error);
         setLoaded(true);
       }
     };

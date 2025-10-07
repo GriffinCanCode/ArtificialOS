@@ -58,10 +58,7 @@ export function show(message: string, options?: ToastOptions): string | number {
 /**
  * Show a promise toast that updates based on promise state
  */
-export function promise<T>(
-  promise: Promise<T>,
-  messages: PromiseToastOptions<T>
-): void {
+export function promise<T>(promise: Promise<T>, messages: PromiseToastOptions<T>): void {
   logger.debug("Toast: promise", { component: "Toast" });
   sonnerToast.promise(promise, messages);
 }
@@ -82,11 +79,7 @@ export function dismiss(id?: string | number): void {
 /**
  * Custom toast for undo actions
  */
-export function undo(
-  message: string,
-  onUndo: () => void,
-  options?: ToastOptions
-): string | number {
+export function undo(message: string, onUndo: () => void, options?: ToastOptions): string | number {
   logger.debug("Toast: undo", { component: "Toast", message });
   return sonnerToast(message, {
     ...options,

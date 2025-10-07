@@ -134,7 +134,8 @@ impl Pipe {
         if to_read <= bytes_to_end {
             // Single contiguous read
             let read_addr = self.address + self.read_offset;
-            let bytes = self.memory_manager
+            let bytes = self
+                .memory_manager
                 .read_bytes(read_addr, to_read)
                 .map_err(|e| PipeError::AllocationFailed(e.to_string()))?;
             data.extend_from_slice(&bytes);
@@ -142,14 +143,16 @@ impl Pipe {
             // Read wraps around - split into two reads
             // First: read to end of buffer
             let read_addr = self.address + self.read_offset;
-            let bytes = self.memory_manager
+            let bytes = self
+                .memory_manager
                 .read_bytes(read_addr, bytes_to_end)
                 .map_err(|e| PipeError::AllocationFailed(e.to_string()))?;
             data.extend_from_slice(&bytes);
 
             // Second: read remainder from beginning
             let remaining = to_read - bytes_to_end;
-            let bytes = self.memory_manager
+            let bytes = self
+                .memory_manager
                 .read_bytes(self.address, remaining)
                 .map_err(|e| PipeError::AllocationFailed(e.to_string()))?;
             data.extend_from_slice(&bytes);

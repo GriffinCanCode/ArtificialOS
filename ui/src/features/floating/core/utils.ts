@@ -132,10 +132,7 @@ export function setupAutoUpdate(
 /**
  * Get arrow position styles
  */
-export function getArrowStyles(
-  middlewareData: any,
-  placement: string
-): React.CSSProperties {
+export function getArrowStyles(middlewareData: any, placement: string): React.CSSProperties {
   const { x, y } = middlewareData.arrow || {};
 
   const staticSide = {
@@ -168,9 +165,10 @@ export function isElementHidden(middlewareData: any): boolean {
 /**
  * Get delay configuration
  */
-export function getDelay(
-  delay?: number | { open?: number; close?: number }
-): { open: number; close: number } {
+export function getDelay(delay?: number | { open?: number; close?: number }): {
+  open: number;
+  close: number;
+} {
   if (typeof delay === "number") {
     return { open: delay, close: delay };
   }

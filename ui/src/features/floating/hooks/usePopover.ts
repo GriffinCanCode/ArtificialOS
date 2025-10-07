@@ -54,9 +54,7 @@ export function usePopover({
     },
     placement: position?.placement ?? "bottom",
     strategy: position?.strategy ?? "absolute",
-    middleware: showArrow
-      ? createArrowMiddleware(arrowRef, position)
-      : position?.middleware,
+    middleware: showArrow ? createArrowMiddleware(arrowRef, position) : position?.middleware,
     whileElementsMounted: (reference, floating, update) => {
       const cleanup = () => update();
       window.addEventListener("scroll", cleanup, true);

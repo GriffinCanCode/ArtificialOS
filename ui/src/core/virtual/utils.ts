@@ -20,10 +20,7 @@ export const fixedSize = (size: number): SizeEstimator => {
 /**
  * Creates a variable size estimator with fallback
  */
-export const variableSize = (
-  sizes: (number | undefined)[],
-  defaultSize: number
-): SizeEstimator => {
+export const variableSize = (sizes: (number | undefined)[], defaultSize: number): SizeEstimator => {
   return (index: number) => sizes[index] ?? defaultSize;
 };
 
@@ -111,10 +108,7 @@ export const calculateGridDimensions = (
 /**
  * Converts flat index to grid coordinates
  */
-export const indexToGrid = (
-  index: number,
-  columns: number
-): { row: number; col: number } => {
+export const indexToGrid = (index: number, columns: number): { row: number; col: number } => {
   return {
     row: Math.floor(index / columns),
     col: index % columns,
@@ -189,10 +183,13 @@ export const throttleScroll = <T extends (...args: any[]) => any>(
       fn(...args);
       lastRan = now;
     } else {
-      timeout = setTimeout(() => {
-        fn(...args);
-        lastRan = Date.now();
-      }, wait - (now - lastRan));
+      timeout = setTimeout(
+        () => {
+          fn(...args);
+          lastRan = Date.now();
+        },
+        wait - (now - lastRan)
+      );
     }
   };
 };

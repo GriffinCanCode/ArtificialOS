@@ -26,7 +26,10 @@ impl SignalHandler {
         signal: Signal,
         action: SignalAction,
     ) -> SignalResult<SignalOutcome> {
-        debug!("Executing signal {:?} on PID {} with action {:?}", signal, pid, action);
+        debug!(
+            "Executing signal {:?} on PID {} with action {:?}",
+            signal, pid, action
+        );
 
         match action {
             SignalAction::Default => self.execute_default(pid, signal),
@@ -36,7 +39,10 @@ impl SignalHandler {
             }
             SignalAction::Handler(handler_id) => {
                 self.callbacks.execute(handler_id, pid, signal)?;
-                info!("Handler {} executed for signal {:?} on PID {}", handler_id, signal, pid);
+                info!(
+                    "Handler {} executed for signal {:?} on PID {}",
+                    handler_id, signal, pid
+                );
                 Ok(SignalOutcome::HandlerInvoked(handler_id))
             }
             SignalAction::Terminate => {
@@ -58,8 +64,13 @@ impl SignalHandler {
     fn execute_default(&self, pid: Pid, signal: Signal) -> SignalResult<SignalOutcome> {
         match signal {
             // Fatal signals
-            Signal::SIGKILL | Signal::SIGABRT | Signal::SIGSEGV | Signal::SIGILL |
-            Signal::SIGBUS | Signal::SIGFPE | Signal::SIGSYS => {
+            Signal::SIGKILL
+            | Signal::SIGABRT
+            | Signal::SIGSEGV
+            | Signal::SIGILL
+            | Signal::SIGBUS
+            | Signal::SIGFPE
+            | Signal::SIGSYS => {
                 info!("Terminating PID {} due to fatal signal {:?}", pid, signal);
                 Ok(SignalOutcome::Terminated)
             }
@@ -89,9 +100,18 @@ impl SignalHandler {
             }
 
             // User-defined and other signals - ignored by default
-            Signal::SIGUSR1 | Signal::SIGUSR2 | Signal::SIGHUP | Signal::SIGPIPE |
-            Signal::SIGALRM | Signal::SIGTRAP | Signal::SIGXCPU | Signal::SIGXFSZ |
-            Signal::SIGVTALRM | Signal::SIGPROF | Signal::SIGIO | Signal::SIGPWR => {
+            Signal::SIGUSR1
+            | Signal::SIGUSR2
+            | Signal::SIGHUP
+            | Signal::SIGPIPE
+            | Signal::SIGALRM
+            | Signal::SIGTRAP
+            | Signal::SIGXCPU
+            | Signal::SIGXFSZ
+            | Signal::SIGVTALRM
+            | Signal::SIGPROF
+            | Signal::SIGIO
+            | Signal::SIGPWR => {
                 debug!("Ignoring signal {:?} for PID {} (default)", signal, pid);
                 Ok(SignalOutcome::Ignored)
             }

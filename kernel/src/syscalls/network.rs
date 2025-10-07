@@ -109,7 +109,10 @@ impl SyscallExecutor {
                         SyscallResult::success()
                     }
                     Err(udp_e) => {
-                        warn!("Failed to bind socket {} to {}: TCP={}, UDP={}", sockfd, address, e, udp_e);
+                        warn!(
+                            "Failed to bind socket {} to {}: TCP={}, UDP={}",
+                            sockfd, address, e, udp_e
+                        );
                         SyscallResult::error(format!("Bind failed: {}", e))
                     }
                 }
@@ -211,7 +214,10 @@ impl SyscallExecutor {
         if let Some(mut stream) = self.socket_manager.tcp_streams.get_mut(&sockfd) {
             match stream.write(data) {
                 Ok(bytes_sent) => {
-                    info!("PID {} sent {} bytes on TCP socket {}", pid, bytes_sent, sockfd);
+                    info!(
+                        "PID {} sent {} bytes on TCP socket {}",
+                        pid, bytes_sent, sockfd
+                    );
                     let result = serde_json::to_vec(&serde_json::json!({
                         "bytes_sent": bytes_sent
                     }))
@@ -244,7 +250,10 @@ impl SyscallExecutor {
             match stream.read(&mut buffer) {
                 Ok(bytes_read) => {
                     buffer.truncate(bytes_read);
-                    info!("PID {} received {} bytes on TCP socket {}", pid, bytes_read, sockfd);
+                    info!(
+                        "PID {} received {} bytes on TCP socket {}",
+                        pid, bytes_read, sockfd
+                    );
                     SyscallResult::success_with_data(buffer)
                 }
                 Err(e) => {
@@ -310,7 +319,10 @@ impl SyscallExecutor {
             match socket.recv_from(&mut buffer) {
                 Ok((bytes_read, addr)) => {
                     buffer.truncate(bytes_read);
-                    info!("PID {} received {} bytes from {} on UDP socket {}", pid, bytes_read, addr, sockfd);
+                    info!(
+                        "PID {} received {} bytes from {} on UDP socket {}",
+                        pid, bytes_read, addr, sockfd
+                    );
 
                     let result = serde_json::to_vec(&serde_json::json!({
                         "data": buffer,
@@ -347,7 +359,10 @@ impl SyscallExecutor {
             info!("PID {} closed socket {}", pid, sockfd);
             SyscallResult::success()
         } else {
-            warn!("PID {} attempted to close non-existent socket {}", pid, sockfd);
+            warn!(
+                "PID {} attempted to close non-existent socket {}",
+                pid, sockfd
+            );
             SyscallResult::error("Invalid socket descriptor")
         }
     }

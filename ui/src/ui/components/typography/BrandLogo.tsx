@@ -3,24 +3,24 @@
  * Sophisticated branded logo with custom typography
  */
 
-import React from 'react';
-import './BrandLogo.css';
+import React from "react";
+import "./BrandLogo.css";
 
 export interface BrandLogoProps {
-  size?: 'small' | 'medium' | 'large';
+  size?: "small" | "medium" | "large";
   animated?: boolean;
   className?: string;
   onClick?: () => void;
 }
 
 export const BrandLogo: React.FC<BrandLogoProps> = ({
-  size = 'medium',
+  size = "medium",
   animated = true,
-  className = '',
+  className = "",
   onClick,
 }) => {
   const sizeClass = `brand-logo-${size}`;
-  const animatedClass = animated ? 'brand-logo-animated' : '';
+  const animatedClass = animated ? "brand-logo-animated" : "";
 
   return (
     <button

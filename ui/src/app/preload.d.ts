@@ -30,7 +30,7 @@ export interface SystemAPI {
   /** Get comprehensive system information */
   getInfo(): Promise<SystemInfo>;
   /** Get native system theme preference */
-  getTheme(): Promise<'dark' | 'light'>;
+  getTheme(): Promise<"dark" | "light">;
 }
 
 /**

@@ -4,11 +4,9 @@
  */
 
 use crate::core::types::Pid;
-use crate::scheduler::{
-    PriorityControl, SchedulerControl, SchedulerPolicy, SchedulerStats, SchedulerSyscalls,
-};
+use crate::scheduler::{PriorityControl, SchedulerControl, SchedulerPolicy, SchedulerStats};
 use crate::security::Capability;
-use log::{error, info, warn};
+use log::{error, info};
 
 use super::executor::SyscallExecutor;
 use super::types::SyscallResult;
@@ -86,9 +84,7 @@ impl SyscallExecutor {
                 let data = current_pid.to_le_bytes().to_vec();
                 SyscallResult::success_with_data(data)
             }
-            None => {
-                SyscallResult::success()
-            }
+            None => SyscallResult::success(),
         }
     }
 
@@ -112,7 +108,9 @@ impl SyscallExecutor {
         };
 
         let policy = match syscall_policy {
-            crate::scheduler::Policy::RoundRobin => crate::process::types::SchedulingPolicy::RoundRobin,
+            crate::scheduler::Policy::RoundRobin => {
+                crate::process::types::SchedulingPolicy::RoundRobin
+            }
             crate::scheduler::Policy::Priority => crate::process::types::SchedulingPolicy::Priority,
             crate::scheduler::Policy::Fair => crate::process::types::SchedulingPolicy::Fair,
         };

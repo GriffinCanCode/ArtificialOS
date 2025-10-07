@@ -306,7 +306,8 @@ impl SyscallExecutor {
                     let files: Vec<serde_json::Value> = entries
                         .into_iter()
                         .map(|e| {
-                            let is_dir = matches!(e.file_type, crate::vfs::types::FileType::Directory);
+                            let is_dir =
+                                matches!(e.file_type, crate::vfs::types::FileType::Directory);
                             serde_json::json!({
                                 "name": e.name,
                                 "is_dir": is_dir,

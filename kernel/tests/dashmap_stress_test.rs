@@ -5,8 +5,8 @@
 
 use ai_os_kernel::core::types::{Pid, Priority};
 use ai_os_kernel::ipc::queue::QueueManager;
-use ai_os_kernel::ipc::QueueType;
 use ai_os_kernel::ipc::shm::ShmManager;
+use ai_os_kernel::ipc::QueueType;
 use ai_os_kernel::memory::MemoryManager;
 use ai_os_kernel::process::manager::ProcessManagerBuilder;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -55,7 +55,10 @@ async fn test_queue_manager_concurrent_create() {
     let errors = error_count.load(Ordering::Relaxed);
 
     println!("Queue creation: {} successes, {} errors", successes, errors);
-    assert!(successes > 0, "At least some queue creations should succeed");
+    assert!(
+        successes > 0,
+        "At least some queue creations should succeed"
+    );
     assert_eq!(successes + errors, HIGH_CONCURRENCY as u64);
 }
 
@@ -67,7 +70,9 @@ async fn test_queue_manager_concurrent_send_receive() {
     // Create multiple queues
     let mut queue_ids = vec![];
     for i in 0..10 {
-        let qid = manager.create(i as Pid, QueueType::Fifo, Some(1000)).unwrap();
+        let qid = manager
+            .create(i as Pid, QueueType::Fifo, Some(1000))
+            .unwrap();
         queue_ids.push(qid);
     }
 

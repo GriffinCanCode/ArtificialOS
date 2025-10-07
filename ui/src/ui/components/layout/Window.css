@@ -20,9 +20,7 @@
 
 .window.focused {
   border-color: var(--color-border-focus);
-  box-shadow:
-    var(--shadow-elevated),
-    var(--shadow-glow-secondary);
+  box-shadow: var(--shadow-elevated), var(--shadow-glow-secondary);
 }
 
 .window.maximized {

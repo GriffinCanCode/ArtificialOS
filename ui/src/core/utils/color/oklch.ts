@@ -167,11 +167,7 @@ export function lessVibrant(input: ColorInput, amount: number = 0.05): string {
 /**
  * Generate gradient in OKLCH space (perceptually smoother)
  */
-export function oklchGradient(
-  from: ColorInput,
-  to: ColorInput,
-  steps: number = 10
-): string[] {
+export function oklchGradient(from: ColorInput, to: ColorInput, steps: number = 10): string[] {
   const startOklch = toOklch(from);
   const endOklch = toOklch(to);
 
@@ -198,8 +194,7 @@ export function oklchGradient(
     while (h < 0) h += 360;
     while (h >= 360) h -= 360;
 
-    const alpha =
-      (startOklch.alpha || 1) + ((endOklch.alpha || 1) - (startOklch.alpha || 1)) * t;
+    const alpha = (startOklch.alpha || 1) + ((endOklch.alpha || 1) - (startOklch.alpha || 1)) * t;
 
     colors.push(fromOklch(l, c, h, alpha));
   }

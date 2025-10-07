@@ -13,7 +13,11 @@ pub fn check_network_access(rules: &[NetworkRule], host: &str, port: Option<u16>
 
     // First pass: check for explicit blocks (highest priority)
     for rule in rules {
-        if let NetworkRule::BlockHost { host: blocked_host, port: blocked_port } = rule {
+        if let NetworkRule::BlockHost {
+            host: blocked_host,
+            port: blocked_port,
+        } = rule
+        {
             if host_matches(host, blocked_host) && port_matches(port, *blocked_port) {
                 return false;
             }
@@ -24,7 +28,10 @@ pub fn check_network_access(rules: &[NetworkRule], host: &str, port: Option<u16>
     for rule in rules {
         match rule {
             NetworkRule::AllowAll => return true,
-            NetworkRule::AllowHost { host: allowed_host, port: allowed_port } => {
+            NetworkRule::AllowHost {
+                host: allowed_host,
+                port: allowed_port,
+            } => {
                 if host_matches(host, allowed_host) && port_matches(port, *allowed_port) {
                     return true;
                 }
@@ -52,7 +59,7 @@ fn host_matches(host: &str, pattern: &str) -> bool {
     // Should match "api.example.com" or "www.example.com" but not "example.com"
     if pattern.starts_with("*.") {
         let domain = &pattern[1..]; // Keep the leading dot: ".example.com"
-        // Host must end with ".example.com" and have at least one char before it
+                                    // Host must end with ".example.com" and have at least one char before it
         host.ends_with(domain) && host.len() > domain.len()
     } else {
         host == pattern
@@ -61,7 +68,7 @@ fn host_matches(host: &str, pattern: &str) -> bool {
 
 fn port_matches(port: Option<u16>, pattern: Option<u16>) -> bool {
     match (port, pattern) {
-        (_, None) => true, // Pattern allows any port
+        (_, None) => true,        // Pattern allows any port
         (None, Some(_)) => false, // No port specified but pattern requires one
         (Some(p), Some(pat)) => p == pat,
     }

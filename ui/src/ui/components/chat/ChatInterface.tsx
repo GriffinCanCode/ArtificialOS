@@ -135,7 +135,10 @@ const ChatInterface: React.FC = React.memo(() => {
             validate: (value) => value.trim().length > 0,
           })}
         />
-        <Tooltip content={!isConnected ? "Waiting for connection..." : "Send message (Enter)"} delay={700}>
+        <Tooltip
+          content={!isConnected ? "Waiting for connection..." : "Send message (Enter)"}
+          delay={700}
+        >
           <button
             type="submit"
             disabled={!isConnected || !inputValue?.trim()}

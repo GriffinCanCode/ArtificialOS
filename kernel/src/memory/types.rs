@@ -39,10 +39,7 @@ pub enum MemoryError {
     CorruptionDetected(Address),
 
     #[error("Alignment error: address 0x{address:x}, required alignment {alignment}")]
-    AlignmentError {
-        address: Address,
-        alignment: Size,
-    },
+    AlignmentError { address: Address, alignment: Size },
 
     #[error("Memory protection violation: {0}")]
     ProtectionViolation(String),
@@ -232,7 +229,10 @@ impl std::fmt::Display for MemoryPressure {
 #[serde(rename_all = "snake_case")]
 pub struct AllocationRequest {
     pub size: Size,
-    #[serde(default = "default_alignment", skip_serializing_if = "is_default_alignment")]
+    #[serde(
+        default = "default_alignment",
+        skip_serializing_if = "is_default_alignment"
+    )]
     pub alignment: Size,
     pub pid: Pid,
 }

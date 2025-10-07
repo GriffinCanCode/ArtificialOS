@@ -117,7 +117,7 @@ fn test_message_size_limit() {
     let result = ipc.send_message(from_pid, to_pid, large_data);
     assert!(result.is_err());
     match result.unwrap_err() {
-        ai_os_kernel::ipc::IpcError::LimitExceeded(_) => {},
+        ai_os_kernel::ipc::IpcError::LimitExceeded(_) => {}
         _ => panic!("Expected LimitExceeded error"),
     }
 }
@@ -140,7 +140,7 @@ fn test_queue_size_limit() {
     let result = ipc.send_message(from_pid, to_pid, small_data);
     assert!(result.is_err());
     match result.unwrap_err() {
-        ai_os_kernel::ipc::IpcError::LimitExceeded(_) => {},
+        ai_os_kernel::ipc::IpcError::LimitExceeded(_) => {}
         _ => panic!("Expected LimitExceeded error"),
     }
 }
@@ -262,8 +262,8 @@ fn test_global_memory_limit() {
         } else {
             // Should fail due to MemoryManager OOM or queue limit
             match result.unwrap_err() {
-                ai_os_kernel::ipc::IpcError::LimitExceeded(_) => {},
-                _ => {},
+                ai_os_kernel::ipc::IpcError::LimitExceeded(_) => {}
+                _ => {}
             }
             hit_limit = true;
             break;

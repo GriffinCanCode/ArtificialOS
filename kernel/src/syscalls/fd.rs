@@ -128,7 +128,9 @@ impl SyscallExecutor {
             Ok(file) => {
                 // Allocate FD and store file with Arc for reference counting
                 let fd = self.fd_manager.allocate_fd();
-                self.fd_manager.open_files.insert(fd, Arc::new(RwLock::new(file)));
+                self.fd_manager
+                    .open_files
+                    .insert(fd, Arc::new(RwLock::new(file)));
 
                 info!(
                     "PID {} opened {:?} with FD {}, flags: 0x{:x}, mode: 0o{:o}",
@@ -179,7 +181,10 @@ impl SyscallExecutor {
             let new_fd = self.fd_manager.allocate_fd();
             self.fd_manager.open_files.insert(new_fd, cloned_file);
 
-            info!("PID {} duplicated FD {} to {} (Arc reference count incremented)", pid, fd, new_fd);
+            info!(
+                "PID {} duplicated FD {} to {} (Arc reference count incremented)",
+                pid, fd, new_fd
+            );
 
             let data = serde_json::to_vec(&serde_json::json!({
                 "new_fd": new_fd
@@ -214,7 +219,10 @@ impl SyscallExecutor {
             // Insert the cloned Arc reference at newfd
             self.fd_manager.open_files.insert(newfd, cloned_file);
 
-            info!("PID {} duplicated FD {} to {} (Arc reference count incremented)", pid, oldfd, newfd);
+            info!(
+                "PID {} duplicated FD {} to {} (Arc reference count incremented)",
+                pid, oldfd, newfd
+            );
             SyscallResult::success()
         } else {
             SyscallResult::error("Invalid file descriptor")
@@ -286,7 +294,10 @@ impl SyscallExecutor {
 
         // Basic fcntl commands (F_GETFD, F_SETFD, etc.)
         // For now, we acknowledge the command but don't implement full functionality
-        info!("PID {} performed fcntl on FD {} (cmd={}, arg={})", pid, fd, cmd, arg);
+        info!(
+            "PID {} performed fcntl on FD {} (cmd={}, arg={})",
+            pid, fd, cmd, arg
+        );
 
         let data = serde_json::to_vec(&serde_json::json!({
             "result": 0

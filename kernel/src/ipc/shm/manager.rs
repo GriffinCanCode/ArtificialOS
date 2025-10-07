@@ -57,7 +57,11 @@ impl ShmManager {
         }
 
         // Check per-process limit
-        let count = self.process_segments.get(&owner_pid).map(|v| *v.value()).unwrap_or(0);
+        let count = self
+            .process_segments
+            .get(&owner_pid)
+            .map(|v| *v.value())
+            .unwrap_or(0);
         if count >= MAX_SEGMENTS_PER_PROCESS {
             return Err(ShmError::ProcessLimitExceeded(
                 count,
@@ -114,7 +118,8 @@ impl ShmManager {
     }
 
     pub fn attach(&self, segment_id: ShmId, pid: Pid, read_only: bool) -> Result<(), ShmError> {
-        let mut segment = self.segments
+        let mut segment = self
+            .segments
             .get_mut(&segment_id)
             .ok_or(ShmError::NotFound(segment_id))?;
 
@@ -135,7 +140,8 @@ impl ShmManager {
     }
 
     pub fn detach(&self, segment_id: ShmId, pid: Pid) -> Result<(), ShmError> {
-        let mut segment = self.segments
+        let mut segment = self
+            .segments
             .get_mut(&segment_id)
             .ok_or(ShmError::NotFound(segment_id))?;
 
@@ -153,7 +159,8 @@ impl ShmManager {
         offset: Size,
         data: &[u8],
     ) -> Result<(), ShmError> {
-        let segment = self.segments
+        let segment = self
+            .segments
             .get(&segment_id)
             .ok_or(ShmError::NotFound(segment_id))?;
 
@@ -183,7 +190,8 @@ impl ShmManager {
         offset: Size,
         size: Size,
     ) -> Result<Vec<u8>, ShmError> {
-        let segment = self.segments
+        let segment = self
+            .segments
             .get(&segment_id)
             .ok_or(ShmError::NotFound(segment_id))?;
 
@@ -207,7 +215,8 @@ impl ShmManager {
     }
 
     pub fn destroy(&self, segment_id: ShmId, pid: Pid) -> Result<(), ShmError> {
-        let segment = self.segments
+        let segment = self
+            .segments
             .get(&segment_id)
             .ok_or(ShmError::NotFound(segment_id))?;
 
@@ -267,7 +276,8 @@ impl ShmManager {
     }
 
     pub fn stats(&self, segment_id: ShmId) -> Result<ShmStats, ShmError> {
-        let segment = self.segments
+        let segment = self
+            .segments
             .get(&segment_id)
             .ok_or(ShmError::NotFound(segment_id))?;
 
@@ -289,7 +299,8 @@ impl ShmManager {
     }
 
     pub fn cleanup_process(&self, pid: Pid) -> Size {
-        let segment_ids: Vec<u32> = self.segments
+        let segment_ids: Vec<u32> = self
+            .segments
             .iter()
             .filter(|entry| {
                 let s = entry.value();

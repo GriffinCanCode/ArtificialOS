@@ -236,7 +236,8 @@ export function generateThemeWithBackground(
   backgroundColor: ColorInput,
   mode: "light" | "dark" = "dark"
 ): Theme {
-  const baseTheme = mode === "dark" ? generateDarkTheme(primaryColor) : generateLightTheme(primaryColor);
+  const baseTheme =
+    mode === "dark" ? generateDarkTheme(primaryColor) : generateLightTheme(primaryColor);
 
   const bg = color(backgroundColor).toHex();
   const fg = bestTextColor(bg);
@@ -339,20 +340,12 @@ export function ensureAccessibleTheme(theme: Theme): Theme {
     colors: {
       ...colors,
       primaryForeground: ensureContrast(colors.primaryForeground, colors.primary, "AA"),
-      secondaryForeground: ensureContrast(
-        colors.secondaryForeground,
-        colors.secondary,
-        "AA"
-      ),
+      secondaryForeground: ensureContrast(colors.secondaryForeground, colors.secondary, "AA"),
       cardForeground: ensureContrast(colors.cardForeground, colors.card, "AA"),
       popoverForeground: ensureContrast(colors.popoverForeground, colors.popover, "AA"),
       mutedForeground: ensureContrast(colors.mutedForeground, colors.muted, "AA"),
       accentForeground: ensureContrast(colors.accentForeground, colors.accent, "AA"),
-      destructiveForeground: ensureContrast(
-        colors.destructiveForeground,
-        colors.destructive,
-        "AA"
-      ),
+      destructiveForeground: ensureContrast(colors.destructiveForeground, colors.destructive, "AA"),
     },
   };
 }
@@ -389,10 +382,7 @@ export function blendThemes(theme1: Theme, theme2: Theme, ratio: number = 0.5): 
       muted: blendColor(theme1.colors.muted, theme2.colors.muted),
       mutedForeground: blendColor(theme1.colors.mutedForeground, theme2.colors.mutedForeground),
       accent: blendColor(theme1.colors.accent, theme2.colors.accent),
-      accentForeground: blendColor(
-        theme1.colors.accentForeground,
-        theme2.colors.accentForeground
-      ),
+      accentForeground: blendColor(theme1.colors.accentForeground, theme2.colors.accentForeground),
       destructive: blendColor(theme1.colors.destructive, theme2.colors.destructive),
       destructiveForeground: blendColor(
         theme1.colors.destructiveForeground,

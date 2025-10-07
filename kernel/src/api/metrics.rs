@@ -5,7 +5,7 @@
 
 use crate::monitoring::MetricsCollector;
 use std::sync::Arc;
-use tonic::{Request, Response, Status};
+use tonic::Status;
 
 /// Metrics service implementation
 pub struct MetricsService {

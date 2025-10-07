@@ -76,7 +76,10 @@ impl SandboxManager {
                 .create(config)
                 .map_err(|e| format!("Failed to create namespace: {}", e))?;
 
-            info!("Created network namespace for PID {} with mode {:?}", pid, mode);
+            info!(
+                "Created network namespace for PID {} with mode {:?}",
+                pid, mode
+            );
             Ok(())
         } else {
             Err("Network namespace support not enabled".to_string())
@@ -259,14 +262,16 @@ impl CapabilityManager for SandboxManager {
 
 impl ResourceLimitProvider for SandboxManager {
     fn get_limits(&self, pid: Pid) -> Option<ResourceLimits> {
-        self.sandboxes
-            .get(&pid)
-            .map(|s| s.resource_limits.clone())
+        self.sandboxes.get(&pid).map(|s| s.resource_limits.clone())
     }
 
     fn can_spawn_process(&self, pid: Pid) -> bool {
         if let Some(sandbox) = self.sandboxes.get(&pid) {
-            let current_count = self.spawned_counts.get(&pid).map(|r| *r.value()).unwrap_or(0);
+            let current_count = self
+                .spawned_counts
+                .get(&pid)
+                .map(|r| *r.value())
+                .unwrap_or(0);
             current_count < sandbox.resource_limits.max_processes
         } else {
             false
@@ -280,11 +285,15 @@ impl ResourceLimitProvider for SandboxManager {
 
     fn record_termination(&self, pid: Pid) {
         // Use alter() for atomic decrement
-        self.spawned_counts.alter(&pid, |_, count| count.saturating_sub(1));
+        self.spawned_counts
+            .alter(&pid, |_, count| count.saturating_sub(1));
     }
 
     fn get_spawn_count(&self, pid: Pid) -> u32 {
-        self.spawned_counts.get(&pid).map(|r| *r.value()).unwrap_or(0)
+        self.spawned_counts
+            .get(&pid)
+            .map(|r| *r.value())
+            .unwrap_or(0)
     }
 }
 
@@ -312,14 +321,10 @@ impl PathAccessControl for SandboxManager {
     }
 
     fn get_allowed_paths(&self, pid: Pid) -> Option<Vec<PathBuf>> {
-        self.sandboxes
-            .get(&pid)
-            .map(|s| s.allowed_paths.clone())
+        self.sandboxes.get(&pid).map(|s| s.allowed_paths.clone())
     }
 
     fn get_blocked_paths(&self, pid: Pid) -> Option<Vec<PathBuf>> {
-        self.sandboxes
-            .get(&pid)
-            .map(|s| s.blocked_paths.clone())
+        self.sandboxes.get(&pid).map(|s| s.blocked_paths.clone())
     }
 }

@@ -15,14 +15,10 @@
 }
 
 .brand-logo::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    135deg,
-    rgba(139, 92, 246, 0.1) 0%,
-    rgba(236, 72, 153, 0.1) 100%
-  );
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%);
   opacity: 0;
   transition: opacity 0.3s ease;
   border-radius: 8px;
@@ -57,12 +53,7 @@
 }
 
 .brand-logo-agent {
-  background: linear-gradient(
-    135deg,
-    #8b5cf6 0%,
-    #a78bfa 50%,
-    #ec4899 100%
-  );
+  background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 50%, #ec4899 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -71,12 +62,7 @@
 }
 
 .brand-logo-os {
-  background: linear-gradient(
-    135deg,
-    #ec4899 0%,
-    #f472b6 50%,
-    #fb7185 100%
-  );
+  background: linear-gradient(135deg, #ec4899 0%, #f472b6 50%, #fb7185 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -100,7 +86,8 @@
 }
 
 @keyframes gradientShift {
-  0%, 100% {
+  0%,
+  100% {
     background-position: 0% 50%;
   }
   50% {

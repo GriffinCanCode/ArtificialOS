@@ -89,9 +89,7 @@ impl NamespaceProvider for SimulationNamespaceManager {
     }
 
     fn get_stats(&self, id: &NamespaceId) -> Option<NamespaceStats> {
-        self.namespaces
-            .get(id)
-            .and_then(|info| info.stats.clone())
+        self.namespaces.get(id).and_then(|info| info.stats.clone())
     }
 
     fn is_supported(&self) -> bool {

@@ -18,12 +18,20 @@
 }
 
 .button-secondary {
-  background: linear-gradient(140deg, var(--color-accent-alpha-20) 0%, var(--color-accent-alpha-30) 100%);
+  background: linear-gradient(
+    140deg,
+    var(--color-accent-alpha-20) 0%,
+    var(--color-accent-alpha-30) 100%
+  );
   border-color: var(--color-accent-500);
 }
 
 .button-danger {
-  background: linear-gradient(140deg, var(--color-error-alpha-20) 0%, var(--color-error-alpha-30) 100%);
+  background: linear-gradient(
+    140deg,
+    var(--color-error-alpha-20) 0%,
+    var(--color-error-alpha-30) 100%
+  );
   border-color: var(--color-error-500);
   color: var(--color-error-300);
 }

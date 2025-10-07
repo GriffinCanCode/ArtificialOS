@@ -495,7 +495,11 @@
 }
 
 .badge-primary {
-  background: linear-gradient(135deg, var(--color-secondary-alpha-30), var(--color-accent-alpha-30));
+  background: linear-gradient(
+    135deg,
+    var(--color-secondary-alpha-30),
+    var(--color-accent-alpha-30)
+  );
   color: var(--color-accent-300);
   border: 1px solid var(--color-secondary-alpha-50);
 }
@@ -616,7 +620,11 @@
 }
 
 .tab-pills .tab-active {
-  background: linear-gradient(135deg, var(--color-secondary-alpha-30), var(--color-accent-alpha-30));
+  background: linear-gradient(
+    135deg,
+    var(--color-secondary-alpha-30),
+    var(--color-accent-alpha-30)
+  );
   border-bottom-color: transparent !important;
 }
 

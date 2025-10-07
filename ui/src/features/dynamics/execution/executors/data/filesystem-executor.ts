@@ -193,8 +193,13 @@ export class FilesystemExecutor implements AsyncExecutor {
       const enrichedEntries = entries.map((entry: any) => ({
         name: entry.name,
         path: `${path}/${entry.name}`.replace(/\/+/g, "/"),
+        size: entry.size || 0,
+        modified: entry.modified || new Date().toISOString(),
+        is_dir: entry.is_dir || false,
         type: entry.type || (entry.is_dir ? "directory" : "file"),
-        isDirectory: entry.is_dir || false,
+        mime_type: entry.mime_type,
+        extension: entry.extension,
+        permissions: entry.permissions,
       }));
 
       return { files, path, count: entries.length, entries: enrichedEntries };

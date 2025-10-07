@@ -45,12 +45,7 @@ async fn test_async_task_cancellation() {
     let manager = AsyncTaskManager::new(executor);
 
     // Submit long-running syscall
-    let task_id = manager.submit(
-        pid,
-        Syscall::Sleep {
-            duration_ms: 5000,
-        },
-    );
+    let task_id = manager.submit(pid, Syscall::Sleep { duration_ms: 5000 });
 
     // Give it time to start
     sleep(Duration::from_millis(50)).await;

@@ -277,10 +277,7 @@ where
 }
 
 /// Deserialize a value within a range
-pub fn deserialize_ranged_u8<'de, D>(
-    min: u8,
-    max: u8,
-) -> impl FnOnce(D) -> Result<u8, D::Error>
+pub fn deserialize_ranged_u8<'de, D>(min: u8, max: u8) -> impl FnOnce(D) -> Result<u8, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -305,10 +302,7 @@ mod tests {
     struct TestStruct {
         #[serde(with = "system_time_micros")]
         time: SystemTime,
-        #[serde(
-            with = "optional_system_time_micros",
-            skip_serializing_if = "is_none"
-        )]
+        #[serde(with = "optional_system_time_micros", skip_serializing_if = "is_none")]
         optional_time: Option<SystemTime>,
     }
 

@@ -82,7 +82,10 @@ export function checkAccessibility(
 /**
  * Validate button colors for accessibility
  */
-export function validateButtonColors(buttonBg: ColorInput, buttonText: ColorInput): {
+export function validateButtonColors(
+  buttonBg: ColorInput,
+  buttonText: ColorInput
+): {
   isValid: boolean;
   suggestedText?: string;
 } {
@@ -101,7 +104,10 @@ export function validateButtonColors(buttonBg: ColorInput, buttonText: ColorInpu
 /**
  * Validate link colors against background
  */
-export function validateLinkColor(linkColor: ColorInput, backgroundColor: ColorInput): {
+export function validateLinkColor(
+  linkColor: ColorInput,
+  backgroundColor: ColorInput
+): {
   isValid: boolean;
   suggestedColor?: string;
 } {

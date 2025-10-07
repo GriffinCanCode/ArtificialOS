@@ -17,4 +17,4 @@ pub use types::*;
 pub use executor::ProcessExecutor as ProcessExecutorImpl;
 pub use manager::{ProcessManager as ProcessManagerImpl, ProcessManagerBuilder};
 pub use scheduler::Scheduler;
-pub use scheduler_task::{SchedulerTask, SchedulerCommand};
+pub use scheduler_task::{SchedulerCommand, SchedulerTask};

@@ -409,7 +409,10 @@ impl Scheduler {
             if entry.pid == pid {
                 entry.priority = new_priority;
                 drop(current);
-                info!("Updated priority for current process {} to {}", pid, new_priority);
+                info!(
+                    "Updated priority for current process {} to {}",
+                    pid, new_priority
+                );
                 return true;
             }
         }
@@ -421,7 +424,10 @@ impl Scheduler {
                 let mut queue = self.rr_queue.write();
                 if let Some(entry) = queue.iter_mut().find(|e| e.pid == pid) {
                     entry.priority = new_priority;
-                    info!("Updated priority for queued process {} to {}", pid, new_priority);
+                    info!(
+                        "Updated priority for queued process {} to {}",
+                        pid, new_priority
+                    );
                     return true;
                 }
             }
@@ -444,7 +450,10 @@ impl Scheduler {
                 }
 
                 if found {
-                    info!("Updated priority for queued process {} to {}", pid, new_priority);
+                    info!(
+                        "Updated priority for queued process {} to {}",
+                        pid, new_priority
+                    );
                     return true;
                 }
             }
@@ -473,7 +482,11 @@ impl Scheduler {
             min = min.min(entry.vruntime);
         }
 
-        if min == u64::MAX { 0 } else { min }
+        if min == u64::MAX {
+            0
+        } else {
+            min
+        }
     }
 
     /// Get scheduler statistics

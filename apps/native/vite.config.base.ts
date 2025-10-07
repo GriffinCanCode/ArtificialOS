@@ -59,22 +59,21 @@ export function defineNativeAppConfig(appName: string, options: Partial<UserConf
 
       // Rollup options
       rollupOptions: {
-        // Externalize dependencies provided by host
+        // Externalize React - will be provided by host via window.React
         external: [
           'react',
           'react-dom',
           'react/jsx-runtime',
-          // Add common dependencies that should be shared
-          'zustand',
-          'clsx',
+          'react/jsx-dev-runtime',
         ],
 
         output: {
-          // Global variable names for UMD/IIFE (not used with ES, but good to have)
+          // Map external modules to window globals
           globals: {
             react: 'React',
             'react-dom': 'ReactDOM',
-            'react/jsx-runtime': 'jsxRuntime',
+            'react/jsx-runtime': 'ReactJSXRuntime',
+            'react/jsx-dev-runtime': 'ReactJSXRuntime',
           },
 
           // Preserve modules for better tree-shaking

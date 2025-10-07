@@ -53,9 +53,7 @@ export const VirtualTable = <T,>({
   });
 
   const virtualRows = rowVirtualizer.getVirtualItems();
-  const virtualColumns = enableColumnVirtualization
-    ? columnVirtualizer.getVirtualItems()
-    : null;
+  const virtualColumns = enableColumnVirtualization ? columnVirtualizer.getVirtualItems() : null;
 
   const handleRowClick = (index: number) => {
     const row = items[index];
@@ -143,21 +141,21 @@ export const VirtualTable = <T,>({
             })
           : columns.map((column) => {
               return (
-            <div
-              key={column.id}
-              style={{
-                width: column.width || 150,
-                minWidth: column.minWidth || 80,
-                maxWidth: column.maxWidth,
-                padding: "12px 16px",
-                fontWeight: 600,
-                textAlign: "left",
-              }}
-            >
-              {column.header}
-            </div>
-          );
-        })}
+                <div
+                  key={column.id}
+                  style={{
+                    width: column.width || 150,
+                    minWidth: column.minWidth || 80,
+                    maxWidth: column.maxWidth,
+                    padding: "12px 16px",
+                    fontWeight: 600,
+                    textAlign: "left",
+                  }}
+                >
+                  {column.header}
+                </div>
+              );
+            })}
       </div>
 
       {/* Body */}
