@@ -5,13 +5,13 @@
 
 use crate::core::{bincode, json};
 use crate::core::types::Pid;
-use crate::permissions::{Action, PermissionRequest, Resource};
+use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
 use crate::syscalls::executor::SyscallExecutor;
 use crate::syscalls::types::SyscallResult;
 use log::{error, info};
 
 impl SyscallExecutor {
-    pub(super) fn create_pipe(
+    pub(crate) fn create_pipe(
         &self,
         pid: Pid,
         reader_pid: Pid,
@@ -49,7 +49,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn write_pipe(&self, pid: Pid, pipe_id: u32, data: &[u8]) -> SyscallResult {
+    pub(crate) fn write_pipe(&self, pid: Pid, pipe_id: u32, data: &[u8]) -> SyscallResult {
         let request = PermissionRequest::new(pid, Resource::IpcChannel { channel_id: pipe_id }, Action::Send);
         let response = self.permission_manager.check(&request);
 
@@ -80,7 +80,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn read_pipe(&self, pid: Pid, pipe_id: u32, size: usize) -> SyscallResult {
+    pub(crate) fn read_pipe(&self, pid: Pid, pipe_id: u32, size: usize) -> SyscallResult {
         let request = PermissionRequest::new(pid, Resource::IpcChannel { channel_id: pipe_id }, Action::Receive);
         let response = self.permission_manager.check(&request);
 
@@ -110,7 +110,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn close_pipe(&self, pid: Pid, pipe_id: u32) -> SyscallResult {
+    pub(crate) fn close_pipe(&self, pid: Pid, pipe_id: u32) -> SyscallResult {
         let pipe_manager = match &self.pipe_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Pipe manager not available"),
@@ -128,7 +128,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn destroy_pipe(&self, pid: Pid, pipe_id: u32) -> SyscallResult {
+    pub(crate) fn destroy_pipe(&self, pid: Pid, pipe_id: u32) -> SyscallResult {
         let pipe_manager = match &self.pipe_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Pipe manager not available"),
@@ -146,7 +146,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn pipe_stats(&self, pid: Pid, pipe_id: u32) -> SyscallResult {
+    pub(crate) fn pipe_stats(&self, pid: Pid, pipe_id: u32) -> SyscallResult {
         let pipe_manager = match &self.pipe_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Pipe manager not available"),

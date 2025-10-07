@@ -192,7 +192,7 @@ impl Signal {
     #[must_use]
     pub const fn priority(&self) -> u32 {
         match self {
-            Signal::SIGRT(n) => 1000 + n, // RT signals always higher priority
+            Signal::SIGRT(n) => 1000 + (*n as u32), // RT signals always higher priority
             _ => self.number(),
         }
     }

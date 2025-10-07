@@ -6,14 +6,14 @@
 use crate::core::bincode;
 use crate::core::json;
 use crate::core::types::Pid;
-use crate::permissions::{Action, PermissionRequest, Resource};
+use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
 use crate::security::Capability;
 use crate::syscalls::executor::SyscallExecutor;
 use crate::syscalls::types::SyscallResult;
 use log::{error, info};
 
 impl SyscallExecutor {
-    pub(super) fn create_queue(
+    pub(crate) fn create_queue(
         &self,
         pid: Pid,
         queue_type: &str,
@@ -58,7 +58,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn send_queue(
+    pub(crate) fn send_queue(
         &self,
         pid: Pid,
         queue_id: u32,
@@ -94,7 +94,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn receive_queue(&self, pid: Pid, queue_id: u32) -> SyscallResult {
+    pub(crate) fn receive_queue(&self, pid: Pid, queue_id: u32) -> SyscallResult {
         let request = PermissionRequest::new(pid, Resource::IpcChannel { channel_id: queue_id }, Action::Receive);
         let response = self.permission_manager.check(&request);
 
@@ -160,7 +160,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn subscribe_queue(&self, pid: Pid, queue_id: u32) -> SyscallResult {
+    pub(crate) fn subscribe_queue(&self, pid: Pid, queue_id: u32) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::ReceiveMessage)
@@ -185,7 +185,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn unsubscribe_queue(&self, pid: Pid, queue_id: u32) -> SyscallResult {
+    pub(crate) fn unsubscribe_queue(&self, pid: Pid, queue_id: u32) -> SyscallResult {
         let queue_manager = match &self.queue_manager {
             Some(qm) => qm,
             None => return SyscallResult::error("Queue manager not available"),
@@ -203,7 +203,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn close_queue(&self, pid: Pid, queue_id: u32) -> SyscallResult {
+    pub(crate) fn close_queue(&self, pid: Pid, queue_id: u32) -> SyscallResult {
         let queue_manager = match &self.queue_manager {
             Some(qm) => qm,
             None => return SyscallResult::error("Queue manager not available"),
@@ -221,7 +221,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn destroy_queue(&self, pid: Pid, queue_id: u32) -> SyscallResult {
+    pub(crate) fn destroy_queue(&self, pid: Pid, queue_id: u32) -> SyscallResult {
         let queue_manager = match &self.queue_manager {
             Some(qm) => qm,
             None => return SyscallResult::error("Queue manager not available"),
@@ -239,7 +239,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn queue_stats(&self, pid: Pid, queue_id: u32) -> SyscallResult {
+    pub(crate) fn queue_stats(&self, pid: Pid, queue_id: u32) -> SyscallResult {
         let queue_manager = match &self.queue_manager {
             Some(qm) => qm,
             None => return SyscallResult::error("Queue manager not available"),
