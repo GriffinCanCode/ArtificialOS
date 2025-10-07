@@ -10,9 +10,10 @@ import type { ToastOptions, PromiseToastOptions } from "../../../../../core/toas
 
 export class ToastExecutor implements BaseExecutor {
   private activeToasts: Map<string, string | number> = new Map();
+  private context: ExecutorContext;
 
-  constructor(_context: ExecutorContext) {
-    // Context available if needed for future extensions
+  constructor(context: ExecutorContext) {
+    this.context = context;
   }
 
   execute(action: string, params: Record<string, any>): any {
@@ -143,9 +144,9 @@ export class ToastExecutor implements BaseExecutor {
     // Build undo handler
     const undoHandler = () => {
       if (on_undo) {
-        // Execute undo action through component state or executor
         logger.info("Undo action triggered", { component: "ToastExecutor", action: on_undo });
-        // Note: In a real implementation, you might want to execute this through the executor
+        // Execute the undo action by triggering an event through component state
+        this.executeActionHandler(on_undo, "undo");
       }
     };
 
@@ -231,8 +232,12 @@ export class ToastExecutor implements BaseExecutor {
       options.action = {
         label: params.action_label,
         onClick: () => {
-          logger.info("Toast action clicked", { component: "ToastExecutor" });
-          // In a real implementation, execute the action handler
+          logger.info("Toast action clicked", {
+            component: "ToastExecutor",
+            handler: params.action_handler
+          });
+          // Execute the action handler
+          this.executeActionHandler(params.action_handler, "action");
         },
       };
     }
@@ -242,12 +247,64 @@ export class ToastExecutor implements BaseExecutor {
       options.cancel = {
         label: params.cancel_label,
         onClick: () => {
-          logger.info("Toast cancel clicked", { component: "ToastExecutor" });
-          // In a real implementation, execute the cancel handler
+          logger.info("Toast cancel clicked", {
+            component: "ToastExecutor",
+            handler: params.cancel_handler
+          });
+          // Execute the cancel handler
+          this.executeActionHandler(params.cancel_handler, "cancel");
         },
       };
     }
 
     return options;
+  }
+
+  /**
+   * Execute an action handler by triggering it through component state events
+   * This allows toast actions to integrate with the broader execution system
+   */
+  private executeActionHandler(handler: string | Record<string, any>, handlerType: string): void {
+    try {
+      // Handler can be a string (tool ID) or an object with tool ID and params
+      if (typeof handler === "string") {
+        // Simple tool ID - trigger event
+        this.context.componentState.set(`toast.${handlerType}.trigger`, {
+          toolId: handler,
+          timestamp: Date.now(),
+        });
+        logger.info("Action handler triggered", {
+          component: "ToastExecutor",
+          toolId: handler,
+          type: handlerType
+        });
+      } else if (typeof handler === "object" && handler.toolId) {
+        // Object with tool ID and parameters
+        this.context.componentState.set(`toast.${handlerType}.trigger`, {
+          toolId: handler.toolId,
+          params: handler.params || {},
+          timestamp: Date.now(),
+        });
+        logger.info("Action handler triggered with params", {
+          component: "ToastExecutor",
+          toolId: handler.toolId,
+          params: handler.params,
+          type: handlerType
+        });
+      } else {
+        logger.warn("Invalid action handler format", {
+          component: "ToastExecutor",
+          handler,
+          type: handlerType
+        });
+      }
+    } catch (error) {
+      logger.error("Failed to execute action handler", {
+        component: "ToastExecutor",
+        error,
+        handler,
+        type: handlerType
+      });
+    }
   }
 }

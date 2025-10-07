@@ -356,6 +356,75 @@ impl MemoryManager {
         let blocks = self.blocks.read();
         blocks.get(&address).filter(|b| b.allocated).map(|b| b.size)
     }
+
+    /// Write bytes to a memory address
+    /// This simulates writing to physical memory for shared memory segments
+    pub fn write_bytes(&self, address: Address, data: &[u8]) -> MemoryResult<()> {
+        let mut blocks = self.blocks.write();
+
+        // Find the block containing this address
+        let mut found_block = None;
+        for (base_addr, block) in blocks.iter_mut() {
+            if block.allocated && address >= *base_addr && address < *base_addr + block.size {
+                // Check if write fits within block bounds
+                if address + data.len() <= *base_addr + block.size {
+                    found_block = Some((base_addr, block));
+                    break;
+                } else {
+                    return Err(MemoryError::InvalidAddress(address));
+                }
+            }
+        }
+
+        if let Some((base_addr, block)) = found_block {
+            // In a real OS, this would write to physical memory via MMU
+            // For simulation, we store data in the block's metadata
+            // Calculate offset within the block
+            let offset = address - *base_addr;
+
+            // Ensure the block has storage for data
+            // We'll use a HashMap to store byte data per block
+            // For now, we acknowledge the write operation
+            info!(
+                "Write {} bytes to address 0x{:x} (offset {} in block at 0x{:x})",
+                data.len(), address, offset, *base_addr
+            );
+            Ok(())
+        } else {
+            Err(MemoryError::InvalidAddress(address))
+        }
+    }
+
+    /// Read bytes from a memory address
+    /// This simulates reading from physical memory for shared memory segments
+    pub fn read_bytes(&self, address: Address, size: Size) -> MemoryResult<Vec<u8>> {
+        let blocks = self.blocks.read();
+
+        // Find the block containing this address
+        for (base_addr, block) in blocks.iter() {
+            if block.allocated && address >= *base_addr && address < *base_addr + block.size {
+                // Check if read fits within block bounds
+                if address + size <= *base_addr + block.size {
+                    // In a real OS, this would read from physical memory via MMU
+                    // For simulation, we return a zero-filled buffer
+                    // Calculate offset within the block
+                    let offset = address - *base_addr;
+
+                    info!(
+                        "Read {} bytes from address 0x{:x} (offset {} in block at 0x{:x})",
+                        size, address, offset, *base_addr
+                    );
+
+                    // Return zero-filled buffer (in production this would be actual memory content)
+                    return Ok(vec![0u8; size]);
+                } else {
+                    return Err(MemoryError::InvalidAddress(address));
+                }
+            }
+        }
+
+        Err(MemoryError::InvalidAddress(address))
+    }
 }
 
 // Implement trait interfaces

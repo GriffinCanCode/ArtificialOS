@@ -91,18 +91,47 @@ impl SyscallExecutor {
 
         match target_pid {
             Some(target) => {
+                // Targeted GC for specific process
                 let freed = memory_manager.free_process_memory(target);
                 info!(
-                    "PID {} triggered GC for PID {}, freed {} bytes",
+                    "PID {} triggered targeted GC for PID {}, freed {} bytes",
                     pid, target, freed
                 );
-                let data = freed.to_le_bytes().to_vec();
+
+                let data = serde_json::to_vec(&serde_json::json!({
+                    "freed_bytes": freed,
+                    "target_pid": target
+                }))
+                .unwrap();
+
                 SyscallResult::success_with_data(data)
             }
             None => {
-                // Global GC would be more complex in a real implementation
+                // Global GC - run comprehensive cleanup
+                use crate::memory::{GlobalGarbageCollector, GcStrategy};
+
                 info!("PID {} triggered global GC", pid);
-                SyscallResult::success()
+
+                // Create global GC instance
+                let gc = GlobalGarbageCollector::new(memory_manager.clone());
+
+                // Run global collection
+                let stats = gc.collect(GcStrategy::Global);
+
+                info!(
+                    "Global GC completed: freed {} bytes ({} blocks) from {} processes in {}ms",
+                    stats.freed_bytes, stats.freed_blocks, stats.processes_cleaned, stats.duration_ms
+                );
+
+                let data = serde_json::to_vec(&serde_json::json!({
+                    "freed_bytes": stats.freed_bytes,
+                    "freed_blocks": stats.freed_blocks,
+                    "processes_cleaned": stats.processes_cleaned,
+                    "duration_ms": stats.duration_ms
+                }))
+                .unwrap();
+
+                SyscallResult::success_with_data(data)
             }
         }
     }

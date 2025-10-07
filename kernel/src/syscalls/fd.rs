@@ -21,7 +21,7 @@ use super::types::SyscallResult;
 /// File descriptor manager
 pub struct FdManager {
     next_fd: Arc<RwLock<u32>>,
-    open_files: Arc<RwLock<HashMap<u32, File>>>,
+    open_files: Arc<RwLock<HashMap<u32, Arc<RwLock<File>>>>>,
 }
 
 impl FdManager {
@@ -127,11 +127,11 @@ impl SyscallExecutor {
 
         match options.open(path) {
             Ok(file) => {
-                // Allocate FD and store file
+                // Allocate FD and store file with Arc for reference counting
                 let fd = self.fd_manager.allocate_fd();
                 {
                     let mut open_files = self.fd_manager.open_files.write().unwrap();
-                    open_files.insert(fd, file);
+                    open_files.insert(fd, Arc::new(RwLock::new(file)));
                 }
 
                 info!(
@@ -175,25 +175,27 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied("Missing ReadFile capability");
         }
 
-        // Check if the FD exists
-        let open_files = self.fd_manager.open_files.read().unwrap();
-        if !open_files.contains_key(&fd) {
-            return SyscallResult::error("Invalid file descriptor");
+        // Check if the FD exists and clone the Arc reference
+        let mut open_files = self.fd_manager.open_files.write().unwrap();
+        if let Some(file_ref) = open_files.get(&fd) {
+            // Clone the Arc to increment reference count
+            let cloned_file = Arc::clone(file_ref);
+
+            // Allocate new FD pointing to same file via Arc
+            let new_fd = self.fd_manager.allocate_fd();
+            open_files.insert(new_fd, cloned_file);
+
+            info!("PID {} duplicated FD {} to {} (Arc reference count incremented)", pid, fd, new_fd);
+
+            let data = serde_json::to_vec(&serde_json::json!({
+                "new_fd": new_fd
+            }))
+            .unwrap();
+
+            SyscallResult::success_with_data(data)
+        } else {
+            SyscallResult::error("Invalid file descriptor")
         }
-        drop(open_files);
-
-        // Allocate new FD pointing to same file
-        // Note: In a full implementation, we'd use Arc or reference counting
-        // For now, we just track the FD numbers
-        let new_fd = self.fd_manager.allocate_fd();
-        info!("PID {} duplicated FD {} to {}", pid, fd, new_fd);
-
-        let data = serde_json::to_vec(&serde_json::json!({
-            "new_fd": new_fd
-        }))
-        .unwrap();
-
-        SyscallResult::success_with_data(data)
     }
 
     pub(super) fn dup2(&self, pid: Pid, oldfd: u32, newfd: u32) -> SyscallResult {
@@ -204,21 +206,26 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied("Missing ReadFile capability");
         }
 
-        // Check if the old FD exists
+        // Check if the old FD exists and clone the Arc reference
         let mut open_files = self.fd_manager.open_files.write().unwrap();
-        if !open_files.contains_key(&oldfd) {
-            return SyscallResult::error("Invalid file descriptor");
-        }
+        if let Some(file_ref) = open_files.get(&oldfd) {
+            // Clone the Arc to increment reference count
+            let cloned_file = Arc::clone(file_ref);
 
-        // If newfd is already open, close it first
-        if open_files.contains_key(&newfd) {
-            open_files.remove(&newfd);
-        }
+            // If newfd is already open, close it first (Arc will auto-drop)
+            if open_files.contains_key(&newfd) {
+                open_files.remove(&newfd);
+                info!("PID {} closed existing FD {} before dup2", pid, newfd);
+            }
 
-        // In a full implementation with Arc<File>, we'd clone the reference here
-        // For now, just track the FD mapping
-        info!("PID {} duplicated FD {} to {}", pid, oldfd, newfd);
-        SyscallResult::success()
+            // Insert the cloned Arc reference at newfd
+            open_files.insert(newfd, cloned_file);
+
+            info!("PID {} duplicated FD {} to {} (Arc reference count incremented)", pid, oldfd, newfd);
+            SyscallResult::success()
+        } else {
+            SyscallResult::error("Invalid file descriptor")
+        }
     }
 
     pub(super) fn lseek(&self, pid: Pid, fd: u32, offset: i64, whence: u32) -> SyscallResult {
@@ -229,8 +236,9 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied("Missing ReadFile capability");
         }
 
-        let mut open_files = self.fd_manager.open_files.write().unwrap();
-        if let Some(file) = open_files.get_mut(&fd) {
+        let open_files = self.fd_manager.open_files.read().unwrap();
+        if let Some(file_arc) = open_files.get(&fd) {
+            let mut file = file_arc.write().unwrap();
             let seek_result = match whence {
                 0 => file.seek(SeekFrom::Start(offset as u64)), // SEEK_SET
                 1 => file.seek(SeekFrom::Current(offset)),      // SEEK_CUR

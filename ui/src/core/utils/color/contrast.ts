@@ -246,57 +246,138 @@ export function optimalTextColor(
 // ============================================================================
 
 /**
+ * Transform RGB to LMS color space (cone response)
+ * Using Hunt-Pointer-Estevez transformation matrix
+ */
+function rgbToLms(r: number, g: number, b: number): [number, number, number] {
+  // Normalize RGB to [0, 1]
+  const rNorm = r / 255;
+  const gNorm = g / 255;
+  const bNorm = b / 255;
+
+  // Hunt-Pointer-Estevez D65 matrix
+  const l = 0.31399022 * rNorm + 0.63951294 * gNorm + 0.04649755 * bNorm;
+  const m = 0.15537241 * rNorm + 0.75789446 * gNorm + 0.08670142 * bNorm;
+  const s = 0.01775239 * rNorm + 0.10944209 * gNorm + 0.87256922 * bNorm;
+
+  return [l, m, s];
+}
+
+/**
+ * Transform LMS back to RGB color space
+ */
+function lmsToRgb(l: number, m: number, s: number): [number, number, number] {
+  // Inverse Hunt-Pointer-Estevez matrix
+  const r = 5.47221206 * l - 4.6419601 * m + 0.16963708 * s;
+  const g = -1.1252419 * l + 2.29317094 * m - 0.1678952 * s;
+  const b = 0.02980165 * l - 0.19318073 * m + 1.16364789 * s;
+
+  // Clamp to [0, 1] and convert to [0, 255]
+  const rOut = Math.max(0, Math.min(255, Math.round(r * 255)));
+  const gOut = Math.max(0, Math.min(255, Math.round(g * 255)));
+  const bOut = Math.max(0, Math.min(255, Math.round(b * 255)));
+
+  return [rOut, gOut, bOut];
+}
+
+/**
  * Simulate color blindness (protanopia - red-blind)
- * This is a simplified simulation
+ * Based on Brettel, Viénot and Mollon (1997) and Viénot, Brettel and Mollon (1999)
+ * Uses LMS color space for accurate simulation
  */
 export function simulateProtanopia(input: ColorInput): string {
   const c = color(input);
   const { r, g, b } = c.toRgb();
 
-  // Simplified protanopia matrix
-  const newR = 0.567 * r + 0.433 * g;
-  const newG = 0.558 * r + 0.442 * g;
-  const newB = 0.242 * g + 0.758 * b;
+  // Convert to LMS
+  const [_l, m, s] = rgbToLms(r, g, b);
 
-  return colord({
-    r: Math.round(newR),
-    g: Math.round(newG),
-    b: Math.round(newB),
-  }).toHex();
+  // Protanopia: L cone absent, simulate using M and S
+  // L = 2.02344 * M - 2.52581 * S
+  const lSimulated = 2.02344 * m - 2.52581 * s;
+
+  // Convert back to RGB
+  const [rOut, gOut, bOut] = lmsToRgb(lSimulated, m, s);
+
+  return colord({ r: rOut, g: gOut, b: bOut }).toHex();
 }
 
 /**
  * Simulate deuteranopia (green-blind)
+ * Based on Brettel, Viénot and Mollon (1997) and Viénot, Brettel and Mollon (1999)
+ * Uses LMS color space for accurate simulation
  */
 export function simulateDeuteranopia(input: ColorInput): string {
   const c = color(input);
   const { r, g, b } = c.toRgb();
 
-  const newR = 0.625 * r + 0.375 * g;
-  const newG = 0.7 * r + 0.3 * g;
-  const newB = 0.3 * g + 0.7 * b;
+  // Convert to LMS
+  const [l, _m, s] = rgbToLms(r, g, b);
 
-  return colord({
-    r: Math.round(newR),
-    g: Math.round(newG),
-    b: Math.round(newB),
-  }).toHex();
+  // Deuteranopia: M cone absent, simulate using L and S
+  // M = 0.494207 * L + 1.24827 * S
+  const mSimulated = 0.494207 * l + 1.24827 * s;
+
+  // Convert back to RGB
+  const [rOut, gOut, bOut] = lmsToRgb(l, mSimulated, s);
+
+  return colord({ r: rOut, g: gOut, b: bOut }).toHex();
 }
 
 /**
  * Simulate tritanopia (blue-blind)
+ * Based on Brettel, Viénot and Mollon (1997) and Viénot, Brettel and Mollon (1999)
+ * Uses LMS color space for accurate simulation
  */
 export function simulateTritanopia(input: ColorInput): string {
   const c = color(input);
   const { r, g, b } = c.toRgb();
 
-  const newR = 0.95 * r + 0.05 * g;
-  const newG = 0.433 * g + 0.567 * b;
-  const newB = 0.475 * g + 0.525 * b;
+  // Convert to LMS
+  const [l, m, _s] = rgbToLms(r, g, b);
 
-  return colord({
-    r: Math.round(newR),
-    g: Math.round(newG),
-    b: Math.round(newB),
-  }).toHex();
+  // Tritanopia: S cone absent, simulate using L and M
+  // S = -0.395913 * L + 0.801109 * M
+  const sSimulated = -0.395913 * l + 0.801109 * m;
+
+  // Convert back to RGB
+  const [rOut, gOut, bOut] = lmsToRgb(l, m, sSimulated);
+
+  return colord({ r: rOut, g: gOut, b: bOut }).toHex();
+}
+
+/**
+ * Simulate protanomaly (weak red vision)
+ * Partial simulation with adjustable severity (0-1)
+ */
+export function simulateProtanomaly(input: ColorInput, severity: number = 0.6): string {
+  const original = color(input);
+  const simulated = simulateProtanopia(input);
+
+  // Blend between original and full simulation based on severity
+  return original.mix(simulated, severity).toHex();
+}
+
+/**
+ * Simulate deuteranomaly (weak green vision)
+ * Partial simulation with adjustable severity (0-1)
+ */
+export function simulateDeuteranomaly(input: ColorInput, severity: number = 0.6): string {
+  const original = color(input);
+  const simulated = simulateDeuteranopia(input);
+
+  // Blend between original and full simulation based on severity
+  return original.mix(simulated, severity).toHex();
+}
+
+/**
+ * Simulate tritanomaly (weak blue vision)
+ * Partial simulation with adjustable severity (0-1)
+ */
+export function simulateTritanomaly(input: ColorInput, severity: number = 0.6): string {
+  const original = color(input);
+  const simulated = simulateTritanopia(input);
+
+  // Blend between original and full simulation based on severity
+  return original.mix(simulated, severity).toHex();
 }

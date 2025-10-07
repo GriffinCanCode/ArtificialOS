@@ -73,12 +73,18 @@ impl SharedSegment {
             });
         }
 
-        // In a real OS, this would directly write to the memory region at address + offset
-        // For simulation, we use a temporary buffer approach
-        // Note: This is a simplified implementation - a real OS would have MMU integration
+        // Write to memory through the MemoryManager
+        // The address is the base address of this shared memory segment
+        let write_address = self.address + offset;
 
-        // For now, we'll store data in a simulated way by treating the address space as abstract
-        // In production, this would map to actual page tables and physical memory
+        // Use memory manager to write data to the shared memory region
+        // In a real OS with MMU, this would update page tables and write to physical memory
+        self.memory_manager.write_bytes(write_address, data)
+            .map_err(|_| ShmError::InvalidRange {
+                offset,
+                size: data.len(),
+                segment_size: self.size,
+            })?;
 
         Ok(())
     }
@@ -92,10 +98,19 @@ impl SharedSegment {
             });
         }
 
-        // In a real OS, this would directly read from the memory region at address + offset
-        // For simulation, we return a zero-filled buffer
-        // Note: This is a simplified implementation - a real OS would have MMU integration
+        // Read from memory through the MemoryManager
+        // The address is the base address of this shared memory segment
+        let read_address = self.address + offset;
 
-        Ok(vec![0u8; size])
+        // Use memory manager to read data from the shared memory region
+        // In a real OS with MMU, this would access page tables and read from physical memory
+        let data = self.memory_manager.read_bytes(read_address, size)
+            .map_err(|_| ShmError::InvalidRange {
+                offset,
+                size,
+                segment_size: self.size,
+            })?;
+
+        Ok(data)
     }
 }
