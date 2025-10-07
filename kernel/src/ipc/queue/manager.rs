@@ -13,9 +13,11 @@ use super::types::{
 };
 use crate::core::types::{Pid, Priority, Size};
 use crate::memory::MemoryManager;
+use dashmap::DashMap;
 use log::{debug, info, warn};
 use parking_lot::RwLock;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
@@ -54,11 +56,11 @@ impl Queue {
 
 /// Async queue manager
 pub struct QueueManager {
-    queues: Arc<RwLock<HashMap<QueueId, Queue>>>,
-    next_id: Arc<RwLock<QueueId>>,
-    next_msg_id: Arc<RwLock<u64>>,
-    process_queues: Arc<RwLock<HashMap<Pid, HashSet<QueueId>>>>,
-    pubsub_receivers: Arc<RwLock<HashMap<(QueueId, Pid), mpsc::UnboundedReceiver<QueueMessage>>>>,
+    queues: Arc<DashMap<QueueId, Queue>>,
+    next_id: Arc<AtomicU64>,
+    next_msg_id: Arc<AtomicU64>,
+    process_queues: Arc<DashMap<Pid, HashSet<QueueId>>>,
+    pubsub_receivers: Arc<DashMap<(QueueId, Pid), mpsc::UnboundedReceiver<QueueMessage>>>,
     memory_manager: MemoryManager,
 }
 
@@ -69,11 +71,11 @@ impl QueueManager {
             MAX_QUEUE_CAPACITY
         );
         Self {
-            queues: Arc::new(RwLock::new(HashMap::new())),
-            next_id: Arc::new(RwLock::new(1)),
-            next_msg_id: Arc::new(RwLock::new(1)),
-            process_queues: Arc::new(RwLock::new(HashMap::new())),
-            pubsub_receivers: Arc::new(RwLock::new(HashMap::new())),
+            queues: Arc::new(DashMap::new()),
+            next_id: Arc::new(AtomicU64::new(1)),
+            next_msg_id: Arc::new(AtomicU64::new(1)),
+            process_queues: Arc::new(DashMap::new()),
+            pubsub_receivers: Arc::new(DashMap::new()),
             memory_manager,
         }
     }
@@ -86,8 +88,7 @@ impl QueueManager {
         capacity: Option<Size>,
     ) -> IpcResult<QueueId> {
         // Check process queue limit
-        let mut process_queues = self.process_queues.write();
-        let count = process_queues.entry(owner_pid).or_default().len();
+        let count = self.process_queues.entry(owner_pid).or_default().len();
         if count >= MAX_QUEUES_PER_PROCESS {
             return Err(IpcError::LimitExceeded(format!(
                 "Process queue limit exceeded: {}/{}",
@@ -95,12 +96,7 @@ impl QueueManager {
             )));
         }
 
-        let queue_id = {
-            let mut next_id = self.next_id.write();
-            let id = *next_id;
-            *next_id += 1;
-            id
-        };
+        let queue_id = self.next_id.fetch_add(1, Ordering::SeqCst);
 
         let capacity = capacity.unwrap_or(1000);
         let queue = match queue_type {
@@ -111,8 +107,8 @@ impl QueueManager {
             QueueType::PubSub => Queue::PubSub(PubSubQueue::new(queue_id, owner_pid, capacity)),
         };
 
-        self.queues.write().insert(queue_id, queue);
-        process_queues
+        self.queues.insert(queue_id, queue);
+        self.process_queues
             .entry(owner_pid)
             .or_default()
             .insert(queue_id);
@@ -160,19 +156,19 @@ impl QueueManager {
                 })?;
         }
 
-        let message = {
-            let mut msg_id = self.next_msg_id.write();
-            let id = *msg_id;
-            *msg_id += 1;
-            QueueMessage::new(id, from_pid, data_address, data_len, priority.unwrap_or(0))
-        };
+        let message = QueueMessage::new(
+            self.next_msg_id.fetch_add(1, Ordering::SeqCst),
+            from_pid,
+            data_address,
+            data_len,
+            priority.unwrap_or(0)
+        );
 
-        let mut queues = self.queues.write();
-        let queue = queues
+        let mut queue = self.queues
             .get_mut(&queue_id)
             .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id)))?;
 
-        match queue {
+        match queue.value_mut() {
             Queue::Fifo(q) => q.push(message)?,
             Queue::Priority(q) => q.push(message)?,
             Queue::PubSub(q) => {
@@ -189,32 +185,31 @@ impl QueueManager {
     pub fn receive(&self, queue_id: QueueId, pid: Pid) -> IpcResult<Option<QueueMessage>> {
         // For PubSub queues, read from subscriber's receiver
         {
-            let queues = self.queues.read();
-            if let Some(Queue::PubSub(_)) = queues.get(&queue_id) {
-                let mut receivers = self.pubsub_receivers.write();
-                if let Some(rx) = receivers.get_mut(&(queue_id, pid)) {
-                    match rx.try_recv() {
-                        Ok(message) => {
-                            // Don't deallocate here - caller must read data first
-                            return Ok(Some(message));
+            if let Some(queue) = self.queues.get(&queue_id) {
+                if matches!(queue.value(), Queue::PubSub(_)) {
+                    if let Some(mut rx) = self.pubsub_receivers.get_mut(&(queue_id, pid)) {
+                        match rx.try_recv() {
+                            Ok(message) => {
+                                // Don't deallocate here - caller must read data first
+                                return Ok(Some(message));
+                            }
+                            Err(_) => return Ok(None), // No message available
                         }
-                        Err(_) => return Ok(None), // No message available
+                    } else {
+                        return Err(IpcError::PermissionDenied(
+                            "Not subscribed to this PubSub queue".into(),
+                        ));
                     }
-                } else {
-                    return Err(IpcError::PermissionDenied(
-                        "Not subscribed to this PubSub queue".into(),
-                    ));
                 }
             }
         }
 
         // For FIFO and Priority queues
-        let mut queues = self.queues.write();
-        let queue = queues
+        let mut queue = self.queues
             .get_mut(&queue_id)
             .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id)))?;
 
-        let msg = match queue {
+        let msg = match queue.value_mut() {
             Queue::Fifo(q) => q.pop(),
             Queue::Priority(q) => q.pop(),
             Queue::PubSub(_) => unreachable!(), // Already handled above
@@ -246,14 +241,13 @@ impl QueueManager {
 
     /// Subscribe to PubSub queue
     pub fn subscribe(&self, queue_id: QueueId, pid: Pid) -> IpcResult<()> {
-        let mut queues = self.queues.write();
-        let queue = queues
+        let mut queue = self.queues
             .get_mut(&queue_id)
             .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id)))?;
 
-        if let Queue::PubSub(q) = queue {
+        if let Queue::PubSub(q) = queue.value_mut() {
             let rx = q.subscribe(pid);
-            self.pubsub_receivers.write().insert((queue_id, pid), rx);
+            self.pubsub_receivers.insert((queue_id, pid), rx);
             Ok(())
         } else {
             Err(IpcError::InvalidOperation(
@@ -264,14 +258,13 @@ impl QueueManager {
 
     /// Unsubscribe from PubSub queue
     pub fn unsubscribe(&self, queue_id: QueueId, pid: Pid) -> IpcResult<()> {
-        let mut queues = self.queues.write();
-        let queue = queues
+        let mut queue = self.queues
             .get_mut(&queue_id)
             .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id)))?;
 
-        if let Queue::PubSub(q) = queue {
+        if let Queue::PubSub(q) = queue.value_mut() {
             q.unsubscribe(pid);
-            self.pubsub_receivers.write().remove(&(queue_id, pid));
+            self.pubsub_receivers.remove(&(queue_id, pid));
             Ok(())
         } else {
             Err(IpcError::InvalidOperation(
@@ -284,21 +277,19 @@ impl QueueManager {
     pub async fn poll(&self, queue_id: QueueId, pid: Pid) -> IpcResult<QueueMessage> {
         // Check if we have a PubSub receiver
         let receiver_key = (queue_id, pid);
-        if let Some(rx) = self.pubsub_receivers.write().get_mut(&receiver_key) {
-            return rx
-                .recv()
+        if let Some(mut rx) = self.pubsub_receivers.get_mut(&receiver_key) {
+            return rx.recv()
                 .await
                 .ok_or_else(|| IpcError::Closed("Subscription closed".into()));
         }
 
         // For FIFO/Priority queues, poll with notify
         let notify = {
-            let queues = self.queues.read();
-            let queue = queues
+            let queue = self.queues
                 .get(&queue_id)
                 .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id)))?;
 
-            match queue {
+            match queue.value() {
                 Queue::Fifo(q) => q.notify.clone(),
                 Queue::Priority(q) => q.notify.clone(),
                 Queue::PubSub(_) => {
@@ -319,12 +310,11 @@ impl QueueManager {
             notify.notified().await;
 
             // Check if queue was closed
-            let queues = self.queues.read();
-            let queue = queues
+            let queue = self.queues
                 .get(&queue_id)
                 .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id)))?;
 
-            let closed = match queue {
+            let closed = match queue.value() {
                 Queue::Fifo(q) => q.closed,
                 Queue::Priority(q) => q.closed,
                 Queue::PubSub(_) => unreachable!(),
@@ -338,8 +328,7 @@ impl QueueManager {
 
     /// Close queue
     pub fn close(&self, queue_id: QueueId, pid: Pid) -> IpcResult<()> {
-        let mut queues = self.queues.write();
-        let queue = queues
+        let mut queue = self.queues
             .get_mut(&queue_id)
             .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id)))?;
 
@@ -357,8 +346,7 @@ impl QueueManager {
 
     /// Destroy queue
     pub fn destroy(&self, queue_id: QueueId, pid: Pid) -> IpcResult<()> {
-        let mut queues = self.queues.write();
-        let queue = queues
+        let mut queue = self.queues
             .get_mut(&queue_id)
             .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id)))?;
 
@@ -372,7 +360,7 @@ impl QueueManager {
         // Drain all messages and deallocate their memory
         let mut freed_count = 0;
         loop {
-            let message = match queue {
+            let message = match queue.value_mut() {
                 Queue::Fifo(q) => q.pop(),
                 Queue::Priority(q) => q.pop(),
                 Queue::PubSub(_) => break, // PubSub handled via subscribers
@@ -393,15 +381,15 @@ impl QueueManager {
             }
         }
 
-        queues.remove(&queue_id);
-        drop(queues);
+        drop(queue);
+        self.queues.remove(&queue_id);
 
-        self.process_queues.write().entry(pid).and_modify(|qs| {
+        self.process_queues.entry(pid).and_modify(|qs| {
             qs.remove(&queue_id);
         });
 
         // Clean up PubSub receivers
-        self.pubsub_receivers.write().retain(|(qid, _), _| *qid != queue_id);
+        self.pubsub_receivers.retain(|(qid, _), _| *qid != queue_id);
 
         info!(
             "PID {} destroyed queue {} (freed {} messages)",
@@ -412,12 +400,11 @@ impl QueueManager {
 
     /// Get queue statistics
     pub fn stats(&self, queue_id: QueueId) -> IpcResult<QueueStats> {
-        let queues = self.queues.read();
-        let queue = queues
+        let queue = self.queues
             .get(&queue_id)
             .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id)))?;
 
-        let stats = match queue {
+        let stats = match queue.value() {
             Queue::Fifo(q) => QueueStats {
                 id: q.id,
                 queue_type: QueueType::Fifo,
@@ -453,13 +440,10 @@ impl QueueManager {
     /// Clean up process queues
     pub fn cleanup_process(&self, pid: Pid) -> Size {
         let mut freed = 0;
-        let queue_ids: Vec<QueueId> = {
-            let process_queues = self.process_queues.read();
-            process_queues
-                .get(&pid)
-                .map(|qs| qs.iter().copied().collect())
-                .unwrap_or_default()
-        };
+        let queue_ids: Vec<QueueId> = self.process_queues
+            .get(&pid)
+            .map(|qs| qs.iter().copied().collect())
+            .unwrap_or_default();
 
         for queue_id in queue_ids {
             if self.destroy(queue_id, pid).is_ok() {

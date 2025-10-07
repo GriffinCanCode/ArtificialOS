@@ -6,10 +6,11 @@
 
 use crate::core::types::Pid;
 
+use dashmap::DashMap;
 use log::{info, warn};
-use std::collections::HashMap;
 use std::net::{TcpListener, TcpStream, UdpSocket};
-use std::sync::{Arc, RwLock};
+use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::Arc;
 
 use crate::security::{Capability, NetworkRule};
 
@@ -18,27 +19,24 @@ use super::types::SyscallResult;
 
 /// Socket manager for tracking open sockets
 pub struct SocketManager {
-    next_fd: Arc<RwLock<u32>>,
-    tcp_listeners: Arc<RwLock<HashMap<u32, TcpListener>>>,
-    tcp_streams: Arc<RwLock<HashMap<u32, TcpStream>>>,
-    udp_sockets: Arc<RwLock<HashMap<u32, UdpSocket>>>,
+    next_fd: Arc<AtomicU32>,
+    tcp_listeners: Arc<DashMap<u32, TcpListener>>,
+    tcp_streams: Arc<DashMap<u32, TcpStream>>,
+    udp_sockets: Arc<DashMap<u32, UdpSocket>>,
 }
 
 impl SocketManager {
     pub fn new() -> Self {
         Self {
-            next_fd: Arc::new(RwLock::new(1000)), // Start socket FDs at 1000
-            tcp_listeners: Arc::new(RwLock::new(HashMap::new())),
-            tcp_streams: Arc::new(RwLock::new(HashMap::new())),
-            udp_sockets: Arc::new(RwLock::new(HashMap::new())),
+            next_fd: Arc::new(AtomicU32::new(1000)), // Start socket FDs at 1000
+            tcp_listeners: Arc::new(DashMap::new()),
+            tcp_streams: Arc::new(DashMap::new()),
+            udp_sockets: Arc::new(DashMap::new()),
         }
     }
 
     fn allocate_fd(&self) -> u32 {
-        let mut next = self.next_fd.write().unwrap();
-        let fd = *next;
-        *next += 1;
-        fd
+        self.next_fd.fetch_add(1, Ordering::SeqCst)
     }
 }
 
@@ -98,8 +96,7 @@ impl SyscallExecutor {
         // Try to bind a TCP listener
         match TcpListener::bind(address) {
             Ok(listener) => {
-                let mut tcp_listeners = self.socket_manager.tcp_listeners.write().unwrap();
-                tcp_listeners.insert(sockfd, listener);
+                self.socket_manager.tcp_listeners.insert(sockfd, listener);
                 info!("PID {} bound TCP socket {} to {}", pid, sockfd, address);
                 SyscallResult::success()
             }
@@ -107,8 +104,7 @@ impl SyscallExecutor {
                 // Try UDP if TCP failed
                 match UdpSocket::bind(address) {
                     Ok(socket) => {
-                        let mut udp_sockets = self.socket_manager.udp_sockets.write().unwrap();
-                        udp_sockets.insert(sockfd, socket);
+                        self.socket_manager.udp_sockets.insert(sockfd, socket);
                         info!("PID {} bound UDP socket {} to {}", pid, sockfd, address);
                         SyscallResult::success()
                     }
@@ -130,8 +126,7 @@ impl SyscallExecutor {
         }
 
         // Verify socket exists as a TCP listener
-        let tcp_listeners = self.socket_manager.tcp_listeners.read().unwrap();
-        if tcp_listeners.contains_key(&sockfd) {
+        if self.socket_manager.tcp_listeners.contains_key(&sockfd) {
             info!(
                 "PID {} listening on socket {} with backlog {}",
                 pid, sockfd, backlog
@@ -151,16 +146,14 @@ impl SyscallExecutor {
         }
 
         // Get the listener and try to accept (non-blocking)
-        let tcp_listeners = self.socket_manager.tcp_listeners.read().unwrap();
-        if let Some(listener) = tcp_listeners.get(&sockfd) {
+        if let Some(listener) = self.socket_manager.tcp_listeners.get(&sockfd) {
             // Set non-blocking mode for this operation
             if let Ok((stream, addr)) = listener.accept() {
-                drop(tcp_listeners);
+                drop(listener);
 
                 // Allocate new FD for the accepted connection
                 let client_fd = self.socket_manager.allocate_fd();
-                let mut tcp_streams = self.socket_manager.tcp_streams.write().unwrap();
-                tcp_streams.insert(client_fd, stream);
+                self.socket_manager.tcp_streams.insert(client_fd, stream);
 
                 info!(
                     "PID {} accepted connection on socket {}, client FD {} from {}",
@@ -193,8 +186,7 @@ impl SyscallExecutor {
         // Try to connect to the address
         match TcpStream::connect(address) {
             Ok(stream) => {
-                let mut tcp_streams = self.socket_manager.tcp_streams.write().unwrap();
-                tcp_streams.insert(sockfd, stream);
+                self.socket_manager.tcp_streams.insert(sockfd, stream);
                 info!("PID {} connected socket {} to {}", pid, sockfd, address);
                 SyscallResult::success()
             }
@@ -216,8 +208,7 @@ impl SyscallExecutor {
         use std::io::Write;
 
         // Try to send on TCP stream
-        let mut tcp_streams = self.socket_manager.tcp_streams.write().unwrap();
-        if let Some(stream) = tcp_streams.get_mut(&sockfd) {
+        if let Some(mut stream) = self.socket_manager.tcp_streams.get_mut(&sockfd) {
             match stream.write(data) {
                 Ok(bytes_sent) => {
                     info!("PID {} sent {} bytes on TCP socket {}", pid, bytes_sent, sockfd);
@@ -248,8 +239,7 @@ impl SyscallExecutor {
         use std::io::Read;
 
         // Try to receive from TCP stream
-        let mut tcp_streams = self.socket_manager.tcp_streams.write().unwrap();
-        if let Some(stream) = tcp_streams.get_mut(&sockfd) {
+        if let Some(mut stream) = self.socket_manager.tcp_streams.get_mut(&sockfd) {
             let mut buffer = vec![0u8; size];
             match stream.read(&mut buffer) {
                 Ok(bytes_read) => {
@@ -283,8 +273,7 @@ impl SyscallExecutor {
         }
 
         // Try to send via UDP socket
-        let udp_sockets = self.socket_manager.udp_sockets.read().unwrap();
-        if let Some(socket) = udp_sockets.get(&sockfd) {
+        if let Some(socket) = self.socket_manager.udp_sockets.get(&sockfd) {
             match socket.send_to(data, address) {
                 Ok(bytes_sent) => {
                     info!(
@@ -316,8 +305,7 @@ impl SyscallExecutor {
         }
 
         // Try to receive from UDP socket
-        let udp_sockets = self.socket_manager.udp_sockets.read().unwrap();
-        if let Some(socket) = udp_sockets.get(&sockfd) {
+        if let Some(socket) = self.socket_manager.udp_sockets.get(&sockfd) {
             let mut buffer = vec![0u8; size];
             match socket.recv_from(&mut buffer) {
                 Ok((bytes_read, addr)) => {
@@ -351,13 +339,9 @@ impl SyscallExecutor {
         }
 
         // Try to remove from all socket collections
-        let mut tcp_listeners = self.socket_manager.tcp_listeners.write().unwrap();
-        let mut tcp_streams = self.socket_manager.tcp_streams.write().unwrap();
-        let mut udp_sockets = self.socket_manager.udp_sockets.write().unwrap();
-
-        let removed = tcp_listeners.remove(&sockfd).is_some()
-            || tcp_streams.remove(&sockfd).is_some()
-            || udp_sockets.remove(&sockfd).is_some();
+        let removed = self.socket_manager.tcp_listeners.remove(&sockfd).is_some()
+            || self.socket_manager.tcp_streams.remove(&sockfd).is_some()
+            || self.socket_manager.udp_sockets.remove(&sockfd).is_some();
 
         if removed {
             info!("PID {} closed socket {}", pid, sockfd);

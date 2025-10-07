@@ -6,12 +6,14 @@
 
 use crate::core::types::Pid;
 
+use dashmap::DashMap;
 use log::{error, info, warn};
-use std::collections::HashMap;
+use parking_lot::RwLock;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
-use std::sync::{Arc, RwLock};
+use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::Arc;
 
 use crate::security::Capability;
 
@@ -20,23 +22,20 @@ use super::types::SyscallResult;
 
 /// File descriptor manager
 pub struct FdManager {
-    next_fd: Arc<RwLock<u32>>,
-    open_files: Arc<RwLock<HashMap<u32, Arc<RwLock<File>>>>>,
+    next_fd: Arc<AtomicU32>,
+    open_files: Arc<DashMap<u32, Arc<RwLock<File>>>>,
 }
 
 impl FdManager {
     pub fn new() -> Self {
         Self {
-            next_fd: Arc::new(RwLock::new(3)), // Start at 3 (0, 1, 2 are stdin, stdout, stderr)
-            open_files: Arc::new(RwLock::new(HashMap::new())),
+            next_fd: Arc::new(AtomicU32::new(3)), // Start at 3 (0, 1, 2 are stdin, stdout, stderr)
+            open_files: Arc::new(DashMap::new()),
         }
     }
 
     fn allocate_fd(&self) -> u32 {
-        let mut next = self.next_fd.write().unwrap();
-        let fd = *next;
-        *next += 1;
-        fd
+        self.next_fd.fetch_add(1, Ordering::SeqCst)
     }
 }
 
@@ -129,10 +128,7 @@ impl SyscallExecutor {
             Ok(file) => {
                 // Allocate FD and store file with Arc for reference counting
                 let fd = self.fd_manager.allocate_fd();
-                {
-                    let mut open_files = self.fd_manager.open_files.write().unwrap();
-                    open_files.insert(fd, Arc::new(RwLock::new(file)));
-                }
+                self.fd_manager.open_files.insert(fd, Arc::new(RwLock::new(file)));
 
                 info!(
                     "PID {} opened {:?} with FD {}, flags: 0x{:x}, mode: 0o{:o}",
@@ -157,8 +153,7 @@ impl SyscallExecutor {
         // No capability check - closing is always allowed
 
         // Remove file from fd_manager
-        let mut open_files = self.fd_manager.open_files.write().unwrap();
-        if open_files.remove(&fd).is_some() {
+        if self.fd_manager.open_files.remove(&fd).is_some() {
             info!("PID {} closed FD {}", pid, fd);
             SyscallResult::success()
         } else {
@@ -176,14 +171,13 @@ impl SyscallExecutor {
         }
 
         // Check if the FD exists and clone the Arc reference
-        let mut open_files = self.fd_manager.open_files.write().unwrap();
-        if let Some(file_ref) = open_files.get(&fd) {
+        if let Some(file_ref) = self.fd_manager.open_files.get(&fd) {
             // Clone the Arc to increment reference count
-            let cloned_file = Arc::clone(file_ref);
+            let cloned_file = Arc::clone(file_ref.value());
 
             // Allocate new FD pointing to same file via Arc
             let new_fd = self.fd_manager.allocate_fd();
-            open_files.insert(new_fd, cloned_file);
+            self.fd_manager.open_files.insert(new_fd, cloned_file);
 
             info!("PID {} duplicated FD {} to {} (Arc reference count incremented)", pid, fd, new_fd);
 
@@ -207,19 +201,18 @@ impl SyscallExecutor {
         }
 
         // Check if the old FD exists and clone the Arc reference
-        let mut open_files = self.fd_manager.open_files.write().unwrap();
-        if let Some(file_ref) = open_files.get(&oldfd) {
+        if let Some(file_ref) = self.fd_manager.open_files.get(&oldfd) {
             // Clone the Arc to increment reference count
-            let cloned_file = Arc::clone(file_ref);
+            let cloned_file = Arc::clone(file_ref.value());
 
             // If newfd is already open, close it first (Arc will auto-drop)
-            if open_files.contains_key(&newfd) {
-                open_files.remove(&newfd);
+            if self.fd_manager.open_files.contains_key(&newfd) {
+                self.fd_manager.open_files.remove(&newfd);
                 info!("PID {} closed existing FD {} before dup2", pid, newfd);
             }
 
             // Insert the cloned Arc reference at newfd
-            open_files.insert(newfd, cloned_file);
+            self.fd_manager.open_files.insert(newfd, cloned_file);
 
             info!("PID {} duplicated FD {} to {} (Arc reference count incremented)", pid, oldfd, newfd);
             SyscallResult::success()
@@ -236,9 +229,8 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied("Missing ReadFile capability");
         }
 
-        let open_files = self.fd_manager.open_files.read().unwrap();
-        if let Some(file_arc) = open_files.get(&fd) {
-            let mut file = file_arc.write().unwrap();
+        if let Some(file_arc) = self.fd_manager.open_files.get(&fd) {
+            let mut file = file_arc.write();
             let seek_result = match whence {
                 0 => file.seek(SeekFrom::Start(offset as u64)), // SEEK_SET
                 1 => file.seek(SeekFrom::Current(offset)),      // SEEK_CUR
@@ -288,11 +280,9 @@ impl SyscallExecutor {
         }
 
         // Verify FD exists
-        let open_files = self.fd_manager.open_files.read().unwrap();
-        if !open_files.contains_key(&fd) {
+        if !self.fd_manager.open_files.contains_key(&fd) {
             return SyscallResult::error("Invalid file descriptor");
         }
-        drop(open_files);
 
         // Basic fcntl commands (F_GETFD, F_SETFD, etc.)
         // For now, we acknowledge the command but don't implement full functionality

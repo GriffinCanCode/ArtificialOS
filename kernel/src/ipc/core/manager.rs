@@ -12,9 +12,9 @@ use crate::ipc::pipe::PipeManager;
 use crate::ipc::queue::QueueManager;
 use crate::ipc::shm::ShmManager;
 use crate::memory::MemoryManager;
+use dashmap::DashMap;
 use log::info;
-use parking_lot::RwLock;
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 use std::sync::Arc;
 
 // Queue limits to prevent DoS
@@ -23,7 +23,7 @@ const MAX_MESSAGE_SIZE: usize = 1024 * 1024; // 1MB
 
 #[derive(Clone)]
 pub struct IPCManager {
-    message_queues: Arc<RwLock<HashMap<Pid, VecDeque<Message>>>>,
+    message_queues: Arc<DashMap<Pid, VecDeque<Message>>>,
     pipe_manager: PipeManager,
     shm_manager: ShmManager,
     queue_manager: QueueManager,
@@ -37,7 +37,7 @@ impl IPCManager {
             MAX_QUEUE_SIZE
         );
         Self {
-            message_queues: Arc::new(RwLock::new(HashMap::new())),
+            message_queues: Arc::new(DashMap::new()),
             pipe_manager: PipeManager::new(memory_manager.clone()),
             shm_manager: ShmManager::new(memory_manager.clone()),
             queue_manager: QueueManager::new(memory_manager.clone()),
@@ -70,8 +70,7 @@ impl IPCManager {
             )));
         }
 
-        let mut message_queues = self.message_queues.write();
-        let queue = message_queues.entry(to).or_default();
+        let mut queue = self.message_queues.entry(to).or_default();
 
         // Check per-process queue bounds
         if queue.len() >= MAX_QUEUE_SIZE {
@@ -106,8 +105,7 @@ impl IPCManager {
     }
 
     pub fn receive_message(&self, pid: Pid) -> Option<Message> {
-        let mut message_queues = self.message_queues.write();
-        if let Some(queue) = message_queues.get_mut(&pid) {
+        if let Some(mut queue) = self.message_queues.get_mut(&pid) {
             if let Some(message) = queue.pop_front() {
                 let message_size = message.size();
 
@@ -129,7 +127,6 @@ impl IPCManager {
 
     pub fn has_messages(&self, pid: Pid) -> bool {
         self.message_queues
-            .read()
             .get(&pid)
             .map(|q| !q.is_empty())
             .unwrap_or(false)
@@ -140,8 +137,7 @@ impl IPCManager {
         let mut total_cleaned = 0;
 
         // Clean up message queues
-        let mut message_queues = self.message_queues.write();
-        if let Some(queue) = message_queues.remove(&pid) {
+        if let Some((_, queue)) = self.message_queues.remove(&pid) {
             let message_count = queue.len();
             total_cleaned += message_count;
 

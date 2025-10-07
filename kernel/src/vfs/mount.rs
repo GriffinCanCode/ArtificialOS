@@ -3,8 +3,8 @@
  * Manages filesystem mount points and routing
  */
 
+use dashmap::DashMap;
 use parking_lot::RwLock;
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -45,7 +45,7 @@ struct MountEntry {
 
 /// Mount manager for filesystem routing
 pub struct MountManager {
-    mounts: Arc<RwLock<HashMap<PathBuf, MountEntry>>>,
+    mounts: Arc<DashMap<PathBuf, MountEntry>>,
     mount_order: Arc<RwLock<Vec<PathBuf>>>, // Longest paths first for proper resolution
 }
 
@@ -53,7 +53,7 @@ impl MountManager {
     /// Create new mount manager
     pub fn new() -> Self {
         Self {
-            mounts: Arc::new(RwLock::new(HashMap::new())),
+            mounts: Arc::new(DashMap::new()),
             mount_order: Arc::new(RwLock::new(Vec::new())),
         }
     }
@@ -72,16 +72,14 @@ impl MountManager {
     ) -> VfsResult<()> {
         let mount_path = self.normalize_path(&mount_path.into());
 
-        let mut mounts = self.mounts.write();
-        if mounts.contains_key(&mount_path) {
+        if self.mounts.contains_key(&mount_path) {
             return Err(VfsError::AlreadyExists(format!(
                 "mount point already exists: {}",
                 mount_path.display()
             )));
         }
 
-        mounts.insert(mount_path.clone(), MountEntry { fs, readonly });
-        drop(mounts);
+        self.mounts.insert(mount_path.clone(), MountEntry { fs, readonly });
 
         // Update mount order (longest paths first)
         let mut order = self.mount_order.write();
@@ -100,14 +98,12 @@ impl MountManager {
     pub fn unmount<P: AsRef<Path>>(&self, mount_path: P) -> VfsResult<()> {
         let mount_path = self.normalize_path(mount_path.as_ref());
 
-        let mut mounts = self.mounts.write();
-        if mounts.remove(&mount_path).is_none() {
+        if self.mounts.remove(&mount_path).is_none() {
             return Err(VfsError::NotFound(format!(
                 "mount point not found: {}",
                 mount_path.display()
             )));
         }
-        drop(mounts);
 
         let mut order = self.mount_order.write();
         order.retain(|p| p != &mount_path);
@@ -118,13 +114,12 @@ impl MountManager {
     /// Resolve path to (filesystem, relative_path, readonly)
     fn resolve(&self, path: &Path) -> VfsResult<(Arc<dyn FileSystem>, PathBuf, bool)> {
         let path = self.normalize_path(path);
-        let mounts = self.mounts.read();
         let order = self.mount_order.read();
 
         // Find longest matching mount point
         for mount_path in order.iter() {
             if path.starts_with(mount_path) {
-                let entry = mounts.get(mount_path).unwrap();
+                let entry = self.mounts.get(mount_path).unwrap();
                 let fs = entry.fs.clone();
                 let readonly = entry.readonly;
                 let rel_path = if path == *mount_path {
@@ -164,17 +159,16 @@ impl MountManager {
 
     /// List all mount points
     pub fn list_mounts(&self) -> Vec<(PathBuf, String)> {
-        let mounts = self.mounts.read();
-        mounts
+        self.mounts
             .iter()
-            .map(|(path, entry)| (path.clone(), entry.fs.name().to_string()))
+            .map(|entry| (entry.key().clone(), entry.value().fs.name().to_string()))
             .collect()
     }
 
     /// Check if path is mounted
     pub fn is_mounted<P: AsRef<Path>>(&self, path: P) -> bool {
         let path = self.normalize_path(path.as_ref());
-        self.mounts.read().contains_key(&path)
+        self.mounts.contains_key(&path)
     }
 }
 
