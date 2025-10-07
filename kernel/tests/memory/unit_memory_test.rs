@@ -251,5 +251,3 @@ fn test_memory_pressure_thresholds() {
     let stats = mem_mgr.get_detailed_stats();
     assert!(stats.usage_percentage > 80.0);
 }
-}
-

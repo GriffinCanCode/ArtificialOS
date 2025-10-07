@@ -9,9 +9,6 @@ mod dir_ops;
 mod metadata_ops;
 mod node;
 
-#[cfg(test)]
-mod tests;
-
 use ahash::RandomState;
 use dashmap::DashMap;
 use std::collections::HashMap;

@@ -473,5 +473,3 @@ fn test_network_request_no_capability() {
         _ => panic!("Expected permission denied, got: {:?}", result),
     }
 }
-}
-

@@ -4,19 +4,74 @@ Comprehensive test suite for the AI-OS kernel.
 
 ## Test Organization
 
-All tests are centrally located in the `tests/` directory for easy access and management.
+Tests are organized by domain in the `tests/` directory for easy navigation and management.
 
-### Test Files
-- **memory_test.rs**: Memory allocation, deallocation, OOM handling, garbage collection (16 tests)
-- **process_test.rs**: Process lifecycle, creation, termination, memory integration (10 tests)
-- **syscall_test.rs**: System call execution, sandboxing, permission checks (19 tests)
-- **ipc_test.rs**: Inter-process communication, message queuing, memory limits (14 tests)
+### Test Directories
+
+#### Memory (`memory/`)
+- **memory_test.rs**: Memory allocation, deallocation, OOM handling, garbage collection
+- **unit_memory_test.rs**: Unit tests for memory operations
+- **address_recycling_test.rs**: Address recycling and exhaustion prevention
+
+#### Process (`process/`)
+- **process_test.rs**: Process lifecycle, creation, termination, memory integration
+- **executor_test.rs**: OS-level process spawning and management
+
+#### IPC (`ipc/`)
+- **ipc_test.rs**: Basic inter-process communication and message queuing
+- **unit_ipc_test.rs**: Unit tests for IPC operations
+- **pipe_test.rs**: Unix-style pipe IPC tests
+- **queue_test.rs**: Message queue tests (FIFO, Priority, PubSub)
+- **shm_test.rs**: Shared memory tests
+- **ipc_id_recycling_test.rs**: IPC resource ID recycling
+
+#### Syscalls (`syscalls/`)
+- **syscall_test.rs**: System call execution, sandboxing, permission checks
+- **unit_syscall_test.rs**: Unit tests for syscall operations
+- **syscalls_integration_test.rs**: Syscall integration tests
+- **async_syscall_test.rs**: Async syscall handler tests
+- **async_task_test.rs**: Async task management tests
+- **batch_test.rs**: Batch execution tests (parallel and sequential)
+- **streaming_test.rs**: Streaming file operations
+
+#### Security (`security/`)
+- **sandbox_test.rs**: Sandbox isolation and capability tests
+- **permissions_test.rs**: Permission management integration tests
+- **namespace_test.rs**: Network namespace isolation tests
+- **limits_test.rs**: Resource limit enforcement tests
+- **ebpf_test.rs**: eBPF manager integration tests
+- **ebpf_events_test.rs**: eBPF event system tests
+- **ebpf_filters_test.rs**: eBPF filter management tests
+- **ebpf_loader_test.rs**: eBPF program loader tests
+- **ebpf_providers_test.rs**: Linux and macOS eBPF provider tests
+
+#### Scheduler (`scheduler/`)
+- **scheduler_test.rs**: Process scheduling policies (Round Robin, Priority, CFS)
+
+#### Signals (`signals/`)
 - **signals_test.rs**: Signal handling, RT signals, callbacks, priority queuing (87+ tests)
-- **integration_tests.rs**: End-to-end integration tests (12 tests)
 
-### Module Tests
-Some modules include embedded unit tests:
-- **sandbox.rs**: Capability management, path access control (3 tests)
+#### VFS (`vfs/`)
+- **vfs_test.rs**: Virtual filesystem, mount management, permissions
+- **memfs_test.rs**: In-memory filesystem unit tests
+
+#### IO_uring (`iouring/`)
+- **iouring_syscall_test.rs**: io_uring-style async syscall completion
+- **iouring_ops_test.rs**: io_uring operations tests
+- **zerocopy_test.rs**: Zero-copy buffer management
+
+#### Performance (`performance/`)
+- **simd_test.rs**: SIMD optimizations and operations
+- **jit_test.rs**: JIT compilation and hot path detection
+- **dashmap_stress_test.rs**: Concurrent stress tests for DashMap-based managers
+- **ahash_test.rs**: Hash function tests
+
+#### gRPC (`grpc/`)
+- **grpc_advanced_test.rs**: gRPC streaming, async, and batch endpoints
+
+#### Integration (`integration/`)
+- **integration_tests.rs**: End-to-end integration tests
+- **integration_process_test.rs**: Process integration with executor and limits
 
 ### Total Test Coverage
 - **150+ tests** covering all major kernel subsystems

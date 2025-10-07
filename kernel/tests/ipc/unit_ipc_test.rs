@@ -249,7 +249,7 @@ fn test_global_memory_limit() {
             // Should fail due to global limit or queue limit
             let err = result.unwrap_err();
             assert!(
-                err.contains("Global IPC memory limit") 
+                err.contains("Global IPC memory limit")
                     || err.contains("Queue for PID")
                     || err.contains("exceeds limit"),
                 "Unexpected error: {}",
@@ -264,7 +264,7 @@ fn test_global_memory_limit() {
     assert!(sent_count > 0);
     assert!(sent_count < 150);
     assert!(hit_limit);
-    
+
     // Clean up messages
     for i in 0..sent_count {
         while ipc.has_messages(200 + i) {
@@ -296,8 +296,8 @@ fn test_memory_cleanup_on_clear() {
     let after_clear = ipc.get_global_memory_usage();
     // Should be close to initial state (may have differences due to concurrent tests)
     // Just verify it's significantly less than before clear
-    assert!(after_clear < before_clear / 2, 
-        "Memory after clear ({}) should be much less than before ({})", 
+    assert!(after_clear < before_clear / 2,
+        "Memory after clear ({}) should be much less than before ({})",
         after_clear, before_clear);
 }
 
@@ -358,5 +358,3 @@ fn test_queue_isolation() {
     let msg3 = ipc.receive_message(pid3).unwrap();
     assert_eq!(msg3.data, b"To pid3");
 }
-}
-
