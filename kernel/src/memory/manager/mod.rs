@@ -48,6 +48,11 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use tracking::ProcessMemoryTracking;
 
+/// Memory manager
+///
+/// # Performance
+/// - Cache-line aligned to prevent false sharing of atomic counters
+#[repr(C, align(64))]
 pub struct MemoryManager {
     pub(super) blocks: Arc<DashMap<Address, MemoryBlock, RandomState>>,
     pub(super) next_address: Arc<AtomicU64>,

@@ -9,6 +9,10 @@ use std::collections::VecDeque;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 /// Submission queue for zero-copy operations
+///
+/// # Performance
+/// - Cache-line aligned for optimal zero-copy performance with atomic sequence counter
+#[repr(C, align(64))]
 pub struct SubmissionQueue {
     entries: VecDeque<SubmissionEntry>,
     capacity: Size,

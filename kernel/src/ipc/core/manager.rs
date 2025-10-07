@@ -22,6 +22,11 @@ use std::sync::Arc;
 const MAX_QUEUE_SIZE: usize = 1000;
 const MAX_MESSAGE_SIZE: usize = 1024 * 1024; // 1MB
 
+/// IPC Manager
+///
+/// # Performance
+/// - Cache-line aligned for optimal concurrent IPC operations
+#[repr(C, align(64))]
 #[derive(Clone)]
 pub struct IPCManager {
     message_queues: Arc<DashMap<Pid, VecDeque<Message>, RandomState>>,

@@ -7,6 +7,10 @@ use crate::core::types::{Pid, Priority};
 use std::time::{Duration, Instant};
 
 /// Process scheduling entry
+///
+/// # Performance
+/// - Cache-line aligned for optimal scheduler performance
+#[repr(C, align(64))]
 #[derive(Debug, Clone)]
 pub(super) struct Entry {
     pub pid: Pid,

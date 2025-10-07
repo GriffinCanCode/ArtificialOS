@@ -24,6 +24,10 @@ use super::executor::SyscallExecutor;
 use super::types::SyscallResult;
 
 /// File descriptor manager
+///
+/// # Performance
+/// - Cache-line aligned to prevent false sharing of atomic FD counter (high-frequency I/O)
+#[repr(C, align(64))]
 pub struct FdManager {
     next_fd: Arc<AtomicU32>,
     open_files: Arc<DashMap<u32, Arc<RwLock<File>>, RandomState>>,

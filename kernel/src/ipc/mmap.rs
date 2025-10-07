@@ -95,6 +95,10 @@ pub struct MmapEntry {
 }
 
 /// Memory-mapped file manager
+///
+/// # Performance
+/// - Cache-line aligned to prevent false sharing of atomic ID counter
+#[repr(C, align(64))]
 pub struct MmapManager {
     mappings: Arc<DashMap<MmapId, MmapEntry, RandomState>>,
     next_id: AtomicU32,

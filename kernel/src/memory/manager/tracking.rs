@@ -6,6 +6,10 @@
 use crate::core::types::Size;
 
 /// Per-process memory tracking
+///
+/// # Performance
+/// - Cache-line aligned to prevent false sharing in concurrent memory operations
+#[repr(C, align(64))]
 #[derive(Debug, Clone)]
 pub(super) struct ProcessMemoryTracking {
     pub current_bytes: Size,

@@ -24,6 +24,11 @@ use std::sync::Arc;
 // Type alias for backwards compatibility
 pub type Process = ProcessInfo;
 
+/// Process manager
+///
+/// # Performance
+/// - Cache-line aligned to prevent false sharing of atomic PID counter (extremely hot path)
+#[repr(C, align(64))]
 pub struct ProcessManager {
     pub(super) processes: Arc<DashMap<Pid, ProcessInfo, RandomState>>,
     pub(super) next_pid: AtomicU32,

@@ -22,6 +22,10 @@ use std::sync::{Arc, Mutex};
 static GLOBAL_SHM_MEMORY: AtomicUsize = AtomicUsize::new(0);
 
 /// Shared memory manager
+///
+/// # Performance
+/// - Cache-line aligned for optimal concurrent shared memory operations
+#[repr(C, align(64))]
 pub struct ShmManager {
     segments: Arc<DashMap<ShmId, SharedSegment, RandomState>>,
     next_id: Arc<RwLock<ShmId>>,

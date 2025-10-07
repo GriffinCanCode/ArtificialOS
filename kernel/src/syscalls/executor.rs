@@ -19,6 +19,10 @@ use super::types::{Syscall, SyscallResult};
 pub static SYSTEM_START: OnceLock<Instant> = OnceLock::new();
 
 /// System call executor
+///
+/// # Performance
+/// - Cache-line aligned for optimal performance in hot syscall paths
+#[repr(C, align(64))]
 #[derive(Clone)]
 pub struct SyscallExecutor {
     pub(super) sandbox_manager: SandboxManager,

@@ -18,6 +18,10 @@ const HOT_THRESHOLD: u64 = 100;
 const DETECTION_WINDOW: u64 = 1000;
 
 /// Hot path detector
+///
+/// # Performance
+/// - Cache-line aligned to prevent false sharing of atomic counters
+#[repr(C, align(64))]
 pub struct HotpathDetector {
     /// Per-process syscall counts
     process_counts: Arc<DashMap<(Pid, SyscallPattern), AtomicU64, RandomState>>,

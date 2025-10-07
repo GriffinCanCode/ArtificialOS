@@ -77,6 +77,10 @@ impl Histogram {
 }
 
 /// Metrics collector
+///
+/// # Performance
+/// - Cache-line aligned to prevent false sharing in high-frequency metric updates
+#[repr(C, align(64))]
 pub struct MetricsCollector {
     counters: Arc<DashMap<String, f64, RandomState>>,
     gauges: Arc<DashMap<String, f64, RandomState>>,

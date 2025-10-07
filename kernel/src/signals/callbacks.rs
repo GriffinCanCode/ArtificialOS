@@ -15,6 +15,10 @@ use std::sync::Arc;
 pub type HandlerFn = Arc<dyn Fn(Pid, Signal) -> SignalResult<()> + Send + Sync>;
 
 /// Handler registry for executable callbacks
+///
+/// # Performance
+/// - Cache-line aligned to prevent false sharing of atomic ID counter
+#[repr(C, align(64))]
 #[derive(Clone)]
 pub struct CallbackRegistry {
     handlers: Arc<DashMap<u64, HandlerFn, RandomState>>,

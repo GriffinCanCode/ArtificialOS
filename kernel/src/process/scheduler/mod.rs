@@ -29,6 +29,10 @@ enum QueueLocation {
 }
 
 /// CPU Scheduler
+///
+/// # Performance
+/// - Cache-line aligned for optimal performance in high-frequency scheduling operations
+#[repr(C, align(64))]
 pub struct Scheduler {
     policy: Arc<RwLock<SchedulingPolicy>>,
     quantum: Arc<RwLock<Duration>>,

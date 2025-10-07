@@ -49,6 +49,10 @@ struct CachedDecision {
 }
 
 /// Permission cache with LRU eviction
+///
+/// # Performance
+/// - Cache-line aligned to prevent false sharing of atomic hit/miss counters (checked on EVERY syscall)
+#[repr(C, align(64))]
 pub struct PermissionCache {
     cache: DashMap<CacheKey, CachedDecision, RandomState>,
     max_size: usize,

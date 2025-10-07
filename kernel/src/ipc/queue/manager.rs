@@ -52,6 +52,10 @@ impl Queue {
 }
 
 /// Async queue manager
+///
+/// # Performance
+/// - Cache-line aligned to prevent false sharing of atomic ID generators
+#[repr(C, align(64))]
 pub struct QueueManager {
     pub(super) queues: Arc<DashMap<QueueId, Queue, RandomState>>,
     pub(super) next_id: Arc<AtomicU64>,

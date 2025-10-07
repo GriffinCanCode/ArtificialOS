@@ -24,6 +24,10 @@ use super::types::*;
 use node::Node;
 
 /// In-memory filesystem implementation
+///
+/// # Performance
+/// - Cache-line aligned to prevent false sharing of atomic size counter (high-frequency file operations)
+#[repr(C, align(64))]
 #[derive(Debug, Clone)]
 pub struct MemFS {
     pub(super) nodes: Arc<DashMap<PathBuf, Node, RandomState>>,

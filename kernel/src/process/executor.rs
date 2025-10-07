@@ -27,6 +27,10 @@ pub struct ExecutingProcess {
 }
 
 /// Manages OS process execution
+///
+/// # Performance
+/// - Cache-line aligned for optimal concurrent process management
+#[repr(C, align(64))]
 pub struct ProcessExecutor {
     processes: Arc<DashMap<u32, ExecutingProcess, RandomState>>,
 }

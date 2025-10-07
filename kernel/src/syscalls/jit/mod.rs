@@ -24,6 +24,10 @@ use ahash::RandomState;
 use tracing::{info, debug};
 
 /// JIT Manager - coordinates hot path detection and compilation
+///
+/// # Performance
+/// - Cache-line aligned for optimal access in hot syscall paths
+#[repr(C, align(64))]
 #[derive(Clone)]
 pub struct JitManager {
     /// Detector for identifying hot syscall paths

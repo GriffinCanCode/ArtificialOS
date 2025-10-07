@@ -93,6 +93,10 @@ impl ZeroCopyRing {
 }
 
 /// Ring statistics
+///
+/// # Performance
+/// - Cache-line aligned to prevent false sharing between submission and completion counters
+#[repr(C, align(64))]
 #[derive(Default)]
 struct RingStats {
     submissions: AtomicU64,

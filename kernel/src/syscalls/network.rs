@@ -21,6 +21,10 @@ use super::executor::SyscallExecutor;
 use super::types::SyscallResult;
 
 /// Socket manager for tracking open sockets
+///
+/// # Performance
+/// - Cache-line aligned to prevent false sharing of atomic socket FD counter
+#[repr(C, align(64))]
 pub struct SocketManager {
     next_fd: Arc<AtomicU32>,
     tcp_listeners: Arc<DashMap<u32, TcpListener, RandomState>>,

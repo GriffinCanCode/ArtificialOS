@@ -18,6 +18,10 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 
 /// Pipe manager
+///
+/// # Performance
+/// - Cache-line aligned to prevent false sharing of atomic ID counter
+#[repr(C, align(64))]
 pub struct PipeManager {
     pipes: Arc<DashMap<PipeId, Pipe, RandomState>>,
     next_id: AtomicU32,

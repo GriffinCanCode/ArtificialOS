@@ -172,6 +172,10 @@ pub enum JitError {
 }
 
 /// Statistics for JIT compilation
+///
+/// # Performance
+/// - Cache-line aligned to prevent false sharing of frequently updated counters
+#[repr(C, align(64))]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct JitStats {
     /// Number of compiled hot paths

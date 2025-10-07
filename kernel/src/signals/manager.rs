@@ -18,6 +18,10 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Signal manager implementation
+///
+/// # Performance
+/// - Cache-line aligned to prevent false sharing of atomic handler ID counter
+#[repr(C, align(64))]
 #[derive(Clone)]
 pub struct SignalManagerImpl {
     processes: Arc<DashMap<Pid, ProcessSignals, RandomState>>,
