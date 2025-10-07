@@ -11,7 +11,6 @@ import {
   useFocus,
   useRole,
   useDismiss,
-  FloatingPortal,
 } from "@floating-ui/react";
 import { createDefaultMiddleware, getDelay, generateId } from "../core/utils";
 import type { UseTooltipReturn, PositionConfig, InteractionConfig } from "../core/types";
@@ -42,9 +41,6 @@ export function useTooltip({
 }: UseTooltipConfig = {}): UseTooltipReturn {
   const [isOpen, setIsOpen] = useState(initialOpen);
 
-  // DEBUG
-  console.log('[useTooltip] Hook initialized', { isOpen, delay: interaction?.delay });
-
   const delay = useMemo(
     () => getDelay(interaction?.delay ?? 300),
     [interaction?.delay]
@@ -53,14 +49,13 @@ export function useTooltip({
   const data = useFloating({
     open: isOpen,
     onOpenChange: (open) => {
-      console.log('[useTooltip] Open state changed:', open);
       setIsOpen(open);
       onOpenChange?.(open);
     },
     placement: position?.placement ?? "top",
     strategy: position?.strategy ?? "absolute",
     middleware: position?.middleware ?? createDefaultMiddleware(position),
-    whileElementsMounted: (reference, floating, update) => {
+    whileElementsMounted: (_reference, _floating, update) => {
       const cleanup = () => update();
       window.addEventListener("scroll", cleanup, true);
       window.addEventListener("resize", cleanup);
@@ -71,15 +66,10 @@ export function useTooltip({
     },
   });
 
-  console.log('[useTooltip] useHover config:', { delay, context: data.context });
-
   const hover = useHover(data.context, {
     delay,
     move: false,
-    handleClose: null,
   });
-
-  console.log('[useTooltip] hover interactions:', hover);
 
   const focus = useFocus(data.context);
 
@@ -105,12 +95,16 @@ export function useTooltip({
     open: () => setIsOpen(true),
     close: () => setIsOpen(false),
     toggle: () => setIsOpen(!isOpen),
-    getReferenceProps: () => ({
-      ...interactions.getReferenceProps(),
-      "aria-describedby": isOpen ? tooltipId : undefined,
-    }),
-    getFloatingProps: () => ({
-      ...interactions.getFloatingProps(),
+    getReferenceProps: (userProps?: any) => {
+      const props = interactions.getReferenceProps(userProps);
+      console.log('[Tooltip] getReferenceProps called', { userProps, props, isOpen });
+      return {
+        ...props,
+        "aria-describedby": isOpen ? tooltipId : undefined,
+      };
+    },
+    getFloatingProps: (userProps?: any) => ({
+      ...interactions.getFloatingProps(userProps),
       id: tooltipId,
     }),
   };

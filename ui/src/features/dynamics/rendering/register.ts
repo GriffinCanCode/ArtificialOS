@@ -37,11 +37,14 @@ import { AppShortcut } from "../components/special/AppShortcut";
 import { Iframe } from "../components/special/Iframe";
 import { Progress } from "../components/special/Progress";
 
-import { LineChart } from "../../visualization/components/LineChart";
-import { BarChart } from "../../visualization/components/BarChart";
-import { AreaChart } from "../../visualization/components/AreaChart";
-import { PieChart } from "../../visualization/components/PieChart";
-import { Graph } from "../../visualization/components/Graph";
+// Import lazy-loaded chart components to reduce initial bundle size
+import {
+  LineChart,
+  BarChart,
+  AreaChart,
+  PieChart,
+  Graph
+} from "../../visualization/components/LazyCharts";
 
 // Import validation schemas
 import {

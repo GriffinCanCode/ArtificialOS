@@ -170,8 +170,8 @@ export interface UseFloatingReturn {
  * Tooltip hook return
  */
 export interface UseTooltipReturn extends UseFloatingReturn {
-  getReferenceProps: () => Record<string, any>;
-  getFloatingProps: () => Record<string, any>;
+  getReferenceProps: (userProps?: Record<string, any>) => Record<string, any>;
+  getFloatingProps: (userProps?: Record<string, any>) => Record<string, any>;
 }
 
 /**

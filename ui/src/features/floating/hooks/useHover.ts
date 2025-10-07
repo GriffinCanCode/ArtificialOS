@@ -112,12 +112,12 @@ export function useHoverCard({
     isOpen,
     open: () => setIsOpen(true),
     close: () => setIsOpen(false),
-    getReferenceProps: () => ({
-      ...interactions.getReferenceProps(),
+    getReferenceProps: (userProps?: any) => ({
+      ...interactions.getReferenceProps(userProps),
       "aria-describedby": isOpen ? hoverCardId : undefined,
     }),
-    getFloatingProps: () => ({
-      ...interactions.getFloatingProps(),
+    getFloatingProps: (userProps?: any) => ({
+      ...interactions.getFloatingProps(userProps),
       id: hoverCardId,
     }),
   };

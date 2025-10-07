@@ -3,7 +3,7 @@
  * Smart positioning tooltip with accessibility
  */
 
-import React, { cloneElement } from "react";
+import React, { cloneElement, useMemo, useEffect } from "react";
 import { FloatingPortal } from "@floating-ui/react";
 import { useTooltip } from "../hooks/useTooltip";
 import type { TooltipProps } from "../core/types";
@@ -13,59 +13,58 @@ import "./Tooltip.css";
 // Component
 // ============================================================================
 
-export const Tooltip: React.FC<TooltipProps> = React.memo(
-  ({ content, children, delay = 300, position, interaction, open, onOpenChange }) => {
-    const tooltip = useTooltip({
-      position,
-      interaction: { ...interaction, delay },
-      initialOpen: open,
-      onOpenChange,
-    });
+export const Tooltip: React.FC<TooltipProps> = ({ content, children, delay = 300, position, interaction, open, onOpenChange }) => {
+  // Memoize the interaction config to prevent hook re-initialization
+  const interactionConfig = useMemo(
+    () => ({ ...interaction, delay }),
+    [interaction?.trigger, interaction?.closeOnEscape, delay]
+  );
 
-    console.log('[Tooltip] Render', { content, isOpen: tooltip.isOpen, hasChildren: !!children });
+  const tooltip = useTooltip({
+    position,
+    interaction: interactionConfig,
+    initialOpen: open,
+    onOpenChange,
+  });
 
-    if (!content) {
-      return children;
-    }
-
-    const referenceProps = tooltip.getReferenceProps({
-      ref: tooltip.refs.setReference,
-      ...children.props,
-    });
-
-    console.log('[Tooltip] Reference props:', Object.keys(referenceProps));
-
-    // Wrap handlers with logging
-    const wrappedProps = {
-      ...referenceProps,
-      onPointerEnter: (e: any) => {
-        console.log('[Tooltip] onPointerEnter fired!', content);
-        referenceProps.onPointerEnter?.(e);
-      },
-      onMouseMove: (e: any) => {
-        console.log('[Tooltip] onMouseMove fired!', content);
-        referenceProps.onMouseMove?.(e);
-      },
-    };
-
-    return (
-      <>
-        {cloneElement(children, wrappedProps)}
-        {tooltip.isOpen && (
-          <FloatingPortal>
-            <div
-              ref={tooltip.refs.setFloating}
-              style={tooltip.floatingStyles}
-              className="tooltip"
-              {...tooltip.getFloatingProps()}
-            >
-              {content}
-            </div>
-          </FloatingPortal>
-        )}
-      </>
-    );
+  if (!content) {
+    return children;
   }
-);
+
+  const referenceProps = tooltip.getReferenceProps(children.props);
+
+  // Debug logging
+  useEffect(() => {
+    if (tooltip.isOpen) {
+      console.log('[Tooltip] Rendering tooltip', {
+        isOpen: tooltip.isOpen,
+        content,
+        floatingStyles: tooltip.floatingStyles,
+        refs: tooltip.refs,
+      });
+    }
+  }, [tooltip.isOpen, content, tooltip.floatingStyles]);
+
+  return (
+    <>
+      {cloneElement(children, {
+        ...referenceProps,
+        ref: tooltip.refs.setReference,
+      })}
+      {tooltip.isOpen && (
+        <FloatingPortal>
+          <div
+            ref={tooltip.refs.setFloating}
+            style={tooltip.floatingStyles}
+            className="tooltip"
+            {...tooltip.getFloatingProps()}
+          >
+            {content}
+          </div>
+        </FloatingPortal>
+      )}
+    </>
+  );
+};
 
 Tooltip.displayName = "Tooltip";

@@ -3,7 +3,7 @@
  * Individual dock item with sortable support and tooltip
  */
 
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { SortableItem } from "../../../features/dnd/components/SortableItem";
 import { Tooltip } from "../../../features/floating";
 import type { DockItem as DockItemType } from "../../../features/dnd";
@@ -28,18 +28,33 @@ export const DockItem: React.FC<DockItemProps> = React.memo(({ item, onClick, di
     onClick(item.action);
   }, [onClick, item.action]);
 
+  // Memoize button to prevent re-creation
+  const button = useMemo(() => (
+    <button
+      className={`dock-item ${item.pinned ? "pinned" : ""}`}
+      onClick={handleClick}
+      disabled={disabled}
+    >
+      <span className="dock-icon">{item.icon}</span>
+      {item.pinned && <span className="dock-pin">📌</span>}
+    </button>
+  ), [item.pinned, item.icon, handleClick, disabled]);
+
   return (
     <SortableItem id={item.id} disabled={disabled} className="dock-item-wrapper">
-      <button
-        className={`dock-item ${item.pinned ? "pinned" : ""}`}
-        onClick={handleClick}
-        disabled={disabled}
-        title={item.label}
-      >
-        <span className="dock-icon">{item.icon}</span>
-        {item.pinned && <span className="dock-pin">📌</span>}
-      </button>
+      <Tooltip content={item.label} delay={500}>
+        {button}
+      </Tooltip>
     </SortableItem>
+  );
+}, (prevProps, nextProps) => {
+  // Custom comparison function for memo
+  return (
+    prevProps.item.id === nextProps.item.id &&
+    prevProps.item.label === nextProps.item.label &&
+    prevProps.item.icon === nextProps.item.icon &&
+    prevProps.item.pinned === nextProps.item.pinned &&
+    prevProps.disabled === nextProps.disabled
   );
 });
 
