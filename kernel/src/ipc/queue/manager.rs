@@ -15,7 +15,6 @@ use crate::core::types::{Pid, Priority, Size};
 use crate::memory::MemoryManager;
 use dashmap::DashMap;
 use log::{debug, info, warn};
-use parking_lot::RwLock;
 use std::collections::HashSet;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -96,7 +95,7 @@ impl QueueManager {
             )));
         }
 
-        let queue_id = self.next_id.fetch_add(1, Ordering::SeqCst);
+        let queue_id = self.next_id.fetch_add(1, Ordering::SeqCst) as u32;
 
         let capacity = capacity.unwrap_or(1000);
         let queue = match queue_type {

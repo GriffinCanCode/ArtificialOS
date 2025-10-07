@@ -3,8 +3,7 @@
  * Central manager for shared memory segments
  */
 
-use super::super::traits::SharedMemory;
-use super::super::types::{IpcResult, ShmId};
+use super::super::core::types::ShmId;
 use super::segment::SharedSegment;
 use super::types::{
     ShmError, ShmPermission, ShmStats, GLOBAL_SHM_MEMORY_LIMIT, MAX_SEGMENTS_PER_PROCESS,
@@ -12,9 +11,9 @@ use super::types::{
 };
 use crate::core::types::{Pid, Size};
 use crate::memory::MemoryManager;
+use dashmap::DashMap;
 use log::{info, warn};
 use parking_lot::RwLock;
-use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
@@ -23,10 +22,10 @@ static GLOBAL_SHM_MEMORY: AtomicUsize = AtomicUsize::new(0);
 
 /// Shared memory manager
 pub struct ShmManager {
-    segments: Arc<RwLock<HashMap<ShmId, SharedSegment>>>,
+    segments: Arc<DashMap<ShmId, SharedSegment>>,
     next_id: Arc<RwLock<ShmId>>,
     // Track segment count per process
-    process_segments: Arc<RwLock<HashMap<Pid, Size>>>,
+    process_segments: Arc<DashMap<Pid, Size>>,
     memory_manager: MemoryManager,
 }
 
@@ -38,9 +37,9 @@ impl ShmManager {
             GLOBAL_SHM_MEMORY_LIMIT / (1024 * 1024)
         );
         Self {
-            segments: Arc::new(RwLock::new(HashMap::new())),
+            segments: Arc::new(DashMap::new()),
             next_id: Arc::new(RwLock::new(1)),
-            process_segments: Arc::new(RwLock::new(HashMap::new())),
+            process_segments: Arc::new(DashMap::new()),
             memory_manager,
         }
     }
@@ -58,15 +57,13 @@ impl ShmManager {
         }
 
         // Check per-process limit
-        let process_segments = self.process_segments.read();
-        let count = process_segments.get(&owner_pid).unwrap_or(&0);
-        if *count >= MAX_SEGMENTS_PER_PROCESS {
+        let count = self.process_segments.get(&owner_pid).map(|v| *v.value()).unwrap_or(0);
+        if count >= MAX_SEGMENTS_PER_PROCESS {
             return Err(ShmError::ProcessLimitExceeded(
-                *count,
+                count,
                 MAX_SEGMENTS_PER_PROCESS,
             ));
         }
-        drop(process_segments);
 
         // Check global memory limit
         let current_global = GLOBAL_SHM_MEMORY.load(Ordering::Acquire);
@@ -83,11 +80,10 @@ impl ShmManager {
             .allocate(size, owner_pid)
             .map_err(|e| ShmError::AllocationFailed(e.to_string()))?;
 
-        let mut segments = self.segments.write();
         let mut next_id = self.next_id.write();
-
         let segment_id = *next_id;
         *next_id += 1;
+        drop(next_id);
 
         let segment = SharedSegment::new(
             segment_id,
@@ -96,14 +92,13 @@ impl ShmManager {
             address,
             self.memory_manager.clone(),
         );
-        segments.insert(segment_id, segment);
-        drop(segments);
-        drop(next_id);
+        self.segments.insert(segment_id, segment);
 
         // Update process segment count
-        let mut process_segments = self.process_segments.write();
-        *process_segments.entry(owner_pid).or_insert(0) += 1;
-        drop(process_segments);
+        self.process_segments
+            .entry(owner_pid)
+            .and_modify(|v| *v += 1)
+            .or_insert(1);
 
         // Update global memory
         GLOBAL_SHM_MEMORY.fetch_add(size, Ordering::Release);
@@ -121,8 +116,7 @@ impl ShmManager {
     }
 
     pub fn attach(&self, segment_id: ShmId, pid: Pid, read_only: bool) -> Result<(), ShmError> {
-        let mut segments = self.segments.write();
-        let segment = segments
+        let mut segment = self.segments
             .get_mut(&segment_id)
             .ok_or(ShmError::NotFound(segment_id))?;
 
@@ -143,8 +137,7 @@ impl ShmManager {
     }
 
     pub fn detach(&self, segment_id: ShmId, pid: Pid) -> Result<(), ShmError> {
-        let mut segments = self.segments.write();
-        let segment = segments
+        let mut segment = self.segments
             .get_mut(&segment_id)
             .ok_or(ShmError::NotFound(segment_id))?;
 
@@ -162,8 +155,7 @@ impl ShmManager {
         offset: Size,
         data: &[u8],
     ) -> Result<(), ShmError> {
-        let segments = self.segments.read();
-        let segment = segments
+        let segment = self.segments
             .get(&segment_id)
             .ok_or(ShmError::NotFound(segment_id))?;
 
@@ -193,8 +185,7 @@ impl ShmManager {
         offset: Size,
         size: Size,
     ) -> Result<Vec<u8>, ShmError> {
-        let segments = self.segments.read();
-        let segment = segments
+        let segment = self.segments
             .get(&segment_id)
             .ok_or(ShmError::NotFound(segment_id))?;
 
@@ -218,8 +209,7 @@ impl ShmManager {
     }
 
     pub fn destroy(&self, segment_id: ShmId, pid: Pid) -> Result<(), ShmError> {
-        let mut segments = self.segments.write();
-        let segment = segments
+        let segment = self.segments
             .get(&segment_id)
             .ok_or(ShmError::NotFound(segment_id))?;
 
@@ -233,9 +223,9 @@ impl ShmManager {
         let owner_pid = segment.owner_pid;
         let size = segment.size;
         let address = segment.address;
+        drop(segment);
 
-        segments.remove(&segment_id);
-        drop(segments);
+        self.segments.remove(&segment_id);
 
         // Deallocate memory through MemoryManager (unified memory accounting)
         if let Err(e) = self.memory_manager.deallocate(address) {
@@ -246,14 +236,12 @@ impl ShmManager {
         }
 
         // Update process segment count
-        let mut process_segments = self.process_segments.write();
-        if let Some(count) = process_segments.get_mut(&owner_pid) {
+        self.process_segments.entry(owner_pid).and_modify(|count| {
             *count = count.saturating_sub(1);
             if *count == 0 {
-                process_segments.remove(&owner_pid);
+                self.process_segments.remove(&owner_pid);
             }
-        }
-        drop(process_segments);
+        });
 
         // Reclaim global memory
         GLOBAL_SHM_MEMORY.fetch_sub(size, Ordering::Release);
@@ -270,8 +258,7 @@ impl ShmManager {
     }
 
     pub fn stats(&self, segment_id: ShmId) -> Result<ShmStats, ShmError> {
-        let segments = self.segments.read();
-        let segment = segments
+        let segment = self.segments
             .get(&segment_id)
             .ok_or(ShmError::NotFound(segment_id))?;
 
@@ -293,21 +280,21 @@ impl ShmManager {
     }
 
     pub fn cleanup_process(&self, pid: Pid) -> Size {
-        let segments = self.segments.read();
-        let segment_ids: Vec<u32> = segments
-            .values()
-            .filter(|s| s.owner_pid == pid || s.attached_pids.contains(&pid))
-            .map(|s| s.id)
+        let segment_ids: Vec<u32> = self.segments
+            .iter()
+            .filter(|entry| {
+                let s = entry.value();
+                s.owner_pid == pid || s.attached_pids.contains(&pid)
+            })
+            .map(|entry| entry.value().id)
             .collect();
-        drop(segments);
 
         let mut count = 0;
 
         for segment_id in segment_ids {
-            let segments = self.segments.read();
-            if let Some(segment) = segments.get(&segment_id) {
+            if let Some(segment) = self.segments.get(&segment_id) {
                 if segment.owner_pid == pid {
-                    drop(segments);
+                    drop(segment);
                     if let Err(e) = self.destroy(segment_id, pid) {
                         warn!(
                             "Failed to destroy segment {} during cleanup: {}",
@@ -317,7 +304,7 @@ impl ShmManager {
                         count += 1;
                     }
                 } else {
-                    drop(segments);
+                    drop(segment);
                     if let Err(e) = self.detach(segment_id, pid) {
                         warn!(
                             "Failed to detach from segment {} during cleanup: {}",
@@ -351,39 +338,5 @@ impl Clone for ShmManager {
             process_segments: Arc::clone(&self.process_segments),
             memory_manager: self.memory_manager.clone(),
         }
-    }
-}
-
-// Implement SharedMemory trait
-impl SharedMemory for ShmManager {
-    fn create(&self, size: Size, owner_pid: Pid) -> IpcResult<ShmId> {
-        self.create(size, owner_pid).map_err(|e| e.into())
-    }
-
-    fn attach(&self, segment_id: ShmId, pid: Pid, read_only: bool) -> IpcResult<()> {
-        self.attach(segment_id, pid, read_only)
-            .map_err(|e| e.into())
-    }
-
-    fn detach(&self, segment_id: ShmId, pid: Pid) -> IpcResult<()> {
-        self.detach(segment_id, pid).map_err(|e| e.into())
-    }
-
-    fn write(&self, segment_id: ShmId, pid: Pid, offset: Size, data: &[u8]) -> IpcResult<()> {
-        self.write(segment_id, pid, offset, data)
-            .map_err(|e| e.into())
-    }
-
-    fn read(&self, segment_id: ShmId, pid: Pid, offset: Size, size: Size) -> IpcResult<Vec<u8>> {
-        self.read(segment_id, pid, offset, size)
-            .map_err(|e| e.into())
-    }
-
-    fn destroy(&self, segment_id: ShmId, pid: Pid) -> IpcResult<()> {
-        self.destroy(segment_id, pid).map_err(|e| e.into())
-    }
-
-    fn stats(&self, segment_id: ShmId) -> IpcResult<ShmStats> {
-        self.stats(segment_id).map_err(|e| e.into())
     }
 }

@@ -5,9 +5,8 @@
 
 use super::types::{ExecutionConfig, ProcessError, ProcessResult};
 use crate::core::types::Pid;
+use dashmap::DashMap;
 use log::{error, info, warn};
-use parking_lot::RwLock;
-use std::collections::HashMap;
 use std::process::{Child, Command, Stdio};
 use std::sync::Arc;
 
@@ -23,14 +22,14 @@ pub struct ExecutingProcess {
 
 /// Manages OS process execution
 pub struct ProcessExecutor {
-    processes: Arc<RwLock<HashMap<u32, ExecutingProcess>>>,
+    processes: Arc<DashMap<u32, ExecutingProcess>>,
 }
 
 impl ProcessExecutor {
     pub fn new() -> Self {
         info!("Process executor initialized");
         Self {
-            processes: Arc::new(RwLock::new(HashMap::new())),
+            processes: Arc::new(DashMap::new()),
         }
     }
 
@@ -90,16 +89,14 @@ impl ProcessExecutor {
             child,
         };
 
-        self.processes.write().insert(pid, process);
+        self.processes.insert(pid, process);
 
         Ok(os_pid)
     }
 
     /// Kill a running process
     pub fn kill(&self, pid: Pid) -> ProcessResult<()> {
-        let mut processes = self.processes.write();
-
-        if let Some(mut process) = processes.remove(&pid) {
+        if let Some((_, mut process)) = self.processes.remove(&pid) {
             match process.child.kill() {
                 Ok(_) => {
                     info!("Killed OS process PID {} (OS PID: {})", pid, process.os_pid);
@@ -119,20 +116,17 @@ impl ProcessExecutor {
 
     /// Check if a process is still running
     pub fn is_running(&self, pid: Pid) -> bool {
-        let processes = self.processes.read();
-        processes.contains_key(&pid)
+        self.processes.contains_key(&pid)
     }
 
     /// Get OS PID for an internal PID
     pub fn get_os_pid(&self, pid: Pid) -> Option<u32> {
-        self.processes.read().get(&pid).map(|p| p.os_pid)
+        self.processes.get(&pid).map(|p| p.os_pid)
     }
 
     /// Wait for a process to complete
     pub fn wait(&self, pid: Pid) -> ProcessResult<i32> {
-        let mut processes = self.processes.write();
-
-        if let Some(mut process) = processes.remove(&pid) {
+        if let Some((_, mut process)) = self.processes.remove(&pid) {
             match process.child.wait() {
                 Ok(status) => {
                     let code = status.code().unwrap_or(-1);
@@ -154,7 +148,7 @@ impl ProcessExecutor {
 
     /// Get count of running processes
     pub fn count(&self) -> usize {
-        self.processes.read().len()
+        self.processes.len()
     }
 
     /// Validate command for security
@@ -184,10 +178,12 @@ impl ProcessExecutor {
 
     /// Cleanup zombie processes
     pub fn cleanup(&self) {
-        let mut processes = self.processes.write();
         let mut to_remove = Vec::new();
 
-        for (pid, process) in processes.iter_mut() {
+        for mut entry in self.processes.iter_mut() {
+            let pid = *entry.key();
+            let process = entry.value_mut();
+
             // Try to check if process is still running
             match process.child.try_wait() {
                 Ok(Some(status)) => {
@@ -196,24 +192,25 @@ impl ProcessExecutor {
                         pid,
                         status.code()
                     );
-                    to_remove.push(*pid);
+                    to_remove.push(pid);
                 }
                 Ok(None) => {
                     // Still running
                 }
                 Err(e) => {
                     warn!("Error checking process PID {}: {}", pid, e);
-                    to_remove.push(*pid);
+                    to_remove.push(pid);
                 }
             }
         }
 
         for pid in to_remove {
-            processes.remove(&pid);
+            self.processes.remove(&pid);
         }
 
-        if !processes.is_empty() {
-            info!("Cleanup: {} active processes remain", processes.len());
+        let count = self.processes.len();
+        if count > 0 {
+            info!("Cleanup: {} active processes remain", count);
         }
     }
 }

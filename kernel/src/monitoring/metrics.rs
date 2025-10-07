@@ -3,8 +3,8 @@
  * Lightweight performance metrics collector
  */
 
-use parking_lot::RwLock;
 use crate::core::serde::is_zero_u64;
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -77,43 +77,45 @@ impl Histogram {
 
 /// Metrics collector
 pub struct MetricsCollector {
-    counters: Arc<RwLock<HashMap<String, f64>>>,
-    gauges: Arc<RwLock<HashMap<String, f64>>>,
-    histograms: Arc<RwLock<HashMap<String, Histogram>>>,
+    counters: Arc<DashMap<String, f64>>,
+    gauges: Arc<DashMap<String, f64>>,
+    histograms: Arc<DashMap<String, Histogram>>,
     start_time: Instant,
 }
 
 impl MetricsCollector {
     pub fn new() -> Self {
         Self {
-            counters: Arc::new(RwLock::new(HashMap::new())),
-            gauges: Arc::new(RwLock::new(HashMap::new())),
-            histograms: Arc::new(RwLock::new(HashMap::new())),
+            counters: Arc::new(DashMap::new()),
+            gauges: Arc::new(DashMap::new()),
+            histograms: Arc::new(DashMap::new()),
             start_time: Instant::now(),
         }
     }
 
     /// Increment a counter
     pub fn inc_counter(&self, name: &str, value: f64) {
-        let mut counters = self.counters.write();
-        *counters.entry(name.to_string()).or_insert(0.0) += value;
+        self.counters
+            .entry(name.to_string())
+            .and_modify(|v| *v += value)
+            .or_insert(value);
     }
 
     /// Set a gauge value
     pub fn set_gauge(&self, name: &str, value: f64) {
-        let mut gauges = self.gauges.write();
-        gauges.insert(name.to_string(), value);
+        self.gauges.insert(name.to_string(), value);
     }
 
     /// Observe a value in a histogram
     pub fn observe_histogram(&self, name: &str, value: f64) {
-        let mut histograms = self.histograms.write();
-        let histogram = histograms.entry(name.to_string()).or_insert_with(|| {
-            Histogram::new(vec![
-                0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0,
-            ])
-        });
-        histogram.observe(value);
+        self.histograms
+            .entry(name.to_string())
+            .or_insert_with(|| {
+                Histogram::new(vec![
+                    0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0,
+                ])
+            })
+            .observe(value);
     }
 
     /// Record operation duration
@@ -123,13 +125,21 @@ impl MetricsCollector {
 
     /// Get snapshot of all metrics
     pub fn snapshot(&self) -> MetricsSnapshot {
-        let counters = self.counters.read().clone();
-        let gauges = self.gauges.read().clone();
-
-        let histograms = self.histograms.read();
-        let histogram_stats: HashMap<String, HistogramStats> = histograms
+        let counters: HashMap<String, f64> = self.counters
             .iter()
-            .map(|(name, hist)| {
+            .map(|entry| (entry.key().clone(), *entry.value()))
+            .collect();
+
+        let gauges: HashMap<String, f64> = self.gauges
+            .iter()
+            .map(|entry| (entry.key().clone(), *entry.value()))
+            .collect();
+
+        let histogram_stats: HashMap<String, HistogramStats> = self.histograms
+            .iter()
+            .map(|entry| {
+                let name = entry.key();
+                let hist = entry.value();
                 let stats = HistogramStats {
                     count: hist.count,
                     sum: hist.sum,
@@ -156,9 +166,9 @@ impl MetricsCollector {
 
     /// Reset all metrics
     pub fn reset(&self) {
-        self.counters.write().clear();
-        self.gauges.write().clear();
-        self.histograms.write().clear();
+        self.counters.clear();
+        self.gauges.clear();
+        self.histograms.clear();
     }
 }
 
