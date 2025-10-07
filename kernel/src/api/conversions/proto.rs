@@ -115,6 +115,25 @@ pub fn proto_to_syscall_full(req: &SyscallRequest) -> Result<Syscall, String> {
             target_pid: call.target_pid,
             signal: call.signal,
         }),
+        Some(syscall_request::Syscall::RegisterSignalHandler(call)) => Ok(Syscall::RegisterSignalHandler {
+            signal: call.signal,
+            handler_id: call.handler_id as u64,
+        }),
+        Some(syscall_request::Syscall::BlockSignal(call)) => Ok(Syscall::BlockSignal {
+            signal: call.signal,
+        }),
+        Some(syscall_request::Syscall::UnblockSignal(call)) => Ok(Syscall::UnblockSignal {
+            signal: call.signal,
+        }),
+        Some(syscall_request::Syscall::GetPendingSignals(_)) => Ok(Syscall::GetPendingSignals),
+        Some(syscall_request::Syscall::GetSignalStats(_)) => Ok(Syscall::GetSignalStats),
+        Some(syscall_request::Syscall::WaitForSignal(call)) => Ok(Syscall::WaitForSignal {
+            signals: call.signals.clone(),
+            timeout_ms: call.timeout_ms,
+        }),
+        Some(syscall_request::Syscall::GetSignalState(call)) => Ok(Syscall::GetSignalState {
+            target_pid: call.target_pid,
+        }),
         Some(syscall_request::Syscall::NetworkRequest(call)) => {
             Ok(Syscall::NetworkRequest { url: call.url.clone() })
         }
@@ -309,17 +328,23 @@ pub fn proto_to_syscall_full(req: &SyscallRequest) -> Result<Syscall, String> {
             quantum_micros: call.quantum_micros,
         }),
         Some(syscall_request::Syscall::GetTimeQuantum(_)) => Ok(Syscall::GetTimeQuantum),
-        Some(syscall_request::Syscall::GetProcessSchedulerStats(_)) => {
-            Err("GetProcessSchedulerStats not yet implemented".to_string())
+        Some(syscall_request::Syscall::GetProcessSchedulerStats(call)) => {
+            Ok(Syscall::GetProcessSchedulerStats {
+                target_pid: call.target_pid,
+            })
         }
         Some(syscall_request::Syscall::GetAllProcessSchedulerStats(_)) => {
-            Err("GetAllProcessSchedulerStats not yet implemented".to_string())
+            Ok(Syscall::GetAllProcessSchedulerStats)
         }
-        Some(syscall_request::Syscall::BoostPriority(_)) => {
-            Err("BoostPriority not yet implemented".to_string())
+        Some(syscall_request::Syscall::BoostPriority(call)) => {
+            Ok(Syscall::BoostPriority {
+                target_pid: call.target_pid,
+            })
         }
-        Some(syscall_request::Syscall::LowerPriority(_)) => {
-            Err("LowerPriority not yet implemented".to_string())
+        Some(syscall_request::Syscall::LowerPriority(call)) => {
+            Ok(Syscall::LowerPriority {
+                target_pid: call.target_pid,
+            })
         }
         None => Err("No syscall provided".to_string()),
     }

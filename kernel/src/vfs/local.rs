@@ -131,7 +131,16 @@ impl LocalFS {
 impl FileSystem for LocalFS {
     fn read(&self, path: &Path) -> VfsResult<Vec<u8>> {
         let full_path = self.resolve(path);
-        fs::read(&full_path).map_err(|e| Self::io_error(e, format!("read {}", path.display())))
+        let data = fs::read(&full_path).map_err(|e| Self::io_error(e, format!("read {}", path.display())))?;
+
+        // Use SIMD-accelerated copy for large files (> 64 bytes)
+        if data.len() >= 64 {
+            let mut result = vec![0u8; data.len()];
+            crate::memory::simd_memcpy(&mut result, &data);
+            Ok(result)
+        } else {
+            Ok(data)
+        }
     }
 
     fn write(&self, path: &Path, data: &[u8]) -> VfsResult<()> {
@@ -145,8 +154,16 @@ impl FileSystem for LocalFS {
             })?;
         }
 
-        fs::write(&full_path, data)
-            .map_err(|e| Self::io_error(e, format!("write {}", path.display())))
+        // Use SIMD-accelerated copy for large files (> 64 bytes) before writing
+        if data.len() >= 64 {
+            let mut write_buf = vec![0u8; data.len()];
+            crate::memory::simd_memcpy(&mut write_buf, data);
+            fs::write(&full_path, write_buf)
+                .map_err(|e| Self::io_error(e, format!("write {}", path.display())))
+        } else {
+            fs::write(&full_path, data)
+                .map_err(|e| Self::io_error(e, format!("write {}", path.display())))
+        }
     }
 
     fn append(&self, path: &Path, data: &[u8]) -> VfsResult<()> {
@@ -160,8 +177,16 @@ impl FileSystem for LocalFS {
             .open(&full_path)
             .map_err(|e| Self::io_error(e, format!("open for append {}", path.display())))?;
 
-        file.write_all(data)
-            .map_err(|e| Self::io_error(e, format!("append {}", path.display())))
+        // Use SIMD-accelerated copy for large appends (> 64 bytes)
+        if data.len() >= 64 {
+            let mut append_buf = vec![0u8; data.len()];
+            crate::memory::simd_memcpy(&mut append_buf, data);
+            file.write_all(&append_buf)
+                .map_err(|e| Self::io_error(e, format!("append {}", path.display())))
+        } else {
+            file.write_all(data)
+                .map_err(|e| Self::io_error(e, format!("append {}", path.display())))
+        }
     }
 
     fn create(&self, path: &Path) -> VfsResult<()> {
