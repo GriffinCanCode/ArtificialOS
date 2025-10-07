@@ -8,7 +8,7 @@ use crate::monitoring::{span_grpc, GrpcSpan};
 use crate::process::ProcessManagerImpl as ProcessManager;
 use crate::security::{SandboxConfig, SandboxManager};
 use crate::security::traits::SandboxProvider;
-use crate::api::grpc_server::kernel_proto::*;
+use crate::api::server::grpc_server::kernel_proto::*;
 
 #[instrument(skip(process_manager, sandbox_manager, request), fields(process_name, priority, sandbox_level, trace_id))]
 pub async fn handle_create_process(

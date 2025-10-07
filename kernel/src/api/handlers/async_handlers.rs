@@ -5,9 +5,8 @@
 use tonic::{Request, Response, Status};
 use tracing::{info, instrument};
 use crate::monitoring::{span_grpc, GrpcSpan};
-use crate::api::grpc_server::kernel_proto::*;
-use crate::api::async_task::{AsyncTaskManager, TaskStatus};
-use crate::api::batch::BatchExecutor;
+use crate::api::server::grpc_server::kernel_proto::*;
+use crate::api::execution::{AsyncTaskManager, BatchExecutor, TaskStatus};
 use crate::api::conversions::{proto_to_syscall_simple, syscall_result_to_proto};
 use crate::syscalls::SyscallResult;
 

@@ -14,13 +14,11 @@ use crate::process::ProcessManagerImpl as ProcessManager;
 use crate::security::{SandboxManager};
 use crate::syscalls::{Syscall, SyscallExecutor, SyscallResult};
 
-use super::async_task::AsyncTaskManager;
-use super::batch::BatchExecutor;
-use super::streaming::StreamingManager;
-use super::traits::ServerLifecycle;
-use super::types::{ApiError, ApiResult, ServerConfig};
-use super::conversions::{proto_to_syscall_full, syscall_result_to_proto};
-use super::handlers::{
+use crate::api::execution::{AsyncTaskManager, BatchExecutor, StreamingManager};
+use crate::api::traits::ServerLifecycle;
+use crate::api::types::{ApiError, ApiResult, ServerConfig};
+use crate::api::conversions::{proto_to_syscall_full, syscall_result_to_proto};
+use crate::api::handlers::{
     process_handlers, sandbox_handlers, scheduler_handlers,
     streaming_handlers, async_handlers,
 };

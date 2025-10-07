@@ -6,8 +6,8 @@ use tonic::{Request, Response, Status};
 use tracing::info;
 use crate::process::ProcessManagerImpl as ProcessManager;
 use crate::security::SandboxManager;
-use crate::api::grpc_server::kernel_proto::*;
-use crate::api::streaming::StreamingManager;
+use crate::api::server::grpc_server::kernel_proto::*;
+use crate::api::execution::StreamingManager;
 
 pub async fn handle_stream_events(
     process_manager: &ProcessManager,

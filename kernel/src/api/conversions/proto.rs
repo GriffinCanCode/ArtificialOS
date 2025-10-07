@@ -5,7 +5,7 @@
 
 use std::path::PathBuf;
 use crate::syscalls::Syscall;
-use crate::api::grpc_server::kernel_proto::*;
+use crate::api::server::grpc_server::kernel_proto::*;
 
 /// Convert protobuf SyscallRequest to internal Syscall enum
 /// Returns Err if syscall type is unsupported or missing

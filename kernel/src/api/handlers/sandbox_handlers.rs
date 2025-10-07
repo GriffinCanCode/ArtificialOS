@@ -7,7 +7,7 @@ use tonic::{Request, Response, Status};
 use tracing::info;
 use crate::security::{SandboxConfig, SandboxManager};
 use crate::security::traits::SandboxProvider;
-use crate::api::grpc_server::kernel_proto::*;
+use crate::api::server::grpc_server::kernel_proto::*;
 use crate::api::conversions::response::proto_to_sandbox_capability;
 
 pub async fn handle_update_sandbox(

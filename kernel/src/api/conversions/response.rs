@@ -5,7 +5,7 @@
 
 use crate::syscalls::SyscallResult;
 use crate::security::{Capability as SandboxCapability, NetworkRule};
-use crate::api::grpc_server::kernel_proto::*;
+use crate::api::server::grpc_server::kernel_proto::*;
 
 /// Convert internal SyscallResult to protobuf SyscallResponse
 pub fn syscall_result_to_proto(result: SyscallResult) -> SyscallResponse {
