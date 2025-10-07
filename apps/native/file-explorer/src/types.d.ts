@@ -1,0 +1,18 @@
+/**
+ * Type declarations for native app environment
+ */
+
+declare global {
+  interface Window {
+    electronLog?: {
+      error: (message: string, ...args: any[]) => void;
+      warn: (message: string, ...args: any[]) => void;
+      info: (message: string, ...args: any[]) => void;
+      verbose: (message: string, ...args: any[]) => void;
+      debug: (message: string, ...args: any[]) => void;
+      silly: (message: string, ...args: any[]) => void;
+    };
+  }
+}
+
+export {};

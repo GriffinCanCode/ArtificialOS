@@ -282,6 +282,24 @@ pub enum Syscall {
     YieldProcess,
     GetCurrentScheduled,
     GetSchedulerStats,
+    SetSchedulingPolicy {
+        policy: String, // "round_robin", "priority", "fair"
+    },
+    GetSchedulingPolicy,
+    SetTimeQuantum {
+        quantum_micros: u64,
+    },
+    GetTimeQuantum,
+    GetProcessSchedulerStats {
+        target_pid: Pid,
+    },
+    GetAllProcessSchedulerStats,
+    BoostPriority {
+        target_pid: Pid,
+    },
+    LowerPriority {
+        target_pid: Pid,
+    },
 
     // Time operations
     Sleep {

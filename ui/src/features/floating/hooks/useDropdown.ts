@@ -11,7 +11,6 @@ import {
   useDismiss,
   useRole,
   useListNavigation,
-  FloatingFocusManager,
 } from "@floating-ui/react";
 import { createDropdownMiddleware, generateId } from "../core/utils";
 import type { UseDropdownReturn, PositionConfig, InteractionConfig } from "../core/types";
@@ -40,7 +39,6 @@ export function useDropdown({
   interaction,
   initialOpen = false,
   onOpenChange,
-  itemCount = 0,
 }: UseDropdownConfig = {}): UseDropdownReturn {
   const [isOpen, setIsOpen] = useState(initialOpen);
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -60,7 +58,7 @@ export function useDropdown({
     placement: position?.placement ?? "bottom-start",
     strategy: position?.strategy ?? "absolute",
     middleware: position?.middleware ?? createDropdownMiddleware(position),
-    whileElementsMounted: (reference, floating, update) => {
+    whileElementsMounted: (_reference, _floating, update) => {
       const cleanup = () => update();
       window.addEventListener("scroll", cleanup, true);
       window.addEventListener("resize", cleanup);

@@ -3,10 +3,12 @@ package registry
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/GriffinCanCode/AgentOS/backend/internal/domain/blueprint"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/types"
@@ -38,8 +40,28 @@ func (s *Seeder) SeedApps() error {
 
 	var loaded, failed int
 
-	// Walk through all subdirectories
-	err := filepath.Walk(s.appsDir, func(path string, info os.FileInfo, err error) error {
+	// 1. Seed blueprint apps (.bp and .aiapp files)
+	if err := s.seedBlueprintApps(&loaded, &failed); err != nil {
+		return err
+	}
+
+	// 2. Seed native web apps (TypeScript/React)
+	if err := s.seedNativeWebApps(&loaded, &failed); err != nil {
+		return err
+	}
+
+	// 3. Seed native process apps (executables)
+	if err := s.seedNativeProcApps(&loaded, &failed); err != nil {
+		return err
+	}
+
+	log.Printf("Seeding complete: %d loaded, %d failed", loaded, failed)
+	return nil
+}
+
+// seedBlueprintApps loads blueprint apps from .bp and .aiapp files
+func (s *Seeder) seedBlueprintApps(loaded, failed *int) error {
+	return filepath.Walk(s.appsDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -57,20 +79,97 @@ func (s *Seeder) SeedApps() error {
 		// Load and register the app
 		if err := s.loadApp(path); err != nil {
 			log.Printf("  Failed to load %s: %v", info.Name(), err)
-			failed++
+			*failed++
 		} else {
 			log.Printf("  Loaded %s", info.Name())
-			loaded++
+			*loaded++
 		}
 
 		return nil
 	})
+}
 
+// seedNativeWebApps loads native TypeScript/React apps from apps/native/
+func (s *Seeder) seedNativeWebApps(loaded, failed *int) error {
+	nativeDir := filepath.Join(s.appsDir, "native")
+
+	// Check if directory exists
+	if _, err := os.Stat(nativeDir); os.IsNotExist(err) {
+		log.Printf("  No native web apps directory found")
+		return nil
+	}
+
+	entries, err := os.ReadDir(nativeDir)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("Seeding complete: %d loaded, %d failed", loaded, failed)
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		appDir := filepath.Join(nativeDir, entry.Name())
+		manifestPath := filepath.Join(appDir, "manifest.json")
+
+		// Check if manifest exists
+		if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
+			log.Printf("  Skipping %s (no manifest.json)", entry.Name())
+			continue
+		}
+
+		// Load manifest
+		if err := s.loadNativeWebApp(entry.Name(), manifestPath); err != nil {
+			log.Printf("  Failed to load native app %s: %v", entry.Name(), err)
+			*failed++
+		} else {
+			log.Printf("  Loaded native app %s", entry.Name())
+			*loaded++
+		}
+	}
+
+	return nil
+}
+
+// seedNativeProcApps loads native process apps from apps/native-proc/
+func (s *Seeder) seedNativeProcApps(loaded, failed *int) error {
+	procDir := filepath.Join(s.appsDir, "native-proc")
+
+	// Check if directory exists
+	if _, err := os.Stat(procDir); os.IsNotExist(err) {
+		log.Printf("  No native process apps directory found")
+		return nil
+	}
+
+	entries, err := os.ReadDir(procDir)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		appDir := filepath.Join(procDir, entry.Name())
+		manifestPath := filepath.Join(appDir, "manifest.json")
+
+		// Check if manifest exists
+		if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
+			log.Printf("  Skipping %s (no manifest.json)", entry.Name())
+			continue
+		}
+
+		// Load manifest
+		if err := s.loadNativeProcApp(entry.Name(), manifestPath); err != nil {
+			log.Printf("  Failed to load process app %s: %v", entry.Name(), err)
+			*failed++
+		} else {
+			log.Printf("  Loaded process app %s", entry.Name())
+			*loaded++
+		}
+	}
+
 	return nil
 }
 
@@ -110,6 +209,144 @@ func (s *Seeder) loadApp(path string) error {
 	}
 
 	// Save to registry (this will update if already exists)
+	ctx := context.Background()
+	return s.manager.Save(ctx, &pkg)
+}
+
+// loadNativeWebApp loads a native TypeScript/React app from manifest
+func (s *Seeder) loadNativeWebApp(appName, manifestPath string) error {
+	// Read manifest file
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return err
+	}
+
+	// Parse manifest
+	var manifest struct {
+		ID          string            `json:"id"`
+		Name        string            `json:"name"`
+		Type        string            `json:"type"`
+		Version     string            `json:"version"`
+		Icon        string            `json:"icon"`
+		Category    string            `json:"category"`
+		Author      string            `json:"author"`
+		Description string            `json:"description"`
+		Services    []string          `json:"services"`
+		Permissions []string          `json:"permissions"`
+		Exports     map[string]string `json:"exports"`
+		Tags        []string          `json:"tags"`
+		DevServer   *string           `json:"dev_server,omitempty"`
+	}
+
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return err
+	}
+
+	// Validate required fields
+	if manifest.ID == "" || manifest.Name == "" {
+		return fmt.Errorf("manifest missing required fields (id, name)")
+	}
+
+	// Build bundle path (served from /native-apps route)
+	bundlePath := fmt.Sprintf("/native-apps/%s/index.js", manifest.ID)
+
+	// Create package
+	pkg := types.Package{
+		ID:          manifest.ID,
+		Name:        manifest.Name,
+		Type:        types.AppTypeNativeWeb,
+		Version:     manifest.Version,
+		Icon:        manifest.Icon,
+		Category:    manifest.Category,
+		Author:      manifest.Author,
+		Description: manifest.Description,
+		Services:    manifest.Services,
+		Permissions: manifest.Permissions,
+		Tags:        manifest.Tags,
+		BundlePath:  &bundlePath,
+		WebManifest: &types.NativeWebManifest{
+			EntryPoint: "index.js",
+			Exports: types.NativeExports{
+				Component: manifest.Exports["component"],
+			},
+			DevServer: manifest.DevServer,
+		},
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	// Save to registry
+	ctx := context.Background()
+	return s.manager.Save(ctx, &pkg)
+}
+
+// loadNativeProcApp loads a native OS process app from manifest
+func (s *Seeder) loadNativeProcApp(appName, manifestPath string) error {
+	// Read manifest file
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return err
+	}
+
+	// Parse manifest
+	var manifest struct {
+		ID           string   `json:"id"`
+		Name         string   `json:"name"`
+		Type         string   `json:"type"`
+		Version      string   `json:"version"`
+		Icon         string   `json:"icon"`
+		Category     string   `json:"category"`
+		Author       string   `json:"author"`
+		Description  string   `json:"description"`
+		Services     []string `json:"services"`
+		Permissions  []string `json:"permissions"`
+		Tags         []string `json:"tags"`
+		ProcManifest struct {
+			Executable string            `json:"executable"`
+			Args       []string          `json:"args"`
+			WorkingDir string            `json:"working_dir"`
+			UIType     string            `json:"ui_type"`
+			Env        map[string]string `json:"env"`
+		} `json:"proc_manifest"`
+	}
+
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return err
+	}
+
+	// Validate required fields
+	if manifest.ID == "" || manifest.Name == "" {
+		return fmt.Errorf("manifest missing required fields (id, name)")
+	}
+	if manifest.ProcManifest.Executable == "" {
+		return fmt.Errorf("proc_manifest missing executable")
+	}
+
+	// Create package
+	pkg := types.Package{
+		ID:          manifest.ID,
+		Name:        manifest.Name,
+		Type:        types.AppTypeNativeProc,
+		Version:     manifest.Version,
+		Icon:        manifest.Icon,
+		Category:    manifest.Category,
+		Author:      manifest.Author,
+		Description: manifest.Description,
+		Services:    manifest.Services,
+		Permissions: manifest.Permissions,
+		Tags:        manifest.Tags,
+		ProcManifest: &types.NativeProcManifest{
+			Executable: manifest.ProcManifest.Executable,
+			Args:       manifest.ProcManifest.Args,
+			WorkingDir: manifest.ProcManifest.WorkingDir,
+			UIType:     manifest.ProcManifest.UIType,
+			Env:        manifest.ProcManifest.Env,
+		},
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	// Save to registry
 	ctx := context.Background()
 	return s.manager.Save(ctx, &pkg)
 }

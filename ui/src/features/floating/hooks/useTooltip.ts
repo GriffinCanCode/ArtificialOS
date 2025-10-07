@@ -11,6 +11,7 @@ import {
   useFocus,
   useRole,
   useDismiss,
+  autoUpdate,
 } from "@floating-ui/react";
 import { createDefaultMiddleware, getDelay, generateId } from "../core/utils";
 import type { UseTooltipReturn, PositionConfig, InteractionConfig } from "../core/types";
@@ -55,15 +56,8 @@ export function useTooltip({
     placement: position?.placement ?? "top",
     strategy: position?.strategy ?? "absolute",
     middleware: position?.middleware ?? createDefaultMiddleware(position),
-    whileElementsMounted: (_reference, _floating, update) => {
-      const cleanup = () => update();
-      window.addEventListener("scroll", cleanup, true);
-      window.addEventListener("resize", cleanup);
-      return () => {
-        window.removeEventListener("scroll", cleanup, true);
-        window.removeEventListener("resize", cleanup);
-      };
-    },
+    whileElementsMounted: autoUpdate,
+    transform: false, // Use top/left instead of transform for smoother initial positioning
   });
 
   const hover = useHover(data.context, {
@@ -95,14 +89,10 @@ export function useTooltip({
     open: () => setIsOpen(true),
     close: () => setIsOpen(false),
     toggle: () => setIsOpen(!isOpen),
-    getReferenceProps: (userProps?: any) => {
-      const props = interactions.getReferenceProps(userProps);
-      console.log('[Tooltip] getReferenceProps called', { userProps, props, isOpen });
-      return {
-        ...props,
-        "aria-describedby": isOpen ? tooltipId : undefined,
-      };
-    },
+    getReferenceProps: (userProps?: any) => ({
+      ...interactions.getReferenceProps(userProps),
+      "aria-describedby": isOpen ? tooltipId : undefined,
+    }),
     getFloatingProps: (userProps?: any) => ({
       ...interactions.getFloatingProps(userProps),
       id: tooltipId,

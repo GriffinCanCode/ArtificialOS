@@ -210,12 +210,15 @@ export function pivotData(
   const pivoted = new Map<string | number, DataPoint>();
 
   for (const row of data) {
-    const index = row[indexKey];
+    const rawIndex = row[indexKey];
     const column = row[columnKey];
     const value = row[valueKey];
 
+    // Convert boolean to string for Map key compatibility
+    const index = typeof rawIndex === 'boolean' ? String(rawIndex) : (rawIndex as string | number);
+
     if (!pivoted.has(index)) {
-      pivoted.set(index, { [indexKey]: index });
+      pivoted.set(index, { [indexKey]: rawIndex });
     }
 
     const point = pivoted.get(index)!;

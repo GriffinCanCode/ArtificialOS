@@ -3,7 +3,7 @@
  * Tests for OS-level process spawning and management
  */
 
-use ai_os_kernel::executor::{ExecutionConfig, ProcessExecutor};
+use ai_os_kernel::{ExecutionConfig, ProcessExecutor};
 use std::time::Duration;
 use tokio::time::sleep;
 

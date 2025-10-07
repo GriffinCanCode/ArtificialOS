@@ -11,7 +11,7 @@ import {
   categoryButtonVariants,
   cn,
 } from "../../../core/utils/animation/componentVariants";
-import { Tooltip, ContextMenu, HoverCard } from "../../../features/floating";
+import { Tooltip, ContextMenu } from "../../../features/floating";
 import type { DropdownItem } from "../../../features/floating";
 import "./Launcher.css";
 
@@ -42,7 +42,7 @@ export const Launcher: React.FC<LauncherProps> = React.memo(({ onAppLaunch, onCr
       launchApp.mutate(packageId, {
         onSuccess: (response) => {
           if (onAppLaunch) {
-            onAppLaunch(response.app_id, response.ui_spec);
+            onAppLaunch(response.app_id, response.blueprint);
           }
         },
       });
@@ -66,9 +66,9 @@ export const Launcher: React.FC<LauncherProps> = React.memo(({ onAppLaunch, onCr
   );
 
   const getAppContextMenuItems = useCallback(
-    (packageId: string): DropdownItem[] => [
+    (_packageId: string): DropdownItem[] => [
       { value: "launch", label: "Launch", icon: <Play size={16} /> },
-      { divider: true },
+      { divider: true, value: "divider-1", label: "" },
       { value: "delete", label: "Delete", icon: <Trash2 size={16} /> },
     ],
     []

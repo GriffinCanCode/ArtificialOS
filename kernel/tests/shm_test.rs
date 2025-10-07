@@ -3,7 +3,7 @@
  * Tests for zero-copy shared memory IPC
  */
 
-use ai_os_kernel::shm::{ShmError, ShmManager};
+use ai_os_kernel::ipc::{ShmError, ShmManager};
 use ai_os_kernel::MemoryManager;
 use pretty_assertions::assert_eq;
 use serial_test::serial;
@@ -421,7 +421,7 @@ fn test_shm_concurrent_access() {
 
     // Each thread writes to its own offset
     for i in 0..10 {
-        let sm_clone = Arc::clone(&sm);
+        let sm_clone: Arc<ShmManager> = Arc::clone(&sm);
         let handle = thread::spawn(move || {
             let pid = 200 + i;
             let offset = (i * 1000) as usize;

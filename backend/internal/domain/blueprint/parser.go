@@ -70,54 +70,81 @@ func (p *Parser) Parse(content []byte) (*types.Package, error) {
 		p.templates = templates
 	}
 
-	// Expand services
-	services := p.expandServices(bp.Services)
+	// Expand services and extract tool restrictions
+	services, restrictions := p.expandServices(bp.Services)
 
 	// Expand UI components
 	blueprint := p.expandUISpec(bp.UI)
 
 	return &types.Package{
-		ID:          bp.App.ID,
-		Name:        bp.App.Name,
-		Description: bp.App.Description,
-		Icon:        bp.App.Icon,
-		Category:    bp.App.Category,
-		Version:     bp.App.Version,
-		Author:      bp.App.Author,
-		CreatedAt:   now,
-		UpdatedAt:   now,
-		Services:    services,
-		Permissions: bp.App.Permissions,
-		Tags:        bp.App.Tags,
-		Blueprint:   blueprint,
+		ID:                  bp.App.ID,
+		Name:                bp.App.Name,
+		Description:         bp.App.Description,
+		Icon:                bp.App.Icon,
+		Category:            bp.App.Category,
+		Version:             bp.App.Version,
+		Author:              bp.App.Author,
+		CreatedAt:           now,
+		UpdatedAt:           now,
+		Services:            services,
+		Permissions:         bp.App.Permissions,
+		Tags:                bp.App.Tags,
+		ServiceRestrictions: restrictions,
+		Blueprint:           blueprint,
 	}, nil
 }
 
 // expandServices converts service definitions to string array
 // Supports: "storage", {storage: [get, set]}, {storage: "*"}
-func (p *Parser) expandServices(services []interface{}) []string {
-	result := make([]string, 0, len(services))
+// Returns both the service list and tool restrictions
+func (p *Parser) expandServices(services []interface{}) ([]string, []types.ServiceToolRestriction) {
+	serviceList := make([]string, 0, len(services))
+	restrictions := make([]types.ServiceToolRestriction, 0)
 
 	for _, svc := range services {
 		switch v := svc.(type) {
 		case string:
-			// Simple string: "storage" (all tools)
-			result = append(result, v)
+			// Simple string: "storage" (all tools allowed)
+			serviceList = append(serviceList, v)
+			restrictions = append(restrictions, types.ServiceToolRestriction{
+				Service:  v,
+				AllowAll: true,
+			})
 		case map[string]interface{}:
-			// Object syntax
+			// Object syntax: {storage: [get, set]} or {storage: "*"}
 			for key, value := range v {
-				// For now, just extract service name
-				// Tool filtering can be implemented in service registry
-				result = append(result, key)
+				serviceList = append(serviceList, key)
 
-				// TODO: Store tool restrictions in Package metadata
-				// This will require updating types.Package to include tool info
-				_ = value // Suppress unused warning
+				restriction := types.ServiceToolRestriction{
+					Service: key,
+				}
+
+				switch tools := value.(type) {
+				case string:
+					if tools == "*" {
+						// All tools allowed
+						restriction.AllowAll = true
+					}
+				case []interface{}:
+					// Specific tool list
+					toolNames := make([]string, 0, len(tools))
+					for _, tool := range tools {
+						if toolStr, ok := tool.(string); ok {
+							toolNames = append(toolNames, toolStr)
+						}
+					}
+					if len(toolNames) > 0 {
+						restriction.AllowedTools = toolNames
+						restriction.AllowAll = false
+					}
+				}
+
+				restrictions = append(restrictions, restriction)
 			}
 		}
 	}
 
-	return result
+	return serviceList, restrictions
 }
 
 // expandUISpec converts Blueprint UI to standard UISpec format

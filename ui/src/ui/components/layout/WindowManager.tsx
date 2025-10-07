@@ -10,6 +10,7 @@ import { ComponentState } from "../../../features/dynamics/state/state";
 import { ToolExecutor } from "../../../features/dynamics/execution/executor";
 import { ComponentRenderer } from "../../../features/dynamics/rendering/renderer";
 import { BuilderView } from "../../../features/dynamics/rendering/builder";
+import { Renderer as NativeRenderer, AppType } from "../../../features/native";
 import type { BlueprintComponent } from "../../../core/store/appStore";
 import "./WindowManager.css";
 
@@ -47,13 +48,27 @@ export const WindowManager: React.FC = () => {
         // Check if this is a builder window
         const isBuilderWindow = window.appId.startsWith("builder-");
 
+        // Check if this is a native app
+        const appType = (window.metadata as any)?.appType;
+        const isNativeApp = appType === AppType.NATIVE || appType === 'native_web';
+
         return (
           <Window key={window.id} window={window}>
             {isBuilderWindow ? (
               // Render BuilderView for builder windows (shows build progress)
               <BuilderView state={state} executor={executor} />
+            ) : isNativeApp ? (
+              // Render native app
+              <div className="windowed-app">
+                <NativeRenderer
+                  appId={window.appId}
+                  packageId={(window.metadata as any)?.packageId}
+                  bundlePath={(window.metadata as any)?.bundlePath}
+                  windowId={window.id}
+                />
+              </div>
             ) : (
-              // Render normal app content
+              // Render normal blueprint app content (existing system)
               <div className="windowed-app">
                 <div className={`app-content app-layout-${window.uiSpec.layout || "vertical"}`}>
                   {window.uiSpec.components.map((component: BlueprintComponent, idx: number) => (

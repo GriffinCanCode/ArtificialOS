@@ -66,21 +66,30 @@ cat > "$APP_DIR/package.json" <<EOF
   "name": "@os-apps/$APP_ID",
   "version": "1.0.0",
   "type": "module",
+  "description": "A native $APP_NAME application",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --ext .ts,.tsx",
+    "lint:fix": "eslint src --ext .ts,.tsx --fix",
+    "format": "prettier --write \\"src/**/*.{ts,tsx,css}\\"",
+    "format:check": "prettier --check \\"src/**/*.{ts,tsx,css}\\""
   },
   "dependencies": {
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "clsx": "^2.1.1"
   },
   "devDependencies": {
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
-    "@vitejs/plugin-react": "^4.0.0",
-    "typescript": "^5.0.0",
-    "vite": "^4.3.0"
+    "@vitejs/plugin-react": "^4.3.0",
+    "typescript": "^5.3.0",
+    "vite": "^5.0.0",
+    "eslint": "^8.56.0",
+    "prettier": "^3.1.0"
   }
 }
 EOF
@@ -110,34 +119,21 @@ cat > "$APP_DIR/tsconfig.json" <<EOF
 }
 EOF
 
-# Create vite.config.ts
+# Create vite.config.ts (using shared base config)
 echo "📄 Creating vite.config.ts..."
-cat > "$APP_DIR/vite.config.ts" <<'EOF'
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import path from 'path';
+cat > "$APP_DIR/vite.config.ts" <<EOF
+import { defineNativeAppConfig } from '../vite.config.base';
 
-export default defineConfig({
-  plugins: [react()],
-  build: {
-    lib: {
-      entry: path.resolve(__dirname, 'src/index.tsx'),
-      name: 'App',
-      fileName: () => 'index.js',
-      formats: ['es']
-    },
-    rollupOptions: {
-      external: ['react', 'react-dom'],
-      output: {
-        globals: {
-          react: 'React',
-          'react-dom': 'ReactDOM'
-        }
-      }
-    },
-    outDir: '../../dist/' + path.basename(__dirname),
-    emptyOutDir: true
-  }
+/**
+ * Vite configuration for $APP_NAME
+ * Extends the shared base configuration
+ */
+export default defineNativeAppConfig('$COMPONENT_NAME', {
+  // Add app-specific overrides here
+  // Example:
+  // server: {
+  //   port: 5175,
+  // },
 });
 EOF
 
@@ -286,10 +282,154 @@ EOF
 # Create .gitignore
 echo "📄 Creating .gitignore..."
 cat > "$APP_DIR/.gitignore" <<EOF
+# Dependencies
 node_modules
+
+# Build output
 dist
+
+# OS files
 .DS_Store
+Thumbs.db
+
+# Logs
 *.log
+npm-debug.log*
+
+# Editor directories
+.vscode
+.idea
+
+# Environment variables
+.env
+.env.local
+EOF
+
+# Create .eslintrc.json
+echo "📄 Creating .eslintrc.json..."
+cat > "$APP_DIR/.eslintrc.json" <<EOF
+{
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:react/recommended",
+    "plugin:react-hooks/recommended"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "module",
+    "ecmaFeatures": {
+      "jsx": true
+    }
+  },
+  "plugins": ["@typescript-eslint", "react", "react-hooks"],
+  "rules": {
+    "react/react-in-jsx-scope": "off",
+    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }]
+  },
+  "settings": {
+    "react": {
+      "version": "detect"
+    }
+  }
+}
+EOF
+
+# Create .prettierrc
+echo "📄 Creating .prettierrc..."
+cat > "$APP_DIR/.prettierrc" <<EOF
+{
+  "semi": true,
+  "trailingComma": "es5",
+  "singleQuote": true,
+  "printWidth": 100,
+  "tabWidth": 2,
+  "useTabs": false,
+  "arrowParens": "always",
+  "endOfLine": "lf"
+}
+EOF
+
+# Create README.md
+echo "📄 Creating README.md..."
+cat > "$APP_DIR/README.md" <<EOF
+# $APP_NAME
+
+A native TypeScript/React application for the OS.
+
+## Development
+
+\`\`\`bash
+# Install dependencies
+npm install
+
+# Start development server (with HMR)
+npm run dev
+
+# Build for production
+npm run build
+
+# Type check
+npm run type-check
+
+# Lint code
+npm run lint
+npm run lint:fix
+
+# Format code
+npm run format
+\`\`\`
+
+## Structure
+
+\`\`\`
+$APP_ID/
+├── manifest.json      # App metadata and configuration
+├── package.json       # npm dependencies and scripts
+├── tsconfig.json      # TypeScript configuration
+├── vite.config.ts     # Build configuration
+├── src/
+│   ├── index.tsx      # Entry point (exports default component)
+│   ├── App.tsx        # Main application component
+│   ├── components/    # Reusable components
+│   ├── hooks/         # Custom React hooks
+│   └── styles/        # CSS styles
+└── README.md          # This file
+\`\`\`
+
+## Available APIs
+
+The app has access to the OS SDK via the \`context\` prop:
+
+- **State Management**: \`context.state\` - Reactive state store
+- **Service Calls**: \`context.executor\` - Execute backend services
+- **Window Controls**: \`context.window\` - Control the app window
+
+### Example Service Calls
+
+\`\`\`typescript
+// Filesystem
+await context.executor.execute('filesystem.read', { path: '/path/to/file' });
+await context.executor.execute('filesystem.write', { path: '/path', content: 'data' });
+await context.executor.execute('filesystem.list', { path: '/path' });
+
+// Storage
+await context.executor.execute('storage.set', { key: 'mykey', value: data });
+const result = await context.executor.execute('storage.get', { key: 'mykey' });
+
+// HTTP
+await context.executor.execute('http.get', { url: 'https://api.example.com' });
+\`\`\`
+
+## Building
+
+The app is built as an ES module that exports a React component. The build output goes to \`../../dist/$APP_ID/\`.
+
+## License
+
+MIT
 EOF
 
 echo ""
@@ -297,18 +437,33 @@ echo "======================================"
 echo "✅ Native app created successfully!"
 echo "======================================"
 echo ""
+echo "📦 App: $APP_NAME"
+echo "🆔 ID:  $APP_ID"
+echo "📁 Dir: apps/native/$APP_ID"
+echo ""
 echo "Next steps:"
 echo ""
 echo "  1. Install dependencies:"
 echo "     cd $APP_DIR"
 echo "     npm install"
 echo ""
-echo "  2. Start development server:"
+echo "  2. Start development server (with HMR):"
 echo "     npm run dev"
+echo "     # Or use: make watch-native-app name=$APP_ID"
 echo ""
 echo "  3. Build for production:"
 echo "     npm run build"
+echo "     # Or use: make build-native-apps"
 echo ""
-echo "  4. Output will be in: apps/dist/$APP_ID/"
+echo "  4. Validate and lint:"
+echo "     make validate-native-apps"
+echo "     make lint-native-app name=$APP_ID"
+echo ""
+echo "  5. Output will be in: apps/dist/$APP_ID/"
+echo ""
+echo "📚 Documentation:"
+echo "   - App README:    $APP_DIR/README.md"
+echo "   - SDK Reference: ui/src/core/sdk/index.ts"
+echo "   - Examples:      apps/native/"
 echo ""
 echo "Happy coding! 🎉"

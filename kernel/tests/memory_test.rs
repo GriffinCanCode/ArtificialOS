@@ -10,7 +10,7 @@ use serial_test::serial;
 #[test]
 fn test_memory_manager_initialization() {
     let mem_mgr = MemoryManager::new();
-    let (total, used, available) = mem_mgr.get_memory_info();
+    let (total, used, available) = mem_mgr.info();
 
     assert_eq!(total, 1024 * 1024 * 1024); // 1GB
     assert_eq!(used, 0);
@@ -26,7 +26,7 @@ fn test_basic_allocation() {
     let result = mem_mgr.allocate(size, pid);
     assert!(result.is_ok());
 
-    let (_, used, _) = mem_mgr.get_memory_info();
+    let (_, used, _) = mem_mgr.info();
     assert_eq!(used, size);
 }
 
@@ -46,7 +46,7 @@ fn test_multiple_allocations() {
     assert_ne!(addr1, addr3);
 
     // Total memory used should be sum of all allocations
-    let (_, used, _) = mem_mgr.get_memory_info();
+    let (_, used, _) = mem_mgr.info();
     assert_eq!(used, 1024 + 2048 + 4096);
 }
 
@@ -57,11 +57,11 @@ fn test_allocation_and_deallocation() {
     let size = 1024 * 1024;
 
     let addr = mem_mgr.allocate(size, pid).unwrap();
-    let (_, used_before, _) = mem_mgr.get_memory_info();
+    let (_, used_before, _) = mem_mgr.info();
     assert_eq!(used_before, size);
 
     mem_mgr.deallocate(addr).unwrap();
-    let (_, used_after, _) = mem_mgr.get_memory_info();
+    let (_, used_after, _) = mem_mgr.info();
     assert_eq!(used_after, 0);
 }
 
@@ -120,14 +120,14 @@ fn test_process_memory_cleanup() {
     mem_mgr.allocate(20 * 1024 * 1024, pid).unwrap();
     mem_mgr.allocate(30 * 1024 * 1024, pid).unwrap();
 
-    let (_, used_before, _) = mem_mgr.get_memory_info();
+    let (_, used_before, _) = mem_mgr.info();
     assert_eq!(used_before, 60 * 1024 * 1024);
 
     // Free all memory for the process
     let freed = mem_mgr.free_process_memory(pid);
     assert_eq!(freed, 60 * 1024 * 1024);
 
-    let (_, used_after, _) = mem_mgr.get_memory_info();
+    let (_, used_after, _) = mem_mgr.info();
     assert_eq!(used_after, 0);
 }
 
@@ -141,8 +141,8 @@ fn test_get_process_memory() {
     mem_mgr.allocate(20 * 1024 * 1024, pid2).unwrap();
     mem_mgr.allocate(5 * 1024 * 1024, pid1).unwrap();
 
-    assert_eq!(mem_mgr.get_process_memory(pid1), 15 * 1024 * 1024);
-    assert_eq!(mem_mgr.get_process_memory(pid2), 20 * 1024 * 1024);
+    assert_eq!(mem_mgr.process_memory(pid1), 15 * 1024 * 1024);
+    assert_eq!(mem_mgr.process_memory(pid2), 20 * 1024 * 1024);
 }
 
 #[test]
@@ -154,7 +154,7 @@ fn test_invalid_deallocation() {
     assert!(result.is_err());
 
     match result {
-        Err(MemoryError::InvalidAddress) => {
+        Err(MemoryError::InvalidAddress(_)) => {
             // Expected
         }
         _ => panic!("Expected InvalidAddress error"),
@@ -181,7 +181,7 @@ fn test_memory_stats() {
 
     mem_mgr.allocate(100 * 1024 * 1024, pid).unwrap(); // 100MB
 
-    let stats = mem_mgr.get_detailed_stats();
+    let stats = mem_mgr.stats();
     assert_eq!(stats.total_memory, 1024 * 1024 * 1024);
     assert_eq!(stats.used_memory, 100 * 1024 * 1024);
     assert_eq!(stats.available_memory, 924 * 1024 * 1024);
@@ -202,11 +202,11 @@ fn test_garbage_collection() {
     }
 
     // Force GC
-    let removed = mem_mgr.force_gc();
+    let removed = mem_mgr.force_collect();
     assert_eq!(removed, 10);
 
     // After GC, allocated blocks should be 0
-    let stats = mem_mgr.get_detailed_stats();
+    let stats = mem_mgr.stats();
     assert_eq!(stats.allocated_blocks, 0);
     assert_eq!(stats.fragmented_blocks, 0);
 }
@@ -234,7 +234,7 @@ fn test_concurrent_allocations() {
         handle.join().unwrap();
     }
 
-    let (_, used, _) = mem_mgr.get_memory_info();
+    let (_, used, _) = mem_mgr.info();
     assert_eq!(used, 10 * 1024 * 1024);
 }
 
@@ -248,6 +248,6 @@ fn test_memory_pressure_thresholds() {
     let result = mem_mgr.allocate(size, pid);
     assert!(result.is_ok());
 
-    let stats = mem_mgr.get_detailed_stats();
+    let stats = mem_mgr.stats();
     assert!(stats.usage_percentage > 80.0);
 }

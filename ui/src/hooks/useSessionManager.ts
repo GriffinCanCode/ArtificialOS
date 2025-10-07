@@ -5,16 +5,16 @@
  */
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useAppStore } from "../store/appStore";
-import { useActions } from "../windows";
-import type { ChatState, UIState } from "../types/session";
-import { logger } from "../utils/monitoring/logger";
+import { useAppStore } from "../core/store/appStore";
+import { useActions } from "../features/windows";
+import type { ChatState, UIState } from "../core/types/session";
+import { logger } from "../core/utils/monitoring/logger";
 import {
   useSaveSession,
   useSaveDefaultSession,
   useRestoreSession,
   useSessions,
-} from "./useSessionQueries";
+} from "../core/hooks/useSessionQueries";
 
 interface UseSessionManagerOptions {
   autoSaveInterval?: number; // in seconds, default 30

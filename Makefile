@@ -77,7 +77,7 @@ proto-python: ## Compile protocol buffers for Python only
 
 ##@ Build
 
-build: build-kernel build-backend build-ui ## Build all components
+build: build-kernel build-backend build-ui build-native-apps ## Build all components
 	@echo "$(GREEN)All builds complete$(NC)"
 
 build-kernel: ## Build Rust kernel (release mode)
@@ -99,6 +99,11 @@ build-ui: ## Build UI for production
 	@echo "$(YELLOW)Building UI...$(NC)"
 	@cd ui && npm run build
 	@echo "$(GREEN)UI built$(NC)"
+
+build-native-apps: ## Build all native TypeScript/React apps
+	@echo "$(YELLOW)Building native apps...$(NC)"
+	@./scripts/build-native-apps.sh
+	@echo "$(GREEN)Native apps built$(NC)"
 
 ##@ Run & Start
 
@@ -344,4 +349,34 @@ rebuild: clean build ## Clean and rebuild everything
 
 fresh: deep-clean setup proto build ## Fresh install (deep clean + setup + build)
 	@echo "$(GREEN)Fresh installation complete$(NC)"
+
+##@ Native Apps Development
+
+create-native-app: ## Create a new native app (usage: make create-native-app name="My App")
+	@./scripts/create-native-app.sh "$(name)"
+
+watch-native-apps: ## Watch and rebuild native apps on changes
+	@./scripts/watch-native-apps.sh
+
+watch-native-app: ## Watch specific native app (usage: make watch-native-app name=app-id)
+	@./scripts/watch-native-apps.sh -a "$(name)"
+
+validate-native-apps: ## Validate native app manifests and structure
+	@./scripts/validate-native-apps.sh
+
+lint-native-apps: ## Lint and type-check all native apps
+	@./scripts/lint-native-apps.sh
+
+lint-native-app: ## Lint specific native app (usage: make lint-native-app name=app-id)
+	@./scripts/lint-native-apps.sh -a "$(name)"
+
+fix-native-apps: ## Auto-fix linting issues in native apps
+	@./scripts/lint-native-apps.sh --fix
+
+clean-native-apps: ## Clean native apps build artifacts
+	@echo "$(YELLOW)Cleaning native apps...$(NC)"
+	@rm -rf apps/dist/*
+	@find apps/native -name "node_modules" -type d -exec rm -rf {} + 2>/dev/null || true
+	@find apps/native -name "dist" -type d -exec rm -rf {} + 2>/dev/null || true
+	@echo "$(GREEN)Native apps cleaned$(NC)"
 

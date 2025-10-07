@@ -200,8 +200,10 @@ impl OpenFlags {
     }
 
     pub fn from_posix(flags: u32) -> Self {
-        let read = flags & 0x0001 != 0 || flags & 0x0003 != 0;
-        let write = flags & 0x0002 != 0 || flags & 0x0003 != 0;
+        // Extract access mode from lower 2 bits
+        let access_mode = flags & 0x0003;
+        let read = access_mode == 0x0001 || access_mode == 0x0003;
+        let write = access_mode == 0x0002 || access_mode == 0x0003;
         let append = flags & 0x0400 != 0;
         let truncate = flags & 0x0200 != 0;
         let create = flags & 0x0040 != 0;

@@ -47,12 +47,12 @@ async fn test_process_manager_with_memory_and_executor() {
 
     // Verify both process and memory exist
     assert!(pm.get_process(pid).is_some());
-    assert_eq!(mem_mgr.get_process_memory(pid), 10 * 1024 * 1024);
+    assert_eq!(mem_mgr.process_memory(pid), 10 * 1024 * 1024);
 
     // Terminate - should cleanup both
     pm.terminate_process(pid);
 
-    assert_eq!(mem_mgr.get_process_memory(pid), 0);
+    assert_eq!(mem_mgr.process_memory(pid), 0);
 }
 
 #[tokio::test]

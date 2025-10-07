@@ -3,7 +3,7 @@
  * Comprehensive tests for CPU scheduler with multiple policies
  */
 
-use ai_os_kernel::scheduler::{Policy, Scheduler};
+use ai_os_kernel::{Policy, Scheduler};
 use pretty_assertions::assert_eq;
 use std::sync::Arc;
 use std::thread;
@@ -401,7 +401,7 @@ fn test_concurrent_add_processes() {
     let mut handles = vec![];
 
     for i in 0..10 {
-        let sched_clone = Arc::clone(&scheduler);
+        let sched_clone: Arc<Scheduler> = Arc::clone(&scheduler);
         let handle = thread::spawn(move || {
             sched_clone.add(i as u32, 5);
         });
@@ -427,7 +427,7 @@ fn test_concurrent_schedule() {
     let mut handles = vec![];
 
     for _ in 0..5 {
-        let sched_clone = Arc::clone(&scheduler);
+        let sched_clone: Arc<Scheduler> = Arc::clone(&scheduler);
         let handle = thread::spawn(move || {
             for _ in 0..10 {
                 sched_clone.schedule();

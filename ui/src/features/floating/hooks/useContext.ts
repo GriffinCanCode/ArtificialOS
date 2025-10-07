@@ -10,7 +10,7 @@ import {
   useDismiss,
   useRole,
   useListNavigation,
-  FloatingFocusManager,
+  autoUpdate,
 } from "@floating-ui/react";
 import { createDefaultMiddleware, generateId } from "../core/utils";
 import type { PositionConfig } from "../core/types";
@@ -35,8 +35,9 @@ interface UseContextReturn {
   isOpen: boolean;
   open: (x: number, y: number) => void;
   close: () => void;
-  getReferenceProps: () => Record<string, any>;
-  getFloatingProps: () => Record<string, any>;
+  context: any; // Add the floating-ui context
+  getReferenceProps: (userProps?: any) => Record<string, any>;
+  getFloatingProps: (userProps?: any) => Record<string, any>;
   getItemProps: (index: number) => Record<string, any>;
 }
 
@@ -69,6 +70,7 @@ export function useContext({
     placement: "bottom-start",
     strategy: "fixed",
     middleware: position?.middleware ?? createDefaultMiddleware(position),
+    whileElementsMounted: autoUpdate,
   });
 
   const dismiss = useDismiss(data.context, {
@@ -113,9 +115,12 @@ export function useContext({
     isOpen,
     open,
     close: () => setIsOpen(false),
-    getReferenceProps: () => interactions.getReferenceProps(),
-    getFloatingProps: () => ({
-      ...interactions.getFloatingProps(),
+    context: data.context, // Add the actual floating-ui context
+    getReferenceProps: (userProps?: any) => ({
+      ...interactions.getReferenceProps(userProps),
+    }),
+    getFloatingProps: (userProps?: any) => ({
+      ...interactions.getFloatingProps(userProps),
       id: contextId,
     }),
     getItemProps: (index: number) => ({

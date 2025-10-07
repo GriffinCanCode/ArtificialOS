@@ -139,8 +139,35 @@ func (m *Manager) Load(ctx context.Context, id string) (*types.Package, error) {
 
 // List lists all packages, optionally filtered by category
 func (m *Manager) List(category *string) ([]*types.Package, error) {
-	// For now, return cached packages
-	// TODO: Scan filesystem directory for all .aiapp files
+	// Scan filesystem directory for all .aiapp files
+	appsDir := filepath.Join(m.storagePath, "apps")
+
+	if m.kernel != nil {
+		// Use kernel to list directory
+		ctx := context.Background()
+		data, err := m.kernel.ExecuteSyscall(ctx, m.storagePID, "list_directory", map[string]interface{}{
+			"path": appsDir,
+		})
+
+		if err == nil {
+			// Parse directory listing
+			var entries []string
+			if err := json.Unmarshal(data, &entries); err == nil {
+				// Load all .aiapp files found
+				for _, entry := range entries {
+					if filepath.Ext(entry) == ".aiapp" {
+						pkgID := entry[:len(entry)-7] // Remove ".aiapp" extension
+						// Load if not in cache
+						if _, ok := m.packages.Load(pkgID); !ok {
+							_, _ = m.Load(ctx, pkgID) // Ignore errors for individual files
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Return cached packages (now includes filesystem scan results)
 	var packages []*types.Package
 
 	m.packages.Range(func(_, value interface{}) bool {

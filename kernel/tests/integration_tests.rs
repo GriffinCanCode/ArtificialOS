@@ -31,13 +31,13 @@ fn test_full_process_lifecycle() {
 
     // Allocate memory
     mem_mgr.allocate(10 * 1024 * 1024, pid).unwrap();
-    assert_eq!(mem_mgr.get_process_memory(pid), 10 * 1024 * 1024);
+    assert_eq!(mem_mgr.process_memory(pid), 10 * 1024 * 1024);
 
     // Terminate process
     pm.terminate_process(pid);
 
     // Memory should be cleaned up
-    assert_eq!(mem_mgr.get_process_memory(pid), 0);
+    assert_eq!(mem_mgr.process_memory(pid), 0);
 }
 
 #[test]
@@ -125,7 +125,7 @@ fn test_process_memory_limits() {
     mem_mgr.allocate(400 * 1024 * 1024, pid2).unwrap();
 
     // Total should be 800MB
-    let (_, used, _) = mem_mgr.get_memory_info();
+    let (_, used, _) = mem_mgr.info();
     assert_eq!(used, 800 * 1024 * 1024);
 
     // Try to allocate more than available
@@ -142,7 +142,7 @@ fn test_process_memory_limits() {
 
 #[test]
 fn test_ipc_between_processes() {
-    let mut ipc = IPCManager::new();
+    let mut ipc = IPCManager::new(MemoryManager::new());
     let pm = ProcessManager::new();
 
     let pid1 = pm.create_process("sender".to_string(), 5);
@@ -258,7 +258,7 @@ fn test_concurrent_process_operations() {
     assert_eq!(pids.len(), 5);
 
     // Verify total memory
-    let (_, used, _) = mem_mgr.get_memory_info();
+    let (_, used, _) = mem_mgr.info();
     assert_eq!(used, 50 * 1024 * 1024);
 }
 
@@ -370,9 +370,9 @@ fn test_garbage_collection_on_process_cleanup() {
     }
 
     // Force GC
-    let removed = mem_mgr.force_gc();
+    let removed = mem_mgr.force_collect();
     assert_eq!(removed, 10);
 
-    let stats = mem_mgr.get_detailed_stats();
+    let stats = mem_mgr.stats();
     assert_eq!(stats.allocated_blocks, 0);
 }

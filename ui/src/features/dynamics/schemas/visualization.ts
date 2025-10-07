@@ -61,7 +61,7 @@ const chartDimensionsSchema = z.object({
 });
 
 const baseChartPropsSchema = z.object({
-  data: z.array(z.record(z.union([z.string(), z.number(), z.boolean(), z.null()]))),
+  data: z.array(z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))),
   series: z.array(chartSeriesSchema),
   xAxis: chartAxisSchema.optional(),
   yAxis: chartAxisSchema.optional(),
@@ -94,7 +94,7 @@ export const areaChartSchema = baseChartPropsSchema.extend({
 });
 
 export const pieChartSchema = z.object({
-  data: z.array(z.record(z.union([z.string(), z.number(), z.boolean(), z.null()]))),
+  data: z.array(z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))),
   dataKey: z.string(),
   nameKey: z.string(),
   colors: z.array(z.string()).optional(),
@@ -115,9 +115,9 @@ const graphNodeSchema = z.object({
   id: z.string(),
   label: z.string().optional(),
   type: z.string().optional(),
-  data: z.record(z.any()).optional(),
+  data: z.record(z.string(), z.any()).optional(),
   position: z.object({ x: z.number(), y: z.number() }).optional(),
-  style: z.record(z.any()).optional(),
+  style: z.record(z.string(), z.any()).optional(),
 });
 
 const graphEdgeSchema = z.object({
@@ -127,7 +127,7 @@ const graphEdgeSchema = z.object({
   label: z.string().optional(),
   type: z.enum(["default", "step", "smoothstep", "straight"]).optional(),
   animated: z.boolean().optional(),
-  style: z.record(z.any()).optional(),
+  style: z.record(z.string(), z.any()).optional(),
 });
 
 const graphLayoutSchema = z.object({

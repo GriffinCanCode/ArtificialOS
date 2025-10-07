@@ -6,7 +6,6 @@
 import React, { cloneElement } from "react";
 import { FloatingPortal, FloatingFocusManager } from "@floating-ui/react";
 import { usePopover } from "../hooks/usePopover";
-import { getArrowStyles } from "../core/utils";
 import type { PopoverProps } from "../core/types";
 import "./Popover.css";
 
@@ -34,15 +33,15 @@ export const Popover: React.FC<PopoverProps> = React.memo(
       arrow,
     });
 
+    const referenceProps = popover.getReferenceProps();
+
     return (
       <>
-        {cloneElement(
-          children,
-          popover.getReferenceProps({
-            ref: popover.refs.setReference,
-            ...children.props,
-          })
-        )}
+        {cloneElement(children, {
+          ...children.props,
+          ...referenceProps,
+          ref: popover.refs.setReference,
+        })}
         {popover.isOpen && (
           <FloatingPortal>
             <FloatingFocusManager context={popover as any} modal={modal}>
@@ -53,7 +52,7 @@ export const Popover: React.FC<PopoverProps> = React.memo(
                 {...popover.getFloatingProps()}
               >
                 {content}
-                {arrow && <div ref={popover.arrowRef} className="popover-arrow" />}
+                {arrow && <div ref={popover.arrowRef as any} className="popover-arrow" />}
               </div>
             </FloatingFocusManager>
           </FloatingPortal>

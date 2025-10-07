@@ -38,11 +38,10 @@ impl LocalFS {
 
     /// Resolve path relative to root
     fn resolve(&self, path: &Path) -> PathBuf {
-        if path.is_absolute() {
-            path.to_path_buf()
-        } else {
-            self.root.join(path)
-        }
+        // Strip leading slash if present to treat all paths as relative to root
+        let path_str = path.to_str().unwrap_or("");
+        let clean_path = path_str.trim_start_matches('/');
+        self.root.join(clean_path)
     }
 
     /// Check write permission

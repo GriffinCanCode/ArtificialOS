@@ -4,7 +4,7 @@
  */
 
 use ai_os_kernel::memory::MemoryManager;
-use ai_os_kernel::process::{ProcessManager, ProcessState};
+use ai_os_kernel::{ProcessManager, ProcessState};
 use pretty_assertions::assert_eq;
 
 #[test]
@@ -86,14 +86,14 @@ fn test_process_manager_with_memory() {
     // Allocate memory for the process
     mem_mgr.allocate(10 * 1024 * 1024, pid).unwrap();
 
-    let mem_used = mem_mgr.get_process_memory(pid);
+    let mem_used = mem_mgr.process_memory(pid);
     assert_eq!(mem_used, 10 * 1024 * 1024);
 
     // Terminate process - should clean up memory
     pm.terminate_process(pid);
 
     // Memory should be freed
-    let mem_after = mem_mgr.get_process_memory(pid);
+    let mem_after = mem_mgr.process_memory(pid);
     assert_eq!(mem_after, 0);
 }
 
@@ -111,14 +111,14 @@ fn test_process_memory_cleanup_on_termination() {
     mem_mgr.allocate(20 * 1024 * 1024, pid1).unwrap();
     mem_mgr.allocate(30 * 1024 * 1024, pid2).unwrap();
 
-    let (_, used_before, _) = mem_mgr.get_memory_info();
+    let (_, used_before, _) = mem_mgr.info();
     assert_eq!(used_before, 50 * 1024 * 1024);
 
     // Terminate one process
     pm.terminate_process(pid1);
 
     // Only pid2's memory should remain
-    let (_, used_after, _) = mem_mgr.get_memory_info();
+    let (_, used_after, _) = mem_mgr.info();
     assert_eq!(used_after, 30 * 1024 * 1024);
 }
 
@@ -131,7 +131,7 @@ fn test_concurrent_process_creation() {
     let mut handles = vec![];
 
     for i in 0..10 {
-        let pm_clone = Arc::clone(&pm);
+        let pm_clone: Arc<ProcessManager> = Arc::clone(&pm);
         let handle = thread::spawn(move || {
             pm_clone.create_process(format!("app-{}", i), 5);
         });

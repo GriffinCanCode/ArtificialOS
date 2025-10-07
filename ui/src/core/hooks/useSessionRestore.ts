@@ -4,7 +4,7 @@
  */
 
 import { useCallback } from "react";
-import { useActions } from "../windows";
+import { useActions } from "../../features/windows";
 import { logger } from "../utils/monitoring/logger";
 
 interface SavedWindow {

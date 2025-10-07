@@ -338,8 +338,6 @@ function createWindow() {
     backgroundColor: '#0a0a0a',
     show: false, // Don't show until ready-to-show
     frame: false,
-    titleBarStyle: 'hidden',
-    trafficLightPosition: { x: 10, y: 10 },
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,

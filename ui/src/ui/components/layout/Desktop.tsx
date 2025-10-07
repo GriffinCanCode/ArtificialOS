@@ -22,7 +22,7 @@ interface DesktopProps {
 export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpenCreator }) => {
   const [time, setTime] = useState(new Date());
   const dockItems = useDockItems();
-  const { reorder } = useDockActions();
+  const { reorder, toggle, remove } = useDockActions();
 
   // Update clock
   useEffect(() => {
@@ -68,6 +68,18 @@ export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpen
     }
   }, [onOpenHub, onLaunchApp]);
 
+  // Handle context menu actions
+  const handleDockContextMenu = useCallback((action: string, itemId: string) => {
+    switch (action) {
+      case 'toggle-pin':
+        toggle(itemId);
+        break;
+      case 'remove':
+        remove(itemId);
+        break;
+    }
+  }, [toggle, remove]);
+
   return (
     <div className="desktop">
       {/* Desktop Background */}
@@ -99,7 +111,12 @@ export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpen
           onSort={handleDockSort}
           strategy="horizontal"
           renderItem={(item) => (
-            <DockItem key={item.id} item={item} onClick={handleDockItemClick} />
+            <DockItem
+              key={item.id}
+              item={item}
+              onClick={handleDockItemClick}
+              onContextMenuAction={handleDockContextMenu}
+            />
           )}
           className="dock-container"
         />

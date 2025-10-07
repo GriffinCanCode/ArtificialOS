@@ -49,8 +49,8 @@ export default defineConfig({
     // Optimize chunk size
     chunkSizeWarningLimit: 1000,
 
-    // Optimize CSS
-    cssMinify: "lightningcss",
+    // CSS minification (esbuild is fast and efficient)
+    cssMinify: "esbuild",
 
     // Improve build performance
     reportCompressedSize: false,

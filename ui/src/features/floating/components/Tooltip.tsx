@@ -3,7 +3,7 @@
  * Smart positioning tooltip with accessibility
  */
 
-import React, { cloneElement, useMemo, useEffect } from "react";
+import React, { cloneElement, useMemo } from "react";
 import { FloatingPortal } from "@floating-ui/react";
 import { useTooltip } from "../hooks/useTooltip";
 import type { TooltipProps } from "../core/types";
@@ -31,31 +31,24 @@ export const Tooltip: React.FC<TooltipProps> = ({ content, children, delay = 300
     return children;
   }
 
-  const referenceProps = tooltip.getReferenceProps(children.props);
-
-  // Debug logging
-  useEffect(() => {
-    if (tooltip.isOpen) {
-      console.log('[Tooltip] Rendering tooltip', {
-        isOpen: tooltip.isOpen,
-        content,
-        floatingStyles: tooltip.floatingStyles,
-        refs: tooltip.refs,
-      });
-    }
-  }, [tooltip.isOpen, content, tooltip.floatingStyles]);
+  const referenceProps = tooltip.getReferenceProps();
 
   return (
     <>
       {cloneElement(children, {
+        ...children.props,
         ...referenceProps,
         ref: tooltip.refs.setReference,
       })}
-      {tooltip.isOpen && (
+      {tooltip.isOpen && content && (
         <FloatingPortal>
           <div
             ref={tooltip.refs.setFloating}
-            style={tooltip.floatingStyles}
+            style={{
+              ...tooltip.floatingStyles,
+              // Hide until positioned (not at 0,0)
+              visibility: tooltip.floatingStyles.left === 0 && tooltip.floatingStyles.top === 0 ? 'hidden' : 'visible',
+            }}
             className="tooltip"
             {...tooltip.getFloatingProps()}
           >

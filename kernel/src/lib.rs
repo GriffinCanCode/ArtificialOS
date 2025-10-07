@@ -10,7 +10,9 @@ pub mod ipc;
 pub mod memory;
 pub mod monitoring;
 pub mod process;
+pub mod scheduler;
 pub mod security;
+pub mod signals;
 pub mod syscalls;
 pub mod vfs;
 
@@ -39,10 +41,24 @@ pub use process::{
     Scheduler, SchedulerStats, SchedulingPolicy as Policy,
 };
 
+// Scheduler
+pub use scheduler::{
+    apply_priority_op, validate_priority, Policy as SchedulerPolicy, PriorityControl,
+    PriorityOp, SchedulerControl, SchedulerStats as SchedulerStatsTrait,
+    TimeQuantum, DEFAULT_PRIORITY, MAX_PRIORITY, MIN_PRIORITY,
+};
+
 // Security
 pub use security::{
     Capability, LimitManager, Limits, LimitsError, ResourceLimits, SandboxConfig, SandboxError,
     SandboxManager, SandboxStats, SecurityError, SecurityEvent,
+};
+
+// Signals
+pub use signals::{
+    PendingSignal, ProcessSignalState, Signal, SignalAction, SignalDelivery, SignalDisposition,
+    SignalError, SignalHandler, SignalHandlerRegistry, SignalManager, SignalManagerImpl,
+    SignalMasking, SignalOutcome, SignalQueue, SignalResult, SignalStateManager, SignalStats,
 };
 
 // Syscalls

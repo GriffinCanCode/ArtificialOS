@@ -11,6 +11,14 @@ const (
 	AppTypeNativeProc AppType = "native_proc" // NEW: Native OS processes (Python, CLI, etc.)
 )
 
+// ServiceToolRestriction defines which tools are allowed/denied for a service
+type ServiceToolRestriction struct {
+	Service      string   `json:"service"`                 // Service name (e.g., "storage", "network")
+	AllowedTools []string `json:"allowed_tools,omitempty"` // Specific tools allowed (empty = all)
+	DeniedTools  []string `json:"denied_tools,omitempty"`  // Specific tools denied
+	AllowAll     bool     `json:"allow_all"`               // If true, all tools are allowed
+}
+
 // Package represents an installable/savable app package
 type Package struct {
 	ID          string    `json:"id"`
@@ -26,6 +34,9 @@ type Package struct {
 	Services    []string  `json:"services"`
 	Permissions []string  `json:"permissions"`
 	Tags        []string  `json:"tags"`
+
+	// Service tool restrictions (for fine-grained service access control)
+	ServiceRestrictions []ServiceToolRestriction `json:"service_restrictions,omitempty"`
 
 	// For blueprint apps only
 	Blueprint map[string]interface{} `json:"blueprint,omitempty"`
@@ -68,22 +79,34 @@ type PackageMetadata struct {
 	Category    string    `json:"category"`
 	Version     string    `json:"version"`
 	Author      string    `json:"author"`
+	Type        AppType   `json:"type"` // App type discriminator
 	CreatedAt   time.Time `json:"created_at"`
 	Tags        []string  `json:"tags"`
+
+	// For native web apps (TS/React)
+	BundlePath  *string            `json:"bundle_path,omitempty"`  // JS bundle path
+	WebManifest *NativeWebManifest `json:"web_manifest,omitempty"` // Web app metadata
+
+	// For native process apps (executables)
+	ProcManifest *NativeProcManifest `json:"proc_manifest,omitempty"` // Process app metadata
 }
 
 // ToMetadata extracts metadata from a package
 func (p *Package) ToMetadata() PackageMetadata {
 	return PackageMetadata{
-		ID:          p.ID,
-		Name:        p.Name,
-		Description: p.Description,
-		Icon:        p.Icon,
-		Category:    p.Category,
-		Version:     p.Version,
-		Author:      p.Author,
-		CreatedAt:   p.CreatedAt,
-		Tags:        p.Tags,
+		ID:           p.ID,
+		Name:         p.Name,
+		Description:  p.Description,
+		Icon:         p.Icon,
+		Category:     p.Category,
+		Version:      p.Version,
+		Author:       p.Author,
+		Type:         p.Type,
+		CreatedAt:    p.CreatedAt,
+		Tags:         p.Tags,
+		BundlePath:   p.BundlePath,
+		WebManifest:  p.WebManifest,
+		ProcManifest: p.ProcManifest,
 	}
 }
 

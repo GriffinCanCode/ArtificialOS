@@ -3,7 +3,7 @@
  * Comprehensive type definitions for window management
  */
 
-import { Blueprint } from "../../store/appStore";
+import { Blueprint } from "../../../core/store/appStore";
 
 // ============================================================================
 // Basic Types
@@ -57,6 +57,13 @@ export interface Metadata {
   isAnimating: boolean;
   parentWindowId?: string;
   childWindowIds: string[];
+  // Native app metadata (optional, extends base metadata)
+  appType?: string;
+  packageId?: string;
+  bundlePath?: string;
+  services?: string[];
+  permissions?: string[];
+  pid?: number;
 }
 
 export interface Constraints {

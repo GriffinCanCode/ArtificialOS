@@ -234,8 +234,37 @@ function AppContent() {
         const data = await response.json();
         if (data.error) {
           log.error("Failed to launch app", undefined, { appId, error: data.error });
+        } else if (data.type === "native_web") {
+          // Native web app launched
+          log.info("Native web app launched successfully", {
+            appId,
+            appInstanceId: data.app_id,
+            packageId: data.package_id,
+            bundlePath: data.bundle_path
+          });
+
+          // Open window with native app metadata
+          // Pass empty blueprint and metadata as 5th parameter
+          openWindow(
+            data.app_id,
+            data.title,
+            {
+              type: "native",
+              title: data.title,
+              layout: "vertical",
+              components: [],
+            },
+            data.icon || "📦",
+            {
+              appType: "native_web",
+              packageId: data.package_id,
+              bundlePath: data.bundle_path,
+              services: data.services,
+              permissions: data.permissions,
+            }
+          );
         } else if (data.blueprint) {
-          // Successfully launched - open in a window
+          // Blueprint app launched - open in a window
           log.info("App launched successfully", { appId, appInstanceId: data.app_id });
 
           // Get app metadata for icon

@@ -3,7 +3,7 @@
  * Tests for OS-level resource limit enforcement
  */
 
-use ai_os_kernel::limits::{LimitManager, Limits};
+use ai_os_kernel::security::{LimitManager, Limits};
 
 #[test]
 fn test_limits_builder() {

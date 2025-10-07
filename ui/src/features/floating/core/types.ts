@@ -178,8 +178,8 @@ export interface UseTooltipReturn extends UseFloatingReturn {
  * Popover hook return
  */
 export interface UsePopoverReturn extends UseFloatingReturn {
-  getReferenceProps: () => Record<string, any>;
-  getFloatingProps: () => Record<string, any>;
+  getReferenceProps: (userProps?: Record<string, any>) => Record<string, any>;
+  getFloatingProps: (userProps?: Record<string, any>) => Record<string, any>;
   arrowRef: React.RefObject<HTMLElement>;
 }
 
@@ -189,7 +189,7 @@ export interface UsePopoverReturn extends UseFloatingReturn {
 export interface UseDropdownReturn extends UseFloatingReturn {
   selectedIndex: number;
   setSelectedIndex: (index: number) => void;
-  getReferenceProps: () => Record<string, any>;
-  getFloatingProps: () => Record<string, any>;
+  getReferenceProps: (userProps?: Record<string, any>) => Record<string, any>;
+  getFloatingProps: (userProps?: Record<string, any>) => Record<string, any>;
   getItemProps: (index: number) => Record<string, any>;
 }

@@ -156,6 +156,9 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	handlers := http.NewHandlers(appManager, serviceRegistry, appRegistry, sessionManager, aiClient, kernelClient, handlerMetrics)
 	wsHandler := ws.NewHandler(appManager, aiClient)
 
+	// Serve native app bundles (static files from apps/dist)
+	router.Static("/native-apps", "../apps/dist")
+
 	// Register routes
 	router.GET("/", handlers.Root)
 	router.GET("/health", handlers.Health)

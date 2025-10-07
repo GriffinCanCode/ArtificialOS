@@ -11,6 +11,14 @@ use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+/// Per-process memory tracking
+#[derive(Debug, Clone)]
+struct ProcessMemoryTracking {
+    current_bytes: Size,
+    peak_bytes: Size,
+    allocation_count: usize,
+}
+
 pub struct MemoryManager {
     blocks: Arc<RwLock<HashMap<Address, MemoryBlock>>>,
     next_address: Arc<RwLock<Address>>,
@@ -22,6 +30,8 @@ pub struct MemoryManager {
     // Garbage collection threshold - run GC when this many deallocated blocks accumulate
     gc_threshold: Size, // 1000 blocks
     deallocated_count: Arc<RwLock<Size>>,
+    // Per-process memory tracking (for peak_bytes and allocation_count)
+    process_tracking: Arc<RwLock<HashMap<Pid, ProcessMemoryTracking>>>,
 }
 
 impl MemoryManager {
@@ -37,6 +47,7 @@ impl MemoryManager {
             critical_threshold: 0.95,
             gc_threshold: 1000,
             deallocated_count: Arc::new(RwLock::new(0)),
+            process_tracking: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -61,6 +72,7 @@ impl MemoryManager {
         let mut blocks = self.blocks.write();
         let mut next_addr = self.next_address.write();
         let mut used = self.used_memory.write();
+        let mut tracking = self.process_tracking.write();
 
         // Check if allocation would exceed total memory
         if *used + size > self.total_memory {
@@ -92,8 +104,21 @@ impl MemoryManager {
 
         blocks.insert(address, block);
 
+        // Update per-process tracking
+        let process_track = tracking.entry(pid).or_insert(ProcessMemoryTracking {
+            current_bytes: 0,
+            peak_bytes: 0,
+            allocation_count: 0,
+        });
+        process_track.current_bytes += size;
+        process_track.allocation_count += 1;
+        if process_track.current_bytes > process_track.peak_bytes {
+            process_track.peak_bytes = process_track.current_bytes;
+        }
+
         // Log allocation with memory pressure warnings
         let used_val = *used;
+        drop(tracking);
         drop(blocks);
         drop(next_addr);
         drop(used);
@@ -122,10 +147,19 @@ impl MemoryManager {
         if let Some(block) = blocks.get_mut(&address) {
             if block.allocated {
                 let size = block.size;
+                let pid = block.owner_pid;
                 block.allocated = false;
 
                 let mut used = self.used_memory.write();
                 *used = used.saturating_sub(size);
+
+                // Update per-process tracking
+                if let Some(pid) = pid {
+                    let mut tracking = self.process_tracking.write();
+                    if let Some(process_track) = tracking.get_mut(&pid) {
+                        process_track.current_bytes = process_track.current_bytes.saturating_sub(size);
+                    }
+                }
 
                 // Track deallocated blocks for GC
                 let mut dealloc_count = self.deallocated_count.write();
@@ -179,6 +213,10 @@ impl MemoryManager {
             let mut used = self.used_memory.write();
             *used = used.saturating_sub(freed_bytes);
 
+            // Remove process tracking entry
+            let mut tracking = self.process_tracking.write();
+            tracking.remove(&pid);
+
             // Track deallocated blocks for GC
             let mut dealloc_count = self.deallocated_count.write();
             *dealloc_count += freed_count;
@@ -195,6 +233,7 @@ impl MemoryManager {
             // Trigger GC if threshold reached
             let should_gc = *dealloc_count >= self.gc_threshold;
             drop(dealloc_count);
+            drop(tracking);
             drop(used);
             drop(blocks);
 
@@ -217,6 +256,16 @@ impl MemoryManager {
             .filter(|b| b.allocated && b.owner_pid == Some(pid))
             .map(|b| b.size)
             .sum()
+    }
+
+    /// Get detailed process memory stats including peak and allocation count
+    pub fn get_process_memory_details(&self, pid: Pid) -> (Size, Size, usize) {
+        let tracking = self.process_tracking.read();
+        if let Some(track) = tracking.get(&pid) {
+            (track.current_bytes, track.peak_bytes, track.allocation_count)
+        } else {
+            (0, 0, 0)
+        }
     }
 
     /// Get overall memory info: (total, used, available)
@@ -381,6 +430,7 @@ impl Clone for MemoryManager {
             critical_threshold: self.critical_threshold,
             gc_threshold: self.gc_threshold,
             deallocated_count: Arc::clone(&self.deallocated_count),
+            process_tracking: Arc::clone(&self.process_tracking),
         }
     }
 }

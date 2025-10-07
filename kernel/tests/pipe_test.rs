@@ -3,7 +3,7 @@
  * Tests for Unix-style pipe IPC
  */
 
-use ai_os_kernel::pipe::{PipeError, PipeManager};
+use ai_os_kernel::ipc::{PipeError, PipeManager};
 use ai_os_kernel::MemoryManager;
 use pretty_assertions::assert_eq;
 use serial_test::serial;
@@ -376,8 +376,8 @@ fn test_pipe_concurrent_operations() {
     let pm = Arc::new(PipeManager::new(memory_manager));
     let pipe_id = pm.create(100, 200, Some(10000)).unwrap();
 
-    let pm_writer = Arc::clone(&pm);
-    let pm_reader = Arc::clone(&pm);
+    let pm_writer: Arc<PipeManager> = Arc::clone(&pm);
+    let pm_reader: Arc<PipeManager> = Arc::clone(&pm);
 
     // Writer thread
     let writer = thread::spawn(move || {

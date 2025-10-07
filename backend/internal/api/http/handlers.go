@@ -461,6 +461,20 @@ func (h *Handlers) LaunchRegistryApp(c *gin.Context) {
 		return
 	}
 
+	// Handle based on app type
+	switch pkg.Type {
+	case types.AppTypeNativeWeb:
+		h.launchNativeWebApp(c, pkg)
+	case types.AppTypeNativeProc:
+		h.launchNativeProcApp(c, pkg)
+	default:
+		// Blueprint app (default)
+		h.launchBlueprintApp(c, pkg)
+	}
+}
+
+// launchBlueprintApp launches a blueprint app
+func (h *Handlers) launchBlueprintApp(c *gin.Context, pkg *types.Package) {
 	// Spawn app directly from saved UISpec (no AI generation needed!)
 	app, err := h.appManager.Spawn(
 		c.Request.Context(),
@@ -476,11 +490,122 @@ func (h *Handlers) LaunchRegistryApp(c *gin.Context) {
 	// Add metadata
 	app.Metadata["from_registry"] = true
 	app.Metadata["package_id"] = pkg.ID
+	app.Metadata["app_type"] = string(types.AppTypeBlueprint)
 
 	c.JSON(http.StatusOK, gin.H{
 		"app_id":    app.ID,
+		"type":      string(types.AppTypeBlueprint),
 		"blueprint": app.Blueprint,
 		"title":     app.Title,
+		"icon":      pkg.Icon,
+	})
+}
+
+// launchNativeWebApp launches a native TypeScript/React app
+func (h *Handlers) launchNativeWebApp(c *gin.Context, pkg *types.Package) {
+	// Validate bundle path
+	if pkg.BundlePath == nil || *pkg.BundlePath == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "native app missing bundle path"})
+		return
+	}
+
+	// Create app instance with native metadata
+	metadata := map[string]interface{}{
+		"type":        string(types.AppTypeNativeWeb),
+		"title":       pkg.Name,
+		"package_id":  pkg.ID,
+		"bundle_path": *pkg.BundlePath,
+		"services":    pkg.Services,
+		"permissions": pkg.Permissions,
+	}
+
+	// Add dev server URL if available
+	if pkg.WebManifest != nil && pkg.WebManifest.DevServer != nil {
+		metadata["dev_server"] = *pkg.WebManifest.DevServer
+	}
+
+	// Spawn app
+	app, err := h.appManager.Spawn(
+		c.Request.Context(),
+		"Launch "+pkg.Name,
+		metadata,
+		nil,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Add registry metadata
+	app.Metadata["from_registry"] = true
+	app.Metadata["package_id"] = pkg.ID
+	app.Metadata["app_type"] = string(types.AppTypeNativeWeb)
+
+	c.JSON(http.StatusOK, gin.H{
+		"app_id":      app.ID,
+		"type":        string(types.AppTypeNativeWeb),
+		"title":       pkg.Name,
+		"icon":        pkg.Icon,
+		"package_id":  pkg.ID,
+		"bundle_path": *pkg.BundlePath,
+		"services":    pkg.Services,
+		"permissions": pkg.Permissions,
+		"exports":     pkg.WebManifest.Exports,
+	})
+}
+
+// launchNativeProcApp launches a native OS process app
+func (h *Handlers) launchNativeProcApp(c *gin.Context, pkg *types.Package) {
+	// Validate process manifest
+	if pkg.ProcManifest == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "native process app missing manifest"})
+		return
+	}
+
+	// Create app instance with process metadata
+	metadata := map[string]interface{}{
+		"type":        string(types.AppTypeNativeProc),
+		"title":       pkg.Name,
+		"package_id":  pkg.ID,
+		"executable":  pkg.ProcManifest.Executable,
+		"args":        pkg.ProcManifest.Args,
+		"working_dir": pkg.ProcManifest.WorkingDir,
+		"ui_type":     pkg.ProcManifest.UIType,
+		"env":         pkg.ProcManifest.Env,
+		"services":    pkg.Services,
+		"permissions": pkg.Permissions,
+	}
+
+	// Spawn app
+	app, err := h.appManager.Spawn(
+		c.Request.Context(),
+		"Launch "+pkg.Name,
+		metadata,
+		nil,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Add registry metadata
+	app.Metadata["from_registry"] = true
+	app.Metadata["package_id"] = pkg.ID
+	app.Metadata["app_type"] = string(types.AppTypeNativeProc)
+
+	c.JSON(http.StatusOK, gin.H{
+		"app_id":      app.ID,
+		"type":        string(types.AppTypeNativeProc),
+		"title":       pkg.Name,
+		"icon":        pkg.Icon,
+		"package_id":  pkg.ID,
+		"executable":  pkg.ProcManifest.Executable,
+		"args":        pkg.ProcManifest.Args,
+		"working_dir": pkg.ProcManifest.WorkingDir,
+		"ui_type":     pkg.ProcManifest.UIType,
+		"env":         pkg.ProcManifest.Env,
+		"services":    pkg.Services,
+		"permissions": pkg.Permissions,
 	})
 }
 

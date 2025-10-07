@@ -6,7 +6,7 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
-import type { Window, Position, Size, Bounds, State } from "../core/types";
+import type { Window, Position, Size, Bounds, State, Metadata } from "../core/types";
 import { DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, State as WinState } from "../core/types";
 import { getMaximizedBounds, getCascadePosition } from "../core/bounds";
 import type { Blueprint } from "../../../core/store/appStore";
@@ -21,7 +21,7 @@ interface Store {
   nextZIndex: number;
 
   // Actions
-  open: (appId: string, title: string, uiSpec: Blueprint, icon?: string) => string;
+  open: (appId: string, title: string, uiSpec: Blueprint, icon?: string, metadata?: Partial<Metadata>) => string;
   close: (windowId: string) => void;
   minimize: (windowId: string) => void;
   restore: (windowId: string) => void;
@@ -49,7 +49,7 @@ export const useStore = create<Store>()(
       windows: [],
       nextZIndex: 1000,
 
-      open: (appId, title, uiSpec, icon) => {
+      open: (appId, title, uiSpec, icon, metadata) => {
         const windowId = `window-${appId}-${Date.now()}`;
         const state = get();
 
@@ -78,6 +78,7 @@ export const useStore = create<Store>()(
           metadata: {
             isAnimating: false,
             childWindowIds: [],
+            ...metadata, // Merge in custom metadata
           },
         };
 

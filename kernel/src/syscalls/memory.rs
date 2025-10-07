@@ -54,12 +54,14 @@ impl SyscallExecutor {
             None => return SyscallResult::error("Memory manager not available"),
         };
 
-        let memory_used = memory_manager.process_memory(target_pid);
+        let (allocated_bytes, peak_bytes, allocation_count) =
+            memory_manager.get_process_memory_details(target_pid);
+
         let stats = ProcessMemoryStats {
             pid: target_pid,
-            allocated_bytes: memory_used,
-            peak_bytes: memory_used, // TODO: Track peak memory in the future
-            allocation_count: 0,     // TODO: Track allocation count in the future
+            allocated_bytes,
+            peak_bytes,
+            allocation_count,
         };
 
         match serde_json::to_vec(&stats) {

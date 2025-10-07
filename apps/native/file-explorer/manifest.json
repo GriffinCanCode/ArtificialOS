@@ -1,0 +1,34 @@
+{
+  "id": "file-explorer",
+  "name": "File Explorer",
+  "type": "native_web",
+  "version": "1.0.0",
+  "icon": "📁",
+  "category": "system",
+  "author": "system",
+  "description": "Browse and manage files with advanced features including virtualization, multiple view modes, and full keyboard navigation",
+  "permissions": [
+    "READ_FILE",
+    "WRITE_FILE",
+    "LIST_DIRECTORY",
+    "CREATE_FILE",
+    "DELETE_FILE",
+    "MOVE_FILE",
+    "COPY_FILE"
+  ],
+  "services": ["filesystem", "storage"],
+  "exports": {
+    "component": "FileExplorer"
+  },
+  "tags": ["files", "explorer", "system", "utilities"],
+  "features": [
+    "Virtualized list rendering for large directories",
+    "Multiple view modes (list, grid, compact)",
+    "Advanced sorting and filtering",
+    "Multi-select with keyboard shortcuts",
+    "Copy, cut, paste operations",
+    "Context menu",
+    "Breadcrumb navigation",
+    "File type icons"
+  ]
+}

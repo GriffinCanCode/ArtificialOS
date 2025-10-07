@@ -48,20 +48,41 @@ func NewManager(appManager AppManager, kernel KernelClient, storagePID uint32, s
 	}
 }
 
+// SaveOptions contains options for saving a session
+type SaveOptions struct {
+	Name           string
+	Description    string
+	ChatState      *types.ChatState
+	UIState        *types.UIState
+	ComponentState map[string]map[string]interface{} // appID -> component state
+}
+
 // Save captures current workspace and saves to disk
 func (m *Manager) Save(ctx context.Context, name string, description string) (*types.Session, error) {
+	return m.SaveWithOptions(ctx, SaveOptions{
+		Name:        name,
+		Description: description,
+	})
+}
+
+// SaveWithOptions captures current workspace with additional state and saves to disk
+func (m *Manager) SaveWithOptions(ctx context.Context, opts SaveOptions) (*types.Session, error) {
 	// Capture workspace state WITHOUT holding lock
-	workspace, err := m.captureWorkspace()
+	workspace, err := m.captureWorkspaceWithState(opts.ComponentState)
 	if err != nil {
 		return nil, fmt.Errorf("failed to capture workspace: %w", err)
 	}
+
+	// Add chat and UI state if provided
+	workspace.ChatState = opts.ChatState
+	workspace.UIState = opts.UIState
 
 	// Create session
 	now := time.Now()
 	session := &types.Session{
 		ID:          fmt.Sprintf("session-%s", now.Format("20060102-150405")),
-		Name:        name,
-		Description: description,
+		Name:        opts.Name,
+		Description: opts.Description,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 		Workspace:   *workspace,
@@ -270,14 +291,30 @@ func (m *Manager) Stats() types.SessionStats {
 	}
 }
 
-// captureWorkspace captures current workspace state
+// captureWorkspace captures current workspace state (legacy, for backward compatibility)
 func (m *Manager) captureWorkspace() (*types.Workspace, error) {
+	return m.captureWorkspaceWithState(nil)
+}
+
+// captureWorkspaceWithState captures current workspace state with component state
+func (m *Manager) captureWorkspaceWithState(componentStates map[string]map[string]interface{}) (*types.Workspace, error) {
 	// Get all apps
 	apps := m.appManager.List(nil)
 
 	// Convert to snapshots
 	snapshots := make([]types.AppSnapshot, len(apps))
 	for i, app := range apps {
+		// Get component state for this app if provided
+		var compState map[string]interface{}
+		if componentStates != nil {
+			if state, ok := componentStates[app.ID]; ok {
+				compState = state
+			}
+		}
+		if compState == nil {
+			compState = map[string]interface{}{}
+		}
+
 		snapshots[i] = types.AppSnapshot{
 			ID:             app.ID,
 			Hash:           app.Hash,
@@ -288,7 +325,7 @@ func (m *Manager) captureWorkspace() (*types.Workspace, error) {
 			CreatedAt:      app.CreatedAt,
 			Metadata:       app.Metadata,
 			Services:       app.Services,
-			ComponentState: map[string]interface{}{}, // TODO: Capture component state from frontend
+			ComponentState: compState,
 		}
 	}
 
@@ -299,8 +336,8 @@ func (m *Manager) captureWorkspace() (*types.Workspace, error) {
 		Apps:        snapshots,
 		FocusedID:   stats.FocusedAppID,
 		FocusedHash: stats.FocusedAppHash,
-		ChatState:   nil, // TODO: Capture from frontend
-		UIState:     nil, // TODO: Capture from frontend
+		ChatState:   nil, // Will be set by caller
+		UIState:     nil, // Will be set by caller
 	}
 
 	return workspace, nil

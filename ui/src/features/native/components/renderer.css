@@ -1,0 +1,136 @@
+/**
+ * Native App Renderer Styles
+ */
+
+/* ============================================================================
+   Loading State
+   ========================================================================= */
+
+.native-app-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 1.5rem;
+  padding: 2rem;
+}
+
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--accent-primary, #60a5fa);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loading-text {
+  color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================================================
+   Error State
+   ========================================================================= */
+
+.native-app-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 2rem;
+  gap: 1rem;
+  text-align: center;
+}
+
+.error-icon {
+  font-size: 3rem;
+  opacity: 0.8;
+}
+
+.error-title {
+  color: var(--text-primary, rgba(255, 255, 255, 0.95));
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.error-message {
+  color: var(--error, #f87171);
+  font-size: 0.875rem;
+  max-width: 500px;
+  margin: 0;
+}
+
+.error-details {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  max-width: 600px;
+  width: 100%;
+}
+
+.error-details summary {
+  cursor: pointer;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  user-select: none;
+}
+
+.error-details summary:hover {
+  color: var(--text-primary, rgba(255, 255, 255, 0.95));
+}
+
+.error-stack {
+  display: block;
+  margin-top: 1rem;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.error-stack pre {
+  margin: 0;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.error-package {
+  margin-top: 1rem;
+  color: var(--text-tertiary, rgba(255, 255, 255, 0.5));
+  font-size: 0.75rem;
+  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+}
+
+/* ============================================================================
+   Responsive
+   ========================================================================= */
+
+@media (max-width: 768px) {
+  .native-app-loading,
+  .native-app-error {
+    padding: 1rem;
+  }
+
+  .error-details {
+    max-width: 100%;
+  }
+}

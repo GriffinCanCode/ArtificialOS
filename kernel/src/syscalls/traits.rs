@@ -246,25 +246,27 @@ pub trait MemorySyscalls: Send + Sync {
     fn trigger_gc(&self, pid: Pid, target_pid: Option<u32>) -> SyscallResult;
 }
 
-/// Scheduler syscalls
-pub trait SchedulerSyscalls: Send + Sync {
-    /// Schedule next process
-    fn schedule_next(&self, pid: Pid) -> SyscallResult;
+/// Scheduler syscalls (delegated to scheduler module)
+pub use crate::scheduler::{
+    PriorityControl, SchedulerControl, SchedulerPolicy, SchedulerStats, SchedulerSyscalls,
+};
 
-    /// Yield current process
-    fn yield_process(&self, pid: Pid) -> SyscallResult;
-
-    /// Get currently scheduled process
-    fn get_current_scheduled(&self, pid: Pid) -> SyscallResult;
-
-    /// Get scheduler statistics
-    fn get_scheduler_stats(&self, pid: Pid) -> SyscallResult;
-}
-
-/// Signal syscalls
+/// Signal syscalls (delegated to signals module)
 pub trait SignalSyscalls: Send + Sync {
     /// Send signal to process
     fn send_signal(&self, pid: Pid, target_pid: Pid, signal: u32) -> SyscallResult;
+
+    /// Register signal handler
+    fn register_signal_handler(&self, pid: Pid, signal: u32, handler_id: u64) -> SyscallResult;
+
+    /// Block signal
+    fn block_signal(&self, pid: Pid, signal: u32) -> SyscallResult;
+
+    /// Unblock signal
+    fn unblock_signal(&self, pid: Pid, signal: u32) -> SyscallResult;
+
+    /// Get pending signals
+    fn get_pending_signals(&self, pid: Pid) -> SyscallResult;
 }
 
 /// System information syscalls

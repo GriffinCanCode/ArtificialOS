@@ -29,15 +29,15 @@ export const Dropdown: React.FC<DropdownProps> = React.memo(
       dropdown.close();
     };
 
+    const referenceProps = dropdown.getReferenceProps();
+
     return (
       <>
-        {cloneElement(
-          children,
-          dropdown.getReferenceProps({
-            ref: dropdown.refs.setReference,
-            ...children.props,
-          })
-        )}
+        {cloneElement(children, {
+          ...children.props,
+          ...referenceProps,
+          ref: dropdown.refs.setReference,
+        })}
         {dropdown.isOpen && (
           <FloatingPortal>
             <FloatingFocusManager context={dropdown as any} modal={false}>

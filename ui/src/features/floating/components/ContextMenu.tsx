@@ -20,6 +20,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = React.memo(
     const handleContextMenu = useCallback(
       (e: React.MouseEvent) => {
         e.preventDefault();
+        e.stopPropagation();
         context.open(e.clientX, e.clientY);
       },
       [context]
@@ -30,15 +31,23 @@ export const ContextMenu: React.FC<ContextMenuProps> = React.memo(
       context.close();
     };
 
+    // Get the existing props from children and merge with onContextMenu
+    const childProps = children.props || {};
+    const mergedProps = {
+      ...childProps,
+      onContextMenu: (e: React.MouseEvent) => {
+        handleContextMenu(e);
+        // Also call original if it exists
+        childProps.onContextMenu?.(e);
+      },
+    };
+
     return (
       <>
-        {cloneElement(children, {
-          onContextMenu: handleContextMenu,
-          ...children.props,
-        })}
+        {cloneElement(children, mergedProps)}
         {context.isOpen && (
           <FloatingPortal>
-            <FloatingFocusManager context={context as any} modal={false}>
+            <FloatingFocusManager context={context.context} modal={false}>
               <div
                 ref={context.refs.setFloating}
                 style={context.floatingStyles}

@@ -12,7 +12,7 @@ import {
   useDismiss,
   useRole,
 } from "@floating-ui/react";
-import { createDefaultMiddleware, getDelay, generateId } from "../core/utils";
+import { createDefaultMiddleware, generateId } from "../core/utils";
 import type { PositionConfig, InteractionConfig } from "../core/types";
 
 // ============================================================================
@@ -39,8 +39,8 @@ interface UseHoverReturn {
   isOpen: boolean;
   open: () => void;
   close: () => void;
-  getReferenceProps: () => Record<string, any>;
-  getFloatingProps: () => Record<string, any>;
+  getReferenceProps: (userProps?: Record<string, any>) => Record<string, any>;
+  getFloatingProps: (userProps?: Record<string, any>) => Record<string, any>;
 }
 
 // ============================================================================
@@ -69,7 +69,7 @@ export function useHoverCard({
     placement: position?.placement ?? "top",
     strategy: position?.strategy ?? "absolute",
     middleware: position?.middleware ?? createDefaultMiddleware(position),
-    whileElementsMounted: (reference, floating, update) => {
+    whileElementsMounted: (_reference, _floating, update) => {
       const cleanup = () => update();
       window.addEventListener("scroll", cleanup, true);
       window.addEventListener("resize", cleanup);
