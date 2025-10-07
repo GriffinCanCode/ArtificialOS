@@ -1,0 +1,156 @@
+/**
+ * Virtual Scrolling Styles
+ * Base styles for virtualized components
+ */
+
+/* ========================================================================== */
+/* Base Virtual Container */
+/* ========================================================================== */
+
+.virtual-list,
+.virtual-grid,
+.virtual-table {
+  overflow: auto;
+  contain: strict;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb, #444) var(--scrollbar-track, #1a1a1a);
+}
+
+.virtual-list::-webkit-scrollbar,
+.virtual-grid::-webkit-scrollbar,
+.virtual-table::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.virtual-list::-webkit-scrollbar-track,
+.virtual-grid::-webkit-scrollbar-track,
+.virtual-table::-webkit-scrollbar-track {
+  background: var(--scrollbar-track, #1a1a1a);
+}
+
+.virtual-list::-webkit-scrollbar-thumb,
+.virtual-grid::-webkit-scrollbar-thumb,
+.virtual-table::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb, #444);
+  border-radius: 4px;
+}
+
+.virtual-list::-webkit-scrollbar-thumb:hover,
+.virtual-grid::-webkit-scrollbar-thumb:hover,
+.virtual-table::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover, #555);
+}
+
+/* ========================================================================== */
+/* Virtual Table */
+/* ========================================================================== */
+
+.virtual-table {
+  background: var(--bg-primary, #0a0a0a);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.virtual-table-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg-secondary, #1a1a1a);
+  border-bottom: 2px solid var(--border-color, #333);
+  font-weight: 600;
+  user-select: none;
+}
+
+.virtual-table-row {
+  transition: background-color 0.15s ease;
+}
+
+.virtual-table-row:hover {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.05)) !important;
+}
+
+.virtual-table-row-selected {
+  background: var(--bg-selected, rgba(59, 130, 246, 0.15)) !important;
+}
+
+.virtual-table-cell {
+  padding: 12px 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ========================================================================== */
+/* Performance Optimizations */
+/* ========================================================================== */
+
+.virtual-item {
+  will-change: transform;
+  contain: layout style paint;
+}
+
+/* Disable animations during scroll for better performance */
+.virtual-scrolling .virtual-item {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* ========================================================================== */
+/* Loading States */
+/* ========================================================================== */
+
+.virtual-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  color: var(--text-secondary, #888);
+}
+
+.virtual-loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border-color, #333);
+  border-top-color: var(--accent-color, #3b82f6);
+  border-radius: 50%;
+  animation: virtual-spin 0.6s linear infinite;
+}
+
+@keyframes virtual-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ========================================================================== */
+/* Empty States */
+/* ========================================================================== */
+
+.virtual-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 200px;
+  color: var(--text-secondary, #888);
+  font-size: 14px;
+}
+
+/* ========================================================================== */
+/* Responsive */
+/* ========================================================================== */
+
+@media (max-width: 768px) {
+  .virtual-table-cell {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+
+  .virtual-list::-webkit-scrollbar,
+  .virtual-grid::-webkit-scrollbar,
+  .virtual-table::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+}

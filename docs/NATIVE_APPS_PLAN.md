@@ -2081,6 +2081,7 @@ const sorted = _.sortBy(data, 'name');
 - [ ] Update `WindowContent` to support all three types
 - [ ] Update `windows` store to handle all app metadata
 - [ ] Add WebSocket client for process streaming
+- [x] Advanced virtualization with @tanstack/react-virtual
 
 ### **Build System**
 
@@ -2098,6 +2099,7 @@ const sorted = _.sortBy(data, 'name');
 - [ ] Create example apps for all three types
 - [ ] Update architecture docs
 - [ ] Document NO prebuilt components in native web apps
+- [x] Document virtualization system (see `/ui/src/core/virtual/README.md`)
 
 ### **Testing**
 

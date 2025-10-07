@@ -1,10 +1,10 @@
 /**
  * DynamicRenderer Virtual Scrolling
- * Smart wrapper for rendering large lists efficiently
+ * Enhanced wrapper using TanStack Virtual for better performance
  */
 
-import React, { useRef, useCallback } from "react";
-import { List as VirtualList } from "react-window";
+import React, { useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { BlueprintComponent } from "../../../core/store/appStore";
 import { ComponentState } from "../state/state";
 import { ToolExecutor } from "../execution/executor";
@@ -12,7 +12,6 @@ import { VIRTUAL_SCROLL_THRESHOLD, DEFAULT_ITEM_HEIGHT } from "../core/constants
 import { logger } from "../../../core/utils/monitoring/logger";
 
 // Forward declaration to avoid circular dependency
-// ComponentRenderer will be passed as a prop
 type ComponentRendererType = React.ComponentType<{
   component: BlueprintComponent;
   state: ComponentState;
@@ -37,7 +36,7 @@ interface VirtualizedListProps {
 
 /**
  * Smart wrapper that enables virtual scrolling for large lists
- * Only activates when children count exceeds threshold
+ * Uses TanStack Virtual for better performance and flexibility
  */
 export const VirtualizedList: React.FC<VirtualizedListProps> = React.memo(
   ({
@@ -51,12 +50,12 @@ export const VirtualizedList: React.FC<VirtualizedListProps> = React.memo(
     columns = 1,
     ComponentRenderer: ComponentRendererComponent,
   }) => {
-    const containerRef = useRef<HTMLDivElement>(null);
+    const parentRef = useRef<HTMLDivElement>(null);
 
     // Don't use virtual scrolling for small lists
     if (children.length < VIRTUAL_SCROLL_THRESHOLD) {
       return (
-        <div className={className} ref={containerRef}>
+        <div className={className} ref={parentRef}>
           {children.map((child: BlueprintComponent, idx: number) => (
             <ComponentRendererComponent
               key={`${child.id}-${idx}`}
@@ -71,56 +70,20 @@ export const VirtualizedList: React.FC<VirtualizedListProps> = React.memo(
 
     // For grid layouts, calculate rows
     const isGrid = layout === "grid";
+    const isHorizontal = layout === "horizontal";
     const itemsPerRow = isGrid ? columns : 1;
     const rowCount = isGrid ? Math.ceil(children.length / itemsPerRow) : children.length;
-    const actualItemHeight = isGrid ? itemHeight : itemHeight;
 
-    // Memoized row renderer for virtual list - prevents unnecessary re-renders
-    const Row = useCallback(
-      ({ index, style }: { index: number; style: React.CSSProperties }) => {
-        if (isGrid) {
-          // Render a row of grid items
-          const startIdx = index * itemsPerRow;
-          const rowItems = children.slice(startIdx, startIdx + itemsPerRow);
+    // Setup virtualizer with TanStack Virtual
+    const virtualizer = useVirtualizer({
+      count: rowCount,
+      getScrollElement: () => parentRef.current,
+      estimateSize: () => itemHeight,
+      overscan: 5,
+      horizontal: isHorizontal && !isGrid,
+    });
 
-          return (
-            <div
-              style={{
-                ...style,
-                display: "grid",
-                gridTemplateColumns: `repeat(${itemsPerRow}, 1fr)`,
-                gap: "1rem",
-              }}
-            >
-              {rowItems.map((child: BlueprintComponent, idx: number) => (
-                <ComponentRendererComponent
-                  key={`${child.id}-${startIdx + idx}`}
-                  component={child}
-                  state={state}
-                  executor={executor}
-                />
-              ))}
-            </div>
-          );
-        } else {
-          // Render a single item
-          const child = children[index];
-          if (!child) return null; // Safety check
-
-          return (
-            <div style={style}>
-              <ComponentRendererComponent
-                key={`${child.id}-${index}`}
-                component={child}
-                state={state}
-                executor={executor}
-              />
-            </div>
-          );
-        }
-      },
-      [isGrid, itemsPerRow, children, state, executor, ComponentRendererComponent]
-    );
+    const virtualItems = virtualizer.getVirtualItems();
 
     logger.info("Using virtual scrolling", {
       component: "VirtualizedList",
@@ -128,20 +91,84 @@ export const VirtualizedList: React.FC<VirtualizedListProps> = React.memo(
       rowCount,
       itemsPerRow,
       layout,
+      library: "tanstack-virtual",
     });
 
     return (
-      <div className={className} ref={containerRef}>
-        <VirtualList
-          defaultHeight={maxHeight}
-          rowCount={rowCount}
-          rowHeight={actualItemHeight}
-          overscanCount={5} // Render 5 extra items above/below viewport for smooth scrolling
-          rowComponent={Row as any}
-          rowProps={{} as any}
+      <div
+        ref={parentRef}
+        className={className}
+        style={{
+          height: `${maxHeight}px`,
+          overflow: "auto",
+          contain: "strict",
+        }}
+      >
+        <div
+          style={{
+            height: isHorizontal && !isGrid ? "100%" : `${virtualizer.getTotalSize()}px`,
+            width: isHorizontal && !isGrid ? `${virtualizer.getTotalSize()}px` : "100%",
+            position: "relative",
+          }}
         >
-          {null}
-        </VirtualList>
+          {virtualItems.map((virtualRow) => {
+            if (isGrid) {
+              // Render grid row
+              const startIdx = virtualRow.index * itemsPerRow;
+              const rowItems = children.slice(startIdx, startIdx + itemsPerRow);
+
+              return (
+                <div
+                  key={virtualRow.index}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: `${virtualRow.size}px`,
+                    transform: `translateY(${virtualRow.start}px)`,
+                    display: "grid",
+                    gridTemplateColumns: `repeat(${itemsPerRow}, 1fr)`,
+                    gap: "1rem",
+                  }}
+                >
+                  {rowItems.map((child: BlueprintComponent, idx: number) => (
+                    <ComponentRendererComponent
+                      key={`${child.id}-${startIdx + idx}`}
+                      component={child}
+                      state={state}
+                      executor={executor}
+                    />
+                  ))}
+                </div>
+              );
+            } else {
+              // Render single item (list or horizontal)
+              const child = children[virtualRow.index];
+              if (!child) return null;
+
+              return (
+                <div
+                  key={virtualRow.index}
+                  style={{
+                    position: "absolute",
+                    top: isHorizontal ? 0 : `${virtualRow.start}px`,
+                    left: isHorizontal ? `${virtualRow.start}px` : 0,
+                    height: isHorizontal ? "100%" : `${virtualRow.size}px`,
+                    width: isHorizontal ? `${virtualRow.size}px` : "100%",
+                  }}
+                >
+                  <ComponentRendererComponent
+                    key={`${child.id}-${virtualRow.index}`}
+                    component={child}
+                    state={state}
+                    executor={executor}
+                  />
+                </div>
+              );
+            }
+          })}
+        </div>
       </div>
     );
   }
