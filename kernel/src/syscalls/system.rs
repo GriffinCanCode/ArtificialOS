@@ -6,6 +6,7 @@
 
 use crate::core::json;
 use crate::core::types::Pid;
+use crate::permissions::{PermissionChecker, PermissionRequest, Resource, Action};
 
 use log::{error, info};
 
@@ -16,11 +17,11 @@ use super::types::{SyscallResult, SystemInfo};
 
 impl SyscallExecutor {
     pub(super) fn get_system_info(&self, pid: Pid) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SystemInfo)
-        {
-            return SyscallResult::permission_denied("Missing SystemInfo capability");
+        let request = PermissionRequest::new(pid, Resource::System("info".to_string()), Action::Inspect);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let info = SystemInfo::current();
@@ -36,11 +37,11 @@ impl SyscallExecutor {
     }
 
     pub(super) fn get_current_time(&self, pid: Pid) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::TimeAccess)
-        {
-            return SyscallResult::permission_denied("Missing TimeAccess capability");
+        let request = PermissionRequest::new(pid, Resource::System("time".to_string()), Action::Inspect);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
@@ -58,11 +59,11 @@ impl SyscallExecutor {
     }
 
     pub(super) fn get_env_var(&self, pid: Pid, key: &str) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SystemInfo)
-        {
-            return SyscallResult::permission_denied("Missing SystemInfo capability");
+        let request = PermissionRequest::new(pid, Resource::System("env".to_string()), Action::Read);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         match std::env::var(key) {
@@ -75,11 +76,11 @@ impl SyscallExecutor {
     }
 
     pub(super) fn set_env_var(&self, pid: Pid, key: &str, value: &str) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SystemInfo)
-        {
-            return SyscallResult::permission_denied("Missing SystemInfo capability");
+        let request = PermissionRequest::new(pid, Resource::System("env".to_string()), Action::Write);
+        let response = self.permission_manager.check_and_audit(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         std::env::set_var(key, value);
@@ -88,11 +89,13 @@ impl SyscallExecutor {
     }
 
     pub(super) fn network_request(&self, pid: Pid, url: &str) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::NetworkAccess(NetworkRule::AllowAll))
-        {
-            return SyscallResult::permission_denied("Missing NetworkAccess capability");
+        // Parse URL to extract host and use proper network permission check
+        let host = url.split("://").nth(1).unwrap_or(url).split('/').next().unwrap_or("unknown").to_string();
+        let request = PermissionRequest::net_connect(pid, host, None);
+        let response = self.permission_manager.check_and_audit(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         // Use reqwest for robust HTTP/HTTPS support with timeouts, connection pooling,

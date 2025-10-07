@@ -5,6 +5,7 @@
 
 use crate::core::json;
 use crate::core::types::Pid;
+use crate::permissions::{PermissionChecker, PermissionRequest, Resource, Action};
 use crate::scheduler::{PriorityControl, SchedulerControl, SchedulerPolicy, SchedulerStats};
 use crate::security::Capability;
 use log::{error, info};
@@ -15,11 +16,11 @@ use super::types::SyscallResult;
 impl SyscallExecutor {
     /// Schedule next process (internal implementation)
     pub(super) fn schedule_next(&self, pid: Pid) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SystemInfo)
-        {
-            return SyscallResult::permission_denied("Missing SystemInfo capability");
+        let request = PermissionRequest::new(pid, Resource::System("scheduler".to_string()), Action::Inspect);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         info!("Schedule next syscall requested by PID {}", pid);
@@ -66,11 +67,11 @@ impl SyscallExecutor {
 
     /// Get currently scheduled process (internal implementation)
     pub(super) fn get_current_scheduled(&self, pid: Pid) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SystemInfo)
-        {
-            return SyscallResult::permission_denied("Missing SystemInfo capability");
+        let request = PermissionRequest::new(pid, Resource::System("scheduler".to_string()), Action::Inspect);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         info!("Get current scheduled process requested by PID {}", pid);
@@ -91,13 +92,11 @@ impl SyscallExecutor {
 
     /// Set scheduling policy (internal implementation)
     pub(super) fn set_scheduling_policy(&self, pid: Pid, policy_str: &str) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SpawnProcess)
-        {
-            return SyscallResult::permission_denied(
-                "Missing SpawnProcess capability (required for scheduler control)",
-            );
+        let request = PermissionRequest::new(pid, Resource::System("scheduler".to_string()), Action::Write);
+        let response = self.permission_manager.check_and_audit(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let syscall_policy = match crate::scheduler::Policy::from_str(policy_str) {
@@ -134,11 +133,11 @@ impl SyscallExecutor {
 
     /// Get current scheduling policy (internal implementation)
     pub(super) fn get_scheduling_policy(&self, pid: Pid) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SystemInfo)
-        {
-            return SyscallResult::permission_denied("Missing SystemInfo capability");
+        let request = PermissionRequest::new(pid, Resource::System("scheduler".to_string()), Action::Inspect);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let process_manager = match &self.process_manager {
@@ -171,13 +170,11 @@ impl SyscallExecutor {
 
     /// Set time quantum (internal implementation)
     pub(super) fn set_time_quantum(&self, pid: Pid, quantum_micros: u64) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SpawnProcess)
-        {
-            return SyscallResult::permission_denied(
-                "Missing SpawnProcess capability (required for scheduler control)",
-            );
+        let request = PermissionRequest::new(pid, Resource::System("scheduler".to_string()), Action::Write);
+        let response = self.permission_manager.check_and_audit(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         info!(
@@ -204,11 +201,11 @@ impl SyscallExecutor {
 
     /// Get current time quantum (internal implementation)
     pub(super) fn get_time_quantum(&self, pid: Pid) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SystemInfo)
-        {
-            return SyscallResult::permission_denied("Missing SystemInfo capability");
+        let request = PermissionRequest::new(pid, Resource::System("scheduler".to_string()), Action::Inspect);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let process_manager = match &self.process_manager {
@@ -231,11 +228,11 @@ impl SyscallExecutor {
 
     /// Get global scheduler statistics (internal implementation)
     pub(super) fn get_scheduler_stats(&self, pid: Pid) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SystemInfo)
-        {
-            return SyscallResult::permission_denied("Missing SystemInfo capability");
+        let request = PermissionRequest::new(pid, Resource::System("scheduler".to_string()), Action::Inspect);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         info!("PID {} requested scheduler statistics", pid);
@@ -259,11 +256,11 @@ impl SyscallExecutor {
 
     /// Get process scheduler statistics (internal implementation)
     pub(super) fn get_process_scheduler_stats(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SystemInfo)
-        {
-            return SyscallResult::permission_denied("Missing SystemInfo capability");
+        let request = PermissionRequest::new(pid, Resource::Process(target_pid), Action::Inspect);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let process_manager = match &self.process_manager {
@@ -294,11 +291,11 @@ impl SyscallExecutor {
 
     /// Get all process scheduler statistics (internal implementation)
     pub(super) fn get_all_process_scheduler_stats(&self, pid: Pid) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SystemInfo)
-        {
-            return SyscallResult::permission_denied("Missing SystemInfo capability");
+        let request = PermissionRequest::new(pid, Resource::System("scheduler".to_string()), Action::Inspect);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let process_manager = match &self.process_manager {
@@ -325,13 +322,11 @@ impl SyscallExecutor {
 
     /// Boost process priority (internal implementation)
     pub(super) fn boost_priority(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SpawnProcess)
-        {
-            return SyscallResult::permission_denied(
-                "Missing SpawnProcess capability (required for priority control)",
-            );
+        let request = PermissionRequest::new(pid, Resource::Process(target_pid), Action::Write);
+        let response = self.permission_manager.check_and_audit(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let process_manager = match &self.process_manager {
@@ -360,13 +355,11 @@ impl SyscallExecutor {
 
     /// Lower process priority (internal implementation)
     pub(super) fn lower_priority(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SpawnProcess)
-        {
-            return SyscallResult::permission_denied(
-                "Missing SpawnProcess capability (required for priority control)",
-            );
+        let request = PermissionRequest::new(pid, Resource::Process(target_pid), Action::Write);
+        let response = self.permission_manager.check_and_audit(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let process_manager = match &self.process_manager {

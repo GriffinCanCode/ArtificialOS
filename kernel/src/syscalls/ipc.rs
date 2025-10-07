@@ -6,6 +6,7 @@
 
 use crate::core::json;
 use crate::core::types::Pid;
+use crate::permissions::{PermissionChecker, PermissionRequest, Resource, Action};
 
 use log::{error, info};
 
@@ -54,11 +55,11 @@ impl SyscallExecutor {
     }
 
     pub(super) fn write_pipe(&self, pid: Pid, pipe_id: u32, data: &[u8]) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SendMessage)
-        {
-            return SyscallResult::permission_denied("Missing SendMessage capability");
+        let request = PermissionRequest::new(pid, Resource::IpcChannel(pipe_id), Action::Send);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let pipe_manager = match &self.pipe_manager {
@@ -85,11 +86,11 @@ impl SyscallExecutor {
     }
 
     pub(super) fn read_pipe(&self, pid: Pid, pipe_id: u32, size: usize) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::ReceiveMessage)
-        {
-            return SyscallResult::permission_denied("Missing ReceiveMessage capability");
+        let request = PermissionRequest::new(pid, Resource::IpcChannel(pipe_id), Action::Receive);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let pipe_manager = match &self.pipe_manager {
@@ -176,11 +177,11 @@ impl SyscallExecutor {
 
     // Shared memory operations
     pub(super) fn create_shm(&self, pid: Pid, size: usize) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SendMessage)
-        {
-            return SyscallResult::permission_denied("Missing SendMessage capability");
+        let request = PermissionRequest::new(pid, Resource::IpcChannel(0), Action::Create);
+        let response = self.permission_manager.check_and_audit(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let shm_manager = match &self.shm_manager {
@@ -210,11 +211,11 @@ impl SyscallExecutor {
     }
 
     pub(super) fn attach_shm(&self, pid: Pid, segment_id: u32, read_only: bool) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::ReceiveMessage)
-        {
-            return SyscallResult::permission_denied("Missing ReceiveMessage capability");
+        let request = PermissionRequest::new(pid, Resource::IpcChannel(segment_id), Action::Read);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let shm_manager = match &self.shm_manager {
@@ -262,11 +263,11 @@ impl SyscallExecutor {
         offset: usize,
         data: &[u8],
     ) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SendMessage)
-        {
-            return SyscallResult::permission_denied("Missing SendMessage capability");
+        let request = PermissionRequest::new(pid, Resource::IpcChannel(segment_id), Action::Write);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let shm_manager = match &self.shm_manager {
@@ -299,11 +300,11 @@ impl SyscallExecutor {
         offset: usize,
         size: usize,
     ) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::ReceiveMessage)
-        {
-            return SyscallResult::permission_denied("Missing ReceiveMessage capability");
+        let request = PermissionRequest::new(pid, Resource::IpcChannel(segment_id), Action::Read);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let shm_manager = match &self.shm_manager {
@@ -378,11 +379,11 @@ impl SyscallExecutor {
         queue_type: &str,
         capacity: Option<usize>,
     ) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SendMessage)
-        {
-            return SyscallResult::permission_denied("Missing SendMessage capability");
+        let request = PermissionRequest::new(pid, Resource::IpcChannel(0), Action::Create);
+        let response = self.permission_manager.check_and_audit(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let queue_manager = match &self.queue_manager {
@@ -424,11 +425,11 @@ impl SyscallExecutor {
         data: &[u8],
         priority: Option<u8>,
     ) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SendMessage)
-        {
-            return SyscallResult::permission_denied("Missing SendMessage capability");
+        let request = PermissionRequest::new(pid, Resource::IpcChannel(queue_id), Action::Send);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let queue_manager = match &self.queue_manager {
@@ -454,11 +455,11 @@ impl SyscallExecutor {
     }
 
     pub(super) fn receive_queue(&self, pid: Pid, queue_id: u32) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::ReceiveMessage)
-        {
-            return SyscallResult::permission_denied("Missing ReceiveMessage capability");
+        let request = PermissionRequest::new(pid, Resource::IpcChannel(queue_id), Action::Receive);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let queue_manager = match &self.queue_manager {

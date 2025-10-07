@@ -6,6 +6,7 @@
 
 use crate::core::json;
 use crate::core::types::Pid;
+use crate::permissions::{PermissionChecker, PermissionRequest};
 
 use log::{info, warn};
 use std::fs;
@@ -20,24 +21,17 @@ use super::types::SyscallResult;
 impl SyscallExecutor {
     /// Read file using VFS if available, otherwise use std::fs
     pub(super) fn vfs_read(&self, pid: Pid, path: &Path) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::ReadFile(None))
-        {
-            return SyscallResult::permission_denied("Missing ReadFile capability");
-        }
-
-        // Check sandbox path access
+        // Check permission using centralized manager
         let canonical_path = match path.canonicalize() {
             Ok(p) => p,
             Err(_) => path.to_path_buf(),
         };
 
-        if !self.sandbox_manager.check_path_access(pid, &canonical_path) {
-            return SyscallResult::permission_denied(format!(
-                "Path not accessible: {:?}",
-                canonical_path
-            ));
+        let request = PermissionRequest::file_read(pid, canonical_path.clone());
+        let response = self.permission_manager.check_and_audit(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         // Try VFS first
@@ -73,13 +67,6 @@ impl SyscallExecutor {
 
     /// Write file using VFS if available
     pub(super) fn vfs_write(&self, pid: Pid, path: &Path, data: &[u8]) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::WriteFile(None))
-        {
-            return SyscallResult::permission_denied("Missing WriteFile capability");
-        }
-
         let check_path = if path.exists() {
             match path.canonicalize() {
                 Ok(p) => p,
@@ -92,11 +79,12 @@ impl SyscallExecutor {
             path.to_path_buf()
         };
 
-        if !self.sandbox_manager.check_path_access(pid, &check_path) {
-            return SyscallResult::permission_denied(format!(
-                "Path not accessible: {:?}",
-                check_path
-            ));
+        // Check permission using centralized manager
+        let request = PermissionRequest::file_write(pid, check_path.clone());
+        let response = self.permission_manager.check_and_audit(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         // Try VFS first
@@ -132,18 +120,12 @@ impl SyscallExecutor {
 
     /// Delete file using VFS if available
     pub(super) fn vfs_delete(&self, pid: Pid, path: &Path) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::DeleteFile(None))
-        {
-            return SyscallResult::permission_denied("Missing DeleteFile capability");
-        }
+        // Check permission using centralized manager
+        let request = PermissionRequest::file_delete(pid, path.to_path_buf());
+        let response = self.permission_manager.check_and_audit(&request);
 
-        if !self
-            .sandbox_manager
-            .check_path_access(pid, &path.to_path_buf())
-        {
-            return SyscallResult::permission_denied(format!("Path not accessible: {:?}", path));
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         // Try VFS first
@@ -174,18 +156,12 @@ impl SyscallExecutor {
 
     /// Check if file exists using VFS if available
     pub(super) fn vfs_exists(&self, pid: Pid, path: &Path) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::ReadFile(None))
-        {
-            return SyscallResult::permission_denied("Missing ReadFile capability");
-        }
+        // Check permission using centralized manager
+        let request = PermissionRequest::file_read(pid, path.to_path_buf());
+        let response = self.permission_manager.check(&request);
 
-        if !self
-            .sandbox_manager
-            .check_path_access(pid, &path.to_path_buf())
-        {
-            return SyscallResult::permission_denied(format!("Path not accessible: {:?}", path));
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let exists = if let Some(ref vfs) = self.vfs {
@@ -201,18 +177,12 @@ impl SyscallExecutor {
 
     /// Create directory using VFS if available
     pub(super) fn vfs_create_dir(&self, pid: Pid, path: &Path) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::CreateFile(None))
-        {
-            return SyscallResult::permission_denied("Missing CreateFile capability");
-        }
+        // Check permission using centralized manager
+        let request = PermissionRequest::file_create(pid, path.to_path_buf());
+        let response = self.permission_manager.check_and_audit(&request);
 
-        if !self
-            .sandbox_manager
-            .check_path_access(pid, &path.to_path_buf())
-        {
-            return SyscallResult::permission_denied(format!("Path not accessible: {:?}", path));
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         // Try VFS first
@@ -243,18 +213,12 @@ impl SyscallExecutor {
 
     /// Remove directory using VFS if available
     pub(super) fn vfs_remove_dir(&self, pid: Pid, path: &Path) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::DeleteFile(None))
-        {
-            return SyscallResult::permission_denied("Missing DeleteFile capability");
-        }
+        // Check permission using centralized manager
+        let request = PermissionRequest::file_delete(pid, path.to_path_buf());
+        let response = self.permission_manager.check_and_audit(&request);
 
-        if !self
-            .sandbox_manager
-            .check_path_access(pid, &path.to_path_buf())
-        {
-            return SyscallResult::permission_denied(format!("Path not accessible: {:?}", path));
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         // Try VFS first
@@ -285,18 +249,12 @@ impl SyscallExecutor {
 
     /// List directory using VFS if available
     pub(super) fn vfs_list_dir(&self, pid: Pid, path: &Path) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::ListDirectory(None))
-        {
-            return SyscallResult::permission_denied("Missing ListDirectory capability");
-        }
+        // Check permission using centralized manager
+        let request = PermissionRequest::dir_list(pid, path.to_path_buf());
+        let response = self.permission_manager.check_and_audit(&request);
 
-        if !self
-            .sandbox_manager
-            .check_path_access(pid, &path.to_path_buf())
-        {
-            return SyscallResult::permission_denied(format!("Path not accessible: {:?}", path));
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         // Try VFS first

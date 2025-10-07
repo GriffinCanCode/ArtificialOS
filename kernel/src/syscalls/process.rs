@@ -6,6 +6,7 @@
 
 use crate::core::json;
 use crate::core::types::{Pid, Priority};
+use crate::permissions::{PermissionChecker, PermissionRequest, Resource, Action};
 use log::{error, info, warn};
 use std::process::Command;
 
@@ -16,11 +17,11 @@ use super::types::{ProcessOutput, SyscallResult};
 
 impl SyscallExecutor {
     pub(super) fn spawn_process(&self, pid: Pid, command: &str, args: &[String]) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SpawnProcess)
-        {
-            return SyscallResult::permission_denied("Missing SpawnProcess capability");
+        let request = PermissionRequest::new(pid, Resource::Process(0), Action::Create);
+        let response = self.permission_manager.check_and_audit(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         if command.is_empty() || command.contains([';', '|', '&', '\n', '\0']) {
@@ -78,11 +79,11 @@ impl SyscallExecutor {
     }
 
     pub(super) fn kill_process(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::KillProcess)
-        {
-            return SyscallResult::permission_denied("Missing KillProcess capability");
+        let request = PermissionRequest::proc_kill(pid, target_pid);
+        let response = self.permission_manager.check_and_audit(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         self.sandbox_manager.remove_sandbox(target_pid);
@@ -95,11 +96,11 @@ impl SyscallExecutor {
     }
 
     pub(super) fn get_process_info(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SystemInfo)
-        {
-            return SyscallResult::permission_denied("Missing SystemInfo capability");
+        let request = PermissionRequest::new(pid, Resource::Process(target_pid), Action::Inspect);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let process_manager = match &self.process_manager {
@@ -123,11 +124,11 @@ impl SyscallExecutor {
     }
 
     pub(super) fn get_process_list(&self, pid: Pid) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SystemInfo)
-        {
-            return SyscallResult::permission_denied("Missing SystemInfo capability");
+        let request = PermissionRequest::new(pid, Resource::System("processes".to_string()), Action::List);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let process_manager = match &self.process_manager {
@@ -154,11 +155,11 @@ impl SyscallExecutor {
         target_pid: Pid,
         priority: Priority,
     ) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SpawnProcess)
-        {
-            return SyscallResult::permission_denied("Missing SpawnProcess capability");
+        let request = PermissionRequest::new(pid, Resource::Process(target_pid), Action::Write);
+        let response = self.permission_manager.check_and_audit(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let process_manager = match &self.process_manager {
@@ -179,11 +180,11 @@ impl SyscallExecutor {
     }
 
     pub(super) fn get_process_state(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SystemInfo)
-        {
-            return SyscallResult::permission_denied("Missing SystemInfo capability");
+        let request = PermissionRequest::new(pid, Resource::Process(target_pid), Action::Inspect);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let process_manager = match &self.process_manager {
@@ -207,11 +208,11 @@ impl SyscallExecutor {
     }
 
     pub(super) fn get_process_stats_call(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SystemInfo)
-        {
-            return SyscallResult::permission_denied("Missing SystemInfo capability");
+        let request = PermissionRequest::new(pid, Resource::Process(target_pid), Action::Inspect);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let process_manager = match &self.process_manager {
@@ -240,11 +241,11 @@ impl SyscallExecutor {
         target_pid: Pid,
         _timeout_ms: Option<u64>,
     ) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SpawnProcess)
-        {
-            return SyscallResult::permission_denied("Missing SpawnProcess capability");
+        let request = PermissionRequest::new(pid, Resource::Process(target_pid), Action::Inspect);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         warn!("WaitProcess not fully implemented, returning immediately");

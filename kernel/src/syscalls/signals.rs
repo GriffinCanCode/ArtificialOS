@@ -5,6 +5,7 @@
 
 use crate::core::json;
 use crate::core::types::Pid;
+use crate::permissions::{PermissionChecker, PermissionRequest};
 use crate::security::Capability;
 use crate::signals::{
     Signal, SignalAction, SignalDelivery, SignalHandlerRegistry, SignalMasking, SignalQueue,
@@ -18,12 +19,12 @@ use super::types::SyscallResult;
 impl SyscallExecutor {
     /// Send signal to a process
     pub(super) fn send_signal(&self, pid: Pid, target_pid: Pid, signal: u32) -> SyscallResult {
-        // Check permission
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::KillProcess)
-        {
-            return SyscallResult::permission_denied("Missing KillProcess capability");
+        // Check permission using centralized manager
+        let request = PermissionRequest::proc_kill(pid, target_pid);
+        let response = self.permission_manager.check_and_audit(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         // Get signal manager

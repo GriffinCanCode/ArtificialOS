@@ -6,6 +6,7 @@
 
 use crate::core::json;
 use crate::core::types::Pid;
+use crate::permissions::{PermissionChecker, PermissionRequest};
 
 use dashmap::DashMap;
 use log::{error, info, warn};
@@ -56,31 +57,6 @@ impl SyscallExecutor {
         let write_flag = flags & 0x0002; // O_WRONLY or O_RDWR
         let create_flag = flags & 0x0040; // O_CREAT
 
-        if read_flag != 0
-            && !self
-                .sandbox_manager
-                .check_permission(pid, &Capability::ReadFile(None))
-        {
-            return SyscallResult::permission_denied("Missing ReadFile capability");
-        }
-
-        if write_flag != 0
-            && !self
-                .sandbox_manager
-                .check_permission(pid, &Capability::WriteFile(None))
-        {
-            return SyscallResult::permission_denied("Missing WriteFile capability");
-        }
-
-        if create_flag != 0
-            && !self
-                .sandbox_manager
-                .check_permission(pid, &Capability::CreateFile(None))
-        {
-            return SyscallResult::permission_denied("Missing CreateFile capability");
-        }
-
-        // Check path access
         let canonical_path = match path.canonicalize() {
             Ok(p) => p,
             Err(_) => {
@@ -92,11 +68,25 @@ impl SyscallExecutor {
             }
         };
 
-        if !self.sandbox_manager.check_path_access(pid, &canonical_path) {
-            return SyscallResult::permission_denied(format!(
-                "Path not accessible: {:?}",
-                canonical_path
-            ));
+        // Check permissions using centralized manager based on operation
+        if create_flag != 0 {
+            let request = PermissionRequest::file_create(pid, canonical_path.clone());
+            let response = self.permission_manager.check_and_audit(&request);
+            if !response.is_allowed() {
+                return SyscallResult::permission_denied(response.reason());
+            }
+        } else if write_flag != 0 {
+            let request = PermissionRequest::file_write(pid, canonical_path.clone());
+            let response = self.permission_manager.check_and_audit(&request);
+            if !response.is_allowed() {
+                return SyscallResult::permission_denied(response.reason());
+            }
+        } else if read_flag != 0 {
+            let request = PermissionRequest::file_read(pid, canonical_path.clone());
+            let response = self.permission_manager.check_and_audit(&request);
+            if !response.is_allowed() {
+                return SyscallResult::permission_denied(response.reason());
+            }
         }
 
         // Build OpenOptions based on flags
@@ -166,12 +156,8 @@ impl SyscallExecutor {
     }
 
     pub(super) fn dup(&self, pid: Pid, fd: u32) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::ReadFile(None))
-        {
-            return SyscallResult::permission_denied("Missing ReadFile capability");
-        }
+        // Note: dup doesn't check specific path permissions, just general file access
+        // The original fd already had permissions checked at open time
 
         // Check if the FD exists and clone the Arc reference
         if let Some(file_ref) = self.fd_manager.open_files.get(&fd) {
@@ -199,12 +185,8 @@ impl SyscallExecutor {
     }
 
     pub(super) fn dup2(&self, pid: Pid, oldfd: u32, newfd: u32) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::ReadFile(None))
-        {
-            return SyscallResult::permission_denied("Missing ReadFile capability");
-        }
+        // Note: dup2 doesn't check specific path permissions, just general file access
+        // The original fd already had permissions checked at open time
 
         // Check if the old FD exists and clone the Arc reference
         if let Some(file_ref) = self.fd_manager.open_files.get(&oldfd) {
@@ -231,12 +213,7 @@ impl SyscallExecutor {
     }
 
     pub(super) fn lseek(&self, pid: Pid, fd: u32, offset: i64, whence: u32) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::ReadFile(None))
-        {
-            return SyscallResult::permission_denied("Missing ReadFile capability");
-        }
+        // Note: lseek operates on already-open fds with validated permissions
 
         if let Some(file_arc) = self.fd_manager.open_files.get(&fd) {
             let mut file = file_arc.write();
@@ -281,12 +258,7 @@ impl SyscallExecutor {
     }
 
     pub(super) fn fcntl(&self, pid: Pid, fd: u32, cmd: u32, arg: u32) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::ReadFile(None))
-        {
-            return SyscallResult::permission_denied("Missing ReadFile capability");
-        }
+        // Note: fcntl operates on already-open fds with validated permissions
 
         // Verify FD exists
         if !self.fd_manager.open_files.contains_key(&fd) {

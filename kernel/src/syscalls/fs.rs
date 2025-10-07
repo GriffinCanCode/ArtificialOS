@@ -6,6 +6,7 @@
 
 use crate::core::json;
 use crate::core::types::Pid;
+use crate::permissions::{PermissionChecker, PermissionRequest, Resource, Action};
 
 use log::{error, info};
 use std::fs;
@@ -45,15 +46,11 @@ impl SyscallExecutor {
     }
 
     pub(super) fn file_stat(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::ReadFile(None))
-        {
-            return SyscallResult::permission_denied("Missing ReadFile capability");
-        }
+        let request = PermissionRequest::file_read(pid, path.clone());
+        let response = self.permission_manager.check(&request);
 
-        if !self.sandbox_manager.check_path_access(pid, path) {
-            return SyscallResult::permission_denied(format!("Path not accessible: {:?}", path));
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         match fs::metadata(path) {
@@ -99,25 +96,20 @@ impl SyscallExecutor {
         source: &PathBuf,
         destination: &PathBuf,
     ) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::WriteFile(None))
-        {
-            return SyscallResult::permission_denied("Missing WriteFile capability");
+        // Check permission for source (read/delete)
+        let req_src = PermissionRequest::file_delete(pid, source.clone());
+        let resp_src = self.permission_manager.check_and_audit(&req_src);
+
+        if !resp_src.is_allowed() {
+            return SyscallResult::permission_denied(resp_src.reason());
         }
 
-        if !self.sandbox_manager.check_path_access(pid, source) {
-            return SyscallResult::permission_denied(format!(
-                "Source path not accessible: {:?}",
-                source
-            ));
-        }
+        // Check permission for destination (write/create)
+        let req_dst = PermissionRequest::file_create(pid, destination.clone());
+        let resp_dst = self.permission_manager.check_and_audit(&req_dst);
 
-        if !self.sandbox_manager.check_path_access(pid, destination) {
-            return SyscallResult::permission_denied(format!(
-                "Destination path not accessible: {:?}",
-                destination
-            ));
+        if !resp_dst.is_allowed() {
+            return SyscallResult::permission_denied(resp_dst.reason());
         }
 
         match fs::rename(source, destination) {
@@ -141,32 +133,20 @@ impl SyscallExecutor {
         source: &PathBuf,
         destination: &PathBuf,
     ) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::ReadFile(None))
-        {
-            return SyscallResult::permission_denied("Missing ReadFile capability");
+        // Check permission for source (read)
+        let req_src = PermissionRequest::file_read(pid, source.clone());
+        let resp_src = self.permission_manager.check(&req_src);
+
+        if !resp_src.is_allowed() {
+            return SyscallResult::permission_denied(resp_src.reason());
         }
 
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::WriteFile(None))
-        {
-            return SyscallResult::permission_denied("Missing WriteFile capability");
-        }
+        // Check permission for destination (write/create)
+        let req_dst = PermissionRequest::file_create(pid, destination.clone());
+        let resp_dst = self.permission_manager.check_and_audit(&req_dst);
 
-        if !self.sandbox_manager.check_path_access(pid, source) {
-            return SyscallResult::permission_denied(format!(
-                "Source path not accessible: {:?}",
-                source
-            ));
-        }
-
-        if !self.sandbox_manager.check_path_access(pid, destination) {
-            return SyscallResult::permission_denied(format!(
-                "Destination path not accessible: {:?}",
-                destination
-            ));
+        if !resp_dst.is_allowed() {
+            return SyscallResult::permission_denied(resp_dst.reason());
         }
 
         match fs::copy(source, destination) {
@@ -196,11 +176,11 @@ impl SyscallExecutor {
     }
 
     pub(super) fn get_working_directory(&self, pid: Pid) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SystemInfo)
-        {
-            return SyscallResult::permission_denied("Missing SystemInfo capability");
+        let request = PermissionRequest::new(pid, Resource::System("cwd".to_string()), Action::Inspect);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         match std::env::current_dir() {
@@ -219,15 +199,11 @@ impl SyscallExecutor {
     }
 
     pub(super) fn set_working_directory(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::SystemInfo)
-        {
-            return SyscallResult::permission_denied("Missing SystemInfo capability");
-        }
+        let request = PermissionRequest::file_read(pid, path.clone());
+        let response = self.permission_manager.check_and_audit(&request);
 
-        if !self.sandbox_manager.check_path_access(pid, path) {
-            return SyscallResult::permission_denied(format!("Path not accessible: {:?}", path));
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         match std::env::set_current_dir(path) {
@@ -243,15 +219,11 @@ impl SyscallExecutor {
     }
 
     pub(super) fn truncate_file(&self, pid: Pid, path: &PathBuf, size: u64) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::WriteFile(None))
-        {
-            return SyscallResult::permission_denied("Missing WriteFile capability");
-        }
+        let request = PermissionRequest::file_write(pid, path.clone());
+        let response = self.permission_manager.check_and_audit(&request);
 
-        if !self.sandbox_manager.check_path_access(pid, path) {
-            return SyscallResult::permission_denied(format!("Path not accessible: {:?}", path));
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         match fs::OpenOptions::new().write(true).open(path) {

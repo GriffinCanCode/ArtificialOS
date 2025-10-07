@@ -2,7 +2,7 @@
 
 ## Overview
 
-The permissions module provides a **single source of truth** for all permission checks across the kernel. It replaces scattered permission logic with a unified, auditable, and performant system.
+The permissions module provides an interface for checking and managing permissions across the kernel.
 
 ## Architecture
 

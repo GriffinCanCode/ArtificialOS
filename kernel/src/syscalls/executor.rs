@@ -5,6 +5,7 @@
 
 use crate::core::types::Pid;
 use crate::monitoring::MetricsCollector;
+use crate::permissions::PermissionManager;
 use crate::security::SandboxManager;
 use log::info;
 use std::sync::{Arc, OnceLock};
@@ -19,9 +20,11 @@ pub static SYSTEM_START: OnceLock<Instant> = OnceLock::new();
 #[derive(Clone)]
 pub struct SyscallExecutor {
     pub(super) sandbox_manager: SandboxManager,
+    pub(super) permission_manager: PermissionManager,
     pub(super) pipe_manager: Option<crate::ipc::PipeManager>,
     pub(super) shm_manager: Option<crate::ipc::ShmManager>,
     pub(super) queue_manager: Option<crate::ipc::QueueManager>,
+    pub(super) mmap_manager: Option<crate::ipc::MmapManager>,
     pub(super) process_manager: Option<crate::process::ProcessManagerImpl>,
     pub(super) memory_manager: Option<crate::memory::MemoryManager>,
     pub(super) signal_manager: Option<crate::signals::SignalManagerImpl>,
@@ -36,12 +39,15 @@ impl SyscallExecutor {
         // Initialize system start time
         SYSTEM_START.get_or_init(Instant::now);
 
-        info!("Syscall executor initialized");
+        let permission_manager = PermissionManager::new(sandbox_manager.clone());
+        info!("Syscall executor initialized with centralized permissions");
         Self {
             sandbox_manager,
+            permission_manager,
             pipe_manager: None,
             shm_manager: None,
             queue_manager: None,
+            mmap_manager: None,
             process_manager: None,
             memory_manager: None,
             signal_manager: None,
@@ -65,12 +71,15 @@ impl SyscallExecutor {
         // Initialize system start time
         SYSTEM_START.get_or_init(Instant::now);
 
-        info!("Syscall executor initialized with IPC support");
+        let permission_manager = PermissionManager::new(sandbox_manager.clone());
+        info!("Syscall executor initialized with IPC support and centralized permissions");
         Self {
             sandbox_manager,
+            permission_manager,
             pipe_manager: Some(pipe_manager),
             shm_manager: Some(shm_manager),
             queue_manager: None,
+            mmap_manager: None,
             process_manager: None,
             memory_manager: None,
             signal_manager: None,
@@ -104,12 +113,15 @@ impl SyscallExecutor {
         // Initialize system start time
         SYSTEM_START.get_or_init(Instant::now);
 
-        info!("Syscall executor initialized with full features");
+        let permission_manager = PermissionManager::new(sandbox_manager.clone());
+        info!("Syscall executor initialized with full features and centralized permissions");
         Self {
             sandbox_manager,
+            permission_manager,
             pipe_manager: Some(pipe_manager),
             shm_manager: Some(shm_manager),
             queue_manager: None,
+            mmap_manager: None,
             process_manager: Some(process_manager),
             memory_manager: Some(memory_manager),
             signal_manager: None,
@@ -213,6 +225,28 @@ impl SyscallExecutor {
             } => self.read_shm(pid, segment_id, offset, size),
             Syscall::DestroyShm { segment_id } => self.destroy_shm(pid, segment_id),
             Syscall::ShmStats { segment_id } => self.shm_stats(pid, segment_id),
+
+            // IPC - Memory-Mapped Files
+            Syscall::Mmap {
+                ref path,
+                offset,
+                length,
+                prot,
+                shared,
+            } => self.mmap(pid, path, offset, length, prot, shared),
+            Syscall::MmapRead {
+                mmap_id,
+                offset,
+                length,
+            } => self.mmap_read(pid, mmap_id, offset, length),
+            Syscall::MmapWrite {
+                mmap_id,
+                offset,
+                ref data,
+            } => self.mmap_write(pid, mmap_id, offset, data),
+            Syscall::Msync { mmap_id } => self.msync(pid, mmap_id),
+            Syscall::Munmap { mmap_id } => self.munmap(pid, mmap_id),
+            Syscall::MmapStats { mmap_id } => self.mmap_stats(pid, mmap_id),
 
             // IPC - Async Queues
             Syscall::CreateQueue {

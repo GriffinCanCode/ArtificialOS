@@ -6,6 +6,7 @@
 
 use crate::core::json;
 use crate::core::types::Pid;
+use crate::permissions::{PermissionChecker, PermissionRequest};
 
 use dashmap::DashMap;
 use log::{info, warn};
@@ -60,11 +61,13 @@ impl SyscallExecutor {
         socket_type: u32,
         protocol: u32,
     ) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::NetworkAccess(NetworkRule::AllowAll))
-        {
-            return SyscallResult::permission_denied("Missing NetworkAccess capability");
+        // Check network capability via permission manager
+        use crate::permissions::{Resource, Action};
+        let request = PermissionRequest::new(pid, Resource::System("network".to_string()), Action::Create);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         // AF_INET = 2, SOCK_STREAM = 1, SOCK_DGRAM = 2
@@ -87,11 +90,17 @@ impl SyscallExecutor {
     }
 
     pub(super) fn bind(&self, pid: Pid, sockfd: u32, address: &str) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::BindPort(None))
-        {
-            return SyscallResult::permission_denied("Missing BindPort capability");
+        // Parse host:port from address and check bind permission
+        use crate::permissions::{Resource, Action};
+        let parts: Vec<&str> = address.split(':').collect();
+        let host = parts.get(0).unwrap_or(&"").to_string();
+        let port = parts.get(1).and_then(|p| p.parse::<u16>().ok());
+
+        let request = PermissionRequest::new(pid, Resource::Network { host, port }, Action::Bind);
+        let response = self.permission_manager.check_and_audit(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         // Try to bind a TCP listener
@@ -122,11 +131,13 @@ impl SyscallExecutor {
     }
 
     pub(super) fn listen(&self, pid: Pid, sockfd: u32, backlog: u32) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::BindPort(None))
-        {
-            return SyscallResult::permission_denied("Missing BindPort capability");
+        // Listen requires network access (socket already bound)
+        use crate::permissions::{Resource, Action};
+        let request = PermissionRequest::new(pid, Resource::System("network".to_string()), Action::Bind);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         // Verify socket exists as a TCP listener
@@ -142,11 +153,13 @@ impl SyscallExecutor {
     }
 
     pub(super) fn accept(&self, pid: Pid, sockfd: u32) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::NetworkAccess(NetworkRule::AllowAll))
-        {
-            return SyscallResult::permission_denied("Missing NetworkAccess capability");
+        // Accept requires network access
+        use crate::permissions::{Resource, Action};
+        let request = PermissionRequest::new(pid, Resource::System("network".to_string()), Action::Receive);
+        let response = self.permission_manager.check(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         // Get the listener and try to accept (non-blocking)
@@ -180,11 +193,16 @@ impl SyscallExecutor {
     }
 
     pub(super) fn connect(&self, pid: Pid, sockfd: u32, address: &str) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::NetworkAccess(NetworkRule::AllowAll))
-        {
-            return SyscallResult::permission_denied("Missing NetworkAccess capability");
+        // Parse host:port from address and check connect permission
+        let parts: Vec<&str> = address.split(':').collect();
+        let host = parts.get(0).unwrap_or(&"").to_string();
+        let port = parts.get(1).and_then(|p| p.parse::<u16>().ok());
+
+        let request = PermissionRequest::net_connect(pid, host, port);
+        let response = self.permission_manager.check_and_audit(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         // Try to connect to the address
@@ -202,12 +220,8 @@ impl SyscallExecutor {
     }
 
     pub(super) fn send(&self, pid: Pid, sockfd: u32, data: &[u8], flags: u32) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::NetworkAccess(NetworkRule::AllowAll))
-        {
-            return SyscallResult::permission_denied("Missing NetworkAccess capability");
-        }
+        // Send on existing connection - permissions already checked at connect/accept time
+        // Could add additional check here if needed
 
         use std::io::Write;
 
@@ -236,12 +250,8 @@ impl SyscallExecutor {
     }
 
     pub(super) fn recv(&self, pid: Pid, sockfd: u32, size: usize, flags: u32) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::NetworkAccess(NetworkRule::AllowAll))
-        {
-            return SyscallResult::permission_denied("Missing NetworkAccess capability");
-        }
+        // Receive on existing connection - permissions already checked at connect/accept time
+        // Could add additional check here if needed
 
         use std::io::Read;
 
@@ -275,11 +285,16 @@ impl SyscallExecutor {
         address: &str,
         flags: u32,
     ) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::NetworkAccess(NetworkRule::AllowAll))
-        {
-            return SyscallResult::permission_denied("Missing NetworkAccess capability");
+        // Parse host:port from address and check network access
+        let parts: Vec<&str> = address.split(':').collect();
+        let host = parts.get(0).unwrap_or(&"").to_string();
+        let port = parts.get(1).and_then(|p| p.parse::<u16>().ok());
+
+        let request = PermissionRequest::net_connect(pid, host, port);
+        let response = self.permission_manager.check_and_audit(&request);
+
+        if !response.is_allowed() {
+            return SyscallResult::permission_denied(response.reason());
         }
 
         // Try to send via UDP socket
@@ -307,12 +322,8 @@ impl SyscallExecutor {
     }
 
     pub(super) fn recvfrom(&self, pid: Pid, sockfd: u32, size: usize, flags: u32) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::NetworkAccess(NetworkRule::AllowAll))
-        {
-            return SyscallResult::permission_denied("Missing NetworkAccess capability");
-        }
+        // Receive on UDP socket - permissions should be checked at bind time
+        // Could add additional check here if needed
 
         // Try to receive from UDP socket
         if let Some(socket) = self.socket_manager.udp_sockets.get(&sockfd) {
@@ -344,12 +355,7 @@ impl SyscallExecutor {
     }
 
     pub(super) fn close_socket(&self, pid: Pid, sockfd: u32) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::NetworkAccess(NetworkRule::AllowAll))
-        {
-            return SyscallResult::permission_denied("Missing NetworkAccess capability");
-        }
+        // Close doesn't require permission check - closing is always allowed
 
         // Try to remove from all socket collections
         let removed = self.socket_manager.tcp_listeners.remove(&sockfd).is_some()
@@ -376,12 +382,7 @@ impl SyscallExecutor {
         optname: u32,
         optval: &[u8],
     ) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::NetworkAccess(NetworkRule::AllowAll))
-        {
-            return SyscallResult::permission_denied("Missing NetworkAccess capability");
-        }
+        // Socket options on existing socket - permissions checked at creation time
 
         warn!(
             "SetSockOpt syscall not fully implemented: sockfd={}, level={}, optname={}",
@@ -398,12 +399,7 @@ impl SyscallExecutor {
         level: u32,
         optname: u32,
     ) -> SyscallResult {
-        if !self
-            .sandbox_manager
-            .check_permission(pid, &Capability::NetworkAccess(NetworkRule::AllowAll))
-        {
-            return SyscallResult::permission_denied("Missing NetworkAccess capability");
-        }
+        // Socket options on existing socket - permissions checked at creation time
 
         warn!(
             "GetSockOpt syscall not fully implemented: sockfd={}, level={}, optname={}",
