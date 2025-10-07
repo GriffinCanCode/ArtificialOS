@@ -80,7 +80,29 @@ def get_system_prompt_template(prompt_type: str = "ui_generation") -> str:
         System prompt template string
     """
     logger.debug("build_template", type=prompt_type)
-    return ""  # Placeholder
+
+    if prompt_type == "ui_generation":
+        from agents.prompt import get_ui_generation_prompt
+        # Return base UI generation prompt without tools/context
+        return get_ui_generation_prompt("", "")
+
+    elif prompt_type == "chat":
+        return """You are a helpful AI assistant.
+Provide clear, accurate, and concise responses to user questions.
+Be professional, friendly, and informative."""
+
+    elif prompt_type == "code_generation":
+        return """You are an expert code generation assistant.
+Generate clean, efficient, and well-documented code based on user requirements.
+Follow best practices and modern conventions for the specified language."""
+
+    elif prompt_type == "blueprint_generation":
+        from agents.prompt import BLUEPRINT_DOCUMENTATION
+        return BLUEPRINT_DOCUMENTATION
+
+    else:
+        logger.warn("unknown_prompt_type", type=prompt_type)
+        return ""
 
 
 __all__ = ["PromptCache", "get_system_prompt_template"]

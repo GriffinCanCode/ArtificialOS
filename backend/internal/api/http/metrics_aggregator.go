@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -319,11 +320,73 @@ func (ma *MetricsAggregator) getBackendMetrics() map[string]interface{} {
 
 // getKernelMetrics fetches metrics from kernel via gRPC
 func (ma *MetricsAggregator) getKernelMetrics() map[string]interface{} {
-	// This would call kernel gRPC endpoint to get metrics
-	// For now, return placeholder
-	return map[string]interface{}{
-		"status": "operational",
+	if ma.kernel == nil {
+		return nil
 	}
+
+	ctx := context.Background()
+	metrics := make(map[string]interface{})
+
+	// Get memory stats
+	memData, err := ma.kernel.ExecuteSyscall(ctx, 0, "get_memory_stats", nil)
+	if err == nil && len(memData) > 0 {
+		var memStats map[string]interface{}
+		if err := json.Unmarshal(memData, &memStats); err == nil {
+			if totalMem, ok := memStats["total_memory"].(float64); ok {
+				metrics["total_memory_bytes"] = totalMem
+			}
+			if usedMem, ok := memStats["used_memory"].(float64); ok {
+				metrics["used_memory_bytes"] = usedMem
+			}
+			if availMem, ok := memStats["available_memory"].(float64); ok {
+				metrics["available_memory_bytes"] = availMem
+			}
+		}
+	}
+
+	// Get scheduler stats
+	schedulerData, err := ma.kernel.ExecuteSyscall(ctx, 0, "get_scheduler_stats", nil)
+	if err == nil && len(schedulerData) > 0 {
+		var schedulerStats map[string]interface{}
+		if err := json.Unmarshal(schedulerData, &schedulerStats); err == nil {
+			if totalSwitches, ok := schedulerStats["total_context_switches"].(float64); ok {
+				metrics["total_context_switches"] = totalSwitches
+			}
+			if activeProcs, ok := schedulerStats["active_processes"].(float64); ok {
+				metrics["active_processes"] = activeProcs
+			}
+			if queuedProcs, ok := schedulerStats["queued_processes"].(float64); ok {
+				metrics["queued_processes"] = queuedProcs
+			}
+		}
+	}
+
+	// Get system uptime
+	sysData, err := ma.kernel.ExecuteSyscall(ctx, 0, "get_uptime", nil)
+	if err == nil && len(sysData) > 0 {
+		// Uptime is returned as u64 bytes
+		if len(sysData) >= 8 {
+			uptime := uint64(sysData[0]) | uint64(sysData[1])<<8 | uint64(sysData[2])<<16 | uint64(sysData[3])<<24 |
+				uint64(sysData[4])<<32 | uint64(sysData[5])<<40 | uint64(sysData[6])<<48 | uint64(sysData[7])<<56
+			metrics["uptime_seconds"] = uptime
+		}
+	}
+
+	// Get process count
+	procData, err := ma.kernel.ExecuteSyscall(ctx, 0, "get_process_list", nil)
+	if err == nil && len(procData) > 0 {
+		var procList []interface{}
+		if err := json.Unmarshal(procData, &procList); err == nil {
+			metrics["process_count"] = len(procList)
+		}
+	}
+
+	if len(metrics) > 0 {
+		metrics["status"] = "operational"
+		return metrics
+	}
+
+	return nil
 }
 
 // getAIMetrics fetches metrics from AI service with circuit breaker protection
@@ -396,10 +459,56 @@ func (ma *MetricsAggregator) ProxyKernelMetrics(c *gin.Context) {
 		return
 	}
 
-	// TODO: Implement kernel metrics proxy via gRPC
-	c.JSON(http.StatusOK, gin.H{
-		"status": "kernel_metrics_placeholder",
-	})
+	ctx := c.Request.Context()
+
+	// Collect kernel metrics via gRPC syscalls
+	metrics := make(map[string]interface{})
+
+	// Get memory stats
+	memData, err := ma.kernel.ExecuteSyscall(ctx, 0, "get_memory_stats", nil)
+	if err == nil && len(memData) > 0 {
+		var memStats map[string]interface{}
+		if err := json.Unmarshal(memData, &memStats); err == nil {
+			metrics["memory"] = memStats
+		}
+	}
+
+	// Get scheduler stats
+	schedulerData, err := ma.kernel.ExecuteSyscall(ctx, 0, "get_scheduler_stats", nil)
+	if err == nil && len(schedulerData) > 0 {
+		var schedulerStats map[string]interface{}
+		if err := json.Unmarshal(schedulerData, &schedulerStats); err == nil {
+			metrics["scheduler"] = schedulerStats
+		}
+	}
+
+	// Get system info
+	sysData, err := ma.kernel.ExecuteSyscall(ctx, 0, "get_system_info", nil)
+	if err == nil && len(sysData) > 0 {
+		var sysInfo map[string]interface{}
+		if err := json.Unmarshal(sysData, &sysInfo); err == nil {
+			metrics["system"] = sysInfo
+		}
+	}
+
+	// Get process list (as a count metric)
+	procData, err := ma.kernel.ExecuteSyscall(ctx, 0, "get_process_list", nil)
+	if err == nil && len(procData) > 0 {
+		var procList []interface{}
+		if err := json.Unmarshal(procData, &procList); err == nil {
+			metrics["process_count"] = len(procList)
+		}
+	}
+
+	if len(metrics) == 0 {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": "Failed to collect kernel metrics",
+		})
+		return
+	}
+
+	metrics["status"] = "operational"
+	c.JSON(http.StatusOK, metrics)
 }
 
 // ProxyAIMetrics proxies AI service metrics with circuit breaker protection

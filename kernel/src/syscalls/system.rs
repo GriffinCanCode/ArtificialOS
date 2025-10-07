@@ -90,7 +90,7 @@ impl SyscallExecutor {
         SyscallResult::success()
     }
 
-    pub(super) fn network_request(&self, pid: Pid, _url: &str) -> SyscallResult {
+    pub(super) fn network_request(&self, pid: Pid, url: &str) -> SyscallResult {
         if !self
             .sandbox_manager
             .check_permission(pid, &Capability::NetworkAccess)
@@ -98,7 +98,58 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied("Missing NetworkAccess capability");
         }
 
-        log::warn!("Network operations not yet implemented");
-        SyscallResult::error("Network operations not implemented")
+        use std::io::{Read, Write};
+        use std::net::TcpStream;
+
+        // Parse URL to extract host and path
+        let url_str = if url.starts_with("http://") {
+            &url[7..]
+        } else if url.starts_with("https://") {
+            log::warn!("HTTPS not fully supported, attempting plain HTTP");
+            &url[8..]
+        } else {
+            url
+        };
+
+        let (host, path) = match url_str.split_once('/') {
+            Some((h, p)) => (h, format!("/{}", p)),
+            None => (url_str, "/".to_string()),
+        };
+
+        // Extract port if specified
+        let (host_name, port) = match host.split_once(':') {
+            Some((h, p)) => (h, p.parse::<u16>().unwrap_or(80)),
+            None => (host, 80),
+        };
+
+        let address = format!("{}:{}", host_name, port);
+
+        // Make HTTP request
+        match TcpStream::connect(&address) {
+            Ok(mut stream) => {
+                let request = format!(
+                    "GET {} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n\r\n",
+                    path, host_name
+                );
+
+                if let Err(e) = stream.write_all(request.as_bytes()) {
+                    log::error!("Failed to send HTTP request: {}", e);
+                    return SyscallResult::error(format!("Failed to send request: {}", e));
+                }
+
+                let mut response = Vec::new();
+                if let Err(e) = stream.read_to_end(&mut response) {
+                    log::error!("Failed to read HTTP response: {}", e);
+                    return SyscallResult::error(format!("Failed to read response: {}", e));
+                }
+
+                info!("PID {} fetched {} ({} bytes)", pid, url, response.len());
+                SyscallResult::success_with_data(response)
+            }
+            Err(e) => {
+                log::error!("Failed to connect to {}: {}", address, e);
+                SyscallResult::error(format!("Network request failed: {}", e))
+            }
+        }
     }
 }

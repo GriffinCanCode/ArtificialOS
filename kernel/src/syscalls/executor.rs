@@ -24,8 +24,11 @@ pub struct SyscallExecutor {
     pub(super) queue_manager: Option<crate::ipc::QueueManager>,
     pub(super) process_manager: Option<crate::process::ProcessManagerImpl>,
     pub(super) memory_manager: Option<crate::memory::MemoryManager>,
+    pub(super) signal_manager: Option<crate::signals::SignalManagerImpl>,
     pub(super) vfs: Option<crate::vfs::MountManager>,
     pub(super) metrics: Option<Arc<MetricsCollector>>,
+    pub(super) fd_manager: super::fd::FdManager,
+    pub(super) socket_manager: super::network::SocketManager,
 }
 
 impl SyscallExecutor {
@@ -41,8 +44,11 @@ impl SyscallExecutor {
             queue_manager: None,
             process_manager: None,
             memory_manager: None,
+            signal_manager: None,
             vfs: None,
             metrics: None,
+            fd_manager: super::fd::FdManager::new(),
+            socket_manager: super::network::SocketManager::new(),
         }
     }
 
@@ -67,14 +73,24 @@ impl SyscallExecutor {
             queue_manager: None,
             process_manager: None,
             memory_manager: None,
+            signal_manager: None,
             vfs: None,
             metrics: None,
+            fd_manager: super::fd::FdManager::new(),
+            socket_manager: super::network::SocketManager::new(),
         }
     }
 
     pub fn with_queues(mut self, queue_manager: crate::ipc::QueueManager) -> Self {
         self.queue_manager = Some(queue_manager);
         info!("Queue support enabled for syscall executor");
+        self
+    }
+
+    /// Add signal manager support
+    pub fn with_signals(mut self, signal_manager: crate::signals::SignalManagerImpl) -> Self {
+        self.signal_manager = Some(signal_manager);
+        info!("Signal support enabled for syscall executor");
         self
     }
 
@@ -96,8 +112,11 @@ impl SyscallExecutor {
             queue_manager: None,
             process_manager: Some(process_manager),
             memory_manager: Some(memory_manager),
+            signal_manager: None,
             vfs: None,
             metrics: None,
+            fd_manager: super::fd::FdManager::new(),
+            socket_manager: super::network::SocketManager::new(),
         }
     }
 
@@ -217,6 +236,16 @@ impl SyscallExecutor {
             Syscall::YieldProcess => self.yield_process(pid),
             Syscall::GetCurrentScheduled => self.get_current_scheduled(pid),
             Syscall::GetSchedulerStats => self.get_scheduler_stats(pid),
+            Syscall::SetSchedulingPolicy { ref policy } => self.set_scheduling_policy(pid, policy),
+            Syscall::GetSchedulingPolicy => self.get_scheduling_policy(pid),
+            Syscall::SetTimeQuantum { quantum_micros } => self.set_time_quantum(pid, quantum_micros),
+            Syscall::GetTimeQuantum => self.get_time_quantum(pid),
+            Syscall::GetProcessSchedulerStats { target_pid } => {
+                self.get_process_scheduler_stats(pid, target_pid)
+            }
+            Syscall::GetAllProcessSchedulerStats => self.get_all_process_scheduler_stats(pid),
+            Syscall::BoostPriority { target_pid } => self.boost_priority(pid, target_pid),
+            Syscall::LowerPriority { target_pid } => self.lower_priority(pid, target_pid),
 
             // Time operations
             Syscall::Sleep { duration_ms } => self.sleep(pid, duration_ms),

@@ -68,15 +68,13 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied("Missing NetworkAccess capability");
         }
 
-        // Placeholder implementation - would create actual socket
-        warn!(
-            "Socket syscall not fully implemented: domain={}, type={}, protocol={}",
-            domain, socket_type, protocol
-        );
+        // AF_INET = 2, SOCK_STREAM = 1, SOCK_DGRAM = 2
+        let sockfd = self.socket_manager.allocate_fd();
 
-        // Return mock socket FD
-        let sockfd = 1000 + pid;
-        info!("PID {} created socket FD {}", pid, sockfd);
+        info!(
+            "PID {} created socket FD {} (domain={}, type={}, protocol={})",
+            pid, sockfd, domain, socket_type, protocol
+        );
 
         let data = serde_json::to_vec(&serde_json::json!({
             "sockfd": sockfd,
@@ -97,12 +95,30 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied("Missing BindPort capability");
         }
 
-        warn!(
-            "Bind syscall not fully implemented: sockfd={}, address={}",
-            sockfd, address
-        );
-        info!("PID {} bound socket {} to {}", pid, sockfd, address);
-        SyscallResult::success()
+        // Try to bind a TCP listener
+        match TcpListener::bind(address) {
+            Ok(listener) => {
+                let mut tcp_listeners = self.socket_manager.tcp_listeners.write().unwrap();
+                tcp_listeners.insert(sockfd, listener);
+                info!("PID {} bound TCP socket {} to {}", pid, sockfd, address);
+                SyscallResult::success()
+            }
+            Err(e) => {
+                // Try UDP if TCP failed
+                match UdpSocket::bind(address) {
+                    Ok(socket) => {
+                        let mut udp_sockets = self.socket_manager.udp_sockets.write().unwrap();
+                        udp_sockets.insert(sockfd, socket);
+                        info!("PID {} bound UDP socket {} to {}", pid, sockfd, address);
+                        SyscallResult::success()
+                    }
+                    Err(udp_e) => {
+                        warn!("Failed to bind socket {} to {}: TCP={}, UDP={}", sockfd, address, e, udp_e);
+                        SyscallResult::error(format!("Bind failed: {}", e))
+                    }
+                }
+            }
+        }
     }
 
     pub(super) fn listen(&self, pid: Pid, sockfd: u32, backlog: u32) -> SyscallResult {
@@ -113,15 +129,17 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied("Missing BindPort capability");
         }
 
-        warn!(
-            "Listen syscall not fully implemented: sockfd={}, backlog={}",
-            sockfd, backlog
-        );
-        info!(
-            "PID {} listening on socket {} with backlog {}",
-            pid, sockfd, backlog
-        );
-        SyscallResult::success()
+        // Verify socket exists as a TCP listener
+        let tcp_listeners = self.socket_manager.tcp_listeners.read().unwrap();
+        if tcp_listeners.contains_key(&sockfd) {
+            info!(
+                "PID {} listening on socket {} with backlog {}",
+                pid, sockfd, backlog
+            );
+            SyscallResult::success()
+        } else {
+            SyscallResult::error("Socket not bound or not a TCP socket")
+        }
     }
 
     pub(super) fn accept(&self, pid: Pid, sockfd: u32) -> SyscallResult {
@@ -132,22 +150,36 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied("Missing NetworkAccess capability");
         }
 
-        warn!("Accept syscall not fully implemented: sockfd={}", sockfd);
+        // Get the listener and try to accept (non-blocking)
+        let tcp_listeners = self.socket_manager.tcp_listeners.read().unwrap();
+        if let Some(listener) = tcp_listeners.get(&sockfd) {
+            // Set non-blocking mode for this operation
+            if let Ok((stream, addr)) = listener.accept() {
+                drop(tcp_listeners);
 
-        // Return mock client FD
-        let client_fd = sockfd + 1;
-        info!(
-            "PID {} accepted connection on socket {}, client FD {}",
-            pid, sockfd, client_fd
-        );
+                // Allocate new FD for the accepted connection
+                let client_fd = self.socket_manager.allocate_fd();
+                let mut tcp_streams = self.socket_manager.tcp_streams.write().unwrap();
+                tcp_streams.insert(client_fd, stream);
 
-        let data = serde_json::to_vec(&serde_json::json!({
-            "client_fd": client_fd,
-            "address": "127.0.0.1:0"
-        }))
-        .unwrap();
+                info!(
+                    "PID {} accepted connection on socket {}, client FD {} from {}",
+                    pid, sockfd, client_fd, addr
+                );
 
-        SyscallResult::success_with_data(data)
+                let data = serde_json::to_vec(&serde_json::json!({
+                    "client_fd": client_fd,
+                    "address": addr.to_string()
+                }))
+                .unwrap();
+
+                SyscallResult::success_with_data(data)
+            } else {
+                SyscallResult::error("No pending connections")
+            }
+        } else {
+            SyscallResult::error("Invalid socket or not listening")
+        }
     }
 
     pub(super) fn connect(&self, pid: Pid, sockfd: u32, address: &str) -> SyscallResult {
@@ -158,12 +190,19 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied("Missing NetworkAccess capability");
         }
 
-        warn!(
-            "Connect syscall not fully implemented: sockfd={}, address={}",
-            sockfd, address
-        );
-        info!("PID {} connected socket {} to {}", pid, sockfd, address);
-        SyscallResult::success()
+        // Try to connect to the address
+        match TcpStream::connect(address) {
+            Ok(stream) => {
+                let mut tcp_streams = self.socket_manager.tcp_streams.write().unwrap();
+                tcp_streams.insert(sockfd, stream);
+                info!("PID {} connected socket {} to {}", pid, sockfd, address);
+                SyscallResult::success()
+            }
+            Err(e) => {
+                warn!("Failed to connect socket {} to {}: {}", sockfd, address, e);
+                SyscallResult::error(format!("Connect failed: {}", e))
+            }
+        }
     }
 
     pub(super) fn send(&self, pid: Pid, sockfd: u32, data: &[u8], flags: u32) -> SyscallResult {
@@ -174,20 +213,28 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied("Missing NetworkAccess capability");
         }
 
-        warn!(
-            "Send syscall not fully implemented: sockfd={}, size={}, flags={}",
-            sockfd,
-            data.len(),
-            flags
-        );
-        info!("PID {} sent {} bytes on socket {}", pid, data.len(), sockfd);
+        use std::io::Write;
 
-        let result = serde_json::to_vec(&serde_json::json!({
-            "bytes_sent": data.len()
-        }))
-        .unwrap();
-
-        SyscallResult::success_with_data(result)
+        // Try to send on TCP stream
+        let mut tcp_streams = self.socket_manager.tcp_streams.write().unwrap();
+        if let Some(stream) = tcp_streams.get_mut(&sockfd) {
+            match stream.write(data) {
+                Ok(bytes_sent) => {
+                    info!("PID {} sent {} bytes on TCP socket {}", pid, bytes_sent, sockfd);
+                    let result = serde_json::to_vec(&serde_json::json!({
+                        "bytes_sent": bytes_sent
+                    }))
+                    .unwrap();
+                    SyscallResult::success_with_data(result)
+                }
+                Err(e) => {
+                    warn!("Send failed on socket {}: {}", sockfd, e);
+                    SyscallResult::error(format!("Send failed: {}", e))
+                }
+            }
+        } else {
+            SyscallResult::error("Invalid socket or not connected")
+        }
     }
 
     pub(super) fn recv(&self, pid: Pid, sockfd: u32, size: usize, flags: u32) -> SyscallResult {
@@ -198,14 +245,26 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied("Missing NetworkAccess capability");
         }
 
-        warn!(
-            "Recv syscall not fully implemented: sockfd={}, size={}, flags={}",
-            sockfd, size, flags
-        );
+        use std::io::Read;
 
-        // Return empty data for now
-        info!("PID {} received 0 bytes on socket {}", pid, sockfd);
-        SyscallResult::success_with_data(vec![])
+        // Try to receive from TCP stream
+        let mut tcp_streams = self.socket_manager.tcp_streams.write().unwrap();
+        if let Some(stream) = tcp_streams.get_mut(&sockfd) {
+            let mut buffer = vec![0u8; size];
+            match stream.read(&mut buffer) {
+                Ok(bytes_read) => {
+                    buffer.truncate(bytes_read);
+                    info!("PID {} received {} bytes on TCP socket {}", pid, bytes_read, sockfd);
+                    SyscallResult::success_with_data(buffer)
+                }
+                Err(e) => {
+                    warn!("Recv failed on socket {}: {}", sockfd, e);
+                    SyscallResult::error(format!("Recv failed: {}", e))
+                }
+            }
+        } else {
+            SyscallResult::error("Invalid socket or not connected")
+        }
     }
 
     pub(super) fn sendto(
@@ -223,27 +282,29 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied("Missing NetworkAccess capability");
         }
 
-        warn!(
-            "SendTo syscall not fully implemented: sockfd={}, address={}, size={}, flags={}",
-            sockfd,
-            address,
-            data.len(),
-            flags
-        );
-        info!(
-            "PID {} sent {} bytes to {} on socket {}",
-            pid,
-            data.len(),
-            address,
-            sockfd
-        );
-
-        let result = serde_json::to_vec(&serde_json::json!({
-            "bytes_sent": data.len()
-        }))
-        .unwrap();
-
-        SyscallResult::success_with_data(result)
+        // Try to send via UDP socket
+        let udp_sockets = self.socket_manager.udp_sockets.read().unwrap();
+        if let Some(socket) = udp_sockets.get(&sockfd) {
+            match socket.send_to(data, address) {
+                Ok(bytes_sent) => {
+                    info!(
+                        "PID {} sent {} bytes to {} on UDP socket {}",
+                        pid, bytes_sent, address, sockfd
+                    );
+                    let result = serde_json::to_vec(&serde_json::json!({
+                        "bytes_sent": bytes_sent
+                    }))
+                    .unwrap();
+                    SyscallResult::success_with_data(result)
+                }
+                Err(e) => {
+                    warn!("SendTo failed on socket {}: {}", sockfd, e);
+                    SyscallResult::error(format!("SendTo failed: {}", e))
+                }
+            }
+        } else {
+            SyscallResult::error("Invalid UDP socket")
+        }
     }
 
     pub(super) fn recvfrom(&self, pid: Pid, sockfd: u32, size: usize, flags: u32) -> SyscallResult {
@@ -254,19 +315,31 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied("Missing NetworkAccess capability");
         }
 
-        warn!(
-            "RecvFrom syscall not fully implemented: sockfd={}, size={}, flags={}",
-            sockfd, size, flags
-        );
+        // Try to receive from UDP socket
+        let udp_sockets = self.socket_manager.udp_sockets.read().unwrap();
+        if let Some(socket) = udp_sockets.get(&sockfd) {
+            let mut buffer = vec![0u8; size];
+            match socket.recv_from(&mut buffer) {
+                Ok((bytes_read, addr)) => {
+                    buffer.truncate(bytes_read);
+                    info!("PID {} received {} bytes from {} on UDP socket {}", pid, bytes_read, addr, sockfd);
 
-        let result = serde_json::to_vec(&serde_json::json!({
-            "data": "",
-            "address": "0.0.0.0:0"
-        }))
-        .unwrap();
+                    let result = serde_json::to_vec(&serde_json::json!({
+                        "data": buffer,
+                        "address": addr.to_string()
+                    }))
+                    .unwrap();
 
-        info!("PID {} received 0 bytes on socket {}", pid, sockfd);
-        SyscallResult::success_with_data(result)
+                    SyscallResult::success_with_data(result)
+                }
+                Err(e) => {
+                    warn!("RecvFrom failed on socket {}: {}", sockfd, e);
+                    SyscallResult::error(format!("RecvFrom failed: {}", e))
+                }
+            }
+        } else {
+            SyscallResult::error("Invalid UDP socket")
+        }
     }
 
     pub(super) fn close_socket(&self, pid: Pid, sockfd: u32) -> SyscallResult {
@@ -277,12 +350,22 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied("Missing NetworkAccess capability");
         }
 
-        warn!(
-            "CloseSocket syscall not fully implemented: sockfd={}",
-            sockfd
-        );
-        info!("PID {} closed socket {}", pid, sockfd);
-        SyscallResult::success()
+        // Try to remove from all socket collections
+        let mut tcp_listeners = self.socket_manager.tcp_listeners.write().unwrap();
+        let mut tcp_streams = self.socket_manager.tcp_streams.write().unwrap();
+        let mut udp_sockets = self.socket_manager.udp_sockets.write().unwrap();
+
+        let removed = tcp_listeners.remove(&sockfd).is_some()
+            || tcp_streams.remove(&sockfd).is_some()
+            || udp_sockets.remove(&sockfd).is_some();
+
+        if removed {
+            info!("PID {} closed socket {}", pid, sockfd);
+            SyscallResult::success()
+        } else {
+            warn!("PID {} attempted to close non-existent socket {}", pid, sockfd);
+            SyscallResult::error("Invalid socket descriptor")
+        }
     }
 
     pub(super) fn setsockopt(
