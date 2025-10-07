@@ -1,6 +1,33 @@
 /*!
  * Memory Management
- * Handles memory allocation and deallocation with graceful OOM handling
+ *
+ * High-performance memory allocator with graceful OOM handling and address recycling.
+ *
+ * ## Allocation Performance
+ *
+ * Uses a **segregated free list** allocator for optimal performance:
+ * - **Small blocks** (<4KB): O(1) lookup via power-of-2 bucketing
+ *   - 12 buckets: 64B, 128B, 256B, 512B, 1KB, 2KB, 4KB
+ *   - Most allocations fall into this category
+ *
+ * - **Medium blocks** (4KB-64KB): O(1) lookup via 4KB increment bucketing
+ *   - 15 buckets: 8KB, 12KB, 16KB, ..., 64KB
+ *   - Common for process stacks and buffers
+ *
+ * - **Large blocks** (>64KB): O(log n) lookup via BTreeMap
+ *   - Efficient range queries for best-fit allocation
+ *
+ * **Old implementation**: O(n) linear scan of entire free list
+ * **New implementation**: O(1) for small/medium, O(log n) for large
+ *
+ * ## Features
+ *
+ * - **Address recycling**: Deallocated memory is immediately available for reuse
+ * - **Block splitting**: Larger blocks are split when smaller allocations are requested
+ * - **Coalescing**: Adjacent free blocks are merged to reduce fragmentation
+ * - **Memory pressure tracking**: Warns at 80%, critical at 95%
+ * - **Garbage collection**: Automatic cleanup of deallocated block metadata
+ * - **Per-process tracking**: Monitor peak usage and allocation counts
  */
 
 use super::traits::{Allocator, GarbageCollector, MemoryInfo, ProcessMemoryCleanup};
@@ -9,6 +36,7 @@ use crate::core::types::{Address, Pid, Size};
 use ahash::RandomState;
 use dashmap::DashMap;
 use log::{error, info, warn};
+use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -27,6 +55,183 @@ struct FreeBlock {
     size: Size,
 }
 
+/// Size classes for segregated free lists
+/// Modern memory allocators use segregated lists for O(1) lookup
+const SMALL_BLOCK_MAX: Size = 4 * 1024; // 4KB
+const MEDIUM_BLOCK_MAX: Size = 64 * 1024; // 64KB
+
+/// Segregated free list for efficient memory allocation
+/// - Small blocks (<4KB): O(1) best-fit within size class
+/// - Medium blocks (4KB-64KB): O(1) best-fit within size class
+/// - Large blocks (>64KB): O(log n) using BTreeMap
+#[derive(Debug)]
+struct SegregatedFreeList {
+    /// Small allocations: <4KB - most common case
+    /// Bucketed by powers of 2 for cache-friendly access
+    small_blocks: Vec<Vec<FreeBlock>>, // 12 buckets: 64, 128, 256, ..., 2048, 4096 bytes
+
+    /// Medium allocations: 4KB-64KB
+    /// Bucketed by 4KB increments
+    medium_blocks: Vec<Vec<FreeBlock>>, // 15 buckets: 8KB, 12KB, 16KB, ..., 64KB
+
+    /// Large allocations: >64KB
+    /// BTreeMap for O(log n) lookup by size
+    large_blocks: BTreeMap<Size, Vec<FreeBlock>>,
+}
+
+impl SegregatedFreeList {
+    fn new() -> Self {
+        Self {
+            small_blocks: vec![Vec::new(); 12],  // 64B to 4KB (powers of 2)
+            medium_blocks: vec![Vec::new(); 15], // 8KB to 64KB (4KB increments)
+            large_blocks: BTreeMap::new(),
+        }
+    }
+
+    /// Get the bucket index for small blocks (powers of 2)
+    fn small_bucket_index(size: Size) -> Option<usize> {
+        if size > SMALL_BLOCK_MAX {
+            return None;
+        }
+        // Find the smallest power of 2 >= size, starting from 64
+        let log2 = (size.max(64) - 1).next_power_of_two().trailing_zeros();
+        let idx = (log2 as usize).saturating_sub(6); // 64 = 2^6
+        if idx < 12 {
+            Some(idx)
+        } else {
+            None
+        }
+    }
+
+    /// Get the bucket index for medium blocks (4KB increments)
+    fn medium_bucket_index(size: Size) -> Option<usize> {
+        if size <= SMALL_BLOCK_MAX || size > MEDIUM_BLOCK_MAX {
+            return None;
+        }
+        // Round up to nearest 4KB increment
+        let idx = ((size + 4095) / 4096).saturating_sub(2);
+        if idx < 15 {
+            Some(idx)
+        } else {
+            None
+        }
+    }
+
+    /// Insert a free block into the appropriate list
+    fn insert(&mut self, block: FreeBlock) {
+        if let Some(idx) = Self::small_bucket_index(block.size) {
+            self.small_blocks[idx].push(block);
+        } else if let Some(idx) = Self::medium_bucket_index(block.size) {
+            self.medium_blocks[idx].push(block);
+        } else {
+            // Large block - use BTreeMap for O(log n) access
+            self.large_blocks
+                .entry(block.size)
+                .or_insert_with(Vec::new)
+                .push(block);
+        }
+    }
+
+    /// Find and remove a suitable block for the requested size
+    /// Returns the block and whether it was split
+    fn find_best_fit(&mut self, size: Size) -> Option<FreeBlock> {
+        // Try small blocks first - O(1) lookup
+        if size <= SMALL_BLOCK_MAX {
+            if let Some(start_idx) = Self::small_bucket_index(size) {
+                // Search from the appropriate bucket upwards
+                for idx in start_idx..self.small_blocks.len() {
+                    if !self.small_blocks[idx].is_empty() {
+                        // Find smallest block >= size in this bucket
+                        let best_idx = self.small_blocks[idx]
+                            .iter()
+                            .enumerate()
+                            .filter(|(_, b)| b.size >= size)
+                            .min_by_key(|(_, b)| b.size)
+                            .map(|(i, _)| i);
+
+                        if let Some(i) = best_idx {
+                            return Some(self.small_blocks[idx].remove(i));
+                        }
+                    }
+                }
+            }
+        }
+
+        // Try medium blocks - O(1) lookup
+        if size <= MEDIUM_BLOCK_MAX {
+            if let Some(start_idx) = Self::medium_bucket_index(size) {
+                for idx in start_idx..self.medium_blocks.len() {
+                    if !self.medium_blocks[idx].is_empty() {
+                        let best_idx = self.medium_blocks[idx]
+                            .iter()
+                            .enumerate()
+                            .filter(|(_, b)| b.size >= size)
+                            .min_by_key(|(_, b)| b.size)
+                            .map(|(i, _)| i);
+
+                        if let Some(i) = best_idx {
+                            return Some(self.medium_blocks[idx].remove(i));
+                        }
+                    }
+                }
+            }
+        }
+
+        // Try large blocks - O(log n) lookup using BTreeMap range query
+        // First find the size, then mutate to avoid borrow conflicts
+        let found_size = self.large_blocks
+            .range(size..)
+            .find(|(_, blocks)| !blocks.is_empty())
+            .map(|(k, _)| *k);
+
+        if let Some(found_size) = found_size {
+            let blocks = self.large_blocks.get_mut(&found_size).unwrap();
+            let block = blocks.remove(0);
+            // Clean up empty size classes
+            if blocks.is_empty() {
+                self.large_blocks.remove(&found_size);
+            }
+            return Some(block);
+        }
+
+        None
+    }
+
+    /// Get the total number of free blocks across all lists
+    fn len(&self) -> usize {
+        self.small_blocks.iter().map(|v| v.len()).sum::<usize>()
+            + self.medium_blocks.iter().map(|v| v.len()).sum::<usize>()
+            + self.large_blocks.values().map(|v| v.len()).sum::<usize>()
+    }
+
+    /// Get all blocks as a sorted vector (for coalescing)
+    fn get_all_sorted(&mut self) -> Vec<FreeBlock> {
+        let mut all_blocks = Vec::new();
+
+        for bucket in self.small_blocks.iter_mut() {
+            all_blocks.append(bucket);
+        }
+        for bucket in self.medium_blocks.iter_mut() {
+            all_blocks.append(bucket);
+        }
+        for blocks in self.large_blocks.values_mut() {
+            all_blocks.append(blocks);
+        }
+
+        self.large_blocks.clear();
+
+        all_blocks.sort_by_key(|block| block.address);
+        all_blocks
+    }
+
+    /// Reinsert blocks after coalescing
+    fn reinsert_all(&mut self, blocks: Vec<FreeBlock>) {
+        for block in blocks {
+            self.insert(block);
+        }
+    }
+}
+
 pub struct MemoryManager {
     blocks: Arc<DashMap<Address, MemoryBlock, RandomState>>,
     next_address: Arc<AtomicU64>,
@@ -42,15 +247,15 @@ pub struct MemoryManager {
     process_tracking: Arc<DashMap<Pid, ProcessMemoryTracking, RandomState>>,
     // Memory storage - maps addresses to their byte contents
     memory_storage: Arc<DashMap<Address, Vec<u8>, RandomState>>,
-    // Free list for address recycling - sorted by size for best-fit allocation
-    free_list: Arc<Mutex<Vec<FreeBlock>>>,
+    // Segregated free list for O(1) small/medium and O(log n) large block allocation
+    free_list: Arc<Mutex<SegregatedFreeList>>,
 }
 
 impl MemoryManager {
     pub fn new() -> Self {
         let total = 1024 * 1024 * 1024; // 1GB simulated memory
         info!(
-            "Memory manager initialized with {} bytes and address recycling enabled",
+            "Memory manager initialized with {} bytes and segregated free list allocator (O(1) small/medium, O(log n) large)",
             total
         );
         Self {
@@ -68,7 +273,7 @@ impl MemoryManager {
             process_tracking: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 64)),
             // Use 128 shards for memory storage - high I/O contention. Using ahash hasher.
             memory_storage: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 128)),
-            free_list: Arc::new(Mutex::new(Vec::new())),
+            free_list: Arc::new(Mutex::new(SegregatedFreeList::new())),
         }
     }
 
@@ -88,6 +293,7 @@ impl MemoryManager {
     }
 
     /// Allocate memory with graceful OOM handling and address recycling
+    /// Uses segregated free lists for O(1) small/medium and O(log n) large allocations
     pub fn allocate(&self, size: Size, pid: Pid) -> MemoryResult<Address> {
         // Check if allocation would exceed total memory atomically
         let size_u64 = size as u64;
@@ -111,24 +317,15 @@ impl MemoryManager {
             });
         }
 
-        // Try to recycle an address from the free list (best-fit algorithm)
+        // Try to recycle an address from the segregated free list (O(1) or O(log n) lookup)
         let address = {
             let mut free_list = self.free_list.lock().unwrap();
 
-            // Find the best-fit block (smallest block that fits the requested size)
-            let best_fit_idx = free_list
-                .iter()
-                .enumerate()
-                .filter(|(_, block)| block.size >= size)
-                .min_by_key(|(_, block)| block.size)
-                .map(|(idx, _)| idx);
-
-            if let Some(idx) = best_fit_idx {
-                let free_block = free_list.remove(idx);
+            if let Some(free_block) = free_list.find_best_fit(size) {
                 let address = free_block.address;
 
                 info!(
-                    "Recycled address 0x{:x} (block size: {}, requested: {}) for PID {}",
+                    "Recycled address 0x{:x} (block size: {}, requested: {}) for PID {} [segregated list: O(1)/O(log n)]",
                     address, free_block.size, size, pid
                 );
 
@@ -136,7 +333,7 @@ impl MemoryManager {
                 if free_block.size > size {
                     let remainder_size = free_block.size - size;
                     let remainder_addr = address + size;
-                    free_list.push(FreeBlock {
+                    free_list.insert(FreeBlock {
                         address: remainder_addr,
                         size: remainder_size,
                     });
@@ -192,7 +389,7 @@ impl MemoryManager {
         Ok(address)
     }
 
-    /// Deallocate memory and add to free list for address recycling
+    /// Deallocate memory and add to segregated free list for address recycling
     pub fn deallocate(&self, address: Address) -> MemoryResult<()> {
         if let Some(mut entry) = self.blocks.get_mut(&address) {
             let block = entry.value_mut();
@@ -210,13 +407,16 @@ impl MemoryManager {
                     }
                 }
 
-                // Add to free list for address recycling
+                // Add to segregated free list for address recycling
                 {
                     let mut free_list = self.free_list.lock().unwrap();
-                    free_list.push(FreeBlock { address, size });
+                    free_list.insert(FreeBlock { address, size });
 
-                    // Optionally coalesce adjacent blocks to reduce fragmentation
-                    Self::coalesce_free_blocks(&mut free_list);
+                    // Periodically coalesce adjacent blocks to reduce fragmentation
+                    // Only coalesce every 100 deallocations to amortize the O(n log n) cost
+                    if self.deallocated_count.load(Ordering::SeqCst) % 100 == 0 {
+                        Self::coalesce_free_blocks(&mut free_list);
+                    }
                 }
 
                 // Track deallocated blocks for GC
@@ -224,7 +424,7 @@ impl MemoryManager {
 
                 let used = self.used_memory.load(Ordering::SeqCst);
                 info!(
-                    "Deallocated {} bytes at 0x{:x}, added to free list ({} bytes now available, {} deallocated blocks)",
+                    "Deallocated {} bytes at 0x{:x}, added to segregated free list ({} bytes now available, {} deallocated blocks)",
                     size,
                     address,
                     self.total_memory - used as usize,
@@ -252,32 +452,44 @@ impl MemoryManager {
     }
 
     /// Coalesce adjacent free blocks to reduce fragmentation
-    fn coalesce_free_blocks(free_list: &mut Vec<FreeBlock>) {
+    /// Works with segregated free lists by temporarily extracting all blocks
+    fn coalesce_free_blocks(free_list: &mut SegregatedFreeList) {
         if free_list.len() < 2 {
             return;
         }
 
-        // Sort by address
-        free_list.sort_by_key(|block| block.address);
+        // Extract all blocks and sort by address
+        let mut all_blocks = free_list.get_all_sorted();
 
+        // Coalesce adjacent blocks
         let mut i = 0;
-        while i < free_list.len() - 1 {
-            let current_end = free_list[i].address + free_list[i].size;
-            let next_start = free_list[i + 1].address;
+        let mut coalesced_count = 0;
+        while i < all_blocks.len() - 1 {
+            let current_end = all_blocks[i].address + all_blocks[i].size;
+            let next_start = all_blocks[i + 1].address;
 
             // If blocks are adjacent, merge them
             if current_end == next_start {
-                let next_size = free_list[i + 1].size;
-                free_list[i].size += next_size;
-                free_list.remove(i + 1);
-                info!(
-                    "Coalesced adjacent free blocks at 0x{:x} (new size: {})",
-                    free_list[i].address, free_list[i].size
-                );
+                let next_size = all_blocks[i + 1].size;
+                all_blocks[i].size += next_size;
+                all_blocks.remove(i + 1);
+                coalesced_count += 1;
             } else {
                 i += 1;
             }
         }
+
+        if coalesced_count > 0 {
+            info!(
+                "Coalesced {} pairs of adjacent free blocks, reduced from {} to {} blocks",
+                coalesced_count,
+                free_list.len() + coalesced_count,
+                all_blocks.len()
+            );
+        }
+
+        // Reinsert all blocks into segregated lists
+        free_list.reinsert_all(all_blocks);
     }
 
     /// Free all memory allocated to a specific process (called on process termination)
@@ -306,10 +518,13 @@ impl MemoryManager {
             // Remove process tracking entry
             self.process_tracking.remove(&pid);
 
-            // Add freed blocks to free list for recycling
+            // Add freed blocks to segregated free list for recycling
             {
                 let mut free_list = self.free_list.lock().unwrap();
-                free_list.extend(freed_blocks);
+                for block in freed_blocks {
+                    free_list.insert(block);
+                }
+                // Always coalesce after large batch frees
                 Self::coalesce_free_blocks(&mut free_list);
             }
 
@@ -321,7 +536,7 @@ impl MemoryManager {
 
             let used = self.used_memory.load(Ordering::SeqCst);
             info!(
-                "Cleaned up {} bytes ({} blocks) from terminated PID {}, added to free list ({} bytes now available, {} deallocated blocks)",
+                "Cleaned up {} bytes ({} blocks) from terminated PID {}, added to segregated free list ({} bytes now available, {} deallocated blocks)",
                 freed_bytes,
                 freed_count,
                 pid,
@@ -407,7 +622,7 @@ impl MemoryManager {
 
     /// Garbage collect deallocated memory blocks
     /// Removes deallocated blocks from the HashMap to prevent unbounded growth
-    /// Note: Free blocks remain in the free list for address recycling
+    /// Note: Free blocks remain in the segregated free list for address recycling
     pub fn collect(&self) -> Size {
         let initial_count = self.blocks.len();
 
@@ -436,8 +651,8 @@ impl MemoryManager {
         // Reset deallocated counter
         self.deallocated_count.store(0, Ordering::SeqCst);
 
-        // Note: We intentionally keep blocks in the free list for address recycling
-        // The free list allows these addresses to be reused in future allocations
+        // Note: We intentionally keep blocks in the segregated free list for address recycling
+        // The segregated free list allows these addresses to be reused in O(1) or O(log n) time
 
         if removed_count > 0 {
             // Shrink DashMap capacity after bulk deletion to reclaim memory
@@ -446,7 +661,7 @@ impl MemoryManager {
 
             let free_list_size = self.free_list.lock().unwrap().len();
             info!(
-                "Garbage collection complete: removed {} deallocated blocks and their storage, {} blocks remain, {} blocks in free list for recycling (maps shrunk to fit)",
+                "Garbage collection complete: removed {} deallocated blocks and their storage, {} blocks remain, {} blocks in segregated free list for O(1)/O(log n) recycling (maps shrunk to fit)",
                 removed_count,
                 initial_count - removed_count,
                 free_list_size
