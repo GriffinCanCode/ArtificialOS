@@ -11,6 +11,7 @@ use crate::core::types::Pid;
 use crate::ipc::IPCManager;
 use crate::memory::MemoryManager;
 use crate::security::LimitManager;
+use crate::syscalls::fd::FdManager;
 use log::{info, warn};
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -84,5 +85,21 @@ pub(super) fn cleanup_preemption(
 ) {
     if let Some(ref preempt) = preemption {
         preempt.cleanup_process(pid);
+    }
+}
+
+/// Cleanup file descriptors
+pub(super) fn cleanup_file_descriptors(
+    pid: Pid,
+    fd_manager: &Option<FdManager>,
+) {
+    if let Some(ref fd_mgr) = fd_manager {
+        let closed = fd_mgr.cleanup_process_fds(pid);
+        if closed > 0 {
+            info!(
+                "Closed {} file descriptors for terminated PID {}",
+                closed, pid
+            );
+        }
     }
 }

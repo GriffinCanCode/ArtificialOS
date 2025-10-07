@@ -188,6 +188,11 @@ impl SyscallExecutor {
             .register(Arc::new(FileDescriptorHandler::new(executor.clone())))
     }
 
+    /// Get a reference to the file descriptor manager
+    pub fn fd_manager(&self) -> &super::fd::FdManager {
+        &self.fd_manager
+    }
+
     /// Execute a system call with sandboxing
     /// Uses handler registry for low cognitive complexity dispatch
     pub fn execute(&self, pid: Pid, syscall: Syscall) -> SyscallResult {

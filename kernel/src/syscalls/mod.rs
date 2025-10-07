@@ -4,7 +4,7 @@
  */
 
 mod executor;
-mod fd;
+pub mod fd;
 mod fs;
 mod handler;
 mod handlers;
@@ -26,6 +26,7 @@ mod vfs_adapter;
 
 // Re-export public API
 pub use executor::SyscallExecutor;
+pub use fd::FdManager;
 pub use handler::{SyscallHandler, SyscallHandlerRegistry};
 pub use iouring::{
     IoUringExecutor, IoUringManager, SyscallCompletionEntry, SyscallCompletionRing,

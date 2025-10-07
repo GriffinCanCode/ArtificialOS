@@ -26,6 +26,7 @@ pub struct ProcessManagerBuilder {
     enable_limits: bool,
     ipc_manager: Option<IPCManager>,
     scheduler_policy: Option<SchedulingPolicy>,
+    fd_manager: Option<crate::syscalls::fd::FdManager>,
 }
 
 impl ProcessManagerBuilder {
@@ -37,6 +38,7 @@ impl ProcessManagerBuilder {
             enable_limits: false,
             ipc_manager: None,
             scheduler_policy: None,
+            fd_manager: None,
         }
     }
 
@@ -67,6 +69,12 @@ impl ProcessManagerBuilder {
     /// Add scheduler with specified policy
     pub fn with_scheduler(mut self, policy: SchedulingPolicy) -> Self {
         self.scheduler_policy = Some(policy);
+        self
+    }
+
+    /// Add file descriptor manager for automatic FD cleanup
+    pub fn with_fd_manager(mut self, fd_manager: crate::syscalls::fd::FdManager) -> Self {
+        self.fd_manager = Some(fd_manager);
         self
     }
 
@@ -129,6 +137,9 @@ impl ProcessManagerBuilder {
         if scheduler_task.is_some() {
             features.push("autonomous-scheduling");
         }
+        if self.fd_manager.is_some() {
+            features.push("FD-cleanup");
+        }
 
         info!("Process manager initialized with: {}", features.join(", "));
 
@@ -143,6 +154,7 @@ impl ProcessManagerBuilder {
             scheduler,
             scheduler_task,
             preemption,
+            fd_manager: self.fd_manager,
             // Use 64 shards for child_counts (moderate contention)
             child_counts: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 64)),
         }

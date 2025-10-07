@@ -39,6 +39,7 @@ pub struct ProcessManager {
     pub(super) scheduler: Option<Arc<RwLock<Scheduler>>>,
     pub(super) scheduler_task: Option<Arc<SchedulerTask>>,
     pub(super) preemption: Option<Arc<PreemptionController>>,
+    pub(super) fd_manager: Option<crate::syscalls::fd::FdManager>,
     // Track child processes per parent PID for limit enforcement
     pub(super) child_counts: Arc<DashMap<Pid, u32, RandomState>>,
 }
@@ -58,6 +59,7 @@ impl ProcessManager {
             scheduler: None,
             scheduler_task: None,
             preemption: None,
+            fd_manager: None,
             // Use 64 shards for child_counts (moderate contention)
             child_counts: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 64)),
         }
@@ -162,6 +164,7 @@ impl ProcessManager {
             cleanup::cleanup_ipc(pid, &self.ipc_manager);
             cleanup::cleanup_scheduler(pid, &self.scheduler);
             cleanup::cleanup_preemption(pid, &self.preemption);
+            cleanup::cleanup_file_descriptors(pid, &self.fd_manager);
 
             true
         } else {
@@ -243,6 +246,7 @@ impl Clone for ProcessManager {
             scheduler: self.scheduler.clone(),
             scheduler_task: self.scheduler_task.clone(),
             preemption: self.preemption.clone(),
+            fd_manager: self.fd_manager.clone(),
             child_counts: Arc::clone(&self.child_counts),
         }
     }
