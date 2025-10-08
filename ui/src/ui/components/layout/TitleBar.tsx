@@ -4,11 +4,12 @@
  */
 
 import React, { useState, useCallback } from "react";
-import { X, Trash2 } from "lucide-react";
+import { X, Trash2, Info } from "lucide-react";
 import { useSessions, useDeleteSession } from "../../../core/hooks/useSessionQueries";
 import { useLogger } from "../../../core/utils/monitoring/useLogger";
 import { formatRelativeTime } from "../../../core/utils/dates";
 import { SaveSessionDialog } from "../dialogs/SaveSessionDialog";
+import { AboutPanel } from "../dialogs/AboutPanel";
 import { Tooltip } from "../../../features/floating";
 import { controlButtonVariants, cn } from "../../../core/utils/animation/componentVariants";
 import "./TitleBar.css";
@@ -23,9 +24,17 @@ interface TitleBarProps {
     lastSaveTime: Date | null;
     error: string | null;
   };
+  showAbout?: boolean;
+  onOpenAbout?: () => void;
+  onCloseAbout?: () => void;
 }
 
-const TitleBar: React.FC<TitleBarProps> = React.memo(({ sessionManager }) => {
+const TitleBar: React.FC<TitleBarProps> = React.memo(({
+  sessionManager,
+  showAbout = false,
+  onOpenAbout,
+  onCloseAbout
+}) => {
   const log = useLogger("TitleBar");
   const [showSessionMenu, setShowSessionMenu] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -119,6 +128,15 @@ const TitleBar: React.FC<TitleBarProps> = React.memo(({ sessionManager }) => {
     setShowSaveDialog(false);
   }, []);
 
+  const toggleAbout = useCallback(() => {
+    if (showAbout && onCloseAbout) {
+      onCloseAbout();
+    } else if (!showAbout && onOpenAbout) {
+      onOpenAbout();
+    }
+    log.debug("About panel toggled", { showAbout });
+  }, [log, showAbout, onOpenAbout, onCloseAbout]);
+
   return (
     <>
       <SaveSessionDialog
@@ -127,8 +145,25 @@ const TitleBar: React.FC<TitleBarProps> = React.memo(({ sessionManager }) => {
         onSave={handleSaveSubmit}
         isLoading={sessionManager?.isSaving}
       />
+      <AboutPanel
+        isOpen={showAbout}
+        onClose={() => onCloseAbout?.()}
+      />
       {/* Minimal title bar - just window controls on hover */}
       <div className="title-bar minimal">
+        {/* About button - left side */}
+        <div className="about-button-container">
+          <Tooltip content="About AgentOS" delay={500}>
+            <button
+              className="about-button"
+              onClick={toggleAbout}
+              aria-label="About AgentOS"
+            >
+              <Info size={14} />
+            </button>
+          </Tooltip>
+        </div>
+
         <div className="title-bar-drag" />
 
         <div className="window-controls">

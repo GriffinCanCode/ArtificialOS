@@ -46,6 +46,7 @@ function App() {
 
 function AppContent() {
   const log = useLogger("AppContent");
+  const [showAbout, setShowAbout] = React.useState(false);
   const { client, generateUI } = useWebSocket();
   const { addMessage, addThought, appendToLastMessage } = useAppActions();
   const { open: openWindow } = useActions();
@@ -298,7 +299,12 @@ function AppContent() {
       />
 
       {/* Minimal Title Bar - just window controls */}
-      <TitleBar sessionManager={sessionManager} />
+      <TitleBar
+        sessionManager={sessionManager}
+        showAbout={showAbout}
+        onOpenAbout={() => setShowAbout(true)}
+        onCloseAbout={() => setShowAbout(false)}
+      />
 
       {/* Welcome Screen with Animation */}
       {showWelcome && (
@@ -321,6 +327,7 @@ function AppContent() {
           onLaunchApp={handleLaunchApp}
           onOpenHub={() => handleLaunchApp("hub")}
           onOpenCreator={() => setShowCreator(true)}
+          onOpenAbout={() => setShowAbout(true)}
         />
       </div>
 

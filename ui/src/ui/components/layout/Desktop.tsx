@@ -19,9 +19,10 @@ interface DesktopProps {
   onLaunchApp: (appId: string) => void;
   onOpenHub: () => void;
   onOpenCreator: () => void;
+  onOpenAbout: () => void;
 }
 
-export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpenCreator }) => {
+export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpenCreator, onOpenAbout }) => {
   const [time, setTime] = useState(new Date());
   const dockItems = useDockItems();
   const { reorder, toggle, remove } = useDockActions();
@@ -116,7 +117,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpen
       {/* Top Menu Bar */}
       <div className="desktop-menubar">
         <div className="menubar-left">
-          <BrandLogo size="small" onClick={onOpenHub} />
+          <BrandLogo size="small" onClick={onOpenAbout} />
           <button className="menubar-item" onClick={onOpenHub}>
             Hub
           </button>
