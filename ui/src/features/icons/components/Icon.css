@@ -1,0 +1,123 @@
+/**
+ * Icon Styles
+ * Modern desktop icons with depth and visual weight
+ */
+
+.desktop-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 90px;
+  padding: 8px;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  will-change: auto;
+}
+
+.desktop-icon:hover {
+  transform: translateY(-4px);
+  transition: transform 0.2s ease-out;
+}
+
+.desktop-icon:active {
+  transform: translateY(-2px);
+  transition-duration: 0.1s;
+}
+
+/* Icon image container */
+.desktop-icon-image {
+  font-size: 48px;
+  line-height: 48px;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+  border-radius: 12px;
+  position: relative;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
+}
+
+.desktop-icon:hover .desktop-icon-image {
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4)) drop-shadow(0 0 20px rgba(59, 130, 246, 0.2));
+  transform: scale(1.08);
+  transition: all 0.25s ease-out;
+}
+
+/* Icon label */
+.desktop-icon-label {
+  font-size: 11px;
+  font-weight: 500;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9), 0 2px 8px rgba(0, 0, 0, 0.5);
+  word-wrap: break-word;
+  max-width: 76px;
+  line-height: 1.3;
+  padding: 4px 8px;
+  border-radius: 4px;
+  position: relative;
+}
+
+/* Hover effects */
+.desktop-icon:hover .desktop-icon-label {
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+/* Selected state - Enhanced with glow */
+.desktop-icon.selected .desktop-icon-image {
+  background: rgba(59, 130, 246, 0.15);
+  filter: drop-shadow(0 4px 12px rgba(59, 130, 246, 0.4)) drop-shadow(0 0 24px rgba(59, 130, 246, 0.3));
+  will-change: auto;
+}
+
+.desktop-icon.selected .desktop-icon-label {
+  background: rgba(59, 130, 246, 0.6);
+  backdrop-filter: blur(12px);
+  color: #ffffff;
+  box-shadow:
+    0 2px 12px rgba(59, 130, 246, 0.4),
+    0 0 20px rgba(59, 130, 246, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  will-change: auto;
+}
+
+.desktop-icon.selected:hover .desktop-icon-label {
+  background: rgba(59, 130, 246, 0.7);
+  box-shadow:
+    0 4px 16px rgba(59, 130, 246, 0.5),
+    0 0 24px rgba(59, 130, 246, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: all 0.2s ease;
+}
+
+/* Dragging state */
+.desktop-icon.dragging {
+  opacity: 0.7;
+  cursor: grabbing;
+  pointer-events: none;
+  transform: scale(0.95) rotate(2deg);
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.5));
+}
+
+/* Focus/keyboard navigation */
+.desktop-icon:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.8);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+
+/* Hide duplicate icons (keep in DOM but invisible) */
+.desktop-icon.duplicate-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+

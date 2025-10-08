@@ -9,32 +9,27 @@
   flex-direction: column;
 }
 
-/* Background */
+/* Background - Enhanced depth layers */
 .desktop-background {
   position: absolute;
   inset: 0;
   z-index: 0;
   background: var(--color-background);
+  overflow: hidden;
 }
 
 .desktop-gradient {
   position: absolute;
   inset: 0;
-  background: var(--gradient-primary);
-  animation: gradientShift 20s ease infinite;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(59, 130, 246, 0.12) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.08) 0%, transparent 70%),
+    var(--gradient-primary);
+  opacity: 0.75;
 }
 
-@keyframes gradientShift {
-  0%,
-  100% {
-    opacity: 0.6;
-  }
-  50% {
-    opacity: 0.8;
-  }
-}
-
-/* Menu Bar */
+/* Menu Bar - Refined glass morphism */
 .desktop-menubar {
   position: relative;
   z-index: 100;
@@ -43,12 +38,14 @@
   justify-content: space-between;
   height: 36px;
   padding: 0 80px 0 16px;
-  background: var(--bg-glass);
-  backdrop-filter: var(--backdrop-blur-strong);
-  -webkit-backdrop-filter: var(--backdrop-blur-strong);
-  border-bottom: 1px solid var(--color-border-subtle);
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   font-size: 13px;
-  box-shadow: var(--shadow-xs);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .menubar-left,
@@ -98,17 +95,25 @@
   align-items: center;
   gap: 10px;
   padding: 5px 14px;
-  background: var(--color-secondary-alpha-10);
-  border: 1px solid var(--color-border-subtle);
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.15);
   border-radius: 8px;
-  backdrop-filter: var(--backdrop-blur-light);
+  backdrop-filter: blur(12px);
   color: var(--color-text-primary);
-  transition: all 0.2s ease;
+  transition: all 0.2s ease-out;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .menubar-clock:hover {
-  background: var(--color-secondary-alpha-20);
-  border-color: var(--color-border);
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.25);
+  transform: translateY(-1px);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.15),
+    0 0 20px rgba(59, 130, 246, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .clock-time {
@@ -130,7 +135,7 @@
   font-weight: 500;
 }
 
-/* Dock */
+/* Dock - Enhanced with better depth */
 .desktop-dock {
   position: fixed;
   bottom: 16px;
@@ -145,17 +150,22 @@
 .dock-container {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  background: var(--bg-glass);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 16px;
-  box-shadow: var(--shadow-medium);
+  gap: 12px;
+  padding: 10px 20px;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+    0 2px 0 rgba(255, 255, 255, 0.1) inset;
   pointer-events: all;
-  min-height: 72px;
+  min-height: 76px;
 }
 
-/* Creator button (non-sortable) */
+/* Creator button - Enhanced with glow */
 .dock-creator {
   position: relative;
   width: 56px;
@@ -163,70 +173,92 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-secondary-alpha-20);
-  border: 1px solid var(--color-secondary-alpha-40);
-  border-radius: 12px;
+  background: rgba(139, 92, 246, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 14px;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  backface-visibility: hidden;
-  transform: translate3d(0, 0, 0);
+  transition: all 0.25s ease-out;
+  box-shadow:
+    0 4px 12px rgba(139, 92, 246, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .dock-creator:hover {
-  transform: translate3d(0, -8px, 0) scale3d(1.1, 1.1, 1);
-  background: var(--color-secondary-alpha-30);
-  border-color: var(--color-secondary-alpha-60);
-  box-shadow: var(--shadow-glow-secondary);
+  background: rgba(139, 92, 246, 0.3);
+  border-color: rgba(139, 92, 246, 0.6);
+  transform: translateY(-4px) scale(1.05);
+  box-shadow:
+    0 8px 24px rgba(139, 92, 246, 0.5),
+    0 0 32px rgba(139, 92, 246, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 .dock-creator .dock-icon {
   font-size: 32px;
-  filter: drop-shadow(0 2px 4px var(--color-secondary-alpha-30));
+  filter: drop-shadow(0 2px 8px rgba(139, 92, 246, 0.6));
+  transition: all 0.25s ease-out;
+}
+
+.dock-creator:hover .dock-icon {
+  transform: scale(1.1) rotate(5deg);
+  filter: drop-shadow(0 4px 12px rgba(139, 92, 246, 0.8));
 }
 
 .dock-separator {
   width: 1px;
-  height: 40px;
-  background: var(--color-white-alpha-20);
-  margin: 0 4px;
+  height: 44px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(255, 255, 255, 0.2) 20%,
+    rgba(255, 255, 255, 0.2) 80%,
+    transparent
+  );
+  margin: 0 8px;
 }
 
-/* Hint Overlay */
+/* Hint Overlay - Relocated to bottom-right */
 .desktop-hint {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  position: fixed;
+  bottom: 100px;
+  right: 24px;
   z-index: 50;
-  padding: 12px 20px;
-  background: transparent;
-  border: none;
-  border-radius: 12px;
-  color: var(--color-text-primary);
-  font-size: 14px;
-  animation: hintFadeIn 1s ease 2s both;
-  box-shadow: none;
+  padding: 10px 16px;
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  animation: hintSlideIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 2s both;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  pointer-events: none;
 }
 
 .desktop-hint kbd {
   display: inline;
-  padding: 0;
-  margin: 0;
-  background: transparent;
-  border: none;
+  padding: 2px 6px;
+  margin: 0 2px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
   font-family: inherit;
-  font-size: inherit;
-  color: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
-@keyframes hintFadeIn {
+@keyframes hintSlideIn {
   from {
     opacity: 0;
-    transform: translate(-50%, calc(-50% + 10px));
+    transform: translateX(20px) translateY(10px);
   }
   to {
     opacity: 1;
-    transform: translate(-50%, -50%);
+    transform: translateX(0) translateY(0);
   }
 }
 

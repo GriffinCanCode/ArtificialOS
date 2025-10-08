@@ -99,47 +99,8 @@
   opacity: 0.7;
 }
 
-.desktop-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: var(--space-lg, 1.5rem);
-  animation:
-    float 4s ease-in-out infinite,
-    holographic-hue 8s linear infinite;
-  color: var(--primary-color, #8b5cf6);
-  position: relative;
-  isolation: isolate;
-  /* will-change auto-managed by animations */
-  backface-visibility: hidden;
-  transform: translate3d(0, 0, 0);
-  contain: layout style paint;
-}
-
-/* Holographic effect - separate glow layer to prevent blend issues - optimized */
-.desktop-icon::before {
-  content: "";
-  position: absolute;
-  inset: -40px;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    var(--color-primary-alpha-50) 0%,
-    var(--color-secondary-alpha-40) 33%,
-    var(--color-accent-alpha-30) 50%,
-    var(--color-accent-alpha-20) 66%,
-    transparent 100%
-  );
-  filter: blur(40px);
-  animation: holographic-glow 8s ease-in-out infinite;
-  z-index: -1;
-  mix-blend-mode: screen;
-  pointer-events: none;
-  /* will-change auto-managed by animation */
-  backface-visibility: hidden;
-  transform: translate3d(0, 0, 0);
-  contain: layout style paint;
-}
+/* Removed .desktop-icon animations - conflicts with actual desktop icon component */
+/* If you need animated icons for dynamic UI, use a more specific class name */
 
 .desktop-message h2 {
   font-size: 2rem;
