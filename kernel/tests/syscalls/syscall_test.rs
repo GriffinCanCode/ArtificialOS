@@ -11,9 +11,12 @@ use std::fs;
 use std::path::PathBuf;
 use tempfile::TempDir;
 
-fn setup_test_env() -> (SyscallExecutor, SandboxManager, TempDir, u32) {
+fn setup_test_env() -> (SyscallExecutorWithIpc, SandboxManager, TempDir, u32) {
     let sandbox_manager = SandboxManager::new();
-    let executor = SyscallExecutor::new(sandbox_manager.clone());
+    let memory_manager = ai_os_kernel::memory::MemoryManager::new();
+    let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
+    let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
+    let executor = SyscallExecutorWithIpc::with_ipc_direct(sandbox_manager.clone(), pipe_manager, shm_manager);
     let temp_dir = TempDir::new().unwrap();
     let pid = 100;
 

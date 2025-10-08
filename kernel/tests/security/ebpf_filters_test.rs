@@ -10,7 +10,7 @@ fn test_filter_add_and_list() {
     let manager = FilterManager::new();
 
     let filter = SyscallFilter {
-        id: "test_filter_1".to_string(),
+        id: "test_filter_1".to_string().into(),
         pid: Some(1234),
         syscall_nrs: Some(vec![0, 1, 2]), // read, write, open
         action: FilterAction::Allow,
@@ -29,7 +29,7 @@ fn test_filter_duplicate_id() {
     let manager = FilterManager::new();
 
     let filter = SyscallFilter {
-        id: "duplicate".to_string(),
+        id: "duplicate".to_string().into(),
         pid: None,
         syscall_nrs: None,
         action: FilterAction::Allow,
@@ -46,7 +46,7 @@ fn test_filter_priority_ordering() {
     let manager = FilterManager::new();
 
     let high_priority = SyscallFilter {
-        id: "high".to_string(),
+        id: "high".to_string().into(),
         pid: None,
         syscall_nrs: None,
         action: FilterAction::Deny,
@@ -54,7 +54,7 @@ fn test_filter_priority_ordering() {
     };
 
     let low_priority = SyscallFilter {
-        id: "low".to_string(),
+        id: "low".to_string().into(),
         pid: None,
         syscall_nrs: None,
         action: FilterAction::Allow,
@@ -75,7 +75,7 @@ fn test_filter_check_allow() {
     let manager = FilterManager::new();
 
     let filter = SyscallFilter {
-        id: "allow_read".to_string(),
+        id: "allow_read".to_string().into(),
         pid: Some(100),
         syscall_nrs: Some(vec![0]), // read
         action: FilterAction::Allow,
@@ -99,7 +99,7 @@ fn test_filter_check_deny() {
     let manager = FilterManager::new();
 
     let filter = SyscallFilter {
-        id: "deny_write".to_string(),
+        id: "deny_write".to_string().into(),
         pid: Some(100),
         syscall_nrs: Some(vec![1]), // write
         action: FilterAction::Deny,
@@ -120,7 +120,7 @@ fn test_filter_remove() {
     let manager = FilterManager::new();
 
     let filter = SyscallFilter {
-        id: "to_remove".to_string(),
+        id: "to_remove".to_string().into(),
         pid: None,
         syscall_nrs: None,
         action: FilterAction::Allow,
@@ -143,7 +143,7 @@ fn test_filter_clear() {
 
     for i in 0..5 {
         let filter = SyscallFilter {
-            id: format!("filter_{}", i),
+            id: format!("filter_{}", i).into(),
             pid: None,
             syscall_nrs: None,
             action: FilterAction::Allow,
@@ -163,7 +163,7 @@ fn test_filter_caching() {
     let manager = FilterManager::new();
 
     let filter = SyscallFilter {
-        id: "cached".to_string(),
+        id: "cached".to_string().into(),
         pid: Some(100),
         syscall_nrs: Some(vec![0]),
         action: FilterAction::Allow,

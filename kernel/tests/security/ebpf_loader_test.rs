@@ -10,7 +10,7 @@ fn test_program_load() {
     let loader = ProgramLoader::new();
 
     let config = ProgramConfig {
-        name: "test_prog".to_string(),
+        name: "test_prog".to_string().into(),
         program_type: ProgramType::SyscallEntry,
         auto_attach: false,
         enabled: true,
@@ -29,7 +29,7 @@ fn test_program_duplicate_load() {
     let loader = ProgramLoader::new();
 
     let config = ProgramConfig {
-        name: "duplicate".to_string(),
+        name: "duplicate".to_string().into(),
         program_type: ProgramType::NetworkSocket,
         auto_attach: false,
         enabled: true,
@@ -45,7 +45,7 @@ fn test_program_attach_detach() {
     let loader = ProgramLoader::new();
 
     let config = ProgramConfig {
-        name: "attachable".to_string(),
+        name: "attachable".to_string().into(),
         program_type: ProgramType::FileOps,
         auto_attach: false,
         enabled: true,
@@ -73,7 +73,7 @@ fn test_program_attach_already_attached() {
     let loader = ProgramLoader::new();
 
     let config = ProgramConfig {
-        name: "test".to_string(),
+        name: "test".to_string().into(),
         program_type: ProgramType::SyscallExit,
         auto_attach: false,
         enabled: true,
@@ -91,7 +91,7 @@ fn test_program_unload_attached() {
     let loader = ProgramLoader::new();
 
     let config = ProgramConfig {
-        name: "test".to_string(),
+        name: "test".to_string().into(),
         program_type: ProgramType::ProcessLifecycle,
         auto_attach: false,
         enabled: true,
@@ -115,7 +115,7 @@ fn test_program_get_info() {
     let loader = ProgramLoader::new();
 
     let config = ProgramConfig {
-        name: "info_test".to_string(),
+        name: "info_test".to_string().into(),
         program_type: ProgramType::NetworkSocket,
         auto_attach: false,
         enabled: true,
@@ -150,7 +150,7 @@ fn test_program_list_multiple() {
 
     for (i, program_type) in types.iter().enumerate() {
         let config = ProgramConfig {
-            name: format!("prog_{}", i),
+            name: format!("prog_{}", i).into(),
             program_type: *program_type,
             auto_attach: false,
             enabled: true,
@@ -167,7 +167,7 @@ fn test_program_event_recording() {
     let loader = ProgramLoader::new();
 
     let config = ProgramConfig {
-        name: "event_prog".to_string(),
+        name: "event_prog".to_string().into(),
         program_type: ProgramType::SyscallEntry,
         auto_attach: false,
         enabled: true,

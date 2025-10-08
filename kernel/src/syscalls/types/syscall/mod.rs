@@ -14,6 +14,7 @@ pub mod ipc;
 pub mod network;
 pub mod process;
 pub mod scheduler;
+pub mod search;
 pub mod system;
 
 /// System call types with modern serde patterns
@@ -21,7 +22,7 @@ pub mod system;
 /// This enum provides a flat interface for backward compatibility while
 /// keeping the implementation organized in category modules.
 #[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case", tag = "syscall")]
 #[non_exhaustive]
 pub enum Syscall {
@@ -92,6 +93,34 @@ pub enum Syscall {
         fd: Fd,
         offset: i64,
         whence: u32,
+    },
+
+    // ========================================================================
+    // Search Operations (from search module)
+    // ========================================================================
+    SearchFiles {
+        path: PathBuf,
+        query: String,
+        #[serde(default)]
+        limit: usize,
+        #[serde(default)]
+        recursive: bool,
+        #[serde(default)]
+        case_sensitive: bool,
+        #[serde(default)]
+        threshold: f64,
+    },
+    SearchContent {
+        path: PathBuf,
+        query: String,
+        #[serde(default)]
+        limit: usize,
+        #[serde(default)]
+        recursive: bool,
+        #[serde(default)]
+        case_sensitive: bool,
+        #[serde(default)]
+        include_path: bool,
     },
     Fcntl {
         fd: Fd,

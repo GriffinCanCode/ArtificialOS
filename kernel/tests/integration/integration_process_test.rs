@@ -14,7 +14,7 @@ async fn test_full_process_lifecycle_with_executor() {
     let pm = ProcessManager::builder().with_executor().build();
 
     // Create process with OS execution
-    let config = ExecutionConfig::new("echo".to_string()).with_args(vec!["test".to_string()]);
+    let config = ExecutionConfig::new("echo".to_string().into()).with_args(vec!["test".to_string()]);
     let pid = pm.create_process_with_command("test-app".to_string(), 5, Some(config));
 
     // Verify process created
@@ -40,7 +40,7 @@ async fn test_process_manager_with_memory_and_executor() {
         .build();
 
     // Create process with command
-    let config = ExecutionConfig::new("sleep".to_string()).with_args(vec!["0.1".to_string()]);
+    let config = ExecutionConfig::new("sleep".to_string().into()).with_args(vec!["0.1".to_string()]);
     let pid = pm.create_process_with_command("test-app".to_string(), 5, Some(config));
 
     // Allocate memory
@@ -63,7 +63,7 @@ async fn test_multiple_processes_with_isolation() {
     // Create 3 processes
     let mut pids = Vec::new();
     for i in 1..=3 {
-        let config = ExecutionConfig::new("sleep".to_string()).with_args(vec!["0.2".to_string()]);
+        let config = ExecutionConfig::new("sleep".to_string().into()).with_args(vec!["0.2".to_string()]);
         let pid = pm.create_process_with_command(format!("app-{}", i), 5, Some(config));
         pids.push(pid);
     }
@@ -111,11 +111,11 @@ async fn test_priority_based_resource_limits() {
     let pm = ProcessManager::builder().with_executor().build();
 
     // Low priority process
-    let config_low = ExecutionConfig::new("sleep".to_string()).with_args(vec!["0.1".to_string()]);
+    let config_low = ExecutionConfig::new("sleep".to_string().into()).with_args(vec!["0.1".to_string()]);
     let pid_low = pm.create_process_with_command("low-priority".to_string(), 2, Some(config_low));
 
     // High priority process
-    let config_high = ExecutionConfig::new("sleep".to_string()).with_args(vec!["0.1".to_string()]);
+    let config_high = ExecutionConfig::new("sleep".to_string().into()).with_args(vec!["0.1".to_string()]);
     let pid_high =
         pm.create_process_with_command("high-priority".to_string(), 9, Some(config_high));
 
@@ -148,7 +148,7 @@ async fn test_executor_command_validation() {
     let pm = ProcessManager::builder().with_executor().build();
 
     // Try to spawn with dangerous command
-    let config = ExecutionConfig::new("echo; rm -rf /".to_string());
+    let config = ExecutionConfig::new("echo; rm -rf /".to_string().into());
     let pid = pm.create_process_with_command("evil-app".to_string(), 5, Some(config));
 
     // Process should be created but OS process should fail to spawn
@@ -164,7 +164,7 @@ async fn test_executor_path_traversal_prevention() {
 
     // Test basic .. traversal
     let config =
-        ExecutionConfig::new("cat".to_string()).with_args(vec!["../etc/passwd".to_string()]);
+        ExecutionConfig::new("cat".to_string().into()).with_args(vec!["../etc/passwd".to_string()]);
     let pid = pm.create_process_with_command("traversal-1".to_string(), 5, Some(config));
     let process = pm.get_process(pid).unwrap();
     assert_eq!(process.os_pid, None, "Basic .. traversal should be blocked");
@@ -172,7 +172,7 @@ async fn test_executor_path_traversal_prevention() {
 
     // Test path with /./  and .. combination
     let config =
-        ExecutionConfig::new("cat".to_string()).with_args(vec!["./../../etc/passwd".to_string()]);
+        ExecutionConfig::new("cat".to_string().into()).with_args(vec!["./../../etc/passwd".to_string()]);
     let pid = pm.create_process_with_command("traversal-2".to_string(), 5, Some(config));
     let process = pm.get_process(pid).unwrap();
     assert_eq!(
@@ -182,7 +182,7 @@ async fn test_executor_path_traversal_prevention() {
     pm.terminate_process(pid);
 
     // Test normalized path that escapes
-    let config = ExecutionConfig::new("cat".to_string())
+    let config = ExecutionConfig::new("cat".to_string().into())
         .with_args(vec!["foo/../../../etc/passwd".to_string()]);
     let pid = pm.create_process_with_command("traversal-3".to_string(), 5, Some(config));
     let process = pm.get_process(pid).unwrap();
@@ -190,7 +190,7 @@ async fn test_executor_path_traversal_prevention() {
     pm.terminate_process(pid);
 
     // Test Windows-style path traversal
-    let config = ExecutionConfig::new("cat".to_string())
+    let config = ExecutionConfig::new("cat".to_string().into())
         .with_args(vec!["..\\..\\windows\\system32".to_string()]);
     let pid = pm.create_process_with_command("traversal-4".to_string(), 5, Some(config));
     let process = pm.get_process(pid).unwrap();
@@ -202,7 +202,7 @@ async fn test_executor_path_traversal_prevention() {
 
     // Test URL encoded traversal
     let config =
-        ExecutionConfig::new("cat".to_string()).with_args(vec!["%2e%2e/etc/passwd".to_string()]);
+        ExecutionConfig::new("cat".to_string().into()).with_args(vec!["%2e%2e/etc/passwd".to_string()]);
     let pid = pm.create_process_with_command("traversal-5".to_string(), 5, Some(config));
     let process = pm.get_process(pid).unwrap();
     assert_eq!(process.os_pid, None, "URL encoded .. should be blocked");
@@ -210,7 +210,7 @@ async fn test_executor_path_traversal_prevention() {
 
     // Test valid paths (should succeed - won't have OS PID if command doesn't exist, but should pass validation)
     // Using 'echo' which is more likely to exist
-    let config = ExecutionConfig::new("echo".to_string())
+    let config = ExecutionConfig::new("echo".to_string().into())
         .with_args(vec!["./valid/path/file.txt".to_string()]);
     let pid = pm.create_process_with_command("valid-path".to_string(), 5, Some(config));
     let _process = pm.get_process(pid).unwrap();
@@ -224,7 +224,7 @@ async fn test_executor_path_normalization_edge_cases() {
 
     // Test absolute path with upward traversal
     let config =
-        ExecutionConfig::new("cat".to_string()).with_args(vec!["/../../../etc/passwd".to_string()]);
+        ExecutionConfig::new("cat".to_string().into()).with_args(vec!["/../../../etc/passwd".to_string()]);
     let pid = pm.create_process_with_command("edge-1".to_string(), 5, Some(config));
     let process = pm.get_process(pid).unwrap();
     assert_eq!(
@@ -234,7 +234,7 @@ async fn test_executor_path_normalization_edge_cases() {
     pm.terminate_process(pid);
 
     // Test mixed slashes
-    let config = ExecutionConfig::new("cat".to_string())
+    let config = ExecutionConfig::new("cat".to_string().into())
         .with_args(vec!["foo/./bar/../../../etc".to_string()]);
     let pid = pm.create_process_with_command("edge-2".to_string(), 5, Some(config));
     let process = pm.get_process(pid).unwrap();
@@ -243,13 +243,13 @@ async fn test_executor_path_normalization_edge_cases() {
 
     // Test safe relative paths (should pass validation)
     let config =
-        ExecutionConfig::new("echo".to_string()).with_args(vec!["./subdir/file.txt".to_string()]);
+        ExecutionConfig::new("echo".to_string().into()).with_args(vec!["./subdir/file.txt".to_string()]);
     let pid = pm.create_process_with_command("safe-1".to_string(), 5, Some(config));
     let _process = pm.get_process(pid).unwrap();
     pm.terminate_process(pid);
 
     // Test safe path with .. that stays within bounds
-    let config = ExecutionConfig::new("echo".to_string())
+    let config = ExecutionConfig::new("echo".to_string().into())
         .with_args(vec!["dir1/dir2/../file.txt".to_string()]);
     let pid = pm.create_process_with_command("safe-2".to_string(), 5, Some(config));
     let _process = pm.get_process(pid).unwrap();

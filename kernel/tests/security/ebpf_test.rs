@@ -16,7 +16,7 @@ fn test_program_lifecycle() {
     let manager = EbpfManagerImpl::new();
 
     let config = ProgramConfig {
-        name: "test_prog".to_string(),
+        name: "test_prog".to_string().into(),
         program_type: ProgramType::SyscallEntry,
         auto_attach: false,
         enabled: true,
@@ -61,7 +61,7 @@ fn test_multiple_programs() {
 
     for (name, ptype) in programs {
         let config = ProgramConfig {
-            name: name.to_string(),
+            name: name.to_string().into(),
             program_type: ptype,
             auto_attach: true,
             enabled: true,
@@ -82,7 +82,7 @@ fn test_filter_management() {
 
     // Add filter
     let filter = SyscallFilter {
-        id: "test_filter".to_string(),
+        id: "test_filter".to_string().into(),
         pid: Some(100),
         syscall_nrs: Some(vec![1, 2, 3]),
         action: FilterAction::Deny,
@@ -107,7 +107,7 @@ fn test_filter_priority() {
     // Add filters with different priorities
     for i in 0..3 {
         let filter = SyscallFilter {
-            id: format!("filter_{}", i),
+            id: format!("filter_{}", i).into(),
             pid: None,
             syscall_nrs: None,
             action: FilterAction::Allow,
@@ -134,7 +134,7 @@ fn test_syscall_checking() {
 
     // Add deny filter for specific syscall and PID
     let filter = SyscallFilter {
-        id: "deny_write".to_string(),
+        id: "deny_write".to_string().into(),
         pid: Some(100),
         syscall_nrs: Some(vec![1]),
         action: FilterAction::Deny,
@@ -158,7 +158,7 @@ fn test_filter_actions() {
 
     // Test allow action
     let filter = SyscallFilter {
-        id: "allow".to_string(),
+        id: "allow".to_string().into(),
         pid: Some(100),
         syscall_nrs: Some(vec![1]),
         action: FilterAction::Allow,
@@ -171,7 +171,7 @@ fn test_filter_actions() {
 
     // Test deny action
     let filter = SyscallFilter {
-        id: "deny".to_string(),
+        id: "deny".to_string().into(),
         pid: Some(100),
         syscall_nrs: Some(vec![1]),
         action: FilterAction::Deny,
@@ -184,7 +184,7 @@ fn test_filter_actions() {
 
     // Test log action (allows but logs)
     let filter = SyscallFilter {
-        id: "log".to_string(),
+        id: "log".to_string().into(),
         pid: Some(100),
         syscall_nrs: Some(vec![1]),
         action: FilterAction::Log,
@@ -282,7 +282,7 @@ fn test_statistics() {
     // Load some programs
     for i in 0..3 {
         let config = ProgramConfig {
-            name: format!("prog_{}", i),
+            name: format!("prog_{}", i).into(),
             program_type: ProgramType::SyscallEntry,
             auto_attach: true,
             enabled: true,
@@ -293,7 +293,7 @@ fn test_statistics() {
     // Add some filters
     for i in 0..2 {
         let filter = SyscallFilter {
-            id: format!("filter_{}", i),
+            id: format!("filter_{}", i).into(),
             pid: None,
             syscall_nrs: None,
             action: FilterAction::Allow,
@@ -328,7 +328,7 @@ fn test_clear_filters() {
     // Add multiple filters
     for i in 0..5 {
         let filter = SyscallFilter {
-            id: format!("filter_{}", i),
+            id: format!("filter_{}", i).into(),
             pid: None,
             syscall_nrs: None,
             action: FilterAction::Allow,

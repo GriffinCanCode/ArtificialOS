@@ -3,7 +3,7 @@
  * Tests for all SIMD-accelerated operations
  */
 
-use ai_os_kernel::memory::{
+use ai_os_kernel::core::{
     // Text operations
     ascii_to_lower,
     ascii_to_upper,

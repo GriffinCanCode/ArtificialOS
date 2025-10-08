@@ -19,7 +19,10 @@ use tempfile::tempdir;
 #[test]
 fn test_fd_close() {
     let sandbox = SandboxManager::new();
-    let executor = SyscallExecutorWithIpc::new(sandbox);
+    let memory_manager = ai_os_kernel::memory::MemoryManager::new();
+    let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
+    let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
+    let executor = SyscallExecutorWithIpc::with_ipc_direct(sandbox, pipe_manager, shm_manager);
 
     // Create a temporary file
     let dir = tempdir().unwrap();
@@ -48,7 +51,10 @@ fn test_fd_close() {
 #[test]
 fn test_fd_close_invalid() {
     let sandbox = SandboxManager::new();
-    let executor = SyscallExecutorWithIpc::new(sandbox);
+    let memory_manager = ai_os_kernel::memory::MemoryManager::new();
+    let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
+    let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
+    let executor = SyscallExecutorWithIpc::with_ipc_direct(sandbox, pipe_manager, shm_manager);
 
     // Try to close invalid FD
     let result = executor.close_fd(1, 9999);
@@ -58,7 +64,10 @@ fn test_fd_close_invalid() {
 #[test]
 fn test_fd_fsync() {
     let sandbox = SandboxManager::new();
-    let executor = SyscallExecutorWithIpc::new(sandbox);
+    let memory_manager = ai_os_kernel::memory::MemoryManager::new();
+    let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
+    let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
+    let executor = SyscallExecutorWithIpc::with_ipc_direct(sandbox, pipe_manager, shm_manager);
 
     // Create a temporary file
     let dir = tempdir().unwrap();
@@ -85,7 +94,10 @@ fn test_fd_fsync() {
 #[test]
 fn test_fd_fsync_invalid() {
     let sandbox = SandboxManager::new();
-    let executor = SyscallExecutorWithIpc::new(sandbox);
+    let memory_manager = ai_os_kernel::memory::MemoryManager::new();
+    let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
+    let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
+    let executor = SyscallExecutorWithIpc::with_ipc_direct(sandbox, pipe_manager, shm_manager);
 
     // Try to fsync invalid FD
     let result = executor.fsync_fd(1, 9999);
@@ -95,7 +107,10 @@ fn test_fd_fsync_invalid() {
 #[test]
 fn test_fd_fdatasync() {
     let sandbox = SandboxManager::new();
-    let executor = SyscallExecutorWithIpc::new(sandbox);
+    let memory_manager = ai_os_kernel::memory::MemoryManager::new();
+    let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
+    let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
+    let executor = SyscallExecutorWithIpc::with_ipc_direct(sandbox, pipe_manager, shm_manager);
 
     // Create a temporary file
     let dir = tempdir().unwrap();
@@ -122,7 +137,10 @@ fn test_fd_fdatasync() {
 #[test]
 fn test_open_close_cycle() {
     let sandbox = SandboxManager::new();
-    let executor = SyscallExecutorWithIpc::new(sandbox);
+    let memory_manager = ai_os_kernel::memory::MemoryManager::new();
+    let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
+    let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
+    let executor = SyscallExecutorWithIpc::with_ipc_direct(sandbox, pipe_manager, shm_manager);
 
     // Create a temporary file
     let dir = tempdir().unwrap();

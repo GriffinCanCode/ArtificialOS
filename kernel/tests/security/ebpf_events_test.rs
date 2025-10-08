@@ -15,7 +15,7 @@ fn test_event_emit_and_recent() {
     let event = EbpfEvent::Syscall(SyscallEvent {
         pid: 100,
         syscall_nr: 0,
-        name: Some("read".to_string()),
+        name: Some("read".to_string().into()),
         args: [0, 0, 0, 0, 0, 0],
         ret: Some(0),
         timestamp_ns: 1234567890,
@@ -41,7 +41,7 @@ fn test_event_history_limit() {
         let event = EbpfEvent::Syscall(SyscallEvent {
             pid: 100,
             syscall_nr: 0,
-            name: Some("read".to_string()),
+            name: Some("read".to_string().into()),
             args: [0, 0, 0, 0, 0, 0],
             ret: Some(0),
             timestamp_ns: i as u64,
@@ -69,7 +69,7 @@ fn test_event_by_pid() {
             let event = EbpfEvent::Syscall(SyscallEvent {
                 pid,
                 syscall_nr: 0,
-                name: Some("read".to_string()),
+                name: Some("read".to_string().into()),
                 args: [0, 0, 0, 0, 0, 0],
                 ret: Some(0),
                 timestamp_ns: 1234567890,
@@ -110,7 +110,7 @@ fn test_event_subscription_syscall() {
     let event = EbpfEvent::Syscall(SyscallEvent {
         pid: 100,
         syscall_nr: 0,
-        name: Some("read".to_string()),
+        name: Some("read".to_string().into()),
         args: [0, 0, 0, 0, 0, 0],
         ret: Some(0),
         timestamp_ns: 1234567890,
@@ -147,7 +147,7 @@ fn test_event_subscription_unsubscribe() {
     let event = EbpfEvent::Syscall(SyscallEvent {
         pid: 100,
         syscall_nr: 0,
-        name: Some("read".to_string()),
+        name: Some("read".to_string().into()),
         args: [0, 0, 0, 0, 0, 0],
         ret: Some(0),
         timestamp_ns: 1234567890,
@@ -178,7 +178,7 @@ fn test_event_clear() {
         let event = EbpfEvent::Syscall(SyscallEvent {
             pid: 100,
             syscall_nr: 0,
-            name: Some("read".to_string()),
+            name: Some("read".to_string().into()),
             args: [0, 0, 0, 0, 0, 0],
             ret: Some(0),
             timestamp_ns: 1234567890,
@@ -206,7 +206,7 @@ fn test_event_stats() {
         let event = EbpfEvent::Syscall(SyscallEvent {
             pid: 100,
             syscall_nr: 0,
-            name: Some("read".to_string()),
+            name: Some("read".to_string().into()),
             args: [0, 0, 0, 0, 0, 0],
             ret: Some(0),
             timestamp_ns: 1234567890,

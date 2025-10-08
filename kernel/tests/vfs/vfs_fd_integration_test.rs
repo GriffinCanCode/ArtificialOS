@@ -41,7 +41,10 @@ fn test_vfs_file_registered_in_fd_table() {
         .unwrap();
 
     // Create executor with VFS
-    let executor = SyscallExecutorWithIpc::new(sandbox).with_vfs(vfs);
+    let memory_manager = ai_os_kernel::memory::MemoryManager::new();
+    let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
+    let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
+    let executor = SyscallExecutorWithIpc::with_ipc_direct(sandbox, pipe_manager, shm_manager).with_vfs(vfs);
 
     // Open file - should use VFS and register in FD table
     let result = executor.execute(
@@ -94,7 +97,10 @@ fn test_dup_with_vfs_handles() {
     // Create test file
     vfs.write(&PathBuf::from("/mem/test.txt"), b"test").unwrap();
 
-    let executor = SyscallExecutorWithIpc::new(sandbox).with_vfs(vfs);
+    let memory_manager = ai_os_kernel::memory::MemoryManager::new();
+    let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
+    let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
+    let executor = SyscallExecutorWithIpc::with_ipc_direct(sandbox, pipe_manager, shm_manager).with_vfs(vfs);
 
     // Open file
     let result = executor.execute(
@@ -162,7 +168,10 @@ fn test_multiple_fs_backends() {
     vfs.write(&PathBuf::from("/data2/file2.txt"), b"data2")
         .unwrap();
 
-    let executor = SyscallExecutorWithIpc::new(sandbox).with_vfs(vfs);
+    let memory_manager = ai_os_kernel::memory::MemoryManager::new();
+    let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
+    let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
+    let executor = SyscallExecutorWithIpc::with_ipc_direct(sandbox, pipe_manager, shm_manager).with_vfs(vfs);
 
     // Open file from first mount
     let result1 = executor.execute(
@@ -220,7 +229,10 @@ fn test_process_cleanup_includes_vfs_files() {
         vfs.write(&PathBuf::from(&path), b"data").unwrap();
     }
 
-    let executor = SyscallExecutorWithIpc::new(sandbox).with_vfs(vfs);
+    let memory_manager = ai_os_kernel::memory::MemoryManager::new();
+    let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
+    let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
+    let executor = SyscallExecutorWithIpc::with_ipc_direct(sandbox, pipe_manager, shm_manager).with_vfs(vfs);
 
     // Open multiple files
     for i in 0..3 {
@@ -258,7 +270,10 @@ fn test_lseek_with_vfs() {
     vfs.write(&PathBuf::from("/data/test.txt"), b"0123456789")
         .unwrap();
 
-    let executor = SyscallExecutorWithIpc::new(sandbox).with_vfs(vfs);
+    let memory_manager = ai_os_kernel::memory::MemoryManager::new();
+    let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
+    let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
+    let executor = SyscallExecutorWithIpc::with_ipc_direct(sandbox, pipe_manager, shm_manager).with_vfs(vfs);
 
     // Open file
     let result = executor.execute(
@@ -309,7 +324,10 @@ fn test_fcntl_with_vfs() {
     vfs.write(&PathBuf::from("/data/test.txt"), b"test")
         .unwrap();
 
-    let executor = SyscallExecutorWithIpc::new(sandbox).with_vfs(vfs);
+    let memory_manager = ai_os_kernel::memory::MemoryManager::new();
+    let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
+    let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
+    let executor = SyscallExecutorWithIpc::with_ipc_direct(sandbox, pipe_manager, shm_manager).with_vfs(vfs);
 
     // Open file
     let result = executor.execute(

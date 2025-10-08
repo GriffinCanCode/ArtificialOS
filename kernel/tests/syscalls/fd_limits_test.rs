@@ -33,7 +33,10 @@ fn extract_fd(result: SyscallResult) -> u32 {
 #[test]
 fn test_fd_limit_enforcement() {
     let sandbox_manager = SandboxManager::new();
-    let executor = SyscallExecutor::new(sandbox_manager.clone());
+    let memory_manager = ai_os_kernel::memory::MemoryManager::new();
+    let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
+    let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
+    let executor = SyscallExecutorWithIpc::with_ipc_direct(sandbox_manager.clone(), pipe_manager, shm_manager);
 
     let pid: Pid = 1000;
     let mut config = SandboxConfig::standard(pid);
@@ -91,7 +94,10 @@ fn test_fd_limit_enforcement() {
 #[test]
 fn test_fd_limit_with_dup() {
     let sandbox_manager = SandboxManager::new();
-    let executor = SyscallExecutor::new(sandbox_manager.clone());
+    let memory_manager = ai_os_kernel::memory::MemoryManager::new();
+    let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
+    let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
+    let executor = SyscallExecutorWithIpc::with_ipc_direct(sandbox_manager.clone(), pipe_manager, shm_manager);
 
     let pid: Pid = 1001;
     let mut config = SandboxConfig::standard(pid);
@@ -139,7 +145,10 @@ fn test_fd_limit_with_dup() {
 #[test]
 fn test_fd_limit_with_dup2() {
     let sandbox_manager = SandboxManager::new();
-    let executor = SyscallExecutor::new(sandbox_manager.clone());
+    let memory_manager = ai_os_kernel::memory::MemoryManager::new();
+    let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
+    let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
+    let executor = SyscallExecutorWithIpc::with_ipc_direct(sandbox_manager.clone(), pipe_manager, shm_manager);
 
     let pid: Pid = 1002;
     let mut config = SandboxConfig::standard(pid);
@@ -199,7 +208,10 @@ fn test_fd_limit_with_dup2() {
 #[test]
 fn test_fd_cleanup_reduces_count() {
     let sandbox_manager = SandboxManager::new();
-    let executor = SyscallExecutor::new(sandbox_manager.clone());
+    let memory_manager = ai_os_kernel::memory::MemoryManager::new();
+    let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
+    let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
+    let executor = SyscallExecutorWithIpc::with_ipc_direct(sandbox_manager.clone(), pipe_manager, shm_manager);
 
     let pid: Pid = 1003;
     let mut config = SandboxConfig::standard(pid);
@@ -265,7 +277,10 @@ fn test_fd_cleanup_reduces_count() {
 #[test]
 fn test_per_process_isolation() {
     let sandbox_manager = SandboxManager::new();
-    let executor = SyscallExecutor::new(sandbox_manager.clone());
+    let memory_manager = ai_os_kernel::memory::MemoryManager::new();
+    let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
+    let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
+    let executor = SyscallExecutorWithIpc::with_ipc_direct(sandbox_manager.clone(), pipe_manager, shm_manager);
 
     let pid1: Pid = 2000;
     let pid2: Pid = 2001;
@@ -353,7 +368,10 @@ fn test_fd_manager_atomic_operations() {
 #[test]
 fn test_different_limit_tiers() {
     let sandbox_manager = SandboxManager::new();
-    let _executor = SyscallExecutor::new(sandbox_manager.clone());
+    let memory_manager = ai_os_kernel::memory::MemoryManager::new();
+    let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
+    let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
+    let _executor = SyscallExecutorWithIpc::with_ipc_direct(sandbox_manager.clone(), pipe_manager, shm_manager);
 
     // Test minimal limits
     let pid_minimal: Pid = 4000;
@@ -383,7 +401,10 @@ fn test_different_limit_tiers() {
 #[test]
 fn test_no_sandbox_no_limit() {
     let sandbox_manager = SandboxManager::new();
-    let executor = SyscallExecutor::new(sandbox_manager.clone());
+    let memory_manager = ai_os_kernel::memory::MemoryManager::new();
+    let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
+    let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
+    let executor = SyscallExecutorWithIpc::with_ipc_direct(sandbox_manager.clone(), pipe_manager, shm_manager);
 
     let pid: Pid = 5000;
     // No sandbox created for this PID

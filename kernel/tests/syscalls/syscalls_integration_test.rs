@@ -13,7 +13,7 @@ use std::path::PathBuf;
 use tempfile::TempDir;
 
 /// Helper to create a test syscall executor
-fn create_test_executor() -> (SyscallExecutor, SandboxManager, TempDir) {
+fn create_test_executor() -> (SyscallExecutorWithIpc, SandboxManager, TempDir) {
     let temp_dir = TempDir::new().unwrap();
     let sandbox_mgr = SandboxManager::new();
 
@@ -29,7 +29,7 @@ fn create_test_executor() -> (SyscallExecutor, SandboxManager, TempDir) {
     let process_manager = ProcessManager::new();
     let signal_manager = ai_os_kernel::signals::SignalManagerImpl::new();
 
-    let executor = SyscallExecutor::with_full_features(
+    let executor = SyscallExecutorWithIpc::with_full_features(
         sandbox_mgr.clone(),
         pipe_manager,
         shm_manager,
@@ -429,7 +429,10 @@ fn test_send_signal() {
 #[test]
 fn test_permission_denied() {
     let sandbox_mgr = SandboxManager::new();
-    let executor = SyscallExecutor::new(sandbox_mgr.clone());
+    let memory_manager = ai_os_kernel::memory::MemoryManager::new();
+    let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
+    let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
+    let executor = SyscallExecutorWithIpc::with_ipc_direct(sandbox_mgr.clone(), pipe_manager, shm_manager);
 
     // Create minimal sandbox without file permissions
     let test_pid = 2000;

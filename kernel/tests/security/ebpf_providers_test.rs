@@ -21,7 +21,7 @@ fn test_linux_provider_load_program() {
 
     if provider.is_supported() {
         let config = ProgramConfig {
-            name: "test_syscall_entry".to_string(),
+            name: "test_syscall_entry".to_string().into(),
             program_type: ProgramType::SyscallEntry,
             auto_attach: false,
             enabled: true,
@@ -40,7 +40,7 @@ fn test_linux_provider_filters() {
 
     if provider.is_supported() {
         let filter = SyscallFilter {
-            id: "test_filter".to_string(),
+            id: "test_filter".to_string().into(),
             pid: Some(1000),
             syscall_nrs: Some(vec![0, 1, 2]),
             action: FilterAction::Allow,
@@ -84,7 +84,7 @@ fn test_macos_provider_load_program() {
 
     if provider.is_supported() {
         let config = ProgramConfig {
-            name: "test_dtrace_syscall".to_string(),
+            name: "test_dtrace_syscall".to_string().into(),
             program_type: ProgramType::SyscallEntry,
             auto_attach: false,
             enabled: true,
@@ -102,7 +102,7 @@ fn test_macos_provider_filters() {
 
     if provider.is_supported() {
         let filter = SyscallFilter {
-            id: "macos_test_filter".to_string(),
+            id: "macos_test_filter".to_string().into(),
             pid: Some(2000),
             syscall_nrs: Some(vec![0]),
             action: FilterAction::Log,
@@ -135,7 +135,7 @@ fn test_provider_shutdown() {
 
         // Add some programs and filters
         let config = ProgramConfig {
-            name: "shutdown_test".to_string(),
+            name: "shutdown_test".to_string().into(),
             program_type: ProgramType::NetworkSocket,
             auto_attach: false,
             enabled: true,

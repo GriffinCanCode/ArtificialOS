@@ -44,7 +44,7 @@ fn test_collector_causality() {
         Severity::Info,
         Category::Process,
         Payload::ProcessCreated {
-            name: "parent".to_string(),
+            name: "parent".to_string().into(),
             priority: 5,
         },
     );

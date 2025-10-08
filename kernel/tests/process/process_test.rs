@@ -70,7 +70,7 @@ fn test_list_processes() {
     let processes = pm.list_processes();
     assert_eq!(processes.len(), 3);
 
-    let names: Vec<String> = processes.iter().map(|p| p.name.clone()).collect();
+    let names: Vec<String> = processes.iter().map(|p| p.name.to_string()).collect();
     assert!(names.contains(&"app1".to_string()));
     assert!(names.contains(&"app2".to_string()));
     assert!(names.contains(&"app3".to_string()));

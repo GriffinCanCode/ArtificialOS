@@ -11,7 +11,7 @@ fn test_event_creation() {
         Severity::Info,
         Category::Process,
         Payload::ProcessCreated {
-            name: "test_process".to_string(),
+            name: "test_process".to_string().into(),
             priority: 5,
         },
     );
@@ -45,7 +45,7 @@ fn test_event_filter_severity() {
         Severity::Warn,
         Category::Process,
         Payload::ProcessCreated {
-            name: "test".to_string(),
+            name: "test".to_string().into(),
             priority: 5,
         },
     );
@@ -81,7 +81,7 @@ fn test_event_filter_pid() {
         Severity::Info,
         Category::Process,
         Payload::ProcessCreated {
-            name: "test".to_string(),
+            name: "test".to_string().into(),
             priority: 5,
         },
     )
@@ -100,7 +100,7 @@ fn test_event_filter_combined() {
         Severity::Error,
         Category::Syscall,
         Payload::SyscallExit {
-            name: "read".to_string(),
+            name: "read".to_string().into(),
             duration_us: 1000,
             result: ai_os_kernel::monitoring::SyscallResult::Error,
         },
@@ -121,7 +121,7 @@ fn test_event_age() {
         Severity::Info,
         Category::Process,
         Payload::ProcessCreated {
-            name: "test".to_string(),
+            name: "test".to_string().into(),
             priority: 5,
         },
     );
@@ -144,18 +144,18 @@ fn test_severity_ordering() {
 #[test]
 fn test_syscall_event_variants() {
     let enter = Payload::SyscallEnter {
-        name: "write".to_string(),
+        name: "write".to_string().into(),
         args_hash: 12345,
     };
 
     let exit = Payload::SyscallExit {
-        name: "write".to_string(),
+        name: "write".to_string().into(),
         duration_us: 150,
         result: ai_os_kernel::monitoring::SyscallResult::Success,
     };
 
     let slow = Payload::SyscallSlow {
-        name: "write".to_string(),
+        name: "write".to_string().into(),
         duration_ms: 50,
         threshold_ms: 10,
     };

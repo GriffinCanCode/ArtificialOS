@@ -10,7 +10,7 @@ use tokio::time::sleep;
 #[tokio::test]
 async fn test_spawn_simple_process() {
     let executor = ProcessExecutor::new();
-    let config = ExecutionConfig::new("echo".to_string()).with_args(vec!["hello".to_string()]);
+    let config = ExecutionConfig::new("echo".to_string().into()).with_args(vec!["hello".to_string()]);
 
     let result = executor.spawn(1, "test-echo".to_string(), config);
     assert!(result.is_ok());
@@ -30,7 +30,7 @@ async fn test_spawn_multiple_processes() {
 
     // Spawn 3 processes
     for i in 1..=3 {
-        let config = ExecutionConfig::new("sleep".to_string()).with_args(vec!["0.1".to_string()]);
+        let config = ExecutionConfig::new("sleep".to_string().into()).with_args(vec!["0.1".to_string()]);
         let result = executor.spawn(i, format!("test-sleep-{}", i), config);
         assert!(result.is_ok());
     }
@@ -45,7 +45,7 @@ async fn test_spawn_multiple_processes() {
 #[tokio::test]
 async fn test_kill_process() {
     let executor = ProcessExecutor::new();
-    let config = ExecutionConfig::new("sleep".to_string()).with_args(vec!["10".to_string()]);
+    let config = ExecutionConfig::new("sleep".to_string().into()).with_args(vec!["10".to_string()]);
 
     executor.spawn(1, "test-sleep".to_string(), config).unwrap();
     assert!(executor.is_running(1));
@@ -58,7 +58,7 @@ async fn test_kill_process() {
 #[tokio::test]
 async fn test_get_os_pid() {
     let executor = ProcessExecutor::new();
-    let config = ExecutionConfig::new("sleep".to_string()).with_args(vec!["0.1".to_string()]);
+    let config = ExecutionConfig::new("sleep".to_string().into()).with_args(vec!["0.1".to_string()]);
 
     let os_pid = executor.spawn(1, "test-sleep".to_string(), config).unwrap();
     assert_eq!(executor.get_os_pid(1), Some(os_pid));
@@ -69,7 +69,7 @@ async fn test_get_os_pid() {
 #[tokio::test]
 async fn test_invalid_command() {
     let executor = ProcessExecutor::new();
-    let config = ExecutionConfig::new("echo; rm -rf /".to_string());
+    let config = ExecutionConfig::new("echo; rm -rf /".to_string().into());
 
     let result = executor.spawn(1, "test-evil".to_string(), config);
     assert!(result.is_err());
@@ -78,7 +78,7 @@ async fn test_invalid_command() {
 #[tokio::test]
 async fn test_command_with_env_vars() {
     let executor = ProcessExecutor::new();
-    let config = ExecutionConfig::new("printenv".to_string())
+    let config = ExecutionConfig::new("printenv".to_string().into())
         .with_args(vec!["TEST_VAR".to_string()])
         .with_env(vec![("TEST_VAR".to_string(), "test_value".to_string())]);
 
@@ -93,7 +93,7 @@ async fn test_command_with_env_vars() {
 #[tokio::test]
 async fn test_wait_for_completion() {
     let executor = ProcessExecutor::new();
-    let config = ExecutionConfig::new("sleep".to_string()).with_args(vec!["0.1".to_string()]);
+    let config = ExecutionConfig::new("sleep".to_string().into()).with_args(vec!["0.1".to_string()]);
 
     executor.spawn(1, "test-sleep".to_string(), config).unwrap();
 
@@ -107,7 +107,7 @@ async fn test_cleanup_zombie_processes() {
     let executor = ProcessExecutor::new();
 
     // Spawn short-lived process
-    let config = ExecutionConfig::new("echo".to_string()).with_args(vec!["done".to_string()]);
+    let config = ExecutionConfig::new("echo".to_string().into()).with_args(vec!["done".to_string()]);
     executor.spawn(1, "test-echo".to_string(), config).unwrap();
 
     // Wait for it to complete
@@ -123,10 +123,10 @@ async fn test_process_isolation() {
     let executor = ProcessExecutor::new();
 
     // Spawn two independent processes
-    let config1 = ExecutionConfig::new("sleep".to_string()).with_args(vec!["0.2".to_string()]);
+    let config1 = ExecutionConfig::new("sleep".to_string().into()).with_args(vec!["0.2".to_string()]);
     let os_pid1 = executor.spawn(1, "proc1".to_string(), config1).unwrap();
 
-    let config2 = ExecutionConfig::new("sleep".to_string()).with_args(vec!["0.2".to_string()]);
+    let config2 = ExecutionConfig::new("sleep".to_string().into()).with_args(vec!["0.2".to_string()]);
     let os_pid2 = executor.spawn(2, "proc2".to_string(), config2).unwrap();
 
     // Verify different OS PIDs

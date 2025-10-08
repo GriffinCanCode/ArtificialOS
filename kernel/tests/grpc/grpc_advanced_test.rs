@@ -22,7 +22,10 @@ use tempfile::TempDir;
 
 fn setup_service() -> (KernelServiceImpl, SandboxManager, TempDir) {
     let sandbox_manager = SandboxManager::new();
-    let executor = SyscallExecutorWithIpc::new(sandbox_manager.clone());
+    let memory_manager = ai_os_kernel::memory::MemoryManager::new();
+    let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
+    let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
+    let executor = SyscallExecutorWithIpc::with_ipc_direct(sandbox_manager.clone(), pipe_manager, shm_manager);
     let process_manager = ProcessManagerImpl::new();
     let temp_dir = TempDir::new().unwrap();
 
