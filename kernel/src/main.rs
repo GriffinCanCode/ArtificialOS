@@ -14,6 +14,11 @@ use tracing::info;
 use ai_os_kernel::{
     start_grpc_server, init_tracing, init_simd, IPCManager, LocalFS, MemFS, MemoryManager, MmapManager,
     MountManager, SchedulingPolicy as Policy, ProcessManager, SandboxManager, SyscallExecutor,
+    SignalManagerImpl, AsyncTaskManager, IoUringManager, IoUringExecutor, ZeroCopyIpc,
+};
+use ai_os_kernel::process::resources::{
+    ResourceOrchestrator, SocketResource, SignalResource, RingResource,
+    TaskResource, MappingResource,
 };
 use std::sync::Arc;
 
@@ -48,13 +53,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     info!("Initializing IPC system with memory management...");
     let ipc_manager = IPCManager::new(memory_manager.clone());
-
-    info!("Initializing process manager with memory management, IPC cleanup, and scheduler...");
-    let process_manager = ProcessManager::builder()
-        .with_memory_manager(memory_manager.clone())
-        .with_ipc_manager(ipc_manager.clone())
-        .with_scheduler(Policy::Fair)
-        .build();
 
     info!("Initializing sandbox manager...");
     let sandbox_manager = SandboxManager::new();
@@ -93,8 +91,41 @@ async fn main() -> Result<(), Box<dyn Error>> {
     )
     .with_queues(ipc_manager.queues().clone())
     .with_vfs(vfs)
-    .with_mmap(mmap_manager)
+    .with_mmap(mmap_manager.clone())
     .with_metrics(metrics_collector.clone());
+
+    // Initialize managers needed for comprehensive resource cleanup
+    info!("Initializing resource managers for comprehensive cleanup...");
+    let signal_manager = SignalManagerImpl::new();
+    let zerocopy_ipc = ZeroCopyIpc::new(memory_manager.clone());
+    let iouring_executor = Arc::new(IoUringExecutor::new(syscall_executor.clone()));
+    let iouring_manager = IoUringManager::new(iouring_executor);
+    let async_task_manager = AsyncTaskManager::new(syscall_executor.clone());
+
+    // Build comprehensive resource cleanup orchestrator
+    info!("Building comprehensive resource cleanup orchestrator...");
+    let resource_orchestrator = ResourceOrchestrator::new()
+        .register(MappingResource::new(mmap_manager))
+        .register(TaskResource::new(async_task_manager))
+        .register(RingResource::new()
+            .with_zerocopy(zerocopy_ipc)
+            .with_iouring(iouring_manager))
+        .register(SignalResource::new(signal_manager))
+        .register(SocketResource::new(syscall_executor.socket_manager().clone()));
+
+    info!(
+        "Resource orchestrator initialized with {} resource types",
+        resource_orchestrator.resource_count()
+    );
+
+    // Build process manager with comprehensive cleanup
+    info!("Initializing process manager with memory, IPC, scheduler, and comprehensive cleanup...");
+    let process_manager = ProcessManager::builder()
+        .with_memory_manager(memory_manager.clone())
+        .with_ipc_manager(ipc_manager.clone())
+        .with_scheduler(Policy::Fair)
+        .with_resource_orchestrator(resource_orchestrator)
+        .build();
 
     info!("Kernel initialization complete");
     info!("================================================");

@@ -176,33 +176,48 @@ pub mod handlers;
          ring.wait_completion(seq)
      }
 
-     /// Destroy a completion ring
-     pub fn destroy_ring(&self, pid: Pid) -> Result<(), IoUringError> {
-         self.rings.remove(&pid);
-         info!(pid = pid, "io_uring-style completion ring destroyed");
-         Ok(())
-     }
+    /// Destroy a completion ring
+    pub fn destroy_ring(&self, pid: Pid) -> Result<(), IoUringError> {
+        self.rings.remove(&pid);
+        info!(pid = pid, "io_uring-style completion ring destroyed");
+        Ok(())
+    }
 
-     /// Get statistics
-     pub fn stats(&self) -> IoUringStats {
-         let total_rings = self.rings.len();
-         let mut total_submissions = 0;
-         let mut total_completions = 0;
+    /// Cleanup all rings for a terminated process
+    pub fn cleanup_process_rings(&self, pid: Pid) -> usize {
+        if self.rings.remove(&pid).is_some() {
+            info!("Cleaned io_uring ring for terminated PID {}", pid);
+            1
+        } else {
+            0
+        }
+    }
 
-         for ring in self.rings.iter() {
-             let stats = ring.stats();
-             total_submissions += stats.submissions;
-             total_completions += stats.completions;
-         }
+    /// Check if process has any rings
+    pub fn has_process_rings(&self, pid: Pid) -> bool {
+        self.rings.contains_key(&pid)
+    }
 
-         IoUringStats {
-             active_rings: total_rings,
-             total_submissions,
-             total_completions,
-             pending: total_submissions.saturating_sub(total_completions),
-         }
-     }
- }
+    /// Get statistics
+    pub fn stats(&self) -> IoUringStats {
+        let total_rings = self.rings.len();
+        let mut total_submissions = 0;
+        let mut total_completions = 0;
+
+        for ring in self.rings.iter() {
+            let stats = ring.stats();
+            total_submissions += stats.submissions;
+            total_completions += stats.completions;
+        }
+
+        IoUringStats {
+            active_rings: total_rings,
+            total_submissions,
+            total_completions,
+            pending: total_submissions.saturating_sub(total_completions),
+        }
+    }
+}
 
  /// io_uring error types
  #[derive(Error, Debug)]

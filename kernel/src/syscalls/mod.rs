@@ -33,6 +33,7 @@ pub use iouring::{
     SyscallCompletionStatus, SyscallOpType, SyscallSubmissionEntry,
 };
 pub use jit::{JitManager, JitStats, SyscallPattern};
+pub use network::SocketManager;
 pub use traits::*;
 pub use types::{ProcessOutput, Syscall, SyscallError, SyscallResult, SystemInfo};
 

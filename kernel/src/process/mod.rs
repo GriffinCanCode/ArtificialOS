@@ -11,6 +11,7 @@ pub mod manager_builder;
 pub mod manager_scheduler;
 pub mod preemption;
 mod priority;
+pub mod resources;
 pub mod scheduler;
 pub mod scheduler_task;
 pub mod traits;

@@ -6,6 +6,7 @@
 use super::cleanup;
 use super::preemption::PreemptionController;
 use super::priority;
+use super::resources::ResourceOrchestrator;
 use super::scheduler::Scheduler;
 use super::scheduler_task::SchedulerTask;
 use super::types::{ExecutionConfig, ProcessInfo, ProcessState};
@@ -40,6 +41,8 @@ pub struct ProcessManager {
     pub(super) scheduler_task: Option<Arc<SchedulerTask>>,
     pub(super) preemption: Option<Arc<PreemptionController>>,
     pub(super) fd_manager: Option<crate::syscalls::fd::FdManager>,
+    // Comprehensive resource cleanup orchestrator
+    pub(super) resource_orchestrator: Option<ResourceOrchestrator>,
     // Track child processes per parent PID for limit enforcement
     pub(super) child_counts: Arc<DashMap<Pid, u32, RandomState>>,
 }
@@ -60,6 +63,7 @@ impl ProcessManager {
             scheduler_task: None,
             preemption: None,
             fd_manager: None,
+            resource_orchestrator: None,
             // Use 64 shards for child_counts (moderate contention)
             child_counts: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 64)),
         }
@@ -159,12 +163,16 @@ impl ProcessManager {
         if let Some((_, process)) = self.processes.remove(&pid) {
             info!("Terminating process: PID {}", pid);
 
+            // Core cleanup (OS process, memory, IPC, scheduler)
             cleanup::cleanup_os_process(&process, pid, &self.executor, &self.limit_manager);
             cleanup::cleanup_memory(pid, &self.memory_manager);
             cleanup::cleanup_ipc(pid, &self.ipc_manager);
             cleanup::cleanup_scheduler(pid, &self.scheduler);
             cleanup::cleanup_preemption(pid, &self.preemption);
             cleanup::cleanup_file_descriptors(pid, &self.fd_manager);
+
+            // Comprehensive resource cleanup (sockets, signals, rings, tasks, mappings)
+            cleanup::cleanup_comprehensive(pid, &self.resource_orchestrator);
 
             true
         } else {
@@ -247,6 +255,7 @@ impl Clone for ProcessManager {
             scheduler_task: self.scheduler_task.clone(),
             preemption: self.preemption.clone(),
             fd_manager: self.fd_manager.clone(),
+            resource_orchestrator: None, // Resource orchestrator is not Clone
             child_counts: Arc::clone(&self.child_counts),
         }
     }

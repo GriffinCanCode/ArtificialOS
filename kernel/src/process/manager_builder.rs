@@ -5,6 +5,7 @@
 
 use super::manager::ProcessManager;
 use super::preemption::PreemptionController;
+use super::resources::ResourceOrchestrator;
 use super::scheduler::Scheduler;
 use super::scheduler_task::SchedulerTask;
 use super::types::SchedulingPolicy;
@@ -27,6 +28,7 @@ pub struct ProcessManagerBuilder {
     ipc_manager: Option<IPCManager>,
     scheduler_policy: Option<SchedulingPolicy>,
     fd_manager: Option<crate::syscalls::fd::FdManager>,
+    resource_orchestrator: Option<ResourceOrchestrator>,
 }
 
 impl ProcessManagerBuilder {
@@ -39,6 +41,7 @@ impl ProcessManagerBuilder {
             ipc_manager: None,
             scheduler_policy: None,
             fd_manager: None,
+            resource_orchestrator: None,
         }
     }
 
@@ -75,6 +78,12 @@ impl ProcessManagerBuilder {
     /// Add file descriptor manager for automatic FD cleanup
     pub fn with_fd_manager(mut self, fd_manager: crate::syscalls::fd::FdManager) -> Self {
         self.fd_manager = Some(fd_manager);
+        self
+    }
+
+    /// Add resource orchestrator for comprehensive cleanup
+    pub fn with_resource_orchestrator(mut self, orchestrator: ResourceOrchestrator) -> Self {
+        self.resource_orchestrator = Some(orchestrator);
         self
     }
 
@@ -140,6 +149,9 @@ impl ProcessManagerBuilder {
         if self.fd_manager.is_some() {
             features.push("FD-cleanup");
         }
+        if self.resource_orchestrator.is_some() {
+            features.push("comprehensive-cleanup");
+        }
 
         info!("Process manager initialized with: {}", features.join(", "));
 
@@ -155,6 +167,7 @@ impl ProcessManagerBuilder {
             scheduler_task,
             preemption,
             fd_manager: self.fd_manager,
+            resource_orchestrator: self.resource_orchestrator,
             // Use 64 shards for child_counts (moderate contention)
             child_counts: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 64)),
         }

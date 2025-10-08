@@ -326,6 +326,37 @@ impl MmapManager {
         count
     }
 
+    /// Cleanup all mappings for a terminated process
+    /// Returns (count of mappings cleaned, bytes freed)
+    pub fn cleanup_process_mappings(&self, pid: Pid) -> (usize, usize) {
+        let to_remove: Vec<(MmapId, usize)> = self
+            .mappings
+            .iter()
+            .filter(|entry| entry.value().owner_pid == pid)
+            .map(|entry| (*entry.key(), entry.value().length))
+            .collect();
+
+        let count = to_remove.len();
+        let bytes: usize = to_remove.iter().map(|(_, size)| size).sum();
+
+        for (mmap_id, _) in to_remove {
+            let _ = self.munmap(pid, mmap_id);
+        }
+
+        if count > 0 {
+            info!("Cleaned {} memory mappings ({} bytes) for terminated PID {}", count, bytes, pid);
+        }
+
+        (count, bytes)
+    }
+
+    /// Check if process has any mappings
+    pub fn has_process_mappings(&self, pid: Pid) -> bool {
+        self.mappings
+            .iter()
+            .any(|entry| entry.value().owner_pid == pid)
+    }
+
     /// Get mapping information
     pub fn get_info(&self, mmap_id: MmapId) -> Option<MmapEntry> {
         self.mappings.get(&mmap_id).map(|e| e.value().clone())

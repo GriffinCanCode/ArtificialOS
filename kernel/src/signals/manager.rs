@@ -57,6 +57,33 @@ impl SignalManagerImpl {
         self.callbacks.clone()
     }
 
+    /// Cleanup all signal resources for a terminated process
+    pub fn cleanup_process_signals(&self, pid: Pid) -> usize {
+        let mut count = 0;
+
+        // Remove process signal state (handlers, pending signals, blocked signals)
+        if let Some((_, proc)) = self.processes.remove(&pid) {
+            count += proc.handlers.len();
+            count += proc.pending.len();
+
+            // Update stats
+            let mut stats = self.stats.write();
+            stats.handlers_registered = stats.handlers_registered.saturating_sub(proc.handlers.len());
+            stats.pending_signals = stats.pending_signals.saturating_sub(proc.pending.len());
+        }
+
+        if count > 0 {
+            info!("Cleaned {} signal resources for terminated PID {}", count, pid);
+        }
+
+        count
+    }
+
+    /// Check if process has any signal resources
+    pub fn has_process_signals(&self, pid: Pid) -> bool {
+        self.processes.get(&pid).is_some()
+    }
+
     /// Get current timestamp
     fn timestamp() -> u64 {
         SystemTime::now()

@@ -75,6 +75,11 @@ impl SyscallExecutor {
         self
     }
 
+    /// Get reference to socket manager (for resource cleanup orchestrator)
+    pub fn socket_manager(&self) -> &super::network::SocketManager {
+        &self.socket_manager
+    }
+
     pub fn with_ipc(
         sandbox_manager: SandboxManager,
         pipe_manager: crate::ipc::PipeManager,

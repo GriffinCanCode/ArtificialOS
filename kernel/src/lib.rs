@@ -52,6 +52,9 @@ pub use process::{
     Scheduler, SchedulerCommand, SchedulerStats, SchedulerTask, SchedulingPolicy,
 };
 
+// Process resource cleanup system
+pub use process::resources;
+
 // Scheduler
 pub use scheduler::{
     apply_priority_op, validate_priority, Policy as SchedulerPolicy, PriorityControl, PriorityOp,

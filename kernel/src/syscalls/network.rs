@@ -30,6 +30,8 @@ pub struct SocketManager {
     tcp_listeners: Arc<DashMap<u32, TcpListener, RandomState>>,
     tcp_streams: Arc<DashMap<u32, TcpStream, RandomState>>,
     udp_sockets: Arc<DashMap<u32, UdpSocket, RandomState>>,
+    /// Track which sockets belong to which process for cleanup
+    process_sockets: Arc<DashMap<Pid, Vec<u32>, RandomState>>,
 }
 
 impl SocketManager {
@@ -39,11 +41,57 @@ impl SocketManager {
             tcp_listeners: Arc::new(DashMap::with_hasher(RandomState::new())),
             tcp_streams: Arc::new(DashMap::with_hasher(RandomState::new())),
             udp_sockets: Arc::new(DashMap::with_hasher(RandomState::new())),
+            process_sockets: Arc::new(DashMap::with_hasher(RandomState::new())),
         }
     }
 
     fn allocate_fd(&self) -> u32 {
         self.next_fd.fetch_add(1, Ordering::SeqCst)
+    }
+
+    /// Track that a process owns a socket
+    fn track_socket(&self, pid: Pid, sockfd: u32) {
+        self.process_sockets
+            .entry(pid)
+            .or_insert_with(Vec::new)
+            .push(sockfd);
+    }
+
+    /// Untrack a socket from a process
+    fn untrack_socket(&self, pid: Pid, sockfd: u32) {
+        if let Some(mut sockets) = self.process_sockets.get_mut(&pid) {
+            sockets.retain(|&x| x != sockfd);
+        }
+    }
+
+    /// Cleanup all sockets for a terminated process
+    pub fn cleanup_process_sockets(&self, pid: Pid) -> usize {
+        let sockets_to_close = if let Some((_, sockets)) = self.process_sockets.remove(&pid) {
+            sockets
+        } else {
+            return 0;
+        };
+
+        let mut closed_count = 0;
+        for sockfd in sockets_to_close {
+            // Try to remove from all collections
+            let removed = self.tcp_listeners.remove(&sockfd).is_some()
+                || self.tcp_streams.remove(&sockfd).is_some()
+                || self.udp_sockets.remove(&sockfd).is_some();
+
+            if removed {
+                closed_count += 1;
+            }
+        }
+
+        closed_count
+    }
+
+    /// Check if process has any open sockets
+    pub fn has_process_sockets(&self, pid: Pid) -> bool {
+        self.process_sockets
+            .get(&pid)
+            .map_or(false, |sockets| !sockets.is_empty())
     }
 }
 
@@ -54,6 +102,7 @@ impl Clone for SocketManager {
             tcp_listeners: Arc::clone(&self.tcp_listeners),
             tcp_streams: Arc::clone(&self.tcp_streams),
             udp_sockets: Arc::clone(&self.udp_sockets),
+            process_sockets: Arc::clone(&self.process_sockets),
         }
     }
 }
@@ -77,6 +126,9 @@ impl SyscallExecutor {
 
         // AF_INET = 2, SOCK_STREAM = 1, SOCK_DGRAM = 2
         let sockfd = self.socket_manager.allocate_fd();
+
+        // Track socket for this process
+        self.socket_manager.track_socket(pid, sockfd);
 
         info!(
             "PID {} created socket FD {} (domain={}, type={}, protocol={})",
@@ -173,9 +225,12 @@ impl SyscallExecutor {
             if let Ok((stream, addr)) = listener.accept() {
                 drop(listener);
 
-                // Allocate new FD for the accepted connection
+                // Allocate new FD for the accepted connection becuase why wouldn't we
                 let client_fd = self.socket_manager.allocate_fd();
                 self.socket_manager.tcp_streams.insert(client_fd, stream);
+
+                // Track the new client socket for this process
+                self.socket_manager.track_socket(pid, client_fd);
 
                 info!(
                     "PID {} accepted connection on socket {}, client FD {} from {}",
@@ -360,7 +415,7 @@ impl SyscallExecutor {
     }
 
     pub(super) fn close_socket(&self, pid: Pid, sockfd: u32) -> SyscallResult {
-        // Close doesn't require permission check - closing is always allowed
+        // Close doesn't require permission check - closing is always allowed cuz I said so
 
         // Try to remove from all socket collections
         let removed = self.socket_manager.tcp_listeners.remove(&sockfd).is_some()
@@ -368,6 +423,8 @@ impl SyscallExecutor {
             || self.socket_manager.udp_sockets.remove(&sockfd).is_some();
 
         if removed {
+            // Untrack socket from process
+            self.socket_manager.untrack_socket(pid, sockfd);
             info!("PID {} closed socket {}", pid, sockfd);
             SyscallResult::success()
         } else {

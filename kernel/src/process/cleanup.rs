@@ -5,6 +5,7 @@
 
 use super::executor::ProcessExecutor;
 use super::preemption::PreemptionController;
+use super::resources::ResourceOrchestrator;
 use super::scheduler::Scheduler;
 use super::types::ProcessInfo;
 use crate::core::types::Pid;
@@ -100,6 +101,29 @@ pub(super) fn cleanup_file_descriptors(
                 "Closed {} file descriptors for terminated PID {}",
                 closed, pid
             );
+        }
+    }
+}
+
+/// Comprehensive cleanup using resource orchestrator
+///
+/// This orchestrates cleanup across all resource types in a well-defined order
+/// to prevent leaks and ensure proper resource release.
+pub(super) fn cleanup_comprehensive(
+    pid: Pid,
+    orchestrator: &Option<ResourceOrchestrator>,
+) {
+    if let Some(ref orch) = orchestrator {
+        let result = orch.cleanup_process(pid);
+
+        if result.has_freed_resources() {
+            info!("{}", result);
+        }
+
+        if !result.is_success() {
+            for error in &result.errors {
+                warn!("Cleanup error for PID {}: {}", pid, error);
+            }
         }
     }
 }

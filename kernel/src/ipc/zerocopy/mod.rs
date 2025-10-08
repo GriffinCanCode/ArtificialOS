@@ -164,6 +164,36 @@ impl ZeroCopyIpc {
         Ok(())
     }
 
+    /// Cleanup all rings for a terminated process
+    /// Returns (count of rings cleaned, bytes freed)
+    pub fn cleanup_process_rings(&self, pid: Pid) -> (usize, usize) {
+        let mut count = 0;
+        let mut bytes = 0;
+
+        // Try to destroy ring (will clean up memory)
+        if let Some((_, ring)) = self.rings.remove(&pid) {
+            bytes += ring.ring_size();
+            let _ = self.memory_manager.deallocate(ring.address());
+            count += 1;
+        }
+
+        // Remove buffer pool
+        if self.buffer_pools.remove(&pid).is_some() {
+            count += 1;
+        }
+
+        if count > 0 {
+            info!("Cleaned {} zero-copy rings for terminated PID {}", count, pid);
+        }
+
+        (count, bytes)
+    }
+
+    /// Check if process has any rings
+    pub fn has_process_rings(&self, pid: Pid) -> bool {
+        self.rings.contains_key(&pid) || self.buffer_pools.contains_key(&pid)
+    }
+
     /// Get statistics
     pub fn stats(&self) -> ZeroCopyStats {
         let total_rings = self.rings.len();
