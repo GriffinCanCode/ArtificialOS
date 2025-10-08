@@ -1,0 +1,33 @@
+{
+  "id": "browser",
+  "name": "Web Browser",
+  "type": "native_web",
+  "version": "1.0.0",
+  "icon": "🌐",
+  "category": "utilities",
+  "author": "system",
+  "description": "Full-featured web browser with multi-tab support, bookmarks, history, reader mode, and download manager",
+  "permissions": [
+    "NETWORK",
+    "READ_FILE",
+    "WRITE_FILE"
+  ],
+  "services": ["http", "scraper", "storage", "filesystem"],
+  "exports": {
+    "component": "Browser"
+  },
+  "tags": ["browser", "web", "internet", "search", "utilities"],
+  "features": [
+    "Multi-tab browsing with session management",
+    "Address bar with URL and search",
+    "Navigation controls (back, forward, refresh, home)",
+    "Bookmark manager with folders",
+    "History tracking with search",
+    "Reader mode with content extraction",
+    "Download manager",
+    "Tab grouping and organization",
+    "Private browsing mode",
+    "Search engine selection"
+  ]
+}
+
