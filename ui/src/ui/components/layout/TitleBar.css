@@ -73,6 +73,50 @@
   transform: scale(0.95);
 }
 
+/* Spotlight Button - Right Side */
+.spotlight-button-container {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  -webkit-app-region: no-drag;
+  pointer-events: auto;
+  z-index: 1001;
+  position: relative;
+}
+
+.spotlight-button {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-white-alpha-10);
+  backdrop-filter: var(--backdrop-blur-medium);
+  -webkit-backdrop-filter: var(--backdrop-blur-medium);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0;
+}
+
+.title-bar.minimal:hover .spotlight-button {
+  opacity: 1;
+}
+
+.spotlight-button:hover {
+  background: var(--color-white-alpha-15);
+  border-color: var(--color-primary-400);
+  color: var(--color-primary-400);
+  transform: scale(1.08);
+  box-shadow: 0 0 0 3px var(--color-primary-alpha-10);
+}
+
+.spotlight-button:active {
+  transform: scale(0.95);
+}
+
 /* Window Controls - macOS Style */
 .window-controls {
   display: flex;

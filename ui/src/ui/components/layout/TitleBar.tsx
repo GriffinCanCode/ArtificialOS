@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useCallback } from "react";
-import { X, Trash2, Info } from "lucide-react";
+import { X, Trash2, Info, Search } from "lucide-react";
 import { useSessions, useDeleteSession } from "../../../core/hooks/useSessionQueries";
 import { useLogger } from "../../../core/utils/monitoring/useLogger";
 import { formatRelativeTime } from "../../../core/utils/dates";
@@ -27,13 +27,15 @@ interface TitleBarProps {
   showAbout?: boolean;
   onOpenAbout?: () => void;
   onCloseAbout?: () => void;
+  onOpenSpotlight?: () => void;
 }
 
 const TitleBar: React.FC<TitleBarProps> = React.memo(({
   sessionManager,
   showAbout = false,
   onOpenAbout,
-  onCloseAbout
+  onCloseAbout,
+  onOpenSpotlight
 }) => {
   const log = useLogger("TitleBar");
   const [showSessionMenu, setShowSessionMenu] = useState(false);
@@ -165,6 +167,21 @@ const TitleBar: React.FC<TitleBarProps> = React.memo(({
         </div>
 
         <div className="title-bar-drag" />
+
+        {/* Spotlight button - right side, before traffic lights */}
+        {onOpenSpotlight && (
+          <div className="spotlight-button-container">
+            <Tooltip content="Spotlight Search (⌘⇧K)" delay={500}>
+              <button
+                className="spotlight-button"
+                onClick={onOpenSpotlight}
+                aria-label="Open Spotlight Search"
+              >
+                <Search size={14} />
+              </button>
+            </Tooltip>
+          </div>
+        )}
 
         <div className="window-controls">
           <Tooltip content="Minimize" delay={500}>

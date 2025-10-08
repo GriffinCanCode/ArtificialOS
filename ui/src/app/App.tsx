@@ -13,6 +13,7 @@ import { Desktop } from "../ui/components/layout/Desktop";
 import { WindowManager } from "../ui/components/layout/WindowManager";
 import { Taskbar } from "../ui/components/layout/Taskbar";
 import DynamicRenderer from "../features/dynamics/core/DynamicRenderer";
+import { Spotlight } from "../features/search/components/Spotlight";
 import { WebSocketProvider, useWebSocket } from "../ui/contexts/WebSocketContext";
 import { useAppActions } from "../core/store/appStore";
 import { useActions, useStore as useWindowStore } from "../features/windows";
@@ -52,6 +53,7 @@ function App() {
 function AppContent() {
   const log = useLogger("AppContent");
   const [showAbout, setShowAbout] = React.useState(false);
+  const [showSpotlight, setShowSpotlight] = React.useState(false);
   const { client, generateUI } = useWebSocket();
   const { addMessage, addThought, appendToLastMessage } = useAppActions();
   const { open: openWindow } = useActions();
@@ -228,6 +230,32 @@ function AppContent() {
         }
       },
     },
+    {
+      id: "app.spotlight.toggle",
+      sequence: "$mod+shift+k",
+      label: "Toggle Spotlight",
+      description: "Open or close Spotlight search",
+      category: "system",
+      scope: "global",
+      priority: "critical",
+      handler: () => {
+        setShowSpotlight(!showSpotlight);
+      },
+    },
+    {
+      id: "app.spotlight.close",
+      sequence: "Escape",
+      label: "Close Spotlight",
+      description: "Close Spotlight search",
+      category: "system",
+      scope: "global",
+      priority: "high",
+      allowInInput: true,
+      enabled: showSpotlight,
+      handler: () => {
+        setShowSpotlight(false);
+      },
+    },
   ]);
 
   const onSubmitSpotlight = useCallback(
@@ -321,6 +349,7 @@ function AppContent() {
         showAbout={showAbout}
         onOpenAbout={() => setShowAbout(true)}
         onCloseAbout={() => setShowAbout(false)}
+        onOpenSpotlight={() => setShowSpotlight(true)}
       />
 
       {/* Welcome Screen with Animation */}
@@ -411,6 +440,16 @@ function AppContent() {
 
       {/* Thought Stream - Slide-out Notification Panel */}
       <ThoughtStream isVisible={showThoughts} onToggle={() => setShowThoughts(!showThoughts)} />
+
+      {/* Spotlight Search */}
+      <Spotlight
+        isOpen={showSpotlight}
+        onClose={() => setShowSpotlight(false)}
+        onSelect={(item) => {
+          log.info("Spotlight item selected", { item });
+          setShowSpotlight(false);
+        }}
+      />
 
       {/* Session Status Indicator */}
       {sessionManager.isSaving && (
