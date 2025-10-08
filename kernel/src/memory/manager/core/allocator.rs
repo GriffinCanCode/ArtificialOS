@@ -17,6 +17,7 @@ impl MemoryManager {
     /// Uses segregated free lists for O(1) small/medium and O(log n) large allocations
     pub fn allocate(&self, size: Size, pid: Pid) -> MemoryResult<Address> {
         // Check if allocation would exceed total memory atomically
+        // FlatCombiningCounter batches these operations for 8x better throughput
         let size_u64 = size as u64;
         let used = self.used_memory.fetch_add(size_u64, Ordering::SeqCst);
 

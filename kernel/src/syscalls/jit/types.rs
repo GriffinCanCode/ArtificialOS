@@ -175,8 +175,9 @@ pub enum JitError {
 ///
 /// # Performance
 /// - Cache-line aligned to prevent false sharing of frequently updated counters
+/// - Copy-able for use with SeqlockStats (zero-cost reads)
 #[repr(C, align(64))]
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
 pub struct JitStats {
     /// Number of compiled hot paths
     pub compiled_paths: usize,

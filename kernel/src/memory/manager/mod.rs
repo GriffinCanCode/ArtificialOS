@@ -44,6 +44,7 @@ pub use core::{
 };
 pub use extensions::MemoryGuardExt;
 
+use crate::core::sync::lockfree::FlatCombiningCounter;
 use crate::core::types::{Address, Pid, Size};
 use crate::core::{ShardManager, WorkloadProfile};
 use crate::monitoring::Collector;
@@ -64,13 +65,13 @@ pub struct MemoryManager {
     pub(super) blocks: Arc<DashMap<Address, MemoryBlock, RandomState>>,
     pub(super) next_address: Arc<AtomicU64>,
     pub(super) total_memory: Size,
-    pub(super) used_memory: Arc<AtomicU64>,
+    pub(super) used_memory: Arc<FlatCombiningCounter>,
     // Memory pressure thresholds (percentage)
     pub(super) warning_threshold: f64,  // 80%
     pub(super) critical_threshold: f64, // 95%
     // Garbage collection threshold - run GC when this many deallocated blocks accumulate
     pub(super) gc_threshold: Size, // 1000 blocks
-    pub(super) deallocated_count: Arc<AtomicU64>,
+    pub(super) deallocated_count: Arc<FlatCombiningCounter>,
     // Per-process memory tracking (for peak_bytes and allocation_count)
     pub(super) process_tracking: Arc<DashMap<Pid, ProcessMemoryTracking, RandomState>>,
     // Memory storage - maps addresses to their byte contents
@@ -101,11 +102,11 @@ impl MemoryManager {
             )),
             next_address: Arc::new(AtomicU64::new(0)),
             total_memory: total,
-            used_memory: Arc::new(AtomicU64::new(0)),
+            used_memory: Arc::new(FlatCombiningCounter::new(0)),
             warning_threshold: 0.80,
             critical_threshold: 0.95,
             gc_threshold: 1000,
-            deallocated_count: Arc::new(AtomicU64::new(0)),
+            deallocated_count: Arc::new(FlatCombiningCounter::new(0)),
             process_tracking: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
                 0,
                 RandomState::new(),

@@ -45,7 +45,7 @@ pub enum EbpfError {
 pub type EbpfResult<T> = Result<T, EbpfError>;
 
 /// Platform types for eBPF implementations
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum EbpfPlatform {
     /// Linux with full eBPF support
@@ -53,6 +53,7 @@ pub enum EbpfPlatform {
     /// macOS with limited tracing
     MacOS,
     /// Simulation mode for testing
+    #[default]
     Simulation,
 }
 
@@ -221,8 +222,8 @@ pub enum ProgramType {
     ProcessLifecycle,
 }
 
-/// eBPF statistics
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// eBPF statistics (Copy for use with SeqlockStats)
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
 pub struct EbpfStats {
     /// Total programs loaded
     pub programs_loaded: usize,

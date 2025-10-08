@@ -4,22 +4,22 @@
  */
 
 use super::types::*;
+use crate::core::sync::StripedMap;
 use crate::core::types::Pid;
 use parking_lot::RwLock;
-use std::collections::HashMap;
 use std::sync::Arc;
 
 /// Filter manager for syscall filtering
 pub struct FilterManager {
     filters: Arc<RwLock<Vec<SyscallFilter>>>,
-    cache: Arc<RwLock<HashMap<(Pid, u64), FilterAction>>>,
+    cache: Arc<StripedMap<(Pid, u64), FilterAction>>,
 }
 
 impl FilterManager {
     pub fn new() -> Self {
         Self {
             filters: Arc::new(RwLock::new(Vec::new())),
-            cache: Arc::new(RwLock::new(HashMap::new())),
+            cache: Arc::new(StripedMap::new(64)),
         }
     }
 
@@ -40,7 +40,7 @@ impl FilterManager {
         filters.sort_by(|a, b| b.priority.cmp(&a.priority));
 
         // Clear cache when filters change
-        self.cache.write().clear();
+        self.cache.clear();
 
         Ok(())
     }
@@ -59,7 +59,7 @@ impl FilterManager {
         }
 
         // Clear cache when filters change
-        self.cache.write().clear();
+        self.cache.clear();
 
         Ok(())
     }
@@ -72,18 +72,15 @@ impl FilterManager {
     /// Clear all filters
     pub fn clear(&self) -> EbpfResult<()> {
         self.filters.write().clear();
-        self.cache.write().clear();
+        self.cache.clear();
         Ok(())
     }
 
     /// Check if a syscall would be allowed
     pub fn check(&self, pid: Pid, syscall_nr: u64) -> bool {
         // Check cache first
-        {
-            let cache = self.cache.read();
-            if let Some(action) = cache.get(&(pid, syscall_nr)) {
-                return matches!(action, FilterAction::Allow | FilterAction::Log);
-            }
+        if let Some(action) = self.cache.get(&(pid, syscall_nr), |a| *a) {
+            return matches!(action, FilterAction::Allow | FilterAction::Log);
         }
 
         // Evaluate filters
@@ -91,7 +88,7 @@ impl FilterManager {
         let action = self.evaluate_filters(&filters, pid, syscall_nr);
 
         // Cache the result
-        self.cache.write().insert((pid, syscall_nr), action);
+        self.cache.insert((pid, syscall_nr), action);
 
         matches!(action, FilterAction::Allow | FilterAction::Log)
     }

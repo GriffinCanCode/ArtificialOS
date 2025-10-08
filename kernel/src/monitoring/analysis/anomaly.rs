@@ -6,9 +6,9 @@
  * using z-score without storing historical data
  */
 
+use crate::core::sync::StripedMap;
 use crate::monitoring::events::{Event, Payload};
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 /// Z-score threshold for anomaly detection (3 = 99.7% confidence)
 const ANOMALY_THRESHOLD: f64 = 3.0;
@@ -79,14 +79,14 @@ impl Stats {
 /// Anomaly detector
 pub struct Detector {
     /// Metric statistics (metric name -> stats)
-    metrics: Arc<RwLock<HashMap<String, Stats>>>,
+    metrics: Arc<StripedMap<String, Stats>>,
 }
 
 impl Detector {
     /// Create a new anomaly detector
     pub fn new() -> Self {
         Self {
-            metrics: Arc::new(RwLock::new(HashMap::new())),
+            metrics: Arc::new(StripedMap::new(32)),
         }
     }
 
@@ -94,31 +94,31 @@ impl Detector {
     pub fn check(&self, event: &Event) -> Option<Anomaly> {
         let (metric_name, value) = self.extract_metric(event)?;
 
-        let mut metrics = self
-            .metrics
-            .write()
-            .expect("anomaly detector metrics lock poisoned - unrecoverable state");
-        let stats = metrics
-            .entry(metric_name.clone())
-            .or_insert_with(Stats::new);
+        // Get or create stats, then check and update
+        let result = self.metrics.get_mut(&metric_name, |stats| {
+            let is_anomaly = stats.is_anomaly(value);
+            let z_score = stats.z_score(value);
+            let mean = stats.mean;
+            stats.update(value);
+            (is_anomaly, z_score, mean)
+        });
 
-        // Check if anomalous before updating
-        let is_anomaly = stats.is_anomaly(value);
-        let z_score = stats.z_score(value);
-
-        // Update statistics
-        stats.update(value);
-
-        if is_anomaly {
-            Some(Anomaly {
+        match result {
+            Some((is_anomaly, z_score, mean)) if is_anomaly => Some(Anomaly {
                 metric: metric_name,
                 value,
-                expected: stats.mean,
+                expected: mean,
                 deviation: z_score,
                 timestamp_ns: event.timestamp_ns,
-            })
-        } else {
-            None
+            }),
+            Some(_) => None,
+            None => {
+                // Create new stats and update
+                let mut new_stats = Stats::new();
+                new_stats.update(value);
+                self.metrics.insert(metric_name, new_stats);
+                None
+            }
         }
     }
 
@@ -153,11 +153,7 @@ impl Detector {
 
     /// Get statistics for a metric
     pub fn stats(&self, metric: &str) -> Option<MetricStats> {
-        let metrics = self
-            .metrics
-            .read()
-            .expect("anomaly detector metrics lock poisoned - unrecoverable state");
-        metrics.get(metric).map(|s| MetricStats {
+        self.metrics.get(&metric.to_string(), |s| MetricStats {
             count: s.count,
             mean: s.mean,
             stddev: s.stddev(),
@@ -236,10 +232,7 @@ impl Detector {
 
     /// Reset all statistics
     pub fn reset(&self) {
-        self.metrics
-            .write()
-            .expect("anomaly detector metrics lock poisoned - unrecoverable state")
-            .clear();
+        self.metrics.clear();
     }
 }
 

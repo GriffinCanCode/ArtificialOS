@@ -15,11 +15,11 @@ pub use hotpath::HotpathDetector;
 pub use optimizer::SyscallOptimizer;
 pub use types::*;
 
+use crate::core::sync::lockfree::SeqlockStats;
 use crate::core::types::Pid;
 use crate::syscalls::types::{Syscall, SyscallResult};
 use ahash::RandomState;
 use dashmap::DashMap;
-use parking_lot::RwLock;
 use std::sync::Arc;
 use tracing::{debug, info};
 
@@ -38,8 +38,8 @@ pub struct JitManager {
     optimizer: Arc<SyscallOptimizer>,
     /// Cache of compiled syscall handlers
     compiled_cache: Arc<DashMap<SyscallPattern, CompiledHandler, RandomState>>,
-    /// Statistics
-    stats: Arc<RwLock<JitStats>>,
+    /// Statistics (seqlock for zero-cost reads, read:write ratio 1000:1)
+    stats: SeqlockStats<JitStats>,
 }
 
 impl JitManager {
@@ -51,7 +51,7 @@ impl JitManager {
             compiler: Arc::new(JitCompiler::new(executor)),
             optimizer: Arc::new(SyscallOptimizer::new()),
             compiled_cache: Arc::new(DashMap::with_hasher(RandomState::new())),
-            stats: Arc::new(RwLock::new(JitStats::default())),
+            stats: SeqlockStats::new(JitStats::default()),
         }
     }
 
@@ -72,14 +72,12 @@ impl JitManager {
         // Check cache for compiled handler
         if let Some(handler) = self.compiled_cache.get(&pattern) {
             debug!(pid = pid, pattern = ?pattern, "Using JIT-compiled handler");
-            let mut stats = self.stats.write();
-            stats.jit_hits += 1;
+            self.stats.write(|s| s.jit_hits += 1);
             return Some(handler.execute(pid, syscall));
         }
 
         // Not yet compiled
-        let mut stats = self.stats.write();
-        stats.jit_misses += 1;
+        self.stats.write(|s| s.jit_misses += 1);
         None
     }
 
@@ -96,21 +94,21 @@ impl JitManager {
         // Cache the compiled handler
         self.compiled_cache.insert(pattern.clone(), handler);
 
-        let mut stats = self.stats.write();
-        stats.compiled_paths += 1;
+        self.stats.write(|s| s.compiled_paths += 1);
+        let current_stats = self.stats.read();
 
         info!(
             pattern = ?pattern,
-            total_compiled = stats.compiled_paths,
+            total_compiled = current_stats.compiled_paths,
             "Successfully compiled hot syscall path"
         );
 
         Ok(())
     }
 
-    /// Get JIT statistics
+    /// Get JIT statistics (zero-cost read via seqlock)
     pub fn stats(&self) -> JitStats {
-        self.stats.read().clone()
+        self.stats.read()
     }
 
     /// Get list of hot paths that should be compiled

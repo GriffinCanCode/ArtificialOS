@@ -3,7 +3,7 @@
  * Share memory between processes with lazy copying
  */
 
-use std::collections::HashMap;
+use crate::core::sync::StripedMap;
 use std::sync::{Arc, Mutex};
 
 /// Copy-on-Write memory region
@@ -110,34 +110,31 @@ impl CowMemory {
 /// Manages CoW memory for multiple processes with automatic deduplication.
 pub struct CowMemoryManager {
     /// Per-process memory regions
-    regions: Mutex<HashMap<u32, CowMemory>>,
+    regions: StripedMap<u32, CowMemory>,
 }
 
 impl CowMemoryManager {
     /// Create new manager
     pub fn new() -> Self {
         Self {
-            regions: Mutex::new(HashMap::new()),
+            regions: StripedMap::new(32),
         }
     }
 
     /// Allocate memory for process
     pub fn allocate(&self, pid: u32, data: Vec<u8>) {
-        let mut regions = self.regions.lock().unwrap();
-        regions.insert(pid, CowMemory::new(data));
+        self.regions.insert(pid, CowMemory::new(data));
     }
 
     /// Fork process memory (CoW)
     pub fn fork(&self, parent_pid: u32, child_pid: u32) -> Result<(), &'static str> {
-        let mut regions = self.regions.lock().unwrap();
-
         // Clone the parent region with CoW semantics
-        let child_region = regions.get(&parent_pid)
-            .ok_or("Parent process not found")?
-            .clone_cow();
+        let child_region = self.regions
+            .get(&parent_pid, |region| region.clone_cow())
+            .ok_or("Parent process not found")?;
 
         // Insert the child region
-        regions.insert(child_pid, child_region);
+        self.regions.insert(child_pid, child_region);
 
         Ok(())
     }
@@ -147,9 +144,9 @@ impl CowMemoryManager {
     where
         F: FnOnce(&[u8]) -> R,
     {
-        let regions = self.regions.lock().unwrap();
-        let memory = regions.get(&pid).ok_or("Process not found")?;
-        Ok(memory.read(f))
+        self.regions
+            .get(&pid, |memory| memory.read(f))
+            .ok_or("Process not found")
     }
 
     /// Write process memory (triggers CoW if needed)
@@ -157,26 +154,27 @@ impl CowMemoryManager {
     where
         F: FnOnce(&mut Vec<u8>) -> R,
     {
-        let mut regions = self.regions.lock().unwrap();
-        let memory = regions.get_mut(&pid).ok_or("Process not found")?;
-        Ok(memory.write(f))
+        self.regions
+            .get_mut(&pid, |memory| memory.write(f))
+            .ok_or("Process not found")
     }
 
     /// Free process memory
     pub fn free(&self, pid: u32) -> Result<(), &'static str> {
-        let mut regions = self.regions.lock().unwrap();
-        regions.remove(&pid).ok_or("Process not found")?;
+        self.regions.remove(&pid).ok_or("Process not found")?;
         Ok(())
     }
 
     /// Get memory stats
     pub fn stats(&self) -> CowStats {
-        let regions = self.regions.lock().unwrap();
+        let total_regions = self.regions.len();
+        let mut shared_regions = 0;
 
-        let total_regions = regions.len();
-        let shared_regions = regions.values()
-            .filter(|m| m.is_shared())
-            .count();
+        self.regions.iter(|_pid, memory| {
+            if memory.is_shared() {
+                shared_regions += 1;
+            }
+        });
 
         CowStats {
             total_regions,
@@ -206,7 +204,7 @@ mod tests {
 
     #[test]
     fn test_cow_basic() {
-        let mut mem1 = CowMemory::new(vec![1, 2, 3]);
+        let mem1 = CowMemory::new(vec![1, 2, 3]);
         let mut mem2 = mem1.clone_cow();
 
         // Initially shared

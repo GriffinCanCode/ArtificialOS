@@ -9,18 +9,20 @@ use super::types::{
     ShmError, ShmPermission, ShmStats, GLOBAL_SHM_MEMORY_LIMIT, MAX_SEGMENTS_PER_PROCESS,
     MAX_SEGMENT_SIZE,
 };
+use crate::core::sync::lockfree::FlatCombiningCounter;
+use crate::core::sync::AdaptiveLock;
 use crate::core::types::{Pid, Size};
 use crate::memory::MemoryManager;
 use crate::monitoring::Collector;
 use ahash::RandomState;
 use dashmap::DashMap;
 use log::{info, warn};
-use parking_lot::RwLock;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
+use std::sync::LazyLock;
 
-// Global shared memory tracking
-static GLOBAL_SHM_MEMORY: AtomicUsize = AtomicUsize::new(0);
+// Global shared memory tracking with flat combining for better throughput
+static GLOBAL_SHM_MEMORY: LazyLock<FlatCombiningCounter> = LazyLock::new(|| FlatCombiningCounter::new(0));
 
 /// Shared memory manager
 ///
@@ -29,7 +31,7 @@ static GLOBAL_SHM_MEMORY: AtomicUsize = AtomicUsize::new(0);
 #[repr(C, align(64))]
 pub struct ShmManager {
     segments: Arc<DashMap<ShmId, SharedSegment, RandomState>>,
-    next_id: Arc<RwLock<ShmId>>,
+    next_id: Arc<AdaptiveLock<u32>>,
     // Track segment count per process
     process_segments: Arc<DashMap<Pid, Size, RandomState>>,
     memory_manager: MemoryManager,
@@ -48,7 +50,7 @@ impl ShmManager {
         );
         Self {
             segments: Arc::new(DashMap::with_hasher(RandomState::new())),
-            next_id: Arc::new(RwLock::new(1)),
+            next_id: Arc::new(AdaptiveLock::new(1)),
             process_segments: Arc::new(DashMap::with_hasher(RandomState::new())),
             memory_manager,
             free_ids: Arc::new(Mutex::new(Vec::new())),
@@ -93,7 +95,7 @@ impl ShmManager {
         }
 
         // Check global memory limit
-        let current_global = GLOBAL_SHM_MEMORY.load(Ordering::Acquire);
+        let current_global = GLOBAL_SHM_MEMORY.load(Ordering::Acquire) as usize;
         if current_global + size > GLOBAL_SHM_MEMORY_LIMIT {
             return Err(ShmError::GlobalMemoryExceeded(
                 current_global,
@@ -120,10 +122,7 @@ impl ShmManager {
                 info!("Recycled segment ID {} for PID {}", recycled_id, owner_pid);
                 recycled_id
             } else {
-                let mut next_id = self.next_id.write();
-                let id = *next_id;
-                *next_id += 1;
-                id
+                self.next_id.fetch_add(1, Ordering::SeqCst)
             }
         };
 
@@ -140,7 +139,7 @@ impl ShmManager {
         *self.process_segments.entry(owner_pid).or_insert(0) += 1;
 
         // Update global memory
-        GLOBAL_SHM_MEMORY.fetch_add(size, Ordering::Release);
+        GLOBAL_SHM_MEMORY.fetch_add(size as u64, Ordering::Release);
 
         info!(
             "Created shared memory segment {} ({} bytes) for PID {} at address 0x{:x} ({} bytes global memory)",
@@ -353,7 +352,7 @@ impl ShmManager {
         }
 
         // Reclaim global memory
-        GLOBAL_SHM_MEMORY.fetch_sub(size, Ordering::Release);
+        GLOBAL_SHM_MEMORY.fetch_sub(size as u64, Ordering::Release);
 
         info!(
             "Destroyed segment {} (reclaimed {} bytes at 0x{:x}, {} bytes global memory)",
@@ -453,7 +452,7 @@ impl ShmManager {
     }
 
     pub fn get_global_memory_usage(&self) -> Size {
-        GLOBAL_SHM_MEMORY.load(Ordering::Relaxed)
+        GLOBAL_SHM_MEMORY.load(Ordering::Relaxed) as usize
     }
 }
 

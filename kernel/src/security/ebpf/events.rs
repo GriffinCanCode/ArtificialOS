@@ -4,9 +4,10 @@
  */
 
 use super::types::*;
+use crate::core::sync::StripedMap;
 use crate::core::types::Pid;
 use parking_lot::RwLock;
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -18,7 +19,7 @@ pub struct EventCollector {
     /// Event history buffer
     history: Arc<RwLock<VecDeque<EbpfEvent>>>,
     /// Active subscriptions
-    subscriptions: Arc<RwLock<HashMap<String, Subscription>>>,
+    subscriptions: Arc<StripedMap<String, Subscription>>,
     /// Event statistics
     stats: Arc<RwLock<EventStats>>,
 }
@@ -54,7 +55,7 @@ impl EventCollector {
     pub fn new() -> Self {
         Self {
             history: Arc::new(RwLock::new(VecDeque::with_capacity(MAX_EVENT_HISTORY))),
-            subscriptions: Arc::new(RwLock::new(HashMap::new())),
+            subscriptions: Arc::new(StripedMap::new(32)),
             stats: Arc::new(RwLock::new(EventStats {
                 syscall_events: 0,
                 network_events: 0,
@@ -96,19 +97,19 @@ impl EventCollector {
         }
 
         // Notify subscribers
-        let subscriptions = self.subscriptions.read();
-        for subscription in subscriptions.values() {
+        let event_clone = event.clone();
+        self.subscriptions.iter(|_id, subscription| {
             let should_notify = match subscription.event_type {
                 SubscriptionType::All => true,
-                SubscriptionType::Syscall => matches!(event, EbpfEvent::Syscall(_)),
-                SubscriptionType::Network => matches!(event, EbpfEvent::Network(_)),
-                SubscriptionType::File => matches!(event, EbpfEvent::File(_)),
+                SubscriptionType::Syscall => matches!(&event_clone, EbpfEvent::Syscall(_)),
+                SubscriptionType::Network => matches!(&event_clone, EbpfEvent::Network(_)),
+                SubscriptionType::File => matches!(&event_clone, EbpfEvent::File(_)),
             };
 
             if should_notify {
-                (subscription.callback)(event.clone());
+                (subscription.callback)(event_clone.clone());
             }
-        }
+        });
     }
 
     /// Subscribe to events
@@ -120,15 +121,14 @@ impl EventCollector {
             callback,
         };
 
-        self.subscriptions.write().insert(id.clone(), subscription);
+        self.subscriptions.insert(id.clone(), subscription);
         id
     }
 
     /// Unsubscribe from events
     pub fn unsubscribe(&self, subscription_id: &str) -> EbpfResult<()> {
         self.subscriptions
-            .write()
-            .remove(subscription_id)
+            .remove(&subscription_id.to_string())
             .ok_or_else(|| EbpfError::InvalidFilter {
                 reason: format!("Subscription {} not found", subscription_id),
             })?;
