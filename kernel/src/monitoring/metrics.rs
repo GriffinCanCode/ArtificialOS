@@ -116,8 +116,11 @@ impl MetricsCollector {
 
     /// Increment a counter
     pub fn inc_counter(&self, name: &str, value: f64) {
-        // Use alter() for atomic counter increment
-        self.counters.alter(name, |_, current| current + value);
+        // Use entry API for atomic counter increment
+        self.counters
+            .entry(name.to_string())
+            .and_modify(|v| *v += value)
+            .or_insert(value);
     }
 
     /// Set a gauge value
@@ -127,11 +130,17 @@ impl MetricsCollector {
 
     /// Observe a value in a histogram
     pub fn observe_histogram(&self, name: &str, value: f64) {
-        // Use alter() for atomic histogram update
-        self.histograms.alter(name, |_, mut hist| {
-            hist.observe(value);
-            hist
-        });
+        // Use entry API for atomic histogram update
+        self.histograms
+            .entry(name.to_string())
+            .and_modify(|hist| hist.observe(value))
+            .or_insert_with(|| {
+                let mut hist = Histogram::new(vec![
+                    0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0,
+                ]);
+                hist.observe(value);
+                hist
+            });
     }
 
     /// Record operation duration
