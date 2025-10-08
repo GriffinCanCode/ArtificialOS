@@ -94,7 +94,8 @@ impl Detector {
     pub fn check(&self, event: &Event) -> Option<Anomaly> {
         let (metric_name, value) = self.extract_metric(event)?;
 
-        let mut metrics = self.metrics.write().unwrap();
+        let mut metrics = self.metrics.write()
+            .expect("anomaly detector metrics lock poisoned - unrecoverable state");
         let stats = metrics
             .entry(metric_name.clone())
             .or_insert_with(Stats::new);
@@ -150,7 +151,8 @@ impl Detector {
 
     /// Get statistics for a metric
     pub fn stats(&self, metric: &str) -> Option<MetricStats> {
-        let metrics = self.metrics.read().unwrap();
+        let metrics = self.metrics.read()
+            .expect("anomaly detector metrics lock poisoned - unrecoverable state");
         metrics.get(metric).map(|s| MetricStats {
             count: s.count,
             mean: s.mean,
@@ -173,6 +175,14 @@ impl Detector {
     ) -> Vec<Anomaly> {
         let mut anomalies = Vec::new();
 
+        // Helper to get current timestamp with fallback
+        let current_timestamp = || -> u64 {
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or(std::time::Duration::from_secs(0))
+                .as_nanos() as u64
+        };
+
         // Detect leak: cleanup took too long (indicates resource accumulation)
         let cleanup_ms = cleanup_duration_micros as f64 / 1000.0;
         if cleanup_ms > 100.0 {
@@ -181,10 +191,7 @@ impl Detector {
                 value: cleanup_ms,
                 expected: 10.0, // Expected <10ms for normal cleanup
                 deviation: (cleanup_ms - 10.0) / 10.0,
-                timestamp_ns: std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
-                    .as_nanos() as u64,
+                timestamp_ns: current_timestamp(),
             });
         }
 
@@ -195,10 +202,7 @@ impl Detector {
                 value: resources_freed as f64,
                 expected: 100.0,
                 deviation: (resources_freed as f64 - 100.0) / 100.0,
-                timestamp_ns: std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
-                    .as_nanos() as u64,
+                timestamp_ns: current_timestamp(),
             });
         }
 
@@ -218,10 +222,7 @@ impl Detector {
                     value: *count as f64,
                     expected: threshold as f64,
                     deviation: (*count as f64 - threshold as f64) / threshold as f64,
-                    timestamp_ns: std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .unwrap()
-                        .as_nanos() as u64,
+                    timestamp_ns: current_timestamp(),
                 });
             }
         }
@@ -231,7 +232,9 @@ impl Detector {
 
     /// Reset all statistics
     pub fn reset(&self) {
-        self.metrics.write().unwrap().clear();
+        self.metrics.write()
+            .expect("anomaly detector metrics lock poisoned - unrecoverable state")
+            .clear();
     }
 }
 

@@ -128,7 +128,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mmap_manager = MmapManager::with_vfs(Arc::new(vfs.clone()));
 
     info!("Initializing syscall executor with IPC, VFS, and mmap support...");
-    let syscall_executor = SyscallExecutor::with_ipc(
+    let syscall_executor = SyscallExecutor::with_ipc_direct(
         sandbox_manager.clone(),
         ipc_manager.pipes().clone(),
         ipc_manager.shm().clone(),
@@ -136,7 +136,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     .with_queues(ipc_manager.queues().clone())
     .with_vfs(vfs)
     .with_mmap(mmap_manager.clone())
-    .with_metrics(metrics_collector.clone());
+    .with_metrics(metrics_collector.clone())
+    .build(); // Finalize with handler registry
 
     // Initialize managers needed for comprehensive resource cleanup
     info!("Initializing resource managers for comprehensive cleanup...");
@@ -339,7 +340,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let results = futures::future::join_all(termination_tasks).await;
         let successful = results
             .into_iter()
-            .filter(|r| r.is_ok() && *r.as_ref().unwrap())
+            .filter(|r| r.is_ok() && *r.as_ref().expect("filtered by is_ok()"))
             .count();
         info!(
             "Successfully terminated {}/{} processes",

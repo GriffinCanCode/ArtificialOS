@@ -176,7 +176,7 @@ impl Sampler {
             static STATE: std::cell::Cell<u64> = std::cell::Cell::new(
                 std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
+                    .unwrap_or(std::time::Duration::from_nanos(1)) // Fallback for broken clocks
                     .as_nanos() as u64
             );
         }

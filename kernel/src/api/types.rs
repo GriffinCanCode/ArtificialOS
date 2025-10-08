@@ -61,7 +61,9 @@ pub struct ServerConfig {
 impl Default for ServerConfig {
     fn default() -> Self {
         Self {
-            address: "127.0.0.1:50051".parse().unwrap(),
+            address: "127.0.0.1:50051"
+                .parse()
+                .expect("hardcoded server address is valid"),
             max_connections: 1000,
             timeout_secs: 120,
             keepalive_interval_secs: 60,

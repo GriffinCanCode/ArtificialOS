@@ -29,7 +29,13 @@ impl PathHandle {
         if path.exists() {
             Self::new(path)
         } else if let Some(parent) = path.parent() {
-            let canonical = parent.canonicalize()?.join(path.file_name().unwrap());
+            let file_name = path.file_name().ok_or_else(|| {
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    format!("path has no file name component: {}", path.display()),
+                )
+            })?;
+            let canonical = parent.canonicalize()?.join(file_name);
             Ok(Self { canonical })
         } else {
             Ok(Self {

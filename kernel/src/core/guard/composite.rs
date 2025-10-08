@@ -121,7 +121,8 @@ impl Guard for CompositeGuard {
             for (i, err) in errors.iter().enumerate().skip(1) {
                 log::error!("Composite guard error {}: {}", i, err);
             }
-            Err(errors.into_iter().next().unwrap())
+            Err(errors.into_iter().next()
+                .expect("errors vec is non-empty, checked above"))
         }
     }
 

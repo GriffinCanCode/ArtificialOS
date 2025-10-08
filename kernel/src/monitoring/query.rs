@@ -192,7 +192,8 @@ impl Query {
             };
         }
 
-        durations.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        // Sort by duration, treating NaN as equal (should never occur for durations)
+        durations.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         let p50 = Self::percentile(&durations, 0.50);
         let p95 = Self::percentile(&durations, 0.95);

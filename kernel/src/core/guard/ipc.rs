@@ -286,17 +286,23 @@ impl IpcGuardRef {
 
     /// Get resource ID
     pub fn resource_id(&self) -> u64 {
-        self.inner.lock().unwrap().resource_id
+        self.inner.lock()
+            .expect("ipc guard lock poisoned - ipc state corrupted")
+            .resource_id
     }
 
     /// Get resource type
     pub fn resource_type_kind(&self) -> IpcResourceType {
-        self.inner.lock().unwrap().resource_type
+        self.inner.lock()
+            .expect("ipc guard lock poisoned - ipc state corrupted")
+            .resource_type
     }
 
     /// Get process ID
     pub fn pid(&self) -> Pid {
-        self.inner.lock().unwrap().pid
+        self.inner.lock()
+            .expect("ipc guard lock poisoned - ipc state corrupted")
+            .pid
     }
 }
 
@@ -310,11 +316,14 @@ impl Guard for IpcGuardRef {
     }
 
     fn is_active(&self) -> bool {
-        self.inner.lock().unwrap().active
+        self.inner.lock()
+            .expect("ipc guard lock poisoned - ipc state corrupted")
+            .active
     }
 
     fn release(&mut self) -> GuardResult<()> {
-        let mut state = self.inner.lock().unwrap();
+        let mut state = self.inner.lock()
+            .expect("ipc guard lock poisoned - ipc state corrupted");
         if !state.active {
             return Err(GuardError::AlreadyReleased);
         }

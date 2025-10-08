@@ -253,17 +253,23 @@ impl MemoryGuardRef {
 
     /// Get memory address
     pub fn address(&self) -> Address {
-        self.inner.lock().unwrap().address
+        self.inner.lock()
+            .expect("memory guard lock poisoned - memory state corrupted")
+            .address
     }
 
     /// Get allocation size
     pub fn size(&self) -> Size {
-        self.inner.lock().unwrap().size
+        self.inner.lock()
+            .expect("memory guard lock poisoned - memory state corrupted")
+            .size
     }
 
     /// Get process ID
     pub fn pid(&self) -> Pid {
-        self.inner.lock().unwrap().pid
+        self.inner.lock()
+            .expect("memory guard lock poisoned - memory state corrupted")
+            .pid
     }
 }
 
@@ -277,11 +283,14 @@ impl Guard for MemoryGuardRef {
     }
 
     fn is_active(&self) -> bool {
-        self.inner.lock().unwrap().active
+        self.inner.lock()
+            .expect("memory guard lock poisoned - memory state corrupted")
+            .active
     }
 
     fn release(&mut self) -> GuardResult<()> {
-        let mut state = self.inner.lock().unwrap();
+        let mut state = self.inner.lock()
+            .expect("memory guard lock poisoned - memory state corrupted");
         if !state.active {
             return Err(GuardError::AlreadyReleased);
         }
