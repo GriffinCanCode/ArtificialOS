@@ -627,9 +627,18 @@ process.on('unhandledRejection', (reason, promise) => {
   log.error('Unhandled rejection in main process:', reason);
 });
 
-// Disable hardware acceleration if needed (helps with some GPU issues)
-if (process.env.DISABLE_HARDWARE_ACCELERATION) {
-  log.info('Hardware acceleration disabled');
+// Configure GPU/rendering options
+// These flags can help with various GPU-related issues
+if (process.platform === 'darwin') {
+  // macOS-specific flags to reduce GPU-related warnings/errors
+  app.commandLine.appendSwitch('disable-gpu-sandbox');
+  app.commandLine.appendSwitch('disable-software-rasterizer');
+  log.debug('Applied macOS-specific GPU flags');
+}
+
+// Disable hardware acceleration if explicitly requested
+if (process.env.DISABLE_HARDWARE_ACCELERATION === 'true') {
+  log.info('Hardware acceleration disabled via environment variable');
   app.disableHardwareAcceleration();
 }
 

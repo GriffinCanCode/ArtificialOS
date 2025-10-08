@@ -5,7 +5,7 @@
   "description": "Dynamic UI renderer for AI-Powered OS",
   "main": "src/app/main.cjs",
   "scripts": {
-    "dev": "concurrently \"npm run dev:react\" \"npm run dev:electron\"",
+    "dev": "concurrently --kill-others --success first \"npm run dev:react\" \"npm run dev:electron\"",
     "dev:react": "vite",
     "dev:electron": "wait-on http://localhost:5173 && electron .",
     "build": "vite build",
