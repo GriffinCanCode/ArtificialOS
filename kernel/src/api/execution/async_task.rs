@@ -5,8 +5,8 @@
 
 use crate::core::types::Pid;
 use crate::syscalls::{Syscall, SyscallExecutor, SyscallResult};
-use ahash::HashMap;
-use std::sync::{Arc, Mutex};
+use dashmap::DashMap;
+use std::sync::Arc;
 use tokio::sync::oneshot;
 use uuid::Uuid;
 
@@ -28,17 +28,17 @@ struct Task {
 
 #[derive(Clone)]
 pub struct AsyncTaskManager {
-    tasks: Arc<Mutex<HashMap<String, Task>>>,
+    tasks: Arc<DashMap<String, Task>>,
     /// Track which tasks belong to which process for cleanup
-    process_tasks: Arc<Mutex<HashMap<Pid, Vec<String>>>>,
+    process_tasks: Arc<DashMap<Pid, Vec<String>>>,
     executor: SyscallExecutor,
 }
 
 impl AsyncTaskManager {
     pub fn new(executor: SyscallExecutor) -> Self {
         Self {
-            tasks: Arc::new(Mutex::new(HashMap::default())),
-            process_tasks: Arc::new(Mutex::new(HashMap::default())),
+            tasks: Arc::new(DashMap::new()),
+            process_tasks: Arc::new(DashMap::new()),
             executor,
         }
     }
@@ -48,27 +48,21 @@ impl AsyncTaskManager {
         let (cancel_tx, cancel_rx) = oneshot::channel();
 
         // Insert pending task
-        {
-            let mut tasks = self.tasks.lock().unwrap();
-            tasks.insert(
-                task_id.clone(),
-                Task {
-                    pid,
-                    status: TaskStatus::Pending,
-                    progress: 0.0,
-                    cancel_tx: Some(cancel_tx),
-                },
-            );
-        }
+        self.tasks.insert(
+            task_id.clone(),
+            Task {
+                pid,
+                status: TaskStatus::Pending,
+                progress: 0.0,
+                cancel_tx: Some(cancel_tx),
+            },
+        );
 
         // Track task for this process
-        {
-            let mut process_tasks = self.process_tasks.lock().unwrap();
-            process_tasks
-                .entry(pid)
-                .or_insert_with(Vec::new)
-                .push(task_id.clone());
-        }
+        self.process_tasks
+            .entry(pid)
+            .or_insert_with(Vec::new)
+            .push(task_id.clone());
 
         // Spawn async execution
         let tasks = Arc::clone(&self.tasks);
@@ -77,19 +71,15 @@ impl AsyncTaskManager {
 
         tokio::spawn(async move {
             // Update to running
-            {
-                let mut tasks = tasks.lock().unwrap();
-                if let Some(task) = tasks.get_mut(&task_id_clone) {
-                    task.status = TaskStatus::Running;
-                    task.cancel_tx = None;
-                }
+            if let Some(mut task) = tasks.get_mut(&task_id_clone) {
+                task.status = TaskStatus::Running;
+                task.cancel_tx = None;
             }
 
             // Execute with cancellation support
             let result = tokio::select! {
                 _ = cancel_rx => {
-                    let mut tasks = tasks.lock().unwrap();
-                    if let Some(task) = tasks.get_mut(&task_id_clone) {
+                    if let Some(mut task) = tasks.get_mut(&task_id_clone) {
                         task.status = TaskStatus::Cancelled;
                     }
                     return;
@@ -102,8 +92,7 @@ impl AsyncTaskManager {
             };
 
             // Update with result
-            let mut tasks = tasks.lock().unwrap();
-            if let Some(task) = tasks.get_mut(&task_id_clone) {
+            if let Some(mut task) = tasks.get_mut(&task_id_clone) {
                 task.status = TaskStatus::Completed(result);
                 task.progress = 1.0;
             }
@@ -113,15 +102,13 @@ impl AsyncTaskManager {
     }
 
     pub fn get_status(&self, task_id: &str) -> Option<(TaskStatus, f32)> {
-        let tasks = self.tasks.lock().unwrap();
-        tasks
+        self.tasks
             .get(task_id)
             .map(|task| (task.status.clone(), task.progress))
     }
 
     pub fn cancel(&self, task_id: &str) -> bool {
-        let mut tasks = self.tasks.lock().unwrap();
-        if let Some(task) = tasks.get_mut(task_id) {
+        if let Some(mut task) = self.tasks.get_mut(task_id) {
             if let Some(cancel_tx) = task.cancel_tx.take() {
                 let _ = cancel_tx.send(());
                 return true;
@@ -131,8 +118,7 @@ impl AsyncTaskManager {
     }
 
     pub fn cleanup_completed(&self) {
-        let mut tasks = self.tasks.lock().unwrap();
-        tasks.retain(|_, task| {
+        self.tasks.retain(|_, task| {
             !matches!(
                 task.status,
                 TaskStatus::Completed(_) | TaskStatus::Failed(_) | TaskStatus::Cancelled
@@ -142,16 +128,14 @@ impl AsyncTaskManager {
 
     /// Cleanup all tasks for a terminated process
     pub fn cleanup_process_tasks(&self, pid: Pid) -> usize {
-        let task_ids = {
-            let mut process_tasks = self.process_tasks.lock().unwrap();
-            process_tasks.remove(&pid).unwrap_or_default()
-        };
+        let task_ids = self.process_tasks.remove(&pid)
+            .map(|(_, v)| v)
+            .unwrap_or_default();
 
         let mut cleaned_count = 0;
-        let mut tasks = self.tasks.lock().unwrap();
 
         for task_id in &task_ids {
-            if let Some(task) = tasks.get_mut(task_id) {
+            if let Some(mut task) = self.tasks.get_mut(task_id) {
                 // Try to cancel running tasks
                 if let Some(cancel_tx) = task.cancel_tx.take() {
                     let _ = cancel_tx.send(());
@@ -160,7 +144,7 @@ impl AsyncTaskManager {
                 task.status = TaskStatus::Cancelled;
             }
             // Remove the task
-            tasks.remove(task_id);
+            self.tasks.remove(task_id);
             cleaned_count += 1;
         }
 
@@ -173,8 +157,7 @@ impl AsyncTaskManager {
 
     /// Check if process has any active tasks
     pub fn has_process_tasks(&self, pid: Pid) -> bool {
-        let process_tasks = self.process_tasks.lock().unwrap();
-        process_tasks
+        self.process_tasks
             .get(&pid)
             .map_or(false, |tasks| !tasks.is_empty())
     }
