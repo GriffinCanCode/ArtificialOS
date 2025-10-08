@@ -43,6 +43,7 @@ export interface LaunchResponse {
   bundle_path?: string;
   services?: string[];
   permissions?: string[];
+  blueprint?: any; // For blueprint apps
 }
 
 export type CategoryFilter = 'all' | 'favorites' | 'recent' | string;

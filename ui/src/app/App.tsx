@@ -15,7 +15,7 @@ import { Taskbar } from "../ui/components/layout/Taskbar";
 import DynamicRenderer from "../features/dynamics/core/DynamicRenderer";
 import { WebSocketProvider, useWebSocket } from "../ui/contexts/WebSocketContext";
 import { useAppActions } from "../core/store/appStore";
-import { useActions } from "../features/windows";
+import { useActions, useStore as useWindowStore } from "../features/windows";
 import { useSessionManager } from "../core/hooks/useSessionManager";
 import { ServerMessage } from "../core/types/api";
 import { useLogger } from "../core/utils/monitoring/useLogger";
@@ -29,6 +29,11 @@ import { TypewriterText } from "../ui/components/typography/TypewriterText";
 import "./App.css";
 import "../core/toast/styles.css";
 import { initWebVitals } from "../core/monitoring";
+
+// Expose window store globally for native apps
+if (typeof window !== "undefined") {
+  (window as any).useWindowStore = useWindowStore;
+}
 
 interface SpotlightFormData {
   prompt: string;

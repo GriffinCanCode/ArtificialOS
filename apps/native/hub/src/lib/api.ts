@@ -28,7 +28,7 @@ export async function fetchApps(category?: string): Promise<RegistryResponse> {
  * Launch an app from registry
  */
 export async function launchApp(packageId: string): Promise<LaunchResponse> {
-  const response = await fetch(`${API_BASE}/registry/apps/${packageId}`, {
+  const response = await fetch(`${API_BASE}/registry/apps/${packageId}/launch`, {
     method: 'POST',
   });
 

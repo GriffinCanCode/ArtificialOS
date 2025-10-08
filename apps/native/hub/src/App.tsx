@@ -20,6 +20,7 @@ import './styles/App.css';
 export default function HubApp({ context }: NativeAppProps) {
   const { window: win } = context;
 
+
   // State management
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('all');
@@ -41,15 +42,50 @@ export default function HubApp({ context }: NativeAppProps) {
         console.log('[Hub] Launching app:', app.name);
 
         const response = await launchApp(app.id);
-        console.log('[Hub] App launched:', response.app_id);
+        console.log('[Hub] App launched:', response.app_id, response);
 
         // Track in recents
         addRecent(app.id);
 
-        // Close hub after launching
-        setTimeout(() => {
-          win.close();
-        }, 300);
+        // Open window based on app type
+        try {
+          // Access window store directly from global window object
+          const useWindowStore = (window as any).useWindowStore;
+          if (useWindowStore) {
+            const store = useWindowStore.getState();
+
+            if (response.type === 'native_web') {
+              // Native web app
+              store.open(
+                response.app_id,
+                response.title || app.name,
+                { components: [] }, // Empty UI spec for native apps
+                response.icon || app.icon,
+                {
+                  appType: 'native_web',
+                  packageId: response.package_id,
+                  bundlePath: response.bundle_path,
+                }
+              );
+            } else {
+              // Blueprint app
+              store.open(
+                response.app_id,
+                response.title || app.name,
+                response.blueprint,
+                response.icon || app.icon
+              );
+            }
+
+            console.log('[Hub] Window opened for app:', response.app_id);
+          } else {
+            console.error('[Hub] Window store not available');
+          }
+        } catch (openError) {
+          console.error('[Hub] Failed to open window:', openError);
+        }
+
+        // Keep hub open - user can close it manually if desired
       } catch (err) {
         console.error('[Hub] Failed to launch app:', err);
         alert(`Failed to launch ${app.name}: ${(err as Error).message}`);
@@ -146,6 +182,9 @@ export default function HubApp({ context }: NativeAppProps) {
   // Initialize
   useEffect(() => {
     win.setTitle('🚀 App Hub');
+
+    // Maximize window on mount for full-screen experience
+    win.maximize();
 
     // Load initial stats (simulated from apps data)
     // In real implementation, stats come from backend
