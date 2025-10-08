@@ -5,12 +5,12 @@
 
 .icon-grid {
   position: absolute;
-  top: 64px; /* Menu bar height */
+  top: 36px; /* Menu bar height */
   left: 0;
   right: 0;
   bottom: 96px; /* Dock height */
   overflow: hidden;
-  z-index: 1;
+  z-index: 10;
   padding: 24px;
 }
 

@@ -34,9 +34,6 @@ export const Icon: React.FC<IconProps> = React.memo(
     // Convert grid position to pixels
     const pixelPos = gridToPixel(icon.position, DEFAULT_GRID_CONFIG);
 
-    // Check if this is a duplicate (hide duplicates by making them invisible)
-    const isDuplicate = icon.metadata.type === "native" && icon.position.row === 0 && icon.position.col > 1;
-
     // Handle mouse down (start of potential drag)
     const handleMouseDown = useCallback(
       (e: React.MouseEvent) => {
@@ -115,7 +112,7 @@ export const Icon: React.FC<IconProps> = React.memo(
 
     return (
       <div
-        className={`desktop-icon ${icon.isSelected ? "selected" : ""} ${icon.isDragging ? "dragging" : ""} ${isDuplicate ? "duplicate-hidden" : ""}`}
+        className={`desktop-icon ${icon.isSelected ? "selected" : ""} ${icon.isDragging ? "dragging" : ""}`}
         style={{
           position: "absolute",
           left: `${pixelPos.x}px`,
