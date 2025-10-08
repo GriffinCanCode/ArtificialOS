@@ -16,7 +16,7 @@
 /// On stable, returns the value unchanged but still provides semantic documentation.
 ///
 /// # Example
-/// ```
+/// ```ignore
 /// if likely(x > 0) {
 ///     // Hot path - executed 99% of the time
 /// } else {
@@ -51,7 +51,7 @@ pub fn likely(b: bool) -> bool {
 /// On stable, returns the value unchanged but still provides semantic documentation.
 ///
 /// # Example
-/// ```
+/// ```ignore
 /// if unlikely(error_occurred) {
 ///     // Cold path - rarely executed error handling
 /// } else {

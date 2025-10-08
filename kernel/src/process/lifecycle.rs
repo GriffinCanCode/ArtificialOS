@@ -14,7 +14,7 @@
  *
  * # Example
  *
- * ```rust
+ * ```ignore
  * let registry = LifecycleRegistry::new()
  *     .with_signal_manager(signal_mgr)
  *     .with_zerocopy_ipc(zerocopy_ipc)

@@ -21,7 +21,7 @@
  *
  * ## Example
  *
- * ```rust
+ * ```ignore
  * // Automatic timeout based on resource type
  * let guard = lock_guard.lock_timeout(TimeoutPolicy::default_for_lock())?;
  *

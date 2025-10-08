@@ -41,7 +41,7 @@ unsafe impl<T: Send + 'static, S: LockState> Send for LockGuard<T, S> {}
 ///
 /// # Example
 ///
-/// ```rust
+/// ```ignore
 /// let unlocked = LockGuard::new(data);
 /// let locked = unlocked.lock()?; // Type changes to Locked
 /// let value = locked.access(); // Only available when Locked

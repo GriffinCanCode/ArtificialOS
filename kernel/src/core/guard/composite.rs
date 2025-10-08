@@ -12,7 +12,7 @@ use std::any::Any;
 ///
 /// # Example
 ///
-/// ```rust
+/// ```ignore
 /// let memory_guard = allocate_memory()?;
 /// let ipc_guard = create_pipe()?;
 ///

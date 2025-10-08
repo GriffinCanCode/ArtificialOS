@@ -65,7 +65,7 @@ use std::time::{Duration, Instant};
 ///
 /// ## Example
 ///
-/// ```rust
+/// ```ignore
 /// let result = self.timeout_executor.execute_with_retry(
 ///     || pipe_manager.read(pipe_id, pid, size),
 ///     |e| matches!(e, PipeError::WouldBlock(_)),

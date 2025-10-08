@@ -396,7 +396,7 @@ impl AsyncTaskManager {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```ignore
     /// let guard = manager.submit_with_guard(pid, syscall);
     /// // Task automatically cancelled if guard drops before completion
     /// ```

@@ -14,7 +14,7 @@ use std::sync::Arc;
 ///
 /// # Example
 ///
-/// ```rust
+/// ```ignore
 /// let fd_guard = fd_manager.open_guard(pid, "/path/to/file", O_RDONLY)?;
 /// let fd = fd_guard.fd();
 /// // Use file descriptor

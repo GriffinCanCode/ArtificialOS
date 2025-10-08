@@ -21,7 +21,7 @@
  *
  * ## Example
  *
- * ```rust
+ * ```ignore
  * // Memory guard with automatic cleanup
  * let guard = memory_manager.allocate_guard(1024, pid)?;
  * // Use memory

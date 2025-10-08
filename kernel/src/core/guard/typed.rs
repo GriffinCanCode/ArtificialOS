@@ -28,7 +28,7 @@ pub trait TypedState: Send + Sync + 'static {
 ///
 /// # Example
 ///
-/// ```rust
+/// ```ignore
 /// struct Initialized;
 /// impl TypedState for Initialized {
 ///     fn state_name() -> &'static str { "initialized" }

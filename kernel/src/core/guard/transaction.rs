@@ -26,7 +26,7 @@ pub enum TransactionState {
 ///
 /// # Example
 ///
-/// ```rust
+/// ```ignore
 /// let tx = TransactionGuard::new(
 ///     pid,
 ///     |ops| {

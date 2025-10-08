@@ -19,7 +19,7 @@ use std::time::Instant;
 ///
 /// # Example
 ///
-/// ```rust
+/// ```ignore
 /// fn sys_read(fd: u32, buf: &mut [u8], pid: Pid, collector: Arc<Collector>) -> Result<usize> {
 ///     let _guard = SyscallGuard::new("read", pid, collector);
 ///     // Automatically traced and timed

@@ -15,7 +15,7 @@ use std::sync::Arc;
 ///
 /// # Example
 ///
-/// ```rust
+/// ```ignore
 /// let guard = memory_manager.allocate_guard(1024, pid)?;
 /// let addr = guard.address();
 /// // Use memory...

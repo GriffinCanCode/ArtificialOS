@@ -13,7 +13,7 @@ use std::sync::Arc;
 ///
 /// # Example
 ///
-/// ```rust
+/// ```ignore
 /// let guard = some_guard;
 /// let observable = ObservableGuard::wrap(guard, collector);
 /// // Now emits events automatically

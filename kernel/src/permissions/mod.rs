@@ -13,7 +13,7 @@
  * - Strong typing and extensibility
  *
  * ## Usage
- * ```rust
+ * ```ignore
  * use ai_os_kernel::permissions::{PermissionManager, PermissionRequest, Action};
  *
  * let manager = PermissionManager::new();

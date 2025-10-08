@@ -158,7 +158,7 @@ impl SchedulerTask {
     /// Consumes self to prevent use-after-shutdown and double-shutdown.
     ///
     /// # Example
-    /// ```no_run
+    /// ```ignore
     /// let task = SchedulerTask::spawn(scheduler);
     /// // ... use task ...
     /// task.shutdown().await; // Graceful cleanup

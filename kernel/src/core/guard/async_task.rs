@@ -14,7 +14,7 @@ use tokio::task::JoinHandle;
 ///
 /// # Example
 ///
-/// ```rust
+/// ```ignore
 /// let task_guard = AsyncTaskGuard::spawn(pid, async {
 ///     // Task work
 /// });

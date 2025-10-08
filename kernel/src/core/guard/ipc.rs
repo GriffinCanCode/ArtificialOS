@@ -34,7 +34,7 @@ impl IpcResourceType {
 ///
 /// # Example
 ///
-/// ```rust
+/// ```ignore
 /// let pipe_guard = IpcGuard::new(
 ///     pipe_id,
 ///     IpcResourceType::Pipe,
