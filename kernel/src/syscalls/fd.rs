@@ -4,6 +4,7 @@
 * Low-level file descriptor operations
 */
 
+use crate::core::guard::FdGuard;
 use crate::core::json;
 use crate::core::types::Pid;
 use crate::monitoring::span_operation;
@@ -77,6 +78,50 @@ impl FdManager {
     /// Check if process has any open FDs
     pub fn has_process_fds(&self, pid: Pid) -> bool {
         self.get_fd_count(pid) > 0
+    }
+
+    /// Create a guarded FD that auto-closes on drop (prevents leaks)
+    ///
+    /// This is the preferred way to allocate FDs in operations that may fail,
+    /// as it ensures cleanup even on panic or early return.
+    pub fn allocate_fd_guard(
+        &self,
+        pid: Pid,
+        handle: Arc<FileHandle>,
+        path: Option<String>,
+    ) -> FdGuard {
+        let fd = self.allocate_fd();
+        self.open_files.insert(fd, handle);
+        self.track_fd(pid, fd);
+
+        // Create guard that will auto-cleanup on drop
+        let manager = self.clone();
+        FdGuard::new(
+            fd,
+            pid,
+            path,
+            move |cleanup_pid, cleanup_fd| {
+                manager.close_fd_internal(cleanup_pid, cleanup_fd)
+                    .map_err(|e| format!("{}", e))
+            },
+            None, // No collector for now
+        )
+    }
+
+    /// Internal close implementation (used by both public API and guard)
+    fn close_fd_internal(&self, pid: Pid, fd: u32) -> Result<(), &'static str> {
+        // Remove from open files
+        if self.open_files.remove(&fd).is_none() {
+            return Err("File descriptor not found");
+        }
+
+        // Untrack from process
+        self.untrack_fd(pid, fd);
+
+        // Recycle FD (lock-free push)
+        self.free_fds.push(fd);
+
+        Ok(())
     }
 
     /// Track that a process owns an FD (atomic increment)
@@ -196,11 +241,11 @@ impl SyscallExecutor {
 
             match vfs.open(path, vfs_flags, vfs_mode) {
                 Ok(vfs_file) => {
-                    // Allocate FD and store VFS file handle
-                    let fd = self.fd_manager.allocate_fd();
+                    // Use FdGuard for automatic cleanup on error (panic-safe)
                     let handle = Arc::new(FileHandle::from_vfs(vfs_file));
-                    self.fd_manager.open_files.insert(fd, handle);
-                    self.fd_manager.track_fd(pid, fd);
+                    let path_str = path.to_string_lossy().to_string();
+                    let fd_guard = self.fd_manager.allocate_fd_guard(pid, handle, Some(path_str));
+                    let fd = fd_guard.fd();
 
                 info!(
                     "PID {} opened {:?} via VFS with FD {}, flags: 0x{:x}",
@@ -211,10 +256,13 @@ impl SyscallExecutor {
                 span.record_result(true);
 
                 return match json::to_vec(&serde_json::json!({ "fd": fd })) {
-                    Ok(data) => SyscallResult::success_with_data(data),
+                    Ok(data) => {
+                        // Success - release guard without cleanup (FD stays open)
+                        std::mem::forget(fd_guard);
+                        SyscallResult::success_with_data(data)
+                    }
                     Err(e) => {
-                        // Clean up FD on serialization error to prevent leak
-                        let _ = self.close_fd(pid, fd);
+                        // FdGuard auto-closes on drop - no manual cleanup needed!
                         warn!("Failed to serialize open result: {}", e);
                         span.record_error("Serialization failed");
                         SyscallResult::error("Internal serialization error")
@@ -270,11 +318,11 @@ impl SyscallExecutor {
 
         match options.open(&std_path) {
             Ok(file) => {
-                // Allocate FD and store std file handle
-                let fd = self.fd_manager.allocate_fd();
+                // Use FdGuard for automatic cleanup on error (panic-safe)
                 let handle = Arc::new(FileHandle::from_std(file));
-                self.fd_manager.open_files.insert(fd, handle);
-                self.fd_manager.track_fd(pid, fd);
+                let path_str = path.to_string_lossy().to_string();
+                let fd_guard = self.fd_manager.allocate_fd_guard(pid, handle, Some(path_str));
+                let fd = fd_guard.fd();
 
                 info!(
                     "PID {} opened {:?} with FD {}, flags: 0x{:x}, mode: 0o{:o}",
@@ -285,10 +333,13 @@ impl SyscallExecutor {
                 span.record_result(true);
 
                 match json::to_vec(&serde_json::json!({ "fd": fd })) {
-                    Ok(data) => SyscallResult::success_with_data(data),
+                    Ok(data) => {
+                        // Success - release guard without cleanup (FD stays open)
+                        std::mem::forget(fd_guard);
+                        SyscallResult::success_with_data(data)
+                    }
                     Err(e) => {
-                        // Clean up FD on serialization error to prevent leak
-                        let _ = self.close_fd(pid, fd);
+                        // FdGuard auto-closes on drop - no manual cleanup needed!
                         warn!("Failed to serialize open result: {}", e);
                         span.record_error("Serialization failed");
                         SyscallResult::error("Internal serialization error")
