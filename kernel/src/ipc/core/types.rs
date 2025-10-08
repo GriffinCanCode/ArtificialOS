@@ -121,6 +121,9 @@ pub struct Message {
     pub to: Pid,
     pub data: Vec<u8>,
     pub timestamp: MessageTimestamp,
+    /// Memory address for tracking/deallocation (internal use)
+    #[serde(skip)]
+    pub(crate) mem_address: Option<crate::core::types::Address>,
 }
 
 impl Message {
@@ -135,6 +138,7 @@ impl Message {
                 .duration_since(std::time::UNIX_EPOCH)
                 .map(|d| d.as_micros() as Timestamp)
                 .unwrap_or(0),
+            mem_address: None,
         }
     }
 

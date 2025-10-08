@@ -408,13 +408,16 @@ fn test_pipe_concurrent_operations() {
     let writer = thread::spawn(move || {
         let mut written = 0;
         for i in 0..10 {
-            let data = format!("Message {}", i);
+            // Add newline delimiter for message boundaries
+            let data = format!("Message {}\n", i);
             let mut attempts = 0;
             // Try with limited retries to avoid potential deadlock
             while attempts < 100 {
                 match pm_writer.write(pipe_id, 200, data.as_bytes()) {
                     Ok(_) => {
                         written += 1;
+                        // Small delay to ensure reader can keep up
+                        thread::sleep(Duration::from_millis(5));
                         break;
                     }
                     Err(_) => {
@@ -435,18 +438,48 @@ fn test_pipe_concurrent_operations() {
     let reader = thread::spawn(move || {
         let mut messages = Vec::new();
         let mut consecutive_failures = 0;
-        while messages.len() < 10 && consecutive_failures < 100 {
+        let mut writer_finished = false;
+        let mut buffer = String::new();
+
+        while messages.len() < 10 {
             match pm_reader.read(pipe_id, 100, 100) {
                 Ok(data) if !data.is_empty() => {
-                    messages.push(String::from_utf8(data).unwrap());
+                    // Accumulate data in buffer
+                    buffer.push_str(&String::from_utf8(data).unwrap());
+
+                    // Extract complete messages (delimited by newline)
+                    while let Some(newline_pos) = buffer.find('\n') {
+                        let message = buffer[..newline_pos].to_string();
+                        buffer = buffer[newline_pos + 1..].to_string();
+                        messages.push(message);
+                    }
+
                     consecutive_failures = 0;
                 }
                 _ => {
-                    consecutive_failures += 1;
-                    thread::sleep(Duration::from_millis(10));
-                    if writer_done.load(Ordering::Acquire) {
-                        thread::sleep(Duration::from_millis(50)); // Final wait
+                    // Check if writer is done
+                    if !writer_finished && writer_done.load(Ordering::Acquire) {
+                        writer_finished = true;
+                        // Give writer thread time to fully complete and flush
+                        thread::sleep(Duration::from_millis(100));
+                        // Reset failure counter to drain remaining messages
+                        consecutive_failures = 0;
+                        continue;
                     }
+
+                    consecutive_failures += 1;
+
+                    // If writer is done and we've tried enough times, stop
+                    if writer_finished && consecutive_failures >= 20 {
+                        break;
+                    }
+
+                    // If writer not done yet, use longer timeout
+                    if !writer_finished && consecutive_failures >= 200 {
+                        break;
+                    }
+
+                    thread::sleep(Duration::from_millis(10));
                 }
             }
         }

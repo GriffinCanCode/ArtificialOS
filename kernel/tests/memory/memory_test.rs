@@ -195,13 +195,19 @@ fn test_garbage_collection() {
     let mem_mgr = MemoryManager::new();
     let pid = 100;
 
-    // Allocate and deallocate many blocks
+    // Allocate all blocks first to prevent address reuse
+    let mut addresses = Vec::new();
     for _ in 0..10 {
         let addr = mem_mgr.allocate(1024, pid).unwrap();
+        addresses.push(addr);
+    }
+
+    // Now deallocate all of them
+    for addr in addresses {
         mem_mgr.deallocate(addr).unwrap();
     }
 
-    // Force GC
+    // Force GC - should collect all 10 deallocated blocks
     let removed = mem_mgr.force_collect();
     assert_eq!(removed, 10);
 

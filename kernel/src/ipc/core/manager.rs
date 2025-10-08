@@ -110,14 +110,17 @@ impl IPCManager {
             )));
         }
 
-        let message = Message::new(from, to, data);
+        let mut message = Message::new(from, to, data);
         let message_size = message.size();
 
         // Allocate memory through MemoryManager (integrated tracking)
-        let _address = self
+        let address = self
             .memory_manager
             .allocate(message_size, from)
             .map_err(|e| IpcError::LimitExceeded(format!("Memory allocation failed: {}", e)))?;
+
+        // Store address for later deallocation
+        message.mem_address = Some(address);
 
         queue.push_back(message);
 
@@ -136,8 +139,11 @@ impl IPCManager {
         if let Some(mut queue) = self.message_queues.get_mut(&pid) {
             if let Some(message) = queue.pop_front() {
                 // Deallocate memory through MemoryManager (integrated tracking)
-                // Note: We can't store the address in Message, so we rely on MemoryManager's
-                // process cleanup to reclaim this memory when the process terminates
+                if let Some(address) = message.mem_address {
+                    if let Err(e) = self.memory_manager.deallocate(address) {
+                        log::warn!("Failed to deallocate message memory at 0x{:x}: {}", address, e);
+                    }
+                }
 
                 let (_, used, _) = self.memory_manager.info();
                 info!(
@@ -164,6 +170,16 @@ impl IPCManager {
         // Clean up message queues
         if let Some((_, queue)) = self.message_queues.remove(&pid) {
             let message_count = queue.len();
+
+            // Deallocate memory for each message
+            for message in queue {
+                if let Some(address) = message.mem_address {
+                    if let Err(e) = self.memory_manager.deallocate(address) {
+                        log::warn!("Failed to deallocate message memory at 0x{:x} during cleanup: {}", address, e);
+                    }
+                }
+            }
+
             total_cleaned += message_count;
 
             info!("Cleared {} messages for PID {}", message_count, pid);
