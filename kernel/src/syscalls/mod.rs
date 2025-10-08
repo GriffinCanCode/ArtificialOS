@@ -6,6 +6,7 @@
 mod executor;
 pub mod fd;
 mod fs;
+mod handle;
 mod handler;
 mod handlers;
 pub mod iouring; // io_uring-style async syscall completion

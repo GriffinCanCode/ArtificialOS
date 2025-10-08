@@ -6,6 +6,7 @@
 use ai_os_kernel::core::types::Pid;
 use ai_os_kernel::memory::MemoryManager;
 use ai_os_kernel::process::ProcessManagerImpl;
+use ai_os_kernel::security::SandboxProvider;
 use ai_os_kernel::syscalls::{
     IoUringExecutor, IoUringManager, SyscallExecutor, SyscallSubmissionEntry,
 };
@@ -20,6 +21,16 @@ fn setup_test_manager() -> (IoUringManager, Pid) {
     let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
     let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
 
+    // Create a test process
+    let pid = process_manager.create_process(
+        "test_process".to_string(),
+        10, // priority
+    );
+
+    // Create a privileged sandbox config for testing
+    let sandbox_config = ai_os_kernel::security::SandboxConfig::privileged(pid);
+    sandbox_manager.create_sandbox(sandbox_config);
+
     let syscall_executor = SyscallExecutor::with_full_features(
         sandbox_manager,
         pipe_manager,
@@ -30,12 +41,6 @@ fn setup_test_manager() -> (IoUringManager, Pid) {
 
     let iouring_executor = Arc::new(IoUringExecutor::new(syscall_executor));
     let manager = IoUringManager::new(iouring_executor);
-
-    // Create a test process
-    let pid = process_manager.create_process(
-        "test_process".to_string(),
-        10, // priority
-    );
 
     (manager, pid)
 }
@@ -140,6 +145,9 @@ async fn test_iouring_wait_specific_completion() {
     // Submit operation
     let entry = SyscallSubmissionEntry::read_file(pid, test_file, 999);
     let seq = manager.submit(pid, entry).unwrap();
+
+    // Give the spawned async task a chance to execute
+    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
     // Wait for specific completion (blocking in background)
     let manager_clone = manager.clone();

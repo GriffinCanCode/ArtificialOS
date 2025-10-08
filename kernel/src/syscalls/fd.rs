@@ -7,20 +7,20 @@
 use crate::core::json;
 use crate::core::types::Pid;
 use crate::permissions::{PermissionChecker, PermissionRequest};
+use crate::vfs::{FileSystem, OpenFlags, OpenMode};
 
 use ahash::RandomState;
 use crossbeam_queue::SegQueue;
 use dashmap::DashMap;
 use log::{error, info, warn};
-use parking_lot::RwLock;
 use std::collections::HashSet;
-use std::fs::{File, OpenOptions};
-use std::io::{Seek, SeekFrom};
+use std::fs::OpenOptions;
+use std::io::{SeekFrom};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 
-
+use super::handle::FileHandle;
 use super::executor::SyscallExecutor;
 use super::types::SyscallResult;
 
@@ -31,10 +31,11 @@ use super::types::SyscallResult;
 /// - HashSet-based per-process tracking for O(1) untrack operations
 /// - Lock-free FD recycling via SegQueue to prevent FD exhaustion
 /// - Atomic count tracking for O(1) limit checks
+/// - Unified with VFS via FileHandle for all filesystem backends
 #[repr(C, align(64))]
 pub struct FdManager {
     next_fd: Arc<AtomicU32>,
-    open_files: Arc<DashMap<u32, Arc<RwLock<File>>, RandomState>>,
+    open_files: Arc<DashMap<u32, Arc<FileHandle>, RandomState>>,
     /// Track which FDs belong to which process (HashSet for O(1) untrack)
     process_fds: Arc<DashMap<Pid, HashSet<u32>, RandomState>>,
     /// Per-process FD counts for O(1) limit checks (lock-free via alter())
@@ -191,19 +192,48 @@ impl SyscallExecutor {
             }
         }
 
-        // Build OpenOptions based on flags
+        // Try VFS first for unified file handle
+        if let Some(ref vfs) = self.vfs {
+            let vfs_flags = OpenFlags::from_posix(flags);
+            let vfs_mode = OpenMode::new(mode);
+
+            match vfs.open(path, vfs_flags, vfs_mode) {
+                Ok(vfs_file) => {
+                    // Allocate FD and store VFS file handle
+                    let fd = self.fd_manager.allocate_fd();
+                    let handle = Arc::new(FileHandle::from_vfs(vfs_file));
+                    self.fd_manager.open_files.insert(fd, handle);
+                    self.fd_manager.track_fd(pid, fd);
+
+                    info!(
+                        "PID {} opened {:?} via VFS with FD {}, flags: 0x{:x}",
+                        pid, path, fd, flags
+                    );
+
+                    return match json::to_vec(&serde_json::json!({ "fd": fd })) {
+                        Ok(data) => SyscallResult::success_with_data(data),
+                        Err(e) => {
+                            warn!("Failed to serialize open result: {}", e);
+                            SyscallResult::error("Internal serialization error")
+                        }
+                    };
+                }
+                Err(e) => {
+                    warn!("VFS open failed for {:?}: {}, falling back to std::fs", path, e);
+                }
+            }
+        }
+
+        // Fallback to std::fs if VFS unavailable or failed
         let mut options = OpenOptions::new();
 
         // Access mode
         if flags & 0x0002 != 0 {
-            // O_WRONLY
-            options.write(true);
+            options.write(true); // O_WRONLY
         } else if flags & 0x0003 != 0 {
-            // O_RDWR
-            options.read(true).write(true);
+            options.read(true).write(true); // O_RDWR
         } else {
-            // O_RDONLY (default)
-            options.read(true);
+            options.read(true); // O_RDONLY (default)
         }
 
         // Additional flags
@@ -219,13 +249,10 @@ impl SyscallExecutor {
 
         match options.open(path) {
             Ok(file) => {
-                // Allocate FD and store file with Arc for reference counting
+                // Allocate FD and store std file handle
                 let fd = self.fd_manager.allocate_fd();
-                self.fd_manager
-                    .open_files
-                    .insert(fd, Arc::new(RwLock::new(file)));
-
-                // Track FD ownership for cleanup
+                let handle = Arc::new(FileHandle::from_std(file));
+                self.fd_manager.open_files.insert(fd, handle);
                 self.fd_manager.track_fd(pid, fd);
 
                 info!(
@@ -233,9 +260,7 @@ impl SyscallExecutor {
                     pid, path, fd, flags, mode
                 );
 
-                match json::to_vec(&serde_json::json!({
-                    "fd": fd
-                })) {
+                match json::to_vec(&serde_json::json!({ "fd": fd })) {
                     Ok(data) => SyscallResult::success_with_data(data),
                     Err(e) => {
                         warn!("Failed to serialize open result: {}", e);
@@ -285,14 +310,14 @@ impl SyscallExecutor {
             }
         }
 
-        // Check if the FD exists and clone the Arc reference
-        if let Some(file_ref) = self.fd_manager.open_files.get(&fd) {
+        // Check if the FD exists and clone the Arc<FileHandle> reference
+        if let Some(handle_ref) = self.fd_manager.open_files.get(&fd) {
             // Clone the Arc to increment reference count
-            let cloned_file = Arc::clone(file_ref.value());
+            let cloned_handle = Arc::clone(handle_ref.value());
 
-            // Allocate new FD pointing to same file via Arc
+            // Allocate new FD pointing to same handle via Arc
             let new_fd = self.fd_manager.allocate_fd();
-            self.fd_manager.open_files.insert(new_fd, cloned_file);
+            self.fd_manager.open_files.insert(new_fd, cloned_handle);
 
             // Track the new FD for this process
             self.fd_manager.track_fd(pid, new_fd);
@@ -338,10 +363,10 @@ impl SyscallExecutor {
             }
         }
 
-        // Check if the old FD exists and clone the Arc reference
-        if let Some(file_ref) = self.fd_manager.open_files.get(&oldfd) {
+        // Check if the old FD exists and clone the Arc<FileHandle> reference
+        if let Some(handle_ref) = self.fd_manager.open_files.get(&oldfd) {
             // Clone the Arc to increment reference count
-            let cloned_file = Arc::clone(file_ref.value());
+            let cloned_handle = Arc::clone(handle_ref.value());
 
             // If newfd is already open, close it first (Arc will auto-drop)
             if self.fd_manager.open_files.contains_key(&newfd) {
@@ -351,7 +376,7 @@ impl SyscallExecutor {
             }
 
             // Insert the cloned Arc reference at newfd
-            self.fd_manager.open_files.insert(newfd, cloned_file);
+            self.fd_manager.open_files.insert(newfd, cloned_handle);
 
             // Track the new FD for this process
             self.fd_manager.track_fd(pid, newfd);
@@ -369,18 +394,17 @@ impl SyscallExecutor {
     pub(super) fn lseek(&self, pid: Pid, fd: u32, offset: i64, whence: u32) -> SyscallResult {
         // Note: lseek operates on already-open fds with validated permissions
 
-        if let Some(file_arc) = self.fd_manager.open_files.get(&fd) {
-            let mut file = file_arc.write();
-            let seek_result = match whence {
-                0 => file.seek(SeekFrom::Start(offset as u64)), // SEEK_SET
-                1 => file.seek(SeekFrom::Current(offset)),      // SEEK_CUR
-                2 => file.seek(SeekFrom::End(offset)),          // SEEK_END
+        if let Some(handle_arc) = self.fd_manager.open_files.get(&fd) {
+            let seek_pos = match whence {
+                0 => SeekFrom::Start(offset as u64), // SEEK_SET
+                1 => SeekFrom::Current(offset),      // SEEK_CUR
+                2 => SeekFrom::End(offset),          // SEEK_END
                 _ => {
                     return SyscallResult::error("Invalid whence value");
                 }
             };
 
-            match seek_result {
+            match handle_arc.seek(seek_pos) {
                 Ok(new_offset) => {
                     let whence_str = match whence {
                         0 => "SEEK_SET",
@@ -443,10 +467,8 @@ impl SyscallExecutor {
     pub(super) fn fsync_fd(&self, pid: Pid, fd: u32) -> SyscallResult {
         // Fsync synchronizes file data and metadata to disk
 
-        if let Some(file_arc) = self.fd_manager.open_files.get(&fd) {
-            let file = file_arc.read();
-
-            match file.sync_all() {
+        if let Some(handle_arc) = self.fd_manager.open_files.get(&fd) {
+            match handle_arc.sync() {
                 Ok(_) => {
                     info!("PID {} synchronized FD {} to disk", pid, fd);
                     SyscallResult::success()
@@ -465,10 +487,8 @@ impl SyscallExecutor {
     pub(super) fn fdatasync_fd(&self, pid: Pid, fd: u32) -> SyscallResult {
         // Fdatasync synchronizes file data (not metadata) to disk
 
-        if let Some(file_arc) = self.fd_manager.open_files.get(&fd) {
-            let file = file_arc.read();
-
-            match file.sync_data() {
+        if let Some(handle_arc) = self.fd_manager.open_files.get(&fd) {
+            match handle_arc.sync_data() {
                 Ok(_) => {
                     info!("PID {} synchronized FD {} data to disk", pid, fd);
                     SyscallResult::success()
