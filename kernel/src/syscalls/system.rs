@@ -6,18 +6,23 @@
 
 use crate::core::json;
 use crate::core::types::Pid;
-use crate::permissions::{PermissionChecker, PermissionRequest, Resource, Action};
+use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
 
 use log::{error, info};
 
-use crate::security::{Capability, NetworkRule};
 
 use super::executor::SyscallExecutor;
 use super::types::{SyscallResult, SystemInfo};
 
 impl SyscallExecutor {
     pub(super) fn get_system_info(&self, pid: Pid) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::System { name: "info".to_string() }, Action::Inspect);
+        let request = PermissionRequest::new(
+            pid,
+            Resource::System {
+                name: "info".to_string(),
+            },
+            Action::Inspect,
+        );
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -37,7 +42,13 @@ impl SyscallExecutor {
     }
 
     pub(super) fn get_current_time(&self, pid: Pid) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::System { name: "time".to_string() }, Action::Inspect);
+        let request = PermissionRequest::new(
+            pid,
+            Resource::System {
+                name: "time".to_string(),
+            },
+            Action::Inspect,
+        );
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -59,7 +70,13 @@ impl SyscallExecutor {
     }
 
     pub(super) fn get_env_var(&self, pid: Pid, key: &str) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::System { name: "env".to_string() }, Action::Read);
+        let request = PermissionRequest::new(
+            pid,
+            Resource::System {
+                name: "env".to_string(),
+            },
+            Action::Read,
+        );
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -76,7 +93,13 @@ impl SyscallExecutor {
     }
 
     pub(super) fn set_env_var(&self, pid: Pid, key: &str, value: &str) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::System { name: "env".to_string() }, Action::Write);
+        let request = PermissionRequest::new(
+            pid,
+            Resource::System {
+                name: "env".to_string(),
+            },
+            Action::Write,
+        );
         let response = self.permission_manager.check_and_audit(&request);
 
         if !response.is_allowed() {
@@ -90,7 +113,14 @@ impl SyscallExecutor {
 
     pub(super) fn network_request(&self, pid: Pid, url: &str) -> SyscallResult {
         // Parse URL to extract host and use proper network permission check
-        let host = url.split("://").nth(1).unwrap_or(url).split('/').next().unwrap_or("unknown").to_string();
+        let host = url
+            .split("://")
+            .nth(1)
+            .unwrap_or(url)
+            .split('/')
+            .next()
+            .unwrap_or("unknown")
+            .to_string();
         let request = PermissionRequest::net_connect(pid, host, None);
         let response = self.permission_manager.check_and_audit(&request);
 
@@ -110,12 +140,7 @@ impl SyscallExecutor {
                     let status = response.status();
 
                     if !status.is_success() {
-                        log::warn!(
-                            "PID {} received HTTP {} for {}",
-                            pid,
-                            status.as_u16(),
-                            url
-                        );
+                        log::warn!("PID {} received HTTP {} for {}", pid, status.as_u16(), url);
                     }
 
                     match response.bytes() {

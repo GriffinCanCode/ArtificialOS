@@ -42,10 +42,18 @@ impl PipeManager {
         );
         Self {
             // Use 64 shards for pipes - high I/O contention
-            pipes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 64)),
+            pipes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
+                0,
+                RandomState::new(),
+                64,
+            )),
             next_id: AtomicU32::new(1),
             // Use 32 shards for process pipe tracking
-            process_pipes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 32)),
+            process_pipes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
+                0,
+                RandomState::new(),
+                32,
+            )),
             memory_manager,
             free_ids: Arc::new(SegQueue::new()),
         }
@@ -90,7 +98,10 @@ impl PipeManager {
 
         // Try to recycle an ID from the lock-free free list, otherwise allocate new
         let pipe_id = if let Some(recycled_id) = self.free_ids.pop() {
-            info!("Recycled pipe ID {} for PIDs {}/{} (lock-free)", recycled_id, reader_pid, writer_pid);
+            info!(
+                "Recycled pipe ID {} for PIDs {}/{} (lock-free)",
+                recycled_id, reader_pid, writer_pid
+            );
             recycled_id
         } else {
             self.next_id.fetch_add(1, Ordering::SeqCst)
@@ -203,7 +214,10 @@ impl PipeManager {
 
         // Add pipe ID to lock-free free list for recycling
         self.free_ids.push(pipe_id);
-        info!("Added pipe ID {} to lock-free free list for recycling", pipe_id);
+        info!(
+            "Added pipe ID {} to lock-free free list for recycling",
+            pipe_id
+        );
 
         // Update process pipe counts using alter() for atomic decrement
         self.process_pipes.alter(&reader_pid, |_, count| {

@@ -33,13 +33,9 @@ pub enum PermissionError {
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum Resource {
     /// File system path
-    File {
-        path: PathBuf,
-    },
+    File { path: PathBuf },
     /// Directory path
-    Directory {
-        path: PathBuf,
-    },
+    Directory { path: PathBuf },
     /// Network host/port
     Network {
         host: String,
@@ -47,17 +43,11 @@ pub enum Resource {
         port: Option<u16>,
     },
     /// IPC channel
-    IpcChannel {
-        channel_id: u32,
-    },
+    IpcChannel { channel_id: u32 },
     /// Process
-    Process {
-        pid: Pid,
-    },
+    Process { pid: Pid },
     /// System resource
-    System {
-        name: String,
-    },
+    System { name: String },
 }
 
 /// Action being performed

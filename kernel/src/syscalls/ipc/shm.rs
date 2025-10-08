@@ -3,8 +3,8 @@
  * Handle shared memory creation, attach, detach, and access
  */
 
-use crate::core::{bincode, json};
 use crate::core::types::Pid;
+use crate::core::{bincode, json};
 use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
 use crate::syscalls::executor::SyscallExecutor;
 use crate::syscalls::types::SyscallResult;
@@ -12,7 +12,8 @@ use log::{error, info};
 
 impl SyscallExecutor {
     pub(crate) fn create_shm(&self, pid: Pid, size: usize) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::IpcChannel { channel_id: 0 }, Action::Create);
+        let request =
+            PermissionRequest::new(pid, Resource::IpcChannel { channel_id: 0 }, Action::Create);
         let response = self.permission_manager.check_and_audit(&request);
 
         if !response.is_allowed() {
@@ -46,7 +47,13 @@ impl SyscallExecutor {
     }
 
     pub(crate) fn attach_shm(&self, pid: Pid, segment_id: u32, read_only: bool) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::IpcChannel { channel_id: segment_id }, Action::Read);
+        let request = PermissionRequest::new(
+            pid,
+            Resource::IpcChannel {
+                channel_id: segment_id,
+            },
+            Action::Read,
+        );
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -98,7 +105,13 @@ impl SyscallExecutor {
         offset: usize,
         data: &[u8],
     ) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::IpcChannel { channel_id: segment_id }, Action::Write);
+        let request = PermissionRequest::new(
+            pid,
+            Resource::IpcChannel {
+                channel_id: segment_id,
+            },
+            Action::Write,
+        );
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -135,7 +148,13 @@ impl SyscallExecutor {
         offset: usize,
         size: usize,
     ) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::IpcChannel { channel_id: segment_id }, Action::Read);
+        let request = PermissionRequest::new(
+            pid,
+            Resource::IpcChannel {
+                channel_id: segment_id,
+            },
+            Action::Read,
+        );
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {

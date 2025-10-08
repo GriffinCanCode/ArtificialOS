@@ -44,7 +44,10 @@ async fn test_async_task_immediate_completion() {
         (TaskStatus::Completed(SyscallResult::Success { .. }), progress) => {
             assert_eq!(progress, 1.0);
         }
-        (status, progress) => panic!("Expected completed status, got: {:?} with progress: {}", status, progress),
+        (status, progress) => panic!(
+            "Expected completed status, got: {:?} with progress: {}",
+            status, progress
+        ),
     }
 }
 
@@ -126,7 +129,10 @@ async fn test_async_task_cleanup_respects_ttl() {
     // Cleanup immediately - task should still exist (not expired yet)
     let cleaned = manager.cleanup_completed();
     assert_eq!(cleaned, 0, "No tasks should be cleaned yet");
-    assert!(manager.get_status(&task_id).is_some(), "Task should still exist");
+    assert!(
+        manager.get_status(&task_id).is_some(),
+        "Task should still exist"
+    );
 
     // Wait for TTL to expire
     sleep(Duration::from_secs(2)).await;
@@ -134,7 +140,10 @@ async fn test_async_task_cleanup_respects_ttl() {
     // Now cleanup should remove expired task
     let cleaned = manager.cleanup_completed();
     assert_eq!(cleaned, 1, "One expired task should be cleaned");
-    assert!(manager.get_status(&task_id).is_none(), "Task should be gone");
+    assert!(
+        manager.get_status(&task_id).is_none(),
+        "Task should be gone"
+    );
 }
 
 #[tokio::test]

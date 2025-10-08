@@ -6,11 +6,11 @@
 
 use crate::core::json;
 use crate::core::types::{Pid, Priority};
-use crate::permissions::{PermissionChecker, PermissionRequest, Resource, Action};
+use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
 use log::{error, info, warn};
 use std::process::Command;
 
-use crate::security::{Capability, ResourceLimitProvider, SandboxProvider};
+use crate::security::{ResourceLimitProvider, SandboxProvider};
 
 use super::executor::SyscallExecutor;
 use super::types::{ProcessOutput, SyscallResult};
@@ -96,7 +96,8 @@ impl SyscallExecutor {
     }
 
     pub(super) fn get_process_info(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Inspect);
+        let request =
+            PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Inspect);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -124,7 +125,13 @@ impl SyscallExecutor {
     }
 
     pub(super) fn get_process_list(&self, pid: Pid) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::System { name: "processes".to_string() }, Action::List);
+        let request = PermissionRequest::new(
+            pid,
+            Resource::System {
+                name: "processes".to_string(),
+            },
+            Action::List,
+        );
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -155,7 +162,8 @@ impl SyscallExecutor {
         target_pid: Pid,
         priority: Priority,
     ) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Write);
+        let request =
+            PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Write);
         let response = self.permission_manager.check_and_audit(&request);
 
         if !response.is_allowed() {
@@ -180,7 +188,8 @@ impl SyscallExecutor {
     }
 
     pub(super) fn get_process_state(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Inspect);
+        let request =
+            PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Inspect);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -208,7 +217,8 @@ impl SyscallExecutor {
     }
 
     pub(super) fn get_process_stats_call(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Inspect);
+        let request =
+            PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Inspect);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -241,7 +251,8 @@ impl SyscallExecutor {
         target_pid: Pid,
         _timeout_ms: Option<u64>,
     ) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Inspect);
+        let request =
+            PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Inspect);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {

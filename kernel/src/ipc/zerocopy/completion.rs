@@ -91,4 +91,3 @@ pub enum CompletionStatus {
     /// Operation was cancelled
     Cancelled,
 }
-

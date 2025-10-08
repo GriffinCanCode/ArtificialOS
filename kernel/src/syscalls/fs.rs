@@ -6,7 +6,7 @@
 
 use crate::core::json;
 use crate::core::types::Pid;
-use crate::permissions::{PermissionChecker, PermissionRequest, Resource, Action};
+use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
 
 use log::{error, info};
 use std::fs;
@@ -15,7 +15,6 @@ use std::path::PathBuf;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
-use crate::security::Capability;
 
 use super::executor::SyscallExecutor;
 use super::types::SyscallResult;
@@ -176,7 +175,13 @@ impl SyscallExecutor {
     }
 
     pub(super) fn get_working_directory(&self, pid: Pid) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::System { name: "cwd".to_string() }, Action::Inspect);
+        let request = PermissionRequest::new(
+            pid,
+            Resource::System {
+                name: "cwd".to_string(),
+            },
+            Action::Inspect,
+        );
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {

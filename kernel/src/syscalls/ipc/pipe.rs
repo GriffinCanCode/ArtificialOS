@@ -3,8 +3,8 @@
  * Handle pipe creation, read, write, and lifecycle
  */
 
-use crate::core::{bincode, json};
 use crate::core::types::Pid;
+use crate::core::{bincode, json};
 use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
 use crate::syscalls::executor::SyscallExecutor;
 use crate::syscalls::types::SyscallResult;
@@ -19,7 +19,8 @@ impl SyscallExecutor {
         capacity: Option<usize>,
     ) -> SyscallResult {
         // Check permission using centralized manager
-        let request = PermissionRequest::new(pid, Resource::IpcChannel { channel_id: 0 }, Action::Create);
+        let request =
+            PermissionRequest::new(pid, Resource::IpcChannel { channel_id: 0 }, Action::Create);
         let response = self.permission_manager.check_and_audit(&request);
 
         if !response.is_allowed() {
@@ -50,7 +51,13 @@ impl SyscallExecutor {
     }
 
     pub(crate) fn write_pipe(&self, pid: Pid, pipe_id: u32, data: &[u8]) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::IpcChannel { channel_id: pipe_id }, Action::Send);
+        let request = PermissionRequest::new(
+            pid,
+            Resource::IpcChannel {
+                channel_id: pipe_id,
+            },
+            Action::Send,
+        );
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -81,7 +88,13 @@ impl SyscallExecutor {
     }
 
     pub(crate) fn read_pipe(&self, pid: Pid, pipe_id: u32, size: usize) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::IpcChannel { channel_id: pipe_id }, Action::Receive);
+        let request = PermissionRequest::new(
+            pid,
+            Resource::IpcChannel {
+                channel_id: pipe_id,
+            },
+            Action::Receive,
+        );
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {

@@ -36,7 +36,8 @@ impl MemoryManager {
             let offset = address - base_addr;
 
             // Get or create storage for this block
-            let mut entry = self.memory_storage
+            let mut entry = self
+                .memory_storage
                 .entry(base_addr)
                 .or_insert_with(|| vec![0u8; block_size]);
 

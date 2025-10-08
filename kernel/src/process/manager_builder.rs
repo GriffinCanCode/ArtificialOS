@@ -107,12 +107,10 @@ impl ProcessManagerBuilder {
 
         // Create preemption controller if both scheduler and executor are available
         let preemption = match (&scheduler, &executor) {
-            (Some(sched), Some(exec)) => {
-                Some(Arc::new(PreemptionController::new(
-                    Arc::clone(sched),
-                    Arc::new(exec.clone()),
-                )))
-            }
+            (Some(sched), Some(exec)) => Some(Arc::new(PreemptionController::new(
+                Arc::clone(sched),
+                Arc::new(exec.clone()),
+            ))),
             _ => None,
         };
 
@@ -157,7 +155,11 @@ impl ProcessManagerBuilder {
 
         ProcessManager {
             // Use 128 shards for processes - high contention from concurrent process operations
-            processes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 128)),
+            processes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
+                0,
+                RandomState::new(),
+                128,
+            )),
             next_pid: AtomicU32::new(1),
             memory_manager: self.memory_manager,
             executor,
@@ -169,7 +171,11 @@ impl ProcessManagerBuilder {
             fd_manager: self.fd_manager,
             resource_orchestrator: self.resource_orchestrator,
             // Use 64 shards for child_counts (moderate contention)
-            child_counts: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 64)),
+            child_counts: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
+                0,
+                RandomState::new(),
+                64,
+            )),
         }
     }
 }
@@ -179,4 +185,3 @@ impl Default for ProcessManagerBuilder {
         Self::new()
     }
 }
-

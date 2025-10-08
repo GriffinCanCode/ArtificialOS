@@ -168,7 +168,12 @@ fn test_create_file() {
 
     let test_file = temp_dir.path().join("new_file.txt");
 
-    let result = executor.execute(pid, Syscall::CreateFile { path: test_file.clone() });
+    let result = executor.execute(
+        pid,
+        Syscall::CreateFile {
+            path: test_file.clone(),
+        },
+    );
 
     match result {
         SyscallResult::Success { .. } => {
@@ -192,7 +197,12 @@ fn test_delete_file() {
     config.allow_path(temp_dir.path().canonicalize().unwrap());
     sandbox_manager.create_sandbox(config);
 
-    let result = executor.execute(pid, Syscall::DeleteFile { path: test_file.clone() });
+    let result = executor.execute(
+        pid,
+        Syscall::DeleteFile {
+            path: test_file.clone(),
+        },
+    );
 
     match result {
         SyscallResult::Success { .. } => {
@@ -248,8 +258,7 @@ fn test_file_stat() {
 
     match result {
         SyscallResult::Success { data } => {
-            let file_info: serde_json::Value =
-                serde_json::from_slice(&data.unwrap()).unwrap();
+            let file_info: serde_json::Value = serde_json::from_slice(&data.unwrap()).unwrap();
             assert_eq!(file_info["name"], "stat_test.txt");
             assert_eq!(file_info["size"], 12);
             assert_eq!(file_info["is_dir"], false);
@@ -326,7 +335,12 @@ fn test_create_directory() {
     config.allow_path(temp_dir.path().canonicalize().unwrap());
     sandbox_manager.create_sandbox(config);
 
-    let result = executor.execute(pid, Syscall::CreateDirectory { path: new_dir.clone() });
+    let result = executor.execute(
+        pid,
+        Syscall::CreateDirectory {
+            path: new_dir.clone(),
+        },
+    );
 
     match result {
         SyscallResult::Success { .. } => {

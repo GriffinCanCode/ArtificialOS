@@ -27,9 +27,17 @@ impl SandboxManager {
         info!("Sandbox manager initialized");
         Self {
             // Use 64 shards for sandboxes - moderate contention
-            sandboxes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 64)),
+            sandboxes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
+                0,
+                RandomState::new(),
+                64,
+            )),
             // Use 32 shards for spawn counts - lower contention
-            spawned_counts: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 32)),
+            spawned_counts: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
+                0,
+                RandomState::new(),
+                32,
+            )),
             namespace_manager: None,
         }
     }
@@ -47,9 +55,17 @@ impl SandboxManager {
         );
         Self {
             // Use 64 shards for sandboxes - moderate contention
-            sandboxes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 64)),
+            sandboxes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
+                0,
+                RandomState::new(),
+                64,
+            )),
             // Use 32 shards for spawn counts - lower contention
-            spawned_counts: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 32)),
+            spawned_counts: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
+                0,
+                RandomState::new(),
+                32,
+            )),
             namespace_manager: Some(ns_manager),
         }
     }

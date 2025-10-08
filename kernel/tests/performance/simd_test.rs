@@ -4,16 +4,29 @@
  */
 
 use ai_os_kernel::memory::{
-    // Memory operations
-    simd_memcmp, simd_memcpy, simd_memmove, simd_memset,
+    // Text operations
+    ascii_to_lower,
+    ascii_to_upper,
+    // Math operations
+    avg_u64,
+    // Search operations
+    contains_byte,
+    count_byte,
+    find_byte,
     // CPU detection
     init_simd,
-    // Search operations
-    contains_byte, count_byte, find_byte, rfind_byte,
-    // Math operations
-    avg_u64, max_u64, min_u64, sum_u32, sum_u64,
-    // Text operations
-    ascii_to_lower, ascii_to_upper, is_ascii, trim,
+    is_ascii,
+    max_u64,
+    min_u64,
+    rfind_byte,
+    // Memory operations
+    simd_memcmp,
+    simd_memcpy,
+    simd_memmove,
+    simd_memset,
+    sum_u32,
+    sum_u64,
+    trim,
 };
 use std::cmp::Ordering;
 
@@ -499,4 +512,3 @@ fn test_performance_comparison() {
     let expected_sum: u64 = numbers.iter().sum();
     assert_eq!(sum, expected_sum);
 }
-

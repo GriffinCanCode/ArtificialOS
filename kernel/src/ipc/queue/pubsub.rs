@@ -6,9 +6,9 @@
 use super::super::types::{IpcError, IpcResult, QueueId};
 use super::types::QueueMessage;
 use crate::core::types::Pid;
-use log::debug;
 use ahash::HashMap;
 use flume;
+use log::debug;
 
 /// PubSub queue implementation
 pub(super) struct PubSubQueue {

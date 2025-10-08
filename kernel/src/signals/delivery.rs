@@ -38,8 +38,8 @@ where
         let pending_count = self.signal_manager.pending_count(pid);
 
         // Track outcomes for state determination
-        let mut should_terminate = false;
-        let mut should_stop = false;
+        let should_terminate = false;
+        let should_stop = false;
         let mut should_continue = false;
         let mut delivered = 0;
 

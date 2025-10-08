@@ -11,8 +11,8 @@ use super::types::{
 };
 use crate::core::types::{Pid, Size};
 use crate::memory::MemoryManager;
-use dashmap::DashMap;
 use ahash::RandomState;
+use dashmap::DashMap;
 use log::{info, warn};
 use parking_lot::RwLock;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -270,7 +270,9 @@ impl ShmManager {
             let mut free_ids = match self.free_ids.lock() {
                 Ok(guard) => guard,
                 Err(poisoned) => {
-                    log::error!("Shared memory ID free list mutex poisoned during cleanup - recovering");
+                    log::error!(
+                        "Shared memory ID free list mutex poisoned during cleanup - recovering"
+                    );
                     poisoned.into_inner()
                 }
             };

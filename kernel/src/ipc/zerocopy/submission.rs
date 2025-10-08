@@ -4,7 +4,7 @@
  */
 
 use super::ZeroCopyError;
-use crate::core::types::{Pid, Size, Address};
+use crate::core::types::{Address, Pid, Size};
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -119,4 +119,3 @@ pub enum OperationType {
     /// Write to shared buffer
     Write,
 }
-

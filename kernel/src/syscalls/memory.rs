@@ -6,12 +6,11 @@
 
 use crate::core::json;
 use crate::core::types::Pid;
-use crate::permissions::{PermissionChecker, PermissionRequest, Resource, Action};
+use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
 
 use log::{error, info, warn};
 
 use crate::memory::types::ProcessMemoryStats;
-use crate::security::Capability;
 
 use super::executor::SyscallExecutor;
 use super::types::SyscallResult;
@@ -19,7 +18,13 @@ use super::types::SyscallResult;
 impl SyscallExecutor {
     pub(super) fn get_memory_stats(&self, pid: Pid) -> SyscallResult {
         // Check permission using centralized manager
-        let request = PermissionRequest::new(pid, Resource::System { name: "memory".to_string() }, Action::Inspect);
+        let request = PermissionRequest::new(
+            pid,
+            Resource::System {
+                name: "memory".to_string(),
+            },
+            Action::Inspect,
+        );
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -46,7 +51,8 @@ impl SyscallExecutor {
 
     pub(super) fn get_process_memory_stats(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
         // Check permission using centralized manager
-        let request = PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Inspect);
+        let request =
+            PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Inspect);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -82,7 +88,13 @@ impl SyscallExecutor {
 
     pub(super) fn trigger_gc(&self, pid: Pid, target_pid: Option<u32>) -> SyscallResult {
         // Check permission using centralized manager
-        let request = PermissionRequest::new(pid, Resource::System { name: "gc".to_string() }, Action::Execute);
+        let request = PermissionRequest::new(
+            pid,
+            Resource::System {
+                name: "gc".to_string(),
+            },
+            Action::Execute,
+        );
         let response = self.permission_manager.check_and_audit(&request);
 
         if !response.is_allowed() {

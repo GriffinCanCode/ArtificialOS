@@ -104,13 +104,20 @@ pub fn count_whitespace(data: &[u8]) -> usize {
 
 /// Trim whitespace from start
 pub fn trim_start(data: &[u8]) -> &[u8] {
-    let start = data.iter().position(|&b| !b.is_ascii_whitespace()).unwrap_or(data.len());
+    let start = data
+        .iter()
+        .position(|&b| !b.is_ascii_whitespace())
+        .unwrap_or(data.len());
     &data[start..]
 }
 
 /// Trim whitespace from end
 pub fn trim_end(data: &[u8]) -> &[u8] {
-    let end = data.iter().rposition(|&b| !b.is_ascii_whitespace()).map(|i| i + 1).unwrap_or(0);
+    let end = data
+        .iter()
+        .rposition(|&b| !b.is_ascii_whitespace())
+        .map(|i| i + 1)
+        .unwrap_or(0);
     &data[..end]
 }
 

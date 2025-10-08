@@ -236,7 +236,10 @@ impl AsyncTaskManager {
         }
 
         if cleaned_count > 0 {
-            log::debug!("Manual cleanup: removed {} expired async tasks", cleaned_count);
+            log::debug!(
+                "Manual cleanup: removed {} expired async tasks",
+                cleaned_count
+            );
         }
 
         cleaned_count
@@ -277,7 +280,9 @@ impl AsyncTaskManager {
 
     /// Cleanup all tasks for a terminated process
     pub fn cleanup_process_tasks(&self, pid: Pid) -> usize {
-        let task_ids = self.process_tasks.remove(&pid)
+        let task_ids = self
+            .process_tasks
+            .remove(&pid)
             .map(|(_, v)| v)
             .unwrap_or_default();
 
@@ -300,7 +305,11 @@ impl AsyncTaskManager {
         }
 
         if cleaned_count > 0 {
-            log::info!("Cleaned {} async tasks for terminated PID {}", cleaned_count, pid);
+            log::info!(
+                "Cleaned {} async tasks for terminated PID {}",
+                cleaned_count,
+                pid
+            );
         }
 
         cleaned_count

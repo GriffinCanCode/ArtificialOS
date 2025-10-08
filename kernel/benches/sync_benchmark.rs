@@ -4,8 +4,8 @@
  * Compare performance of futex, condvar, and spinwait strategies
  */
 
-use ai_os_kernel::core::sync::{WaitQueue, SyncConfig, StrategyType};
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
+use ai_os_kernel::core::sync::{StrategyType, SyncConfig, WaitQueue};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
@@ -13,7 +13,11 @@ use std::time::Duration;
 fn bench_wake_latency(c: &mut Criterion) {
     let mut group = c.benchmark_group("wake_latency");
 
-    for strategy in [StrategyType::Futex, StrategyType::Condvar, StrategyType::SpinWait] {
+    for strategy in [
+        StrategyType::Futex,
+        StrategyType::Condvar,
+        StrategyType::SpinWait,
+    ] {
         let config = SyncConfig {
             strategy,
             spin_duration: Duration::from_micros(10),
@@ -28,9 +32,8 @@ fn bench_wake_latency(c: &mut Criterion) {
                     let queue = Arc::new(WaitQueue::<u64>::new(config.clone()));
                     let queue_clone = queue.clone();
 
-                    let handle = thread::spawn(move || {
-                        queue_clone.wait(1, Some(Duration::from_secs(1)))
-                    });
+                    let handle =
+                        thread::spawn(move || queue_clone.wait(1, Some(Duration::from_secs(1))));
 
                     // Immediate wake
                     queue.wake_one(1);

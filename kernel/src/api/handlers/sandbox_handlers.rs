@@ -2,13 +2,13 @@
  * Sandbox-related gRPC handler implementations
  */
 
+use crate::api::conversions::response::proto_to_sandbox_capability;
+use crate::api::server::grpc_server::kernel_proto::*;
+use crate::security::traits::SandboxProvider;
+use crate::security::{SandboxConfig, SandboxManager};
 use std::path::PathBuf;
 use tonic::{Request, Response, Status};
 use tracing::info;
-use crate::security::{SandboxConfig, SandboxManager};
-use crate::security::traits::SandboxProvider;
-use crate::api::server::grpc_server::kernel_proto::*;
-use crate::api::conversions::response::proto_to_sandbox_capability;
 
 pub async fn handle_update_sandbox(
     sandbox_manager: &SandboxManager,

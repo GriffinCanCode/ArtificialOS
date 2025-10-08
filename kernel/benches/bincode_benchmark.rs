@@ -4,7 +4,7 @@
  */
 
 use ai_os_kernel::ipc::types::Message;
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId, Throughput};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 
 fn create_message(size: usize) -> Message {
     Message::new(1, 2, vec![0u8; size])

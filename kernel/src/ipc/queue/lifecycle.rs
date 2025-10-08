@@ -3,12 +3,12 @@
  * Create, close, destroy, and cleanup operations
  */
 
-use super::manager::{Queue, QueueManager};
+use super::super::types::{IpcError, IpcResult, QueueId, QueueType};
 use super::fifo::FifoQueue;
+use super::manager::{Queue, QueueManager};
 use super::priority::PriorityQueue;
 use super::pubsub::PubSubQueue;
 use super::types::{QueueStats, MAX_QUEUES_PER_PROCESS};
-use super::super::types::{IpcError, IpcResult, QueueId, QueueType};
 use crate::core::types::{Pid, Size};
 use log::{info, warn};
 use std::sync::atomic::Ordering;
@@ -50,7 +50,10 @@ impl QueueManager {
     /// Allocate a queue ID (recycle or create new, lock-free)
     fn allocate_queue_id(&self, owner_pid: Pid) -> QueueId {
         if let Some(recycled_id) = self.free_ids.pop() {
-            info!("Recycled queue ID {} for PID {} (lock-free)", recycled_id, owner_pid);
+            info!(
+                "Recycled queue ID {} for PID {} (lock-free)",
+                recycled_id, owner_pid
+            );
             recycled_id
         } else {
             self.next_id.fetch_add(1, Ordering::SeqCst) as u32
@@ -131,8 +134,9 @@ impl QueueManager {
 
     /// Drain all messages from queue and deallocate
     fn drain_queue_messages(&self, queue_id: QueueId) -> IpcResult<usize> {
-        let mut queue = self.queues.get_mut(&queue_id)
-            .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found for draining", queue_id)))?;
+        let mut queue = self.queues.get_mut(&queue_id).ok_or_else(|| {
+            IpcError::NotFound(format!("Queue {} not found for draining", queue_id))
+        })?;
         let mut freed_count = 0;
 
         loop {
@@ -165,7 +169,10 @@ impl QueueManager {
 
         // Recycle queue ID (lock-free)
         self.free_ids.push(queue_id);
-        info!("Added queue ID {} to lock-free free list for recycling", queue_id);
+        info!(
+            "Added queue ID {} to lock-free free list for recycling",
+            queue_id
+        );
 
         // Remove from process queues
         self.process_queues.alter(&pid, |_, mut qs| {

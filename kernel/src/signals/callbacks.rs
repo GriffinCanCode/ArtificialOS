@@ -5,8 +5,8 @@
 
 use super::types::{Signal, SignalError, SignalResult};
 use crate::core::types::Pid;
-use dashmap::DashMap;
 use ahash::RandomState;
+use dashmap::DashMap;
 use log::{debug, info};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;

@@ -48,7 +48,9 @@ impl BridgeManager {
         bridge_name: &str,
         iface_name: &str,
     ) -> NamespaceResult<()> {
-        self.platform.attach_interface(bridge_name, iface_name).await
+        self.platform
+            .attach_interface(bridge_name, iface_name)
+            .await
     }
 
     pub async fn detach_interface(&self, iface_name: &str) -> NamespaceResult<()> {

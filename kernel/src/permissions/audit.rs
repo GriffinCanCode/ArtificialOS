@@ -123,12 +123,7 @@ impl AuditLogger {
     /// Get recent events
     pub fn recent(&self, limit: usize) -> Vec<AuditEvent> {
         let events = self.events.read();
-        events
-            .iter()
-            .rev()
-            .take(limit)
-            .cloned()
-            .collect()
+        events.iter().rev().take(limit).cloned().collect()
     }
 
     /// Get events for a specific PID

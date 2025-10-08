@@ -3,13 +3,13 @@
  * Tests for io_uring-inspired async syscall completion
  */
 
+use ai_os_kernel::core::types::Pid;
+use ai_os_kernel::memory::MemoryManager;
+use ai_os_kernel::process::ProcessManagerImpl;
 use ai_os_kernel::syscalls::{
     IoUringExecutor, IoUringManager, SyscallCompletionStatus, SyscallExecutor,
     SyscallSubmissionEntry,
 };
-use ai_os_kernel::core::types::Pid;
-use ai_os_kernel::memory::MemoryManager;
-use ai_os_kernel::process::ProcessManagerImpl;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tempfile::tempdir;
@@ -144,15 +144,10 @@ async fn test_iouring_wait_specific_completion() {
 
     // Wait for specific completion (blocking in background)
     let manager_clone = manager.clone();
-    let handle = tokio::spawn(async move {
-        manager_clone.wait_completion(pid, seq)
-    });
+    let handle = tokio::spawn(async move { manager_clone.wait_completion(pid, seq) });
 
     // Wait for completion
-    let result = tokio::time::timeout(
-        tokio::time::Duration::from_secs(5),
-        handle
-    ).await;
+    let result = tokio::time::timeout(tokio::time::Duration::from_secs(5), handle).await;
 
     assert!(result.is_ok());
     let completion = result.unwrap().unwrap().unwrap();
@@ -200,11 +195,7 @@ async fn test_iouring_error_handling() {
     let (manager, pid) = setup_test_manager();
 
     // Submit operation for non-existent file
-    let entry = SyscallSubmissionEntry::read_file(
-        pid,
-        PathBuf::from("/nonexistent/file.txt"),
-        123
-    );
+    let entry = SyscallSubmissionEntry::read_file(pid, PathBuf::from("/nonexistent/file.txt"), 123);
     let seq = manager.submit(pid, entry).unwrap();
 
     // Wait for completion
@@ -266,7 +257,7 @@ async fn test_iouring_open_close() {
         test_file.clone(),
         0, // O_RDONLY
         0,
-        1000
+        1000,
     );
     let open_seq = manager.submit(pid, open_entry).unwrap();
 

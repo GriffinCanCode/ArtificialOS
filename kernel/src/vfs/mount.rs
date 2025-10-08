@@ -3,8 +3,8 @@
  * Manages filesystem mount points and routing
  */
 
-use dashmap::DashMap;
 use ahash::RandomState;
+use dashmap::DashMap;
 use parking_lot::RwLock;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

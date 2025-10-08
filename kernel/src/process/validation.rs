@@ -69,7 +69,9 @@ fn validate_absolute_command_path(command: &str) -> ProcessResult<()> {
         "/usr/sbin/",
     ];
 
-    let is_allowed = allowed_paths.iter().any(|prefix| command.starts_with(prefix));
+    let is_allowed = allowed_paths
+        .iter()
+        .any(|prefix| command.starts_with(prefix));
 
     if !is_allowed {
         return Err(ProcessError::PermissionDenied(format!(
@@ -100,15 +102,15 @@ pub(super) fn validate_argument(arg: &str) -> ProcessResult<()> {
 /// Check for encoded traversal patterns
 fn check_encoded_traversal(arg: &str) -> ProcessResult<()> {
     let bypass_patterns = [
-        "%2e%2e",  // URL encoded ..
-        "%252e",   // Double encoded .
-        "..%2f",   // Encoded slash variants
-        "%2e.",    // Partial encoding
-        ".%2e",    // Partial encoding
-        "..\\",    // Windows-style path traversal
-        "\\..",    // Windows-style path traversal
-        "%5c..",   // Encoded backslash
-        "..%5c",   // Encoded backslash
+        "%2e%2e", // URL encoded ..
+        "%252e",  // Double encoded .
+        "..%2f",  // Encoded slash variants
+        "%2e.",   // Partial encoding
+        ".%2e",   // Partial encoding
+        "..\\",   // Windows-style path traversal
+        "\\..",   // Windows-style path traversal
+        "%5c..",  // Encoded backslash
+        "..%5c",  // Encoded backslash
     ];
 
     let arg_lower = arg.to_lowercase();
@@ -137,11 +139,11 @@ fn check_shell_injection(arg: &str) -> ProcessResult<()> {
 /// Check for encoded shell metacharacters
 fn check_encoded_metacharacters(arg: &str) -> ProcessResult<()> {
     let encoded_dangerous = [
-        "%3b",  // ;
-        "%7c",  // |
-        "%26",  // &
-        "%24",  // $
-        "%60",  // `
+        "%3b", // ;
+        "%7c", // |
+        "%26", // &
+        "%24", // $
+        "%60", // `
     ];
 
     let arg_lower = arg.to_lowercase();

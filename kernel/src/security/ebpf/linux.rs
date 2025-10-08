@@ -117,7 +117,10 @@ impl EbpfProvider for LinuxEbpfProvider {
         // 3. Store program and map handles in aya_handles
         // 4. Set up perf/ring buffers for event collection
 
-        debug!("Loaded eBPF program: {} (type: {:?})", config.name, config.program_type);
+        debug!(
+            "Loaded eBPF program: {} (type: {:?})",
+            config.name, config.program_type
+        );
 
         // Auto-attach if requested
         if config.auto_attach && config.enabled {

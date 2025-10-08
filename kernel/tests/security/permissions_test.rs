@@ -2,8 +2,12 @@
  * Permissions Module Integration Tests
  */
 
-use ai_os_kernel::permissions::{Action, PermissionManager, PermissionRequest, Resource};
-use ai_os_kernel::security::{Capability, NetworkRule, SandboxConfig, SandboxManager};
+use ai_os_kernel::permissions::{
+    Action, PermissionChecker, PermissionManager, PermissionRequest, Resource,
+};
+use ai_os_kernel::security::{
+    Capability, NetworkRule, SandboxConfig, SandboxManager, SandboxProvider,
+};
 use std::path::PathBuf;
 
 #[test]
@@ -41,12 +45,10 @@ fn test_network_permissions_integration() {
 
     // Create sandbox with network access
     let mut config = SandboxConfig::minimal(200);
-    config
-        .network_rules
-        .push(NetworkRule::AllowHost {
-            host: "api.example.com".to_string(),
-            port: Some(443),
-        });
+    config.network_rules.push(NetworkRule::AllowHost {
+        host: "api.example.com".to_string(),
+        port: Some(443),
+    });
     sandbox.create_sandbox(config);
 
     let manager = PermissionManager::new(sandbox);
@@ -54,7 +56,10 @@ fn test_network_permissions_integration() {
     // Test allowed connection
     let allowed_req = PermissionRequest::net_connect(200, "api.example.com".to_string(), Some(443));
     let allowed_resp = manager.check(&allowed_req);
-    assert!(allowed_resp.is_allowed(), "Should allow api.example.com:443");
+    assert!(
+        allowed_resp.is_allowed(),
+        "Should allow api.example.com:443"
+    );
 
     // Test denied connection
     let denied_req = PermissionRequest::net_connect(200, "evil.com".to_string(), Some(80));
@@ -75,7 +80,7 @@ fn test_process_permissions_integration() {
     let manager = PermissionManager::new(sandbox);
 
     // Test spawn permission
-    let spawn_req = PermissionRequest::new(300, Resource::Process(400), Action::Create);
+    let spawn_req = PermissionRequest::new(300, Resource::Process { pid: 400 }, Action::Create);
     let spawn_resp = manager.check(&spawn_req);
     assert!(spawn_resp.is_allowed(), "Should allow process spawn");
 

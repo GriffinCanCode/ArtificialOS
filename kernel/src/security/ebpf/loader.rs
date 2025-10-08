@@ -4,7 +4,7 @@
  */
 
 use super::types::*;
-use log::{debug, info, warn};
+use log::info;
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -67,9 +67,11 @@ impl ProgramLoader {
             }
         }
 
-        programs.remove(name).ok_or_else(|| EbpfError::ProgramNotFound {
-            name: name.to_string(),
-        })?;
+        programs
+            .remove(name)
+            .ok_or_else(|| EbpfError::ProgramNotFound {
+                name: name.to_string(),
+            })?;
 
         info!("Unloaded eBPF program: {}", name);
         Ok(())
@@ -79,9 +81,11 @@ impl ProgramLoader {
     pub fn attach(&self, name: &str) -> EbpfResult<()> {
         let mut programs = self.programs.write();
 
-        let program = programs.get_mut(name).ok_or_else(|| EbpfError::ProgramNotFound {
-            name: name.to_string(),
-        })?;
+        let program = programs
+            .get_mut(name)
+            .ok_or_else(|| EbpfError::ProgramNotFound {
+                name: name.to_string(),
+            })?;
 
         if program.attached {
             return Err(EbpfError::AttachFailed {
@@ -98,9 +102,11 @@ impl ProgramLoader {
     pub fn detach(&self, name: &str) -> EbpfResult<()> {
         let mut programs = self.programs.write();
 
-        let program = programs.get_mut(name).ok_or_else(|| EbpfError::ProgramNotFound {
-            name: name.to_string(),
-        })?;
+        let program = programs
+            .get_mut(name)
+            .ok_or_else(|| EbpfError::ProgramNotFound {
+                name: name.to_string(),
+            })?;
 
         if !program.attached {
             return Err(EbpfError::DetachFailed {

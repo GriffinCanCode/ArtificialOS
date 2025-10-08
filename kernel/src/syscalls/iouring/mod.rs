@@ -9,172 +9,161 @@
  * from it, without replacing existing patterns.
  */
 
-mod ring;
-mod submission;
 mod completion;
 mod executor;
 pub mod handlers;
+mod ring;
+mod submission;
 
- pub use ring::SyscallCompletionRing;
- pub use submission::{SyscallSubmissionQueue, SyscallSubmissionEntry, SyscallOpType};
- pub use completion::{SyscallCompletionQueue, SyscallCompletionEntry, SyscallCompletionStatus};
- pub use executor::IoUringExecutor;
+pub use completion::{SyscallCompletionEntry, SyscallCompletionQueue, SyscallCompletionStatus};
+pub use executor::IoUringExecutor;
+pub use ring::SyscallCompletionRing;
+pub use submission::{SyscallOpType, SyscallSubmissionEntry, SyscallSubmissionQueue};
 
- use crate::core::types::Pid;
- use dashmap::DashMap;
- use ahash::RandomState;
- use std::sync::Arc;
- use tracing::{info, debug};
- use thiserror::Error;
+use crate::core::types::Pid;
+use ahash::RandomState;
+use dashmap::DashMap;
+use std::sync::Arc;
+use thiserror::Error;
+use tracing::{debug, info};
 
- /// Default queue sizes for submission and completion
- pub const DEFAULT_SQ_SIZE: usize = 256;
- pub const DEFAULT_CQ_SIZE: usize = 512;
+/// Default queue sizes for submission and completion
+pub const DEFAULT_SQ_SIZE: usize = 256;
+pub const DEFAULT_CQ_SIZE: usize = 512;
 
- /// io_uring-style manager for async syscall completion
- ///
- /// This provides efficient batched syscall submission and completion
- /// for I/O-heavy operations. It works alongside the existing AsyncTaskManager
- /// and is used for operations that benefit from the io_uring model.
- #[derive(Clone)]
- pub struct IoUringManager {
-     /// Completion rings per process
-     rings: Arc<DashMap<Pid, Arc<SyscallCompletionRing>, RandomState>>,
-     /// Shared executor for async operations
-     executor: Arc<IoUringExecutor>,
- }
+/// io_uring-style manager for async syscall completion
+///
+/// This provides efficient batched syscall submission and completion
+/// for I/O-heavy operations. It works alongside the existing AsyncTaskManager
+/// and is used for operations that benefit from the io_uring model.
+#[derive(Clone)]
+pub struct IoUringManager {
+    /// Completion rings per process
+    rings: Arc<DashMap<Pid, Arc<SyscallCompletionRing>, RandomState>>,
+    /// Shared executor for async operations
+    executor: Arc<IoUringExecutor>,
+}
 
- impl IoUringManager {
-     /// Create a new io_uring-style manager
-     pub fn new(executor: Arc<IoUringExecutor>) -> Self {
-         info!("Initializing io_uring-style syscall completion manager");
-         Self {
-             rings: Arc::new(DashMap::with_hasher(RandomState::new())),
-             executor,
-         }
-     }
+impl IoUringManager {
+    /// Create a new io_uring-style manager
+    pub fn new(executor: Arc<IoUringExecutor>) -> Self {
+        info!("Initializing io_uring-style syscall completion manager");
+        Self {
+            rings: Arc::new(DashMap::with_hasher(RandomState::new())),
+            executor,
+        }
+    }
 
-     /// Create a completion ring for a process
-     pub fn create_ring(
-         &self,
-         pid: Pid,
-         sq_size: Option<usize>,
-         cq_size: Option<usize>,
-     ) -> Result<Arc<SyscallCompletionRing>, IoUringError> {
-         let sq_size = sq_size.unwrap_or(DEFAULT_SQ_SIZE);
-         let cq_size = cq_size.unwrap_or(DEFAULT_CQ_SIZE);
+    /// Create a completion ring for a process
+    pub fn create_ring(
+        &self,
+        pid: Pid,
+        sq_size: Option<usize>,
+        cq_size: Option<usize>,
+    ) -> Result<Arc<SyscallCompletionRing>, IoUringError> {
+        let sq_size = sq_size.unwrap_or(DEFAULT_SQ_SIZE);
+        let cq_size = cq_size.unwrap_or(DEFAULT_CQ_SIZE);
 
-         debug!(
-             pid = pid,
-             sq_size = sq_size,
-             cq_size = cq_size,
-             "Creating io_uring-style completion ring"
-         );
+        debug!(
+            pid = pid,
+            sq_size = sq_size,
+            cq_size = cq_size,
+            "Creating io_uring-style completion ring"
+        );
 
-         let ring = Arc::new(SyscallCompletionRing::new(pid, sq_size, cq_size));
-         self.rings.insert(pid, ring.clone());
+        let ring = Arc::new(SyscallCompletionRing::new(pid, sq_size, cq_size));
+        self.rings.insert(pid, ring.clone());
 
-         info!(
-             pid = pid,
-             "io_uring-style completion ring created"
-         );
+        info!(pid = pid, "io_uring-style completion ring created");
 
-         Ok(ring)
-     }
+        Ok(ring)
+    }
 
-     /// Get a process's completion ring
-     pub fn get_ring(&self, pid: Pid) -> Option<Arc<SyscallCompletionRing>> {
-         self.rings.get(&pid).map(|r| r.clone())
-     }
+    /// Get a process's completion ring
+    pub fn get_ring(&self, pid: Pid) -> Option<Arc<SyscallCompletionRing>> {
+        self.rings.get(&pid).map(|r| r.clone())
+    }
 
-     /// Get or create a ring for a process
-     pub fn get_or_create_ring(&self, pid: Pid) -> Result<Arc<SyscallCompletionRing>, IoUringError> {
-         if let Some(ring) = self.get_ring(pid) {
-             Ok(ring)
-         } else {
-             self.create_ring(pid, None, None)
-         }
-     }
+    /// Get or create a ring for a process
+    pub fn get_or_create_ring(&self, pid: Pid) -> Result<Arc<SyscallCompletionRing>, IoUringError> {
+        if let Some(ring) = self.get_ring(pid) {
+            Ok(ring)
+        } else {
+            self.create_ring(pid, None, None)
+        }
+    }
 
-     /// Submit a syscall operation
-     pub fn submit(
-         &self,
-         pid: Pid,
-         entry: SyscallSubmissionEntry,
-     ) -> Result<u64, IoUringError> {
-         let ring = self.get_or_create_ring(pid)?;
-         let seq = ring.submit(entry)?;
+    /// Submit a syscall operation
+    pub fn submit(&self, pid: Pid, entry: SyscallSubmissionEntry) -> Result<u64, IoUringError> {
+        let ring = self.get_or_create_ring(pid)?;
+        let seq = ring.submit(entry)?;
 
-         // Spawn async execution
-         let ring_clone = ring.clone();
-         let executor = self.executor.clone();
-         tokio::spawn(async move {
-             executor.execute_async(ring_clone).await;
-         });
+        // Spawn async execution
+        let ring_clone = ring.clone();
+        let executor = self.executor.clone();
+        tokio::spawn(async move {
+            executor.execute_async(ring_clone).await;
+        });
 
-         Ok(seq)
-     }
+        Ok(seq)
+    }
 
-     /// Submit multiple syscalls in a batch
-     pub fn submit_batch(
-         &self,
-         pid: Pid,
-         entries: Vec<SyscallSubmissionEntry>,
-     ) -> Result<Vec<u64>, IoUringError> {
-         let ring = self.get_or_create_ring(pid)?;
-         let mut seqs = Vec::with_capacity(entries.len());
+    /// Submit multiple syscalls in a batch
+    pub fn submit_batch(
+        &self,
+        pid: Pid,
+        entries: Vec<SyscallSubmissionEntry>,
+    ) -> Result<Vec<u64>, IoUringError> {
+        let ring = self.get_or_create_ring(pid)?;
+        let mut seqs = Vec::with_capacity(entries.len());
 
-         for entry in entries {
-             let seq = ring.submit(entry)?;
-             seqs.push(seq);
-         }
+        for entry in entries {
+            let seq = ring.submit(entry)?;
+            seqs.push(seq);
+        }
 
-         // Spawn async batch execution
-         let ring_clone = ring.clone();
-         let executor = self.executor.clone();
-         tokio::spawn(async move {
-             executor.execute_batch_async(ring_clone).await;
-         });
+        // Spawn async batch execution
+        let ring_clone = ring.clone();
+        let executor = self.executor.clone();
+        tokio::spawn(async move {
+            executor.execute_batch_async(ring_clone).await;
+        });
 
-         Ok(seqs)
-     }
+        Ok(seqs)
+    }
 
-     /// Try to get completions (non-blocking)
-     pub fn reap_completions(
-         &self,
-         pid: Pid,
-         max: Option<usize>,
-     ) -> Result<Vec<SyscallCompletionEntry>, IoUringError> {
-         let ring = self
-             .get_ring(pid)
-             .ok_or(IoUringError::RingNotFound(pid))?;
+    /// Try to get completions (non-blocking)
+    pub fn reap_completions(
+        &self,
+        pid: Pid,
+        max: Option<usize>,
+    ) -> Result<Vec<SyscallCompletionEntry>, IoUringError> {
+        let ring = self.get_ring(pid).ok_or(IoUringError::RingNotFound(pid))?;
 
-         let max = max.unwrap_or(usize::MAX);
-         let mut completions = Vec::new();
+        let max = max.unwrap_or(usize::MAX);
+        let mut completions = Vec::new();
 
-         for _ in 0..max {
-             if let Some(entry) = ring.try_complete() {
-                 completions.push(entry);
-             } else {
-                 break;
-             }
-         }
+        for _ in 0..max {
+            if let Some(entry) = ring.try_complete() {
+                completions.push(entry);
+            } else {
+                break;
+            }
+        }
 
-         Ok(completions)
-     }
+        Ok(completions)
+    }
 
-     /// Wait for a specific completion (blocking)
-     pub fn wait_completion(
-         &self,
-         pid: Pid,
-         seq: u64,
-     ) -> Result<SyscallCompletionEntry, IoUringError> {
-         let ring = self
-             .get_ring(pid)
-             .ok_or(IoUringError::RingNotFound(pid))?;
+    /// Wait for a specific completion (blocking)
+    pub fn wait_completion(
+        &self,
+        pid: Pid,
+        seq: u64,
+    ) -> Result<SyscallCompletionEntry, IoUringError> {
+        let ring = self.get_ring(pid).ok_or(IoUringError::RingNotFound(pid))?;
 
-         ring.wait_completion(seq)
-     }
+        ring.wait_completion(seq)
+    }
 
     /// Destroy a completion ring
     pub fn destroy_ring(&self, pid: Pid) -> Result<(), IoUringError> {
@@ -219,11 +208,11 @@ pub mod handlers;
     }
 }
 
- /// io_uring error types
- #[derive(Error, Debug)]
- pub enum IoUringError {
-     #[error("Ring not found for PID {0}")]
-     RingNotFound(Pid),
+/// io_uring error types
+#[derive(Error, Debug)]
+pub enum IoUringError {
+    #[error("Ring not found for PID {0}")]
+    RingNotFound(Pid),
 
     #[error("Submission queue full")]
     SubmissionQueueFull,
@@ -234,21 +223,21 @@ pub mod handlers;
     #[error("Completion queue empty")]
     CompletionQueueEmpty,
 
-     #[error("Operation timeout")]
-     Timeout,
+    #[error("Operation timeout")]
+    Timeout,
 
-     #[error("Invalid operation: {0}")]
-     InvalidOperation(String),
+    #[error("Invalid operation: {0}")]
+    InvalidOperation(String),
 
-     #[error("Execution error: {0}")]
-     ExecutionError(String),
- }
+    #[error("Execution error: {0}")]
+    ExecutionError(String),
+}
 
- /// Statistics for io_uring operations
- #[derive(Debug, Clone)]
- pub struct IoUringStats {
-     pub active_rings: usize,
-     pub total_submissions: u64,
-     pub total_completions: u64,
-     pub pending: u64,
- }
+/// Statistics for io_uring operations
+#[derive(Debug, Clone)]
+pub struct IoUringStats {
+    pub active_rings: usize,
+    pub total_submissions: u64,
+    pub total_completions: u64,
+    pub pending: u64,
+}

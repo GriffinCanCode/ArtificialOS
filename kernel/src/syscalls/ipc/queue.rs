@@ -19,7 +19,8 @@ impl SyscallExecutor {
         queue_type: &str,
         capacity: Option<usize>,
     ) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::IpcChannel { channel_id: 0 }, Action::Create);
+        let request =
+            PermissionRequest::new(pid, Resource::IpcChannel { channel_id: 0 }, Action::Create);
         let response = self.permission_manager.check_and_audit(&request);
 
         if !response.is_allowed() {
@@ -65,7 +66,13 @@ impl SyscallExecutor {
         data: &[u8],
         priority: Option<u8>,
     ) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::IpcChannel { channel_id: queue_id }, Action::Send);
+        let request = PermissionRequest::new(
+            pid,
+            Resource::IpcChannel {
+                channel_id: queue_id,
+            },
+            Action::Send,
+        );
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -95,7 +102,13 @@ impl SyscallExecutor {
     }
 
     pub(crate) fn receive_queue(&self, pid: Pid, queue_id: u32) -> SyscallResult {
-        let request = PermissionRequest::new(pid, Resource::IpcChannel { channel_id: queue_id }, Action::Receive);
+        let request = PermissionRequest::new(
+            pid,
+            Resource::IpcChannel {
+                channel_id: queue_id,
+            },
+            Action::Receive,
+        );
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {

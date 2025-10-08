@@ -6,10 +6,10 @@
 use super::manager::MemoryManager;
 use crate::core::serde::{is_zero_u64, is_zero_usize};
 use crate::core::types::{Pid, Size};
+use ahash::HashMap;
 use log::{info, warn};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
-use ahash::HashMap;
 use std::sync::Arc;
 
 /// Global garbage collection strategy

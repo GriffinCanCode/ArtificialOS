@@ -17,11 +17,11 @@ pub use types::*;
 
 use crate::core::types::Pid;
 use crate::syscalls::types::{Syscall, SyscallResult};
-use std::sync::Arc;
-use parking_lot::RwLock;
-use dashmap::DashMap;
 use ahash::RandomState;
-use tracing::{info, debug};
+use dashmap::DashMap;
+use parking_lot::RwLock;
+use std::sync::Arc;
+use tracing::{debug, info};
 
 /// JIT Manager - coordinates hot path detection and compilation
 ///
@@ -178,4 +178,3 @@ mod tests {
         assert!(jit.should_use_jit(1, &syscall));
     }
 }
-

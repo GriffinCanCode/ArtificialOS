@@ -4,8 +4,8 @@
  */
 
 use super::atomic_stats::AtomicSchedulerStats;
-use super::types::{ProcessStats, SchedulerStats, SchedulingPolicy};
-use crate::core::types::{Pid, Priority};
+use super::types::SchedulingPolicy;
+use crate::core::types::Pid;
 use dashmap::DashMap;
 use log::info;
 use parking_lot::RwLock;

@@ -16,7 +16,7 @@ mod signal_handler;
 mod system_handler;
 mod time_handler;
 
-pub use async_handler::{AsyncSyscallHandler, AsyncSyscallHandlerRegistry};
+pub use async_handler::AsyncSyscallHandler;
 pub use fd_handler::FileDescriptorHandler;
 pub use fs_handler::FileSystemHandler;
 pub use ipc_handler::IpcHandler;
@@ -30,4 +30,3 @@ pub use system_handler::SystemHandler;
 pub use time_handler::TimeHandler;
 
 // Re-export io_uring handlers
-pub use crate::syscalls::iouring::handlers::{IoUringHandler, IoUringAsyncHandler};

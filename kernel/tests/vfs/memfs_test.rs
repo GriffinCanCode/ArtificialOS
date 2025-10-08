@@ -5,9 +5,9 @@
 
 use std::path::Path;
 
+use ai_os_kernel::vfs::memory::MemFS;
 use ai_os_kernel::vfs::traits::FileSystem;
 use ai_os_kernel::vfs::types::VfsError;
-use ai_os_kernel::vfs::memory::MemFS;
 
 #[test]
 fn test_memfs_basic() {

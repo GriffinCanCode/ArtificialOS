@@ -3,7 +3,7 @@
  * Zero-copy and io_uring ring cleanup
  */
 
-use super::{ResourceCleanup, CleanupStats};
+use super::{CleanupStats, ResourceCleanup};
 use crate::core::types::Pid;
 use crate::ipc::zerocopy::ZeroCopyIpc;
 use crate::syscalls::iouring::IoUringManager;
@@ -127,7 +127,12 @@ impl ResourceCleanup for RingResource {
     }
 
     fn has_resources(&self, pid: Pid) -> bool {
-        self.zerocopy.as_ref().map_or(false, |zc| zc.has_resources(pid))
-            || self.iouring.as_ref().map_or(false, |io| io.has_resources(pid))
+        self.zerocopy
+            .as_ref()
+            .map_or(false, |zc| zc.has_resources(pid))
+            || self
+                .iouring
+                .as_ref()
+                .map_or(false, |io| io.has_resources(pid))
     }
 }

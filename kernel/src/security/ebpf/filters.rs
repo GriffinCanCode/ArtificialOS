@@ -97,7 +97,12 @@ impl FilterManager {
     }
 
     /// Evaluate filters for a syscall
-    fn evaluate_filters(&self, filters: &[SyscallFilter], pid: Pid, syscall_nr: u64) -> FilterAction {
+    fn evaluate_filters(
+        &self,
+        filters: &[SyscallFilter],
+        pid: Pid,
+        syscall_nr: u64,
+    ) -> FilterAction {
         for filter in filters {
             // Check PID match
             if let Some(filter_pid) = filter.pid {

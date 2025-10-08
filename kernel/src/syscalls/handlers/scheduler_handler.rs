@@ -4,9 +4,9 @@
  */
 
 use crate::core::types::Pid;
+use crate::syscalls::executor::SyscallExecutor;
 use crate::syscalls::handler::SyscallHandler;
 use crate::syscalls::types::{Syscall, SyscallResult};
-use crate::syscalls::executor::SyscallExecutor;
 
 /// Handler for scheduler syscalls
 pub struct SchedulerHandler {
@@ -24,30 +24,18 @@ impl SyscallHandler for SchedulerHandler {
     #[inline]
     fn handle(&self, pid: Pid, syscall: &Syscall) -> Option<SyscallResult> {
         match syscall {
-            Syscall::ScheduleNext => {
-                Some(self.executor.schedule_next(pid))
-            }
-            Syscall::YieldProcess => {
-                Some(self.executor.yield_process(pid))
-            }
-            Syscall::GetCurrentScheduled => {
-                Some(self.executor.get_current_scheduled(pid))
-            }
-            Syscall::GetSchedulerStats => {
-                Some(self.executor.get_scheduler_stats(pid))
-            }
+            Syscall::ScheduleNext => Some(self.executor.schedule_next(pid)),
+            Syscall::YieldProcess => Some(self.executor.yield_process(pid)),
+            Syscall::GetCurrentScheduled => Some(self.executor.get_current_scheduled(pid)),
+            Syscall::GetSchedulerStats => Some(self.executor.get_scheduler_stats(pid)),
             Syscall::SetSchedulingPolicy { ref policy } => {
                 Some(self.executor.set_scheduling_policy(pid, policy))
             }
-            Syscall::GetSchedulingPolicy => {
-                Some(self.executor.get_scheduling_policy(pid))
-            }
+            Syscall::GetSchedulingPolicy => Some(self.executor.get_scheduling_policy(pid)),
             Syscall::SetTimeQuantum { quantum_micros } => {
                 Some(self.executor.set_time_quantum(pid, *quantum_micros))
             }
-            Syscall::GetTimeQuantum => {
-                Some(self.executor.get_time_quantum(pid))
-            }
+            Syscall::GetTimeQuantum => Some(self.executor.get_time_quantum(pid)),
             Syscall::GetProcessSchedulerStats { target_pid } => {
                 Some(self.executor.get_process_scheduler_stats(pid, *target_pid))
             }

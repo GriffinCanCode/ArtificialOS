@@ -19,11 +19,11 @@ pub mod vfs;
 
 // Re-exports for backwards compatibility
 // API
-pub use api::{
-    start_grpc_server, KernelServiceImpl, kernel_proto,
-    AsyncTaskManager, BatchExecutor, StreamingManager, TaskStatus,
-};
 pub use api::execution::{IoUringExecutor, IoUringManager};
+pub use api::{
+    kernel_proto, start_grpc_server, AsyncTaskManager, BatchExecutor, KernelServiceImpl,
+    StreamingManager, TaskStatus,
+};
 
 // Core
 pub use core::*;
@@ -31,19 +31,38 @@ pub use core::*;
 // IPC
 pub use ipc::{
     IPCManager, MapFlags, MmapEntry, MmapId, MmapManager, PipeError, PipeManager, PipeStats,
-    ProtFlags, ShmError, ShmManager, ShmPermission, ShmStats,
-    ZeroCopyIpc, ZeroCopyRing, ZeroCopyStats,
+    ProtFlags, ShmError, ShmManager, ShmPermission, ShmStats, ZeroCopyIpc, ZeroCopyRing,
+    ZeroCopyStats,
 };
 
 // Memory
 pub use memory::{
-    MemoryBlock, MemoryError, MemoryManager, MemoryStats, ProcessMemoryStats,
+    ascii_to_lower,
+    ascii_to_upper,
+    avg_u64,
+    contains_byte,
+    count_byte,
+    find_byte,
     // SIMD operations
-    init_simd, simd_capabilities, SimdCapabilities,
-    simd_memcpy, simd_memmove, simd_memcmp, simd_memset,
-    find_byte, contains_byte, count_byte, rfind_byte,
-    sum_u64, sum_u32, min_u64, max_u64, avg_u64,
-    ascii_to_lower, ascii_to_upper, is_ascii, trim,
+    init_simd,
+    is_ascii,
+    max_u64,
+    min_u64,
+    rfind_byte,
+    simd_capabilities,
+    simd_memcmp,
+    simd_memcpy,
+    simd_memmove,
+    simd_memset,
+    sum_u32,
+    sum_u64,
+    trim,
+    MemoryBlock,
+    MemoryError,
+    MemoryManager,
+    MemoryStats,
+    ProcessMemoryStats,
+    SimdCapabilities,
 };
 
 // Monitoring
@@ -70,8 +89,8 @@ pub use scheduler::{
 pub use permissions::{
     Action, AuditEvent, AuditLogger, AuditSeverity, EvaluationContext, PermissionCache,
     PermissionChecker, PermissionManager, PermissionProvider, PermissionRequest,
-    PermissionResponse, PolicyDecision as PermissionPolicyDecision,
-    PolicyEngine, RequestContext, Resource, ResourceType,
+    PermissionResponse, PolicyDecision as PermissionPolicyDecision, PolicyEngine, RequestContext,
+    Resource, ResourceType,
 };
 
 // Security
@@ -91,7 +110,8 @@ pub use signals::{
 pub use syscalls::{
     FileDescriptorSyscalls, FileSystemSyscalls, IpcSyscalls, JitManager, JitStats, MemorySyscalls,
     NetworkSyscalls, ProcessSyscalls, SchedulerSyscalls, SignalSyscalls, Syscall, SyscallError,
-    SyscallExecutor, SyscallExecutorTrait, SyscallPattern, SyscallResult, SystemInfoSyscalls, TimeSyscalls,
+    SyscallExecutor, SyscallExecutorTrait, SyscallPattern, SyscallResult, SystemInfoSyscalls,
+    TimeSyscalls,
 };
 
 // VFS

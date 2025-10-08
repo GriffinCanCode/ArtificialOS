@@ -4,12 +4,13 @@
  */
 
 use ai_os_kernel::ipc::IPCManager;
+use ai_os_kernel::MemoryManager;
 use pretty_assertions::assert_eq;
 use serial_test::serial;
 
 #[test]
 fn test_basic_message_send_receive() {
-    let mut ipc = IPCManager::new();
+    let mut ipc = IPCManager::new(MemoryManager::new());
 
     let from_pid = 100;
     let to_pid = 200;
@@ -28,7 +29,7 @@ fn test_basic_message_send_receive() {
 
 #[test]
 fn test_message_ordering() {
-    let mut ipc = IPCManager::new();
+    let mut ipc = IPCManager::new(MemoryManager::new());
 
     let from_pid = 100;
     let to_pid = 200;
@@ -54,7 +55,7 @@ fn test_message_ordering() {
 
 #[test]
 fn test_receive_from_empty_queue() {
-    let mut ipc = IPCManager::new();
+    let mut ipc = IPCManager::new(MemoryManager::new());
     let pid = 100;
 
     let message = ipc.receive_message(pid);
@@ -63,7 +64,7 @@ fn test_receive_from_empty_queue() {
 
 #[test]
 fn test_has_messages() {
-    let mut ipc = IPCManager::new();
+    let mut ipc = IPCManager::new(MemoryManager::new());
 
     let from_pid = 100;
     let to_pid = 200;
@@ -82,7 +83,7 @@ fn test_has_messages() {
 
 #[test]
 fn test_multiple_recipients() {
-    let mut ipc = IPCManager::new();
+    let mut ipc = IPCManager::new(MemoryManager::new());
 
     let sender = 100;
     let receiver1 = 200;
@@ -105,7 +106,7 @@ fn test_multiple_recipients() {
 
 #[test]
 fn test_message_size_limit() {
-    let mut ipc = IPCManager::new();
+    let mut ipc = IPCManager::new(MemoryManager::new());
 
     let from_pid = 100;
     let to_pid = 200;
@@ -115,12 +116,12 @@ fn test_message_size_limit() {
 
     let result = ipc.send_message(from_pid, to_pid, large_data);
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("exceeds limit"));
+    assert!(result.unwrap_err().to_string().contains("exceeds limit"));
 }
 
 #[test]
 fn test_queue_size_limit() {
-    let mut ipc = IPCManager::new();
+    let mut ipc = IPCManager::new(MemoryManager::new());
 
     let from_pid = 100;
     let to_pid = 200;
@@ -135,12 +136,12 @@ fn test_queue_size_limit() {
     // Next message should fail
     let result = ipc.send_message(from_pid, to_pid, small_data);
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("Queue for PID"));
+    assert!(result.unwrap_err().to_string().contains("Queue for PID"));
 }
 
 #[test]
 fn test_clear_process_queue() {
-    let mut ipc = IPCManager::new();
+    let mut ipc = IPCManager::new(MemoryManager::new());
 
     let from_pid = 100;
     let to_pid = 200;
@@ -162,7 +163,7 @@ fn test_clear_process_queue() {
 
 #[test]
 fn test_clear_empty_queue() {
-    let mut ipc = IPCManager::new();
+    let mut ipc = IPCManager::new(MemoryManager::new());
     let pid = 100;
 
     let cleared_count = ipc.clear_process_queue(pid);
@@ -171,7 +172,7 @@ fn test_clear_empty_queue() {
 
 #[test]
 fn test_message_timestamp() {
-    let mut ipc = IPCManager::new();
+    let mut ipc = IPCManager::new(MemoryManager::new());
 
     let from_pid = 100;
     let to_pid = 200;
@@ -185,7 +186,7 @@ fn test_message_timestamp() {
 
 #[test]
 fn test_bidirectional_communication() {
-    let mut ipc = IPCManager::new();
+    let mut ipc = IPCManager::new(MemoryManager::new());
 
     let pid1 = 100;
     let pid2 = 200;
@@ -211,7 +212,7 @@ fn test_bidirectional_communication() {
 #[test]
 #[serial]
 fn test_global_memory_tracking() {
-    let mut ipc = IPCManager::new();
+    let mut ipc = IPCManager::new(MemoryManager::new());
 
     let initial_usage = ipc.get_global_memory_usage();
 
@@ -232,7 +233,7 @@ fn test_global_memory_tracking() {
 #[test]
 #[serial]
 fn test_global_memory_limit() {
-    let mut ipc = IPCManager::new();
+    let mut ipc = IPCManager::new(MemoryManager::new());
 
     // Try to fill up global IPC memory (100MB limit)
     // Message size limit is 1MB, so use messages within that limit
@@ -248,10 +249,11 @@ fn test_global_memory_limit() {
         } else {
             // Should fail due to global limit or queue limit
             let err = result.unwrap_err();
+            let err_str = err.to_string();
             assert!(
-                err.contains("Global IPC memory limit")
-                    || err.contains("Queue for PID")
-                    || err.contains("exceeds limit"),
+                err_str.contains("Global IPC memory limit")
+                    || err_str.contains("Queue for PID")
+                    || err_str.contains("exceeds limit"),
                 "Unexpected error: {}",
                 err
             );
@@ -276,7 +278,7 @@ fn test_global_memory_limit() {
 #[test]
 #[serial]
 fn test_memory_cleanup_on_clear() {
-    let mut ipc = IPCManager::new();
+    let mut ipc = IPCManager::new(MemoryManager::new());
 
     let initial_usage = ipc.get_global_memory_usage();
 
@@ -296,9 +298,12 @@ fn test_memory_cleanup_on_clear() {
     let after_clear = ipc.get_global_memory_usage();
     // Should be close to initial state (may have differences due to concurrent tests)
     // Just verify it's significantly less than before clear
-    assert!(after_clear < before_clear / 2,
+    assert!(
+        after_clear < before_clear / 2,
         "Memory after clear ({}) should be much less than before ({})",
-        after_clear, before_clear);
+        after_clear,
+        before_clear
+    );
 }
 
 #[test]
@@ -306,7 +311,7 @@ fn test_concurrent_message_sending() {
     use std::sync::{Arc, Mutex};
     use std::thread;
 
-    let ipc = Arc::new(Mutex::new(IPCManager::new()));
+    let ipc = Arc::new(Mutex::new(IPCManager::new(MemoryManager::new())));
     let mut handles = vec![];
 
     // Multiple threads sending to the same recipient
@@ -338,7 +343,7 @@ fn test_concurrent_message_sending() {
 
 #[test]
 fn test_queue_isolation() {
-    let mut ipc = IPCManager::new();
+    let mut ipc = IPCManager::new(MemoryManager::new());
 
     let pid1 = 100;
     let pid2 = 200;

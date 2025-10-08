@@ -4,12 +4,12 @@
  */
 
 use crate::core::types::Pid;
-use crate::monitoring::{MetricsCollector, span_syscall};
+use crate::monitoring::{span_syscall, MetricsCollector};
 use crate::permissions::PermissionManager;
 use crate::security::SandboxManager;
-use tracing::{error, info};
 use std::sync::{Arc, OnceLock};
 use std::time::Instant;
+use tracing::{error, info};
 
 use super::handler::SyscallHandlerRegistry;
 use super::handlers::*;
@@ -217,7 +217,8 @@ impl SyscallExecutor {
         span.record_debug("syscall_details", &syscall);
 
         // Dispatch to appropriate handler via registry
-        let result = self.handler_registry
+        let result = self
+            .handler_registry
             .dispatch(pid, &syscall)
             .unwrap_or_else(|| {
                 error!("No handler found for syscall: {:?}", syscall);

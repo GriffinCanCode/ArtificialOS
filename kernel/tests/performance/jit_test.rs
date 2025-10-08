@@ -3,9 +3,9 @@
  * Tests for hot path detection and JIT compilation
  */
 
+use ai_os_kernel::security::SandboxManager;
 use ai_os_kernel::syscalls::jit::{JitManager, SyscallPattern};
 use ai_os_kernel::syscalls::{Syscall, SyscallExecutor};
-use ai_os_kernel::security::SandboxManager;
 use std::sync::Arc;
 
 #[tokio::test]
@@ -122,18 +122,20 @@ fn test_syscall_pattern_extraction() {
     let pattern = SyscallPattern::from_syscall(&syscall);
 
     match pattern {
-        SyscallPattern::Simple(_) => {}, // Expected
+        SyscallPattern::Simple(_) => {} // Expected
         _ => panic!("Expected Simple pattern"),
     }
 }
 
 #[test]
 fn test_syscall_pattern_file_ops() {
-    let syscall = Syscall::ReadFile { path: "/test".into() };
+    let syscall = Syscall::ReadFile {
+        path: "/test".into(),
+    };
     let pattern = SyscallPattern::from_syscall(&syscall);
 
     match pattern {
-        SyscallPattern::FileOp(_) => {}, // Expected
+        SyscallPattern::FileOp(_) => {} // Expected
         _ => panic!("Expected FileOp pattern"),
     }
 }
@@ -148,8 +150,7 @@ fn test_syscall_pattern_ipc_ops() {
     let pattern = SyscallPattern::from_syscall(&syscall);
 
     match pattern {
-        SyscallPattern::IpcOp(_) => {}, // Expected
+        SyscallPattern::IpcOp(_) => {} // Expected
         _ => panic!("Expected IpcOp pattern"),
     }
 }
-

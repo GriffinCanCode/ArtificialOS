@@ -138,23 +138,13 @@ impl<T, const N: usize> FixedBuffer<T, N> {
     /// Get as slice
     #[inline]
     pub fn as_slice(&self) -> &[T] {
-        unsafe {
-            std::slice::from_raw_parts(
-                self.data.as_ptr() as *const T,
-                self.len,
-            )
-        }
+        unsafe { std::slice::from_raw_parts(self.data.as_ptr() as *const T, self.len) }
     }
 
     /// Get as mutable slice
     #[inline]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
-        unsafe {
-            std::slice::from_raw_parts_mut(
-                self.data.as_mut_ptr() as *mut T,
-                self.len,
-            )
-        }
+        unsafe { std::slice::from_raw_parts_mut(self.data.as_mut_ptr() as *mut T, self.len) }
     }
 }
 

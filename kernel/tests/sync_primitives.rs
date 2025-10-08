@@ -4,9 +4,9 @@
  * Comprehensive tests for futex, condvar, and spinwait strategies
  */
 
-use ai_os_kernel::core::sync::{WaitQueue, SyncConfig, StrategyType, WaitError};
-use std::sync::Arc;
+use ai_os_kernel::core::sync::{StrategyType, SyncConfig, WaitError, WaitQueue};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -48,9 +48,7 @@ fn test_condvar_multiple_waiters() {
     let handles: Vec<_> = (0..5)
         .map(|_| {
             let queue_clone = queue.clone();
-            thread::spawn(move || {
-                queue_clone.wait(42, Some(Duration::from_secs(2)))
-            })
+            thread::spawn(move || queue_clone.wait(42, Some(Duration::from_secs(2))))
         })
         .collect();
 
@@ -113,11 +111,9 @@ fn test_wait_while_predicate() {
     let counter_clone = counter.clone();
 
     let handle = thread::spawn(move || {
-        queue_clone.wait_while(
-            100,
-            Some(Duration::from_secs(2)),
-            || counter_clone.load(Ordering::Relaxed) < 10
-        )
+        queue_clone.wait_while(100, Some(Duration::from_secs(2)), || {
+            counter_clone.load(Ordering::Relaxed) < 10
+        })
     });
 
     // Update counter a few times
@@ -143,9 +139,7 @@ fn test_concurrent_different_keys() {
     let handles: Vec<_> = (0..10)
         .map(|i| {
             let queue_clone = queue.clone();
-            thread::spawn(move || {
-                queue_clone.wait(i, Some(Duration::from_secs(2)))
-            })
+            thread::spawn(move || queue_clone.wait(i, Some(Duration::from_secs(2))))
         })
         .collect();
 
@@ -204,9 +198,7 @@ fn test_waiter_count() {
     let handles: Vec<_> = (0..3)
         .map(|_| {
             let queue_clone = queue.clone();
-            thread::spawn(move || {
-                queue_clone.wait(555, Some(Duration::from_secs(2)))
-            })
+            thread::spawn(move || queue_clone.wait(555, Some(Duration::from_secs(2))))
         })
         .collect();
 
@@ -236,7 +228,10 @@ fn test_high_frequency_wake() {
     let waiter = thread::spawn(move || {
         let mut count = 0;
         while !done_clone.load(Ordering::Relaxed) {
-            if queue_clone.wait(1000, Some(Duration::from_millis(10))).is_ok() {
+            if queue_clone
+                .wait(1000, Some(Duration::from_millis(10)))
+                .is_ok()
+            {
                 count += 1;
             }
         }
@@ -263,9 +258,7 @@ fn test_clone_behavior() {
     let queue1 = WaitQueue::<u64>::with_defaults();
     let queue2 = queue1.clone();
 
-    let handle = thread::spawn(move || {
-        queue2.wait(2000, Some(Duration::from_secs(1)))
-    });
+    let handle = thread::spawn(move || queue2.wait(2000, Some(Duration::from_secs(1))));
 
     thread::sleep(Duration::from_millis(50));
     queue1.wake_one(2000);

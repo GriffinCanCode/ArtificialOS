@@ -5,11 +5,11 @@
  */
 
 use super::traits::{WaitStrategy, WakeResult};
+use ahash::RandomState;
 use dashmap::DashMap;
 use parking_lot::{Condvar, Mutex};
 use std::sync::Arc;
 use std::time::Duration;
-use ahash::RandomState;
 
 /// Waiter state for a specific key
 struct WaiterState {
@@ -135,10 +135,7 @@ where
     }
 
     fn waiter_count(&self, key: K) -> usize {
-        self.waiters
-            .get(&key)
-            .map(|s| *s.count.lock())
-            .unwrap_or(0)
+        self.waiters.get(&key).map(|s| *s.count.lock()).unwrap_or(0)
     }
 
     fn name(&self) -> &'static str {
@@ -157,9 +154,7 @@ mod tests {
         let cv = Arc::new(CondvarWait::<u64>::new());
         let cv_clone = cv.clone();
 
-        let handle = thread::spawn(move || {
-            cv_clone.wait(42, Some(Duration::from_secs(1)))
-        });
+        let handle = thread::spawn(move || cv_clone.wait(42, Some(Duration::from_secs(1))));
 
         // Give thread time to wait
         thread::sleep(Duration::from_millis(50));
@@ -188,9 +183,7 @@ mod tests {
         let handles: Vec<_> = (0..3)
             .map(|_| {
                 let cv_clone = cv.clone();
-                thread::spawn(move || {
-                    cv_clone.wait(100, Some(Duration::from_secs(1)))
-                })
+                thread::spawn(move || cv_clone.wait(100, Some(Duration::from_secs(1))))
             })
             .collect();
 

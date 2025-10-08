@@ -3,9 +3,9 @@
  * Fast, volatile filesystem for testing and temporary storage
  */
 
+mod dir_ops;
 mod file_handle;
 mod file_ops;
-mod dir_ops;
 mod metadata_ops;
 mod node;
 

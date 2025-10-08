@@ -3,7 +3,7 @@
  * Per-process signal handler tracking and cleanup
  */
 
-use super::{ResourceCleanup, CleanupStats};
+use super::{CleanupStats, ResourceCleanup};
 use crate::core::types::Pid;
 use crate::signals::SignalManagerImpl as SignalManager;
 

@@ -60,9 +60,18 @@ fn test_pipe_id_recycling() {
     println!("✓ Pipe ID recycling verified: pipe4 reuses pipe2's ID");
 
     // Clean up
-    ipc_manager.pipes().destroy(pipe1).expect("Failed to destroy pipe1");
-    ipc_manager.pipes().destroy(pipe3).expect("Failed to destroy pipe3");
-    ipc_manager.pipes().destroy(pipe4).expect("Failed to destroy pipe4");
+    ipc_manager
+        .pipes()
+        .destroy(pipe1)
+        .expect("Failed to destroy pipe1");
+    ipc_manager
+        .pipes()
+        .destroy(pipe3)
+        .expect("Failed to destroy pipe3");
+    ipc_manager
+        .pipes()
+        .destroy(pipe4)
+        .expect("Failed to destroy pipe4");
 
     println!("✓ Pipe ID recycling test completed successfully");
 }
@@ -119,9 +128,18 @@ fn test_shm_id_recycling() {
     println!("✓ Shared memory ID recycling verified: seg4 reuses seg2's ID");
 
     // Clean up
-    ipc_manager.shm().destroy(seg1, owner_pid).expect("Failed to destroy seg1");
-    ipc_manager.shm().destroy(seg3, owner_pid).expect("Failed to destroy seg3");
-    ipc_manager.shm().destroy(seg4, owner_pid).expect("Failed to destroy seg4");
+    ipc_manager
+        .shm()
+        .destroy(seg1, owner_pid)
+        .expect("Failed to destroy seg1");
+    ipc_manager
+        .shm()
+        .destroy(seg3, owner_pid)
+        .expect("Failed to destroy seg3");
+    ipc_manager
+        .shm()
+        .destroy(seg4, owner_pid)
+        .expect("Failed to destroy seg4");
 
     println!("✓ Shared memory ID recycling test completed successfully");
 }
@@ -177,9 +195,18 @@ fn test_queue_id_recycling() {
     println!("✓ Queue ID recycling verified: queue4 reuses queue2's ID");
 
     // Clean up
-    ipc_manager.queues().destroy(queue1, owner_pid).expect("Failed to destroy queue1");
-    ipc_manager.queues().destroy(queue3, owner_pid).expect("Failed to destroy queue3");
-    ipc_manager.queues().destroy(queue4, owner_pid).expect("Failed to destroy queue4");
+    ipc_manager
+        .queues()
+        .destroy(queue1, owner_pid)
+        .expect("Failed to destroy queue1");
+    ipc_manager
+        .queues()
+        .destroy(queue3, owner_pid)
+        .expect("Failed to destroy queue3");
+    ipc_manager
+        .queues()
+        .destroy(queue4, owner_pid)
+        .expect("Failed to destroy queue4");
 
     println!("✓ Queue ID recycling test completed successfully");
 }
@@ -193,7 +220,10 @@ fn test_ipc_id_exhaustion_prevention() {
     let iterations = 100;
 
     println!("Testing that IPC ID recycling prevents ID space exhaustion");
-    println!("Allocating and deallocating {} times to verify IDs are reused\n", iterations);
+    println!(
+        "Allocating and deallocating {} times to verify IDs are reused\n",
+        iterations
+    );
 
     // Test pipes
     {
@@ -207,7 +237,11 @@ fn test_ipc_id_exhaustion_prevention() {
                 .expect(&format!("Failed to create pipe {}", i));
             pipe_ids.push(pipe_id);
         }
-        println!("  Created {} pipes (IDs 1-{})", iterations, pipe_ids.last().unwrap());
+        println!(
+            "  Created {} pipes (IDs 1-{})",
+            iterations,
+            pipe_ids.last().unwrap()
+        );
 
         // Second pass: destroy all
         for pipe_id in &pipe_ids {
@@ -227,7 +261,11 @@ fn test_ipc_id_exhaustion_prevention() {
                 .expect(&format!("Failed to create recycled pipe {}", i));
             recycled_ids.push(pipe_id);
         }
-        println!("  Recreated {} pipes (IDs 1-{})", iterations, recycled_ids.last().unwrap());
+        println!(
+            "  Recreated {} pipes (IDs 1-{})",
+            iterations,
+            recycled_ids.last().unwrap()
+        );
 
         // Verify that recycled IDs are from the same space (should be all recycled)
         let original_max = *pipe_ids.iter().max().unwrap();
@@ -236,8 +274,14 @@ fn test_ipc_id_exhaustion_prevention() {
             .filter(|id| **id <= original_max)
             .count();
 
-        println!("  Recycled {} out of {} pipe IDs from free list", recycled_count, iterations);
-        assert!(recycled_count > 0, "At least some pipe IDs should be recycled");
+        println!(
+            "  Recycled {} out of {} pipe IDs from free list",
+            recycled_count, iterations
+        );
+        assert!(
+            recycled_count > 0,
+            "At least some pipe IDs should be recycled"
+        );
 
         // Clean up
         for pipe_id in recycled_ids {
@@ -262,7 +306,11 @@ fn test_ipc_id_exhaustion_prevention() {
                 .expect(&format!("Failed to create segment {}", i));
             shm_ids.push(shm_id);
         }
-        println!("  Created {} segments (IDs 1-{})", iterations, shm_ids.last().unwrap());
+        println!(
+            "  Created {} segments (IDs 1-{})",
+            iterations,
+            shm_ids.last().unwrap()
+        );
 
         // Second pass: destroy all
         for shm_id in &shm_ids {
@@ -282,7 +330,11 @@ fn test_ipc_id_exhaustion_prevention() {
                 .expect(&format!("Failed to create recycled segment {}", i));
             recycled_ids.push(shm_id);
         }
-        println!("  Recreated {} segments (IDs 1-{})", iterations, recycled_ids.last().unwrap());
+        println!(
+            "  Recreated {} segments (IDs 1-{})",
+            iterations,
+            recycled_ids.last().unwrap()
+        );
 
         // Verify that recycled IDs are from the same space
         let original_max = *shm_ids.iter().max().unwrap();
@@ -291,8 +343,14 @@ fn test_ipc_id_exhaustion_prevention() {
             .filter(|id| **id <= original_max)
             .count();
 
-        println!("  Recycled {} out of {} segment IDs from free list", recycled_count, iterations);
-        assert!(recycled_count > 0, "At least some segment IDs should be recycled");
+        println!(
+            "  Recycled {} out of {} segment IDs from free list",
+            recycled_count, iterations
+        );
+        assert!(
+            recycled_count > 0,
+            "At least some segment IDs should be recycled"
+        );
 
         // Clean up
         for shm_id in recycled_ids {
@@ -316,7 +374,11 @@ fn test_ipc_id_exhaustion_prevention() {
                 .expect(&format!("Failed to create queue {}", i));
             queue_ids.push(queue_id);
         }
-        println!("  Created {} queues (IDs 1-{})", iterations, queue_ids.last().unwrap());
+        println!(
+            "  Created {} queues (IDs 1-{})",
+            iterations,
+            queue_ids.last().unwrap()
+        );
 
         // Second pass: destroy all
         for queue_id in &queue_ids {
@@ -336,7 +398,11 @@ fn test_ipc_id_exhaustion_prevention() {
                 .expect(&format!("Failed to create recycled queue {}", i));
             recycled_ids.push(queue_id);
         }
-        println!("  Recreated {} queues (IDs 1-{})", iterations, recycled_ids.last().unwrap());
+        println!(
+            "  Recreated {} queues (IDs 1-{})",
+            iterations,
+            recycled_ids.last().unwrap()
+        );
 
         // Verify that recycled IDs are from the same space
         let original_max = *queue_ids.iter().max().unwrap();
@@ -345,8 +411,14 @@ fn test_ipc_id_exhaustion_prevention() {
             .filter(|id| **id <= original_max)
             .count();
 
-        println!("  Recycled {} out of {} queue IDs from free list", recycled_count, iterations);
-        assert!(recycled_count > 0, "At least some queue IDs should be recycled");
+        println!(
+            "  Recycled {} out of {} queue IDs from free list",
+            recycled_count, iterations
+        );
+        assert!(
+            recycled_count > 0,
+            "At least some queue IDs should be recycled"
+        );
 
         // Clean up
         for queue_id in recycled_ids {
@@ -372,12 +444,30 @@ fn test_mixed_ipc_id_recycling() {
     println!("Creating and destroying pipes, segments, and queues in random order\n");
 
     // Create a mix of resources
-    let pipe1 = ipc_manager.pipes().create(pid, pid, None).expect("Failed to create pipe1");
-    let shm1 = ipc_manager.shm().create(1024, pid).expect("Failed to create shm1");
-    let queue1 = ipc_manager.queues().create(pid, QueueType::Fifo, None).expect("Failed to create queue1");
-    let pipe2 = ipc_manager.pipes().create(pid, pid, None).expect("Failed to create pipe2");
-    let shm2 = ipc_manager.shm().create(2048, pid).expect("Failed to create shm2");
-    let queue2 = ipc_manager.queues().create(pid, QueueType::Priority, None).expect("Failed to create queue2");
+    let pipe1 = ipc_manager
+        .pipes()
+        .create(pid, pid, None)
+        .expect("Failed to create pipe1");
+    let shm1 = ipc_manager
+        .shm()
+        .create(1024, pid)
+        .expect("Failed to create shm1");
+    let queue1 = ipc_manager
+        .queues()
+        .create(pid, QueueType::Fifo, None)
+        .expect("Failed to create queue1");
+    let pipe2 = ipc_manager
+        .pipes()
+        .create(pid, pid, None)
+        .expect("Failed to create pipe2");
+    let shm2 = ipc_manager
+        .shm()
+        .create(2048, pid)
+        .expect("Failed to create shm2");
+    let queue2 = ipc_manager
+        .queues()
+        .create(pid, QueueType::Priority, None)
+        .expect("Failed to create queue2");
 
     println!("Created resources:");
     println!("  Pipes: {}, {}", pipe1, pipe2);
@@ -385,16 +475,34 @@ fn test_mixed_ipc_id_recycling() {
     println!("  Queues: {}, {}", queue1, queue2);
 
     // Destroy first of each
-    ipc_manager.pipes().destroy(pipe1).expect("Failed to destroy pipe1");
-    ipc_manager.shm().destroy(shm1, pid).expect("Failed to destroy shm1");
-    ipc_manager.queues().destroy(queue1, pid).expect("Failed to destroy queue1");
+    ipc_manager
+        .pipes()
+        .destroy(pipe1)
+        .expect("Failed to destroy pipe1");
+    ipc_manager
+        .shm()
+        .destroy(shm1, pid)
+        .expect("Failed to destroy shm1");
+    ipc_manager
+        .queues()
+        .destroy(queue1, pid)
+        .expect("Failed to destroy queue1");
 
     println!("\nDestroyed first of each resource type");
 
     // Create new resources - should recycle
-    let pipe3 = ipc_manager.pipes().create(pid, pid, None).expect("Failed to create pipe3");
-    let shm3 = ipc_manager.shm().create(1024, pid).expect("Failed to create shm3");
-    let queue3 = ipc_manager.queues().create(pid, QueueType::Fifo, None).expect("Failed to create queue3");
+    let pipe3 = ipc_manager
+        .pipes()
+        .create(pid, pid, None)
+        .expect("Failed to create pipe3");
+    let shm3 = ipc_manager
+        .shm()
+        .create(1024, pid)
+        .expect("Failed to create shm3");
+    let queue3 = ipc_manager
+        .queues()
+        .create(pid, QueueType::Fifo, None)
+        .expect("Failed to create queue3");
 
     println!("\nCreated new resources (should be recycled):");
     println!("  Pipe: {} (expected {})", pipe3, pipe1);
@@ -409,12 +517,30 @@ fn test_mixed_ipc_id_recycling() {
     println!("\n✓ All IDs successfully recycled");
 
     // Clean up
-    ipc_manager.pipes().destroy(pipe2).expect("Failed to destroy pipe2");
-    ipc_manager.pipes().destroy(pipe3).expect("Failed to destroy pipe3");
-    ipc_manager.shm().destroy(shm2, pid).expect("Failed to destroy shm2");
-    ipc_manager.shm().destroy(shm3, pid).expect("Failed to destroy shm3");
-    ipc_manager.queues().destroy(queue2, pid).expect("Failed to destroy queue2");
-    ipc_manager.queues().destroy(queue3, pid).expect("Failed to destroy queue3");
+    ipc_manager
+        .pipes()
+        .destroy(pipe2)
+        .expect("Failed to destroy pipe2");
+    ipc_manager
+        .pipes()
+        .destroy(pipe3)
+        .expect("Failed to destroy pipe3");
+    ipc_manager
+        .shm()
+        .destroy(shm2, pid)
+        .expect("Failed to destroy shm2");
+    ipc_manager
+        .shm()
+        .destroy(shm3, pid)
+        .expect("Failed to destroy shm3");
+    ipc_manager
+        .queues()
+        .destroy(queue2, pid)
+        .expect("Failed to destroy queue2");
+    ipc_manager
+        .queues()
+        .destroy(queue3, pid)
+        .expect("Failed to destroy queue3");
 
     println!("✓ Mixed IPC ID recycling test completed successfully");
 }

@@ -4,9 +4,9 @@
  */
 
 use crate::core::types::Pid;
+use crate::syscalls::executor::SyscallExecutor;
 use crate::syscalls::handler::SyscallHandler;
 use crate::syscalls::types::{Syscall, SyscallResult};
-use crate::syscalls::executor::SyscallExecutor;
 
 /// Handler for system information syscalls
 pub struct SystemHandler {
@@ -24,15 +24,9 @@ impl SyscallHandler for SystemHandler {
     #[inline]
     fn handle(&self, pid: Pid, syscall: &Syscall) -> Option<SyscallResult> {
         match syscall {
-            Syscall::GetSystemInfo => {
-                Some(self.executor.get_system_info(pid))
-            }
-            Syscall::GetCurrentTime => {
-                Some(self.executor.get_current_time(pid))
-            }
-            Syscall::GetEnvironmentVar { ref key } => {
-                Some(self.executor.get_env_var(pid, key))
-            }
+            Syscall::GetSystemInfo => Some(self.executor.get_system_info(pid)),
+            Syscall::GetCurrentTime => Some(self.executor.get_current_time(pid)),
+            Syscall::GetEnvironmentVar { ref key } => Some(self.executor.get_env_var(pid, key)),
             Syscall::SetEnvironmentVar { ref key, ref value } => {
                 Some(self.executor.set_env_var(pid, key, value))
             }

@@ -102,13 +102,19 @@ impl PreemptionController {
     /// Non-Unix stubs
     #[cfg(not(unix))]
     fn pause_process(&self, os_pid: u32) -> bool {
-        warn!("Process preemption not supported on this platform (OS PID {})", os_pid);
+        warn!(
+            "Process preemption not supported on this platform (OS PID {})",
+            os_pid
+        );
         false
     }
 
     #[cfg(not(unix))]
     fn resume_process(&self, os_pid: u32) -> bool {
-        warn!("Process resumption not supported on this platform (OS PID {})", os_pid);
+        warn!(
+            "Process resumption not supported on this platform (OS PID {})",
+            os_pid
+        );
         false
     }
 

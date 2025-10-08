@@ -58,7 +58,8 @@ impl Scheduler {
             match new_policy {
                 SchedulingPolicy::RoundRobin => {
                     self.rr_queue.write().push_back(entry);
-                    self.process_locations.insert(pid, QueueLocation::RoundRobin);
+                    self.process_locations
+                        .insert(pid, QueueLocation::RoundRobin);
                 }
                 SchedulingPolicy::Priority => {
                     self.priority_queue.write().push(entry);

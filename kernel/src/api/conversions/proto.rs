@@ -3,9 +3,9 @@
  * Converts between protobuf messages and internal syscall types
  */
 
-use std::path::PathBuf;
-use crate::syscalls::Syscall;
 use crate::api::server::grpc_server::kernel_proto::*;
+use crate::syscalls::Syscall;
+use std::path::PathBuf;
 
 /// Convert protobuf SyscallRequest to internal Syscall enum
 /// Returns Err if syscall type is unsupported or missing
@@ -91,9 +91,9 @@ pub fn proto_to_syscall_full(req: &SyscallRequest) -> Result<Syscall, String> {
         }),
         Some(syscall_request::Syscall::GetSystemInfo(_)) => Ok(Syscall::GetSystemInfo),
         Some(syscall_request::Syscall::GetCurrentTime(_)) => Ok(Syscall::GetCurrentTime),
-        Some(syscall_request::Syscall::GetEnvVar(call)) => {
-            Ok(Syscall::GetEnvironmentVar { key: call.key.clone() })
-        }
+        Some(syscall_request::Syscall::GetEnvVar(call)) => Ok(Syscall::GetEnvironmentVar {
+            key: call.key.clone(),
+        }),
         Some(syscall_request::Syscall::SetEnvVar(call)) => Ok(Syscall::SetEnvironmentVar {
             key: call.key.clone(),
             value: call.value.clone(),
@@ -115,10 +115,12 @@ pub fn proto_to_syscall_full(req: &SyscallRequest) -> Result<Syscall, String> {
             target_pid: call.target_pid,
             signal: call.signal,
         }),
-        Some(syscall_request::Syscall::RegisterSignalHandler(call)) => Ok(Syscall::RegisterSignalHandler {
-            signal: call.signal,
-            handler_id: call.handler_id as u64,
-        }),
+        Some(syscall_request::Syscall::RegisterSignalHandler(call)) => {
+            Ok(Syscall::RegisterSignalHandler {
+                signal: call.signal,
+                handler_id: call.handler_id as u64,
+            })
+        }
         Some(syscall_request::Syscall::BlockSignal(call)) => Ok(Syscall::BlockSignal {
             signal: call.signal,
         }),
@@ -134,9 +136,9 @@ pub fn proto_to_syscall_full(req: &SyscallRequest) -> Result<Syscall, String> {
         Some(syscall_request::Syscall::GetSignalState(call)) => Ok(Syscall::GetSignalState {
             target_pid: call.target_pid,
         }),
-        Some(syscall_request::Syscall::NetworkRequest(call)) => {
-            Ok(Syscall::NetworkRequest { url: call.url.clone() })
-        }
+        Some(syscall_request::Syscall::NetworkRequest(call)) => Ok(Syscall::NetworkRequest {
+            url: call.url.clone(),
+        }),
         Some(syscall_request::Syscall::Socket(call)) => Ok(Syscall::Socket {
             domain: call.domain,
             socket_type: call.socket_type,
@@ -336,16 +338,12 @@ pub fn proto_to_syscall_full(req: &SyscallRequest) -> Result<Syscall, String> {
         Some(syscall_request::Syscall::GetAllProcessSchedulerStats(_)) => {
             Ok(Syscall::GetAllProcessSchedulerStats)
         }
-        Some(syscall_request::Syscall::BoostPriority(call)) => {
-            Ok(Syscall::BoostPriority {
-                target_pid: call.target_pid,
-            })
-        }
-        Some(syscall_request::Syscall::LowerPriority(call)) => {
-            Ok(Syscall::LowerPriority {
-                target_pid: call.target_pid,
-            })
-        }
+        Some(syscall_request::Syscall::BoostPriority(call)) => Ok(Syscall::BoostPriority {
+            target_pid: call.target_pid,
+        }),
+        Some(syscall_request::Syscall::LowerPriority(call)) => Ok(Syscall::LowerPriority {
+            target_pid: call.target_pid,
+        }),
         None => Err("No syscall provided".to_string()),
     }
 }

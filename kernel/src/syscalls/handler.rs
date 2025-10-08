@@ -3,8 +3,8 @@
  * Defines the interface for syscall handlers and handler registration
  */
 
-use crate::core::types::Pid;
 use super::types::{Syscall, SyscallResult};
+use crate::core::types::Pid;
 use std::sync::Arc;
 
 /// Trait for handling individual syscalls
@@ -86,8 +86,7 @@ mod tests {
 
     #[test]
     fn test_registry_dispatch() {
-        let registry = SyscallHandlerRegistry::new()
-            .register(Arc::new(TestHandler));
+        let registry = SyscallHandlerRegistry::new().register(Arc::new(TestHandler));
 
         assert_eq!(registry.handler_count(), 1);
 

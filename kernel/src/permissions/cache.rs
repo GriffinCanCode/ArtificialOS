@@ -220,8 +220,14 @@ mod tests {
         let req1 = PermissionRequest::file_read(100, PathBuf::from("/test1"));
         let req2 = PermissionRequest::file_read(200, PathBuf::from("/test2"));
 
-        cache.put(req1.clone(), PermissionResponse::allow(req1.clone(), "test"));
-        cache.put(req2.clone(), PermissionResponse::allow(req2.clone(), "test"));
+        cache.put(
+            req1.clone(),
+            PermissionResponse::allow(req1.clone(), "test"),
+        );
+        cache.put(
+            req2.clone(),
+            PermissionResponse::allow(req2.clone(), "test"),
+        );
 
         cache.invalidate_pid(100);
 

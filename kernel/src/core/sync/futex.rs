@@ -6,12 +6,12 @@
  */
 
 use super::traits::{WaitStrategy, WakeResult};
+use ahash::RandomState;
 use dashmap::DashMap;
 use parking_lot_core::{park, unpark_all, unpark_one, ParkResult, ParkToken, UnparkToken};
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
-use ahash::RandomState;
 
 /// Futex-based wait strategy using parking_lot_core
 ///
@@ -187,9 +187,7 @@ mod tests {
         let futex = Arc::new(FutexWait::<u64>::new());
         let futex_clone = futex.clone();
 
-        let handle = thread::spawn(move || {
-            futex_clone.wait(42, Some(Duration::from_secs(1)))
-        });
+        let handle = thread::spawn(move || futex_clone.wait(42, Some(Duration::from_secs(1))));
 
         // Give thread time to park
         thread::sleep(Duration::from_millis(50));

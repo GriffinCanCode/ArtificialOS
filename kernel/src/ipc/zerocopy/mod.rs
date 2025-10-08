@@ -5,23 +5,23 @@
  * between processes by using shared memory and submission/completion queues.
  */
 
+mod buffer_pool;
+mod completion;
 mod ring;
 mod submission;
-mod completion;
-mod buffer_pool;
 
-pub use ring::ZeroCopyRing;
-pub use submission::{SubmissionQueue, SubmissionEntry};
-pub use completion::{CompletionQueue, CompletionEntry};
 pub use buffer_pool::BufferPool;
+pub use completion::{CompletionEntry, CompletionQueue};
+pub use ring::ZeroCopyRing;
+pub use submission::{SubmissionEntry, SubmissionQueue};
 
-use crate::core::types::{Pid, Size, Address};
+use crate::core::types::{Address, Pid, Size};
 use crate::memory::MemoryManager;
-use dashmap::DashMap;
 use ahash::RandomState;
+use dashmap::DashMap;
 use std::sync::Arc;
-use tracing::{info, debug};
 use thiserror::Error;
+use tracing::{debug, info};
 
 /// Zero-copy IPC manager
 #[derive(Clone)]
@@ -103,9 +103,7 @@ impl ZeroCopyIpc {
         buffer_addr: Address,
         size: Size,
     ) -> Result<u64, ZeroCopyError> {
-        let ring = self
-            .get_ring(pid)
-            .ok_or(ZeroCopyError::RingNotFound(pid))?;
+        let ring = self.get_ring(pid).ok_or(ZeroCopyError::RingNotFound(pid))?;
 
         // Create submission entry
         let entry = SubmissionEntry::new_transfer(target_pid, buffer_addr, size);
@@ -125,14 +123,8 @@ impl ZeroCopyIpc {
     }
 
     /// Complete an IPC operation and get result
-    pub fn complete_operation(
-        &self,
-        pid: Pid,
-        seq: u64,
-    ) -> Result<CompletionEntry, ZeroCopyError> {
-        let ring = self
-            .get_ring(pid)
-            .ok_or(ZeroCopyError::RingNotFound(pid))?;
+    pub fn complete_operation(&self, pid: Pid, seq: u64) -> Result<CompletionEntry, ZeroCopyError> {
+        let ring = self.get_ring(pid).ok_or(ZeroCopyError::RingNotFound(pid))?;
 
         // Wait for completion
         let completion = ring.wait_completion(seq)?;
@@ -183,7 +175,10 @@ impl ZeroCopyIpc {
         }
 
         if count > 0 {
-            info!("Cleaned {} zero-copy rings for terminated PID {}", count, pid);
+            info!(
+                "Cleaned {} zero-copy rings for terminated PID {}",
+                count, pid
+            );
         }
 
         (count, bytes)
@@ -250,4 +245,3 @@ pub struct ZeroCopyStats {
     pub total_submissions: u64,
     pub total_completions: u64,
 }
-

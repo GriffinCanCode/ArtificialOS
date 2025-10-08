@@ -3,16 +3,16 @@
  * Pre-allocated buffer pool for zero-copy operations
  */
 
-use crate::core::types::{Pid, Size, Address};
+use crate::core::types::{Address, Pid, Size};
 use crate::memory::MemoryManager;
 use parking_lot::Mutex;
 use std::collections::VecDeque;
 use tracing::debug;
 
 /// Pre-allocated buffer sizes
-const SMALL_BUFFER_SIZE: Size = 4096;      // 4KB
-const MEDIUM_BUFFER_SIZE: Size = 65536;    // 64KB
-const LARGE_BUFFER_SIZE: Size = 1048576;   // 1MB
+const SMALL_BUFFER_SIZE: Size = 4096; // 4KB
+const MEDIUM_BUFFER_SIZE: Size = 65536; // 64KB
+const LARGE_BUFFER_SIZE: Size = 1048576; // 1MB
 
 /// Buffer pool for zero-copy operations
 pub struct BufferPool {
@@ -126,4 +126,3 @@ pub struct BufferPoolStats {
     pub medium_available: usize,
     pub large_available: usize,
 }
-

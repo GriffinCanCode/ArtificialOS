@@ -41,10 +41,7 @@ pub(super) fn cleanup_os_process(
 }
 
 /// Cleanup memory resources
-pub(super) fn cleanup_memory(
-    pid: Pid,
-    memory_manager: &Option<MemoryManager>,
-) {
+pub(super) fn cleanup_memory(pid: Pid, memory_manager: &Option<MemoryManager>) {
     if let Some(ref mem_mgr) = memory_manager {
         let freed = mem_mgr.free_process_memory(pid);
         if freed > 0 {
@@ -54,10 +51,7 @@ pub(super) fn cleanup_memory(
 }
 
 /// Cleanup IPC resources
-pub(super) fn cleanup_ipc(
-    pid: Pid,
-    ipc_manager: &Option<IPCManager>,
-) {
+pub(super) fn cleanup_ipc(pid: Pid, ipc_manager: &Option<IPCManager>) {
     if let Some(ref ipc_mgr) = ipc_manager {
         let cleaned = ipc_mgr.clear_process_queue(pid);
         if cleaned > 0 {
@@ -70,30 +64,21 @@ pub(super) fn cleanup_ipc(
 }
 
 /// Remove from scheduler
-pub(super) fn cleanup_scheduler(
-    pid: Pid,
-    scheduler: &Option<Arc<RwLock<Scheduler>>>,
-) {
+pub(super) fn cleanup_scheduler(pid: Pid, scheduler: &Option<Arc<RwLock<Scheduler>>>) {
     if let Some(ref sched) = scheduler {
         sched.read().remove(pid);
     }
 }
 
 /// Notify preemption controller
-pub(super) fn cleanup_preemption(
-    pid: Pid,
-    preemption: &Option<Arc<PreemptionController>>,
-) {
+pub(super) fn cleanup_preemption(pid: Pid, preemption: &Option<Arc<PreemptionController>>) {
     if let Some(ref preempt) = preemption {
         preempt.cleanup_process(pid);
     }
 }
 
 /// Cleanup file descriptors
-pub(super) fn cleanup_file_descriptors(
-    pid: Pid,
-    fd_manager: &Option<FdManager>,
-) {
+pub(super) fn cleanup_file_descriptors(pid: Pid, fd_manager: &Option<FdManager>) {
     if let Some(ref fd_mgr) = fd_manager {
         let closed = fd_mgr.cleanup_process_fds(pid);
         if closed > 0 {
@@ -109,10 +94,7 @@ pub(super) fn cleanup_file_descriptors(
 ///
 /// This orchestrates cleanup across all resource types in a well-defined order
 /// to prevent leaks and ensure proper resource release.
-pub(super) fn cleanup_comprehensive(
-    pid: Pid,
-    orchestrator: &Option<ResourceOrchestrator>,
-) {
+pub(super) fn cleanup_comprehensive(pid: Pid, orchestrator: &Option<ResourceOrchestrator>) {
     if let Some(ref orch) = orchestrator {
         let result = orch.cleanup_process(pid);
 

@@ -131,7 +131,8 @@ impl LocalFS {
 impl FileSystem for LocalFS {
     fn read(&self, path: &Path) -> VfsResult<Vec<u8>> {
         let full_path = self.resolve(path);
-        let data = fs::read(&full_path).map_err(|e| Self::io_error(e, format!("read {}", path.display())))?;
+        let data = fs::read(&full_path)
+            .map_err(|e| Self::io_error(e, format!("read {}", path.display())))?;
 
         // Use SIMD-accelerated copy for large files (> 64 bytes)
         if data.len() >= 64 {
@@ -239,7 +240,10 @@ impl FileSystem for LocalFS {
                 .file_type()
                 .map_err(|e| Self::io_error(e, format!("get file type for {}", name)))?;
 
-            result.push(Entry::new_unchecked(name, Self::convert_file_type(file_type)));
+            result.push(Entry::new_unchecked(
+                name,
+                Self::convert_file_type(file_type),
+            ));
         }
 
         Ok(result)

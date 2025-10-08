@@ -9,18 +9,18 @@
  */
 
 use std::error::Error;
-use tracing::info;
 use tokio::signal;
 use tokio::sync::broadcast;
+use tracing::info;
 
-use ai_os_kernel::{
-    init_tracing, init_simd, IPCManager, LocalFS, MemFS, MemoryManager, MmapManager,
-    MountManager, SchedulingPolicy as Policy, ProcessManager, SandboxManager, SyscallExecutor,
-    SignalManagerImpl, AsyncTaskManager, IoUringManager, IoUringExecutor, ZeroCopyIpc,
-};
 use ai_os_kernel::process::resources::{
-    ResourceOrchestrator, SocketResource, SignalResource, RingResource,
-    TaskResource, MappingResource,
+    MappingResource, ResourceOrchestrator, RingResource, SignalResource, SocketResource,
+    TaskResource,
+};
+use ai_os_kernel::{
+    init_simd, init_tracing, AsyncTaskManager, IPCManager, IoUringExecutor, IoUringManager,
+    LocalFS, MemFS, MemoryManager, MmapManager, MountManager, ProcessManager, SandboxManager,
+    SchedulingPolicy as Policy, SignalManagerImpl, SyscallExecutor, ZeroCopyIpc,
 };
 use std::sync::Arc;
 
@@ -151,11 +151,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let resource_orchestrator = ResourceOrchestrator::new()
         .register(MappingResource::new(mmap_manager))
         .register(TaskResource::new(async_task_manager))
-        .register(RingResource::new()
-            .with_zerocopy(zerocopy_ipc)
-            .with_iouring(iouring_manager))
+        .register(
+            RingResource::new()
+                .with_zerocopy(zerocopy_ipc)
+                .with_iouring(iouring_manager),
+        )
         .register(SignalResource::new(signal_manager))
-        .register(SocketResource::new(syscall_executor.socket_manager().clone()));
+        .register(SocketResource::new(
+            syscall_executor.socket_manager().clone(),
+        ));
 
     info!(
         "Resource orchestrator initialized with {} resource types",
@@ -197,8 +201,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // Spawn gRPC server with graceful shutdown support
     let grpc_handle = tokio::spawn(async move {
-        use tonic::transport::Server;
         use std::time::Duration;
+        use tonic::transport::Server;
 
         let service_impl = ai_os_kernel::KernelServiceImpl::new(
             grpc_syscall_executor,
@@ -206,7 +210,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
             grpc_sandbox_manager,
         );
 
-        let service = ai_os_kernel::kernel_proto::kernel_service_server::KernelServiceServer::new(service_impl);
+        let service = ai_os_kernel::kernel_proto::kernel_service_server::KernelServiceServer::new(
+            service_impl,
+        );
 
         // Graceful shutdown future
         let shutdown_future = async move {
@@ -283,8 +289,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 // Give each process 5 seconds to terminate
                 match tokio::time::timeout(
                     tokio::time::Duration::from_secs(5),
-                    tokio::task::spawn_blocking(move || pm.terminate_process(pid))
-                ).await {
+                    tokio::task::spawn_blocking(move || pm.terminate_process(pid)),
+                )
+                .await
+                {
                     Ok(Ok(true)) => {
                         info!("Terminated process {} (PID: {})", name, pid);
                         true
@@ -298,7 +306,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
                         false
                     }
                     Err(_) => {
-                        tracing::warn!("Process {} (PID: {}) termination timed out after 5s", name, pid);
+                        tracing::warn!(
+                            "Process {} (PID: {}) termination timed out after 5s",
+                            name,
+                            pid
+                        );
                         false
                     }
                 }
@@ -308,8 +320,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         // Wait for all terminations to complete (parallel)
         let results = futures::future::join_all(termination_tasks).await;
-        let successful = results.into_iter().filter(|r| r.is_ok() && *r.as_ref().unwrap()).count();
-        info!("Successfully terminated {}/{} processes", successful, process_count);
+        let successful = results
+            .into_iter()
+            .filter(|r| r.is_ok() && *r.as_ref().unwrap())
+            .count();
+        info!(
+            "Successfully terminated {}/{} processes",
+            successful, process_count
+        );
     } else {
         info!("No processes to terminate");
     }
@@ -319,12 +337,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // 5. Wait for background tasks to complete (with timeout)
     info!("Waiting for background tasks to complete...");
-    let _ = tokio::time::timeout(
-        tokio::time::Duration::from_secs(10),
-        async {
-            let _ = tokio::join!(grpc_handle, monitor_handle);
-        }
-    ).await;
+    let _ = tokio::time::timeout(tokio::time::Duration::from_secs(10), async {
+        let _ = tokio::join!(grpc_handle, monitor_handle);
+    })
+    .await;
     info!("Background tasks completed");
 
     info!("================================================");

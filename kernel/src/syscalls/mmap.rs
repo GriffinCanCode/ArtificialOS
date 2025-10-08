@@ -7,7 +7,6 @@ use crate::core::bincode;
 use crate::core::types::Pid;
 use crate::ipc::{MapFlags, ProtFlags};
 use crate::permissions::{PermissionChecker, PermissionRequest};
-use crate::security::Capability;
 use log::{error, info};
 use std::path::PathBuf;
 
@@ -96,11 +95,19 @@ impl SyscallExecutor {
 
         match mmap_manager.read(pid, mmap_id, offset, length) {
             Ok(data) => {
-                info!("PID {} read {} bytes from mmap {}", pid, data.len(), mmap_id);
+                info!(
+                    "PID {} read {} bytes from mmap {}",
+                    pid,
+                    data.len(),
+                    mmap_id
+                );
                 SyscallResult::success_with_data(data)
             }
             Err(e) => {
-                error!("Failed to read from mmap {} for PID {}: {}", mmap_id, pid, e);
+                error!(
+                    "Failed to read from mmap {} for PID {}: {}",
+                    mmap_id, pid, e
+                );
                 SyscallResult::error(format!("Mmap read failed: {}", e))
             }
         }
@@ -168,8 +175,14 @@ impl SyscallExecutor {
 
     pub(super) fn mmap_stats(&self, pid: Pid, mmap_id: u32) -> SyscallResult {
         // Check permission using centralized manager
-        use crate::permissions::{Resource, Action};
-        let request = PermissionRequest::new(pid, Resource::System { name: "mmap".to_string() }, Action::Inspect);
+        use crate::permissions::{Action, Resource};
+        let request = PermissionRequest::new(
+            pid,
+            Resource::System {
+                name: "mmap".to_string(),
+            },
+            Action::Inspect,
+        );
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {

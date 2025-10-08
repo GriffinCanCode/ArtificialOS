@@ -5,8 +5,8 @@
 
 use crate::core::types::Pid;
 use crate::vfs::{FileSystem, MountManager};
-use dashmap::DashMap;
 use ahash::RandomState;
+use dashmap::DashMap;
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -110,7 +110,11 @@ impl MmapManager {
     pub fn new() -> Self {
         info!("Mmap manager initialized");
         Self {
-            mappings: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 32)),
+            mappings: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
+                0,
+                RandomState::new(),
+                32,
+            )),
             next_id: AtomicU32::new(1),
             vfs: None,
         }
@@ -120,7 +124,11 @@ impl MmapManager {
     pub fn with_vfs(vfs: Arc<MountManager>) -> Self {
         info!("Mmap manager initialized with VFS support");
         Self {
-            mappings: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 32)),
+            mappings: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
+                0,
+                RandomState::new(),
+                32,
+            )),
             next_id: AtomicU32::new(1),
             vfs: Some(vfs),
         }
@@ -184,7 +192,13 @@ impl MmapManager {
     }
 
     /// Read from a memory mapping
-    pub fn read(&self, pid: Pid, mmap_id: MmapId, offset: usize, length: usize) -> Result<Vec<u8>, String> {
+    pub fn read(
+        &self,
+        pid: Pid,
+        mmap_id: MmapId,
+        offset: usize,
+        length: usize,
+    ) -> Result<Vec<u8>, String> {
         let entry = self
             .mappings
             .get(&mmap_id)
@@ -197,18 +211,33 @@ impl MmapManager {
 
         // Validate access
         if offset >= entry.data.len() {
-            return Err(format!("Offset {} exceeds mapping size {}", offset, entry.data.len()));
+            return Err(format!(
+                "Offset {} exceeds mapping size {}",
+                offset,
+                entry.data.len()
+            ));
         }
 
         let end = offset.saturating_add(length).min(entry.data.len());
         let data = entry.data[offset..end].to_vec();
 
-        debug!("PID {} read {} bytes from mmap {}", pid, data.len(), mmap_id);
+        debug!(
+            "PID {} read {} bytes from mmap {}",
+            pid,
+            data.len(),
+            mmap_id
+        );
         Ok(data)
     }
 
     /// Write to a memory mapping (for shared mappings)
-    pub fn write(&self, pid: Pid, mmap_id: MmapId, offset: usize, data: &[u8]) -> Result<(), String> {
+    pub fn write(
+        &self,
+        pid: Pid,
+        mmap_id: MmapId,
+        offset: usize,
+        data: &[u8],
+    ) -> Result<(), String> {
         let mut entry = self
             .mappings
             .get_mut(&mmap_id)
@@ -233,7 +262,12 @@ impl MmapManager {
             new_data[offset..offset + data.len()].copy_from_slice(data);
             entry.data = Arc::new(new_data);
 
-            debug!("PID {} wrote {} bytes to private mmap {} (CoW)", pid, data.len(), mmap_id);
+            debug!(
+                "PID {} wrote {} bytes to private mmap {} (CoW)",
+                pid,
+                data.len(),
+                mmap_id
+            );
         } else {
             // Shared mapping - need to make data mutable
             // In a real implementation, this would need Arc::make_mut or similar
@@ -278,7 +312,10 @@ impl MmapManager {
             vfs.write(Path::new(&entry.path), &file_data)
                 .map_err(|e| format!("Failed to write file for sync: {}", e))?;
 
-            info!("PID {} synced mmap {} to file '{}'", pid, mmap_id, entry.path);
+            info!(
+                "PID {} synced mmap {} to file '{}'",
+                pid, mmap_id, entry.path
+            );
         } else {
             return Err("VFS not available for sync".to_string());
         }
@@ -344,7 +381,10 @@ impl MmapManager {
         }
 
         if count > 0 {
-            info!("Cleaned {} memory mappings ({} bytes) for terminated PID {}", count, bytes, pid);
+            info!(
+                "Cleaned {} memory mappings ({} bytes) for terminated PID {}",
+                count, bytes, pid
+            );
         }
 
         (count, bytes)

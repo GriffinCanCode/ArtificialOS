@@ -3,6 +3,7 @@
  * End-to-end tests for the kernel
  */
 
+use ai_os_kernel::security::SandboxProvider;
 use ai_os_kernel::{
     Capability, IPCManager, MemoryManager, ProcessManager, SandboxConfig, SandboxManager, Syscall,
     SyscallExecutor, SyscallResult,
@@ -49,8 +50,8 @@ fn test_sandboxed_file_operations() {
 
     // Create sandbox with file capabilities
     let mut config = SandboxConfig::minimal(pid);
-    config.grant_capability(Capability::ReadFile);
-    config.grant_capability(Capability::WriteFile);
+    config.grant_capability(Capability::ReadFile(None));
+    config.grant_capability(Capability::WriteFile(None));
     config.allow_path(temp_dir.path().canonicalize().unwrap());
     sandbox_mgr.create_sandbox(config);
 
@@ -142,7 +143,7 @@ fn test_process_memory_limits() {
 
 #[test]
 fn test_ipc_between_processes() {
-    let mut ipc = IPCManager::new(MemoryManager::new());
+    let ipc = IPCManager::new(MemoryManager::new());
     let pm = ProcessManager::new();
 
     let pid1 = pm.create_process("sender".to_string(), 5);
@@ -272,15 +273,15 @@ fn test_sandbox_capability_update() {
     sandbox_mgr.create_sandbox(config);
 
     // Check initial capabilities
-    assert!(!sandbox_mgr.check_permission(pid, &Capability::ReadFile));
+    assert!(!sandbox_mgr.check_permission(pid, &Capability::ReadFile(None)));
 
     // Update to add capability
     let mut new_config = SandboxConfig::minimal(pid);
-    new_config.grant_capability(Capability::ReadFile);
+    new_config.grant_capability(Capability::ReadFile(None));
     sandbox_mgr.update_sandbox(pid, new_config);
 
     // Now should have capability
-    assert!(sandbox_mgr.check_permission(pid, &Capability::ReadFile));
+    assert!(sandbox_mgr.check_permission(pid, &Capability::ReadFile(None)));
 }
 
 #[test]
@@ -329,7 +330,7 @@ fn test_file_operations_with_symlink_protection() {
 
     // Setup sandbox - only allowed_dir is accessible
     let mut config = SandboxConfig::minimal(pid);
-    config.grant_capability(Capability::ReadFile);
+    config.grant_capability(Capability::ReadFile(None));
     config.allow_path(allowed_dir.clone());
     sandbox_mgr.create_sandbox(config);
 

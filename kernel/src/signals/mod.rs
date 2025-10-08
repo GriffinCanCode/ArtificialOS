@@ -6,8 +6,8 @@
 mod callbacks;
 mod delivery;
 mod handler;
-mod internal_types;
 pub mod integration;
+mod internal_types;
 mod manager;
 pub mod traits;
 pub mod types;

@@ -2,10 +2,10 @@
  * Scheduler-related gRPC handler implementations
  */
 
+use crate::api::server::grpc_server::kernel_proto::*;
+use crate::process::ProcessManagerImpl as ProcessManager;
 use tonic::{Request, Response, Status};
 use tracing::info;
-use crate::process::ProcessManagerImpl as ProcessManager;
-use crate::api::server::grpc_server::kernel_proto::*;
 
 pub async fn handle_schedule_next(
     process_manager: &ProcessManager,

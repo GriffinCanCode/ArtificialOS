@@ -115,7 +115,10 @@ impl EbpfProvider for MacOSEbpfProvider {
         // 3. Store script handle in dtrace_handles
         // 4. Set up data consumers for event collection
 
-        debug!("Loaded DTrace script: {} (type: {:?})", config.name, config.program_type);
+        debug!(
+            "Loaded DTrace script: {} (type: {:?})",
+            config.name, config.program_type
+        );
 
         // Auto-attach if requested
         if config.auto_attach && config.enabled {

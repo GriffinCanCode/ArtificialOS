@@ -27,23 +27,29 @@ pub fn simd_memcpy(dst: &mut [u8], src: &[u8]) -> usize {
 
     #[cfg(target_arch = "x86_64")]
     {
-        if is_x86_feature_detected!("avx512f")
-            && is_x86_feature_detected!("avx512bw")
-        {
-            unsafe { return simd_memcpy_avx512(dst, src, len); }
+        if is_x86_feature_detected!("avx512f") && is_x86_feature_detected!("avx512bw") {
+            unsafe {
+                return simd_memcpy_avx512(dst, src, len);
+            }
         }
         if is_x86_feature_detected!("avx2") {
-            unsafe { return simd_memcpy_avx2(dst, src, len); }
+            unsafe {
+                return simd_memcpy_avx2(dst, src, len);
+            }
         }
         if is_x86_feature_detected!("sse2") {
-            unsafe { return simd_memcpy_sse2(dst, src, len); }
+            unsafe {
+                return simd_memcpy_sse2(dst, src, len);
+            }
         }
     }
 
     #[cfg(target_arch = "aarch64")]
     {
         if std::arch::is_aarch64_feature_detected!("neon") {
-            unsafe { return simd_memcpy_neon(dst, src, len); }
+            unsafe {
+                return simd_memcpy_neon(dst, src, len);
+            }
         }
     }
 
@@ -103,9 +109,7 @@ pub fn simd_memcmp(a: &[u8], b: &[u8]) -> Ordering {
 
     #[cfg(target_arch = "x86_64")]
     {
-        if is_x86_feature_detected!("avx512f")
-            && is_x86_feature_detected!("avx512bw")
-        {
+        if is_x86_feature_detected!("avx512f") && is_x86_feature_detected!("avx512bw") {
             unsafe {
                 if let Some(ord) = simd_memcmp_avx512(a, b, len) {
                     return ord;
@@ -144,23 +148,29 @@ pub fn simd_memset(dst: &mut [u8], value: u8) -> usize {
 
     #[cfg(target_arch = "x86_64")]
     {
-        if is_x86_feature_detected!("avx512f")
-            && is_x86_feature_detected!("avx512bw")
-        {
-            unsafe { return simd_memset_avx512(dst, value, len); }
+        if is_x86_feature_detected!("avx512f") && is_x86_feature_detected!("avx512bw") {
+            unsafe {
+                return simd_memset_avx512(dst, value, len);
+            }
         }
         if is_x86_feature_detected!("avx2") {
-            unsafe { return simd_memset_avx2(dst, value, len); }
+            unsafe {
+                return simd_memset_avx2(dst, value, len);
+            }
         }
         if is_x86_feature_detected!("sse2") {
-            unsafe { return simd_memset_sse2(dst, value, len); }
+            unsafe {
+                return simd_memset_sse2(dst, value, len);
+            }
         }
     }
 
     #[cfg(target_arch = "aarch64")]
     {
         if std::arch::is_aarch64_feature_detected!("neon") {
-            unsafe { return simd_memset_neon(dst, value, len); }
+            unsafe {
+                return simd_memset_neon(dst, value, len);
+            }
         }
     }
 
@@ -524,4 +534,3 @@ mod tests {
         assert_eq!(&buf[3..6], &[1, 2, 3]);
     }
 }
-

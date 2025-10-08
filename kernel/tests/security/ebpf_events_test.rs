@@ -3,7 +3,9 @@
  * Tests for event collection and distribution
  */
 
-use ai_os_kernel::security::ebpf::{EbpfEvent, EventCollector, EventType, SyscallEvent, SyscallEventType};
+use ai_os_kernel::security::ebpf::{
+    EbpfEvent, EventCollector, EventType, SyscallEvent, SyscallEventType,
+};
 use std::sync::{Arc, Mutex};
 
 #[test]

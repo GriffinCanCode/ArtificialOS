@@ -27,8 +27,7 @@ pub enum BincodeError {
 /// Use this for internal kernel-to-kernel IPC where human-readability is not required.
 #[inline]
 pub fn to_vec<T: Serialize>(value: &T) -> BincodeResult<Vec<u8>> {
-    bincode::serialize(value)
-        .map_err(|e| BincodeError::Serialization(e.to_string()))
+    bincode::serialize(value).map_err(|e| BincodeError::Serialization(e.to_string()))
 }
 
 /// Deserialize from binary bytes using bincode
@@ -36,8 +35,7 @@ pub fn to_vec<T: Serialize>(value: &T) -> BincodeResult<Vec<u8>> {
 /// Matches the output of `to_vec`. Use for internal kernel-to-kernel IPC.
 #[inline]
 pub fn from_slice<T: DeserializeOwned>(bytes: &[u8]) -> BincodeResult<T> {
-    bincode::deserialize(bytes)
-        .map_err(|e| BincodeError::Deserialization(e.to_string()))
+    bincode::deserialize(bytes).map_err(|e| BincodeError::Deserialization(e.to_string()))
 }
 
 /// Get the serialized size of a value without actually serializing it
@@ -45,8 +43,7 @@ pub fn from_slice<T: DeserializeOwned>(bytes: &[u8]) -> BincodeResult<T> {
 /// Useful for pre-allocating buffers or checking size limits.
 #[inline]
 pub fn serialized_size<T: Serialize>(value: &T) -> BincodeResult<u64> {
-    bincode::serialized_size(value)
-        .map_err(|e| BincodeError::Serialization(e.to_string()))
+    bincode::serialized_size(value).map_err(|e| BincodeError::Serialization(e.to_string()))
 }
 
 // ============================================================================
@@ -91,16 +88,18 @@ pub fn to_vec_with_size<T: Serialize>(value: &T) -> BincodeResult<Vec<u8>> {
 pub fn from_slice_with_size<T: DeserializeOwned>(bytes: &[u8]) -> BincodeResult<T> {
     if bytes.len() < 4 {
         return Err(BincodeError::Deserialization(
-            "Buffer too small for size prefix".to_string()
+            "Buffer too small for size prefix".to_string(),
         ));
     }
 
     let len = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]) as usize;
 
     if bytes.len() < 4 + len {
-        return Err(BincodeError::Deserialization(
-            format!("Buffer too small: expected {} bytes, got {}", 4 + len, bytes.len())
-        ));
+        return Err(BincodeError::Deserialization(format!(
+            "Buffer too small: expected {} bytes, got {}",
+            4 + len,
+            bytes.len()
+        )));
     }
 
     from_slice(&bytes[4..4 + len])
@@ -222,7 +221,11 @@ mod tests {
         println!("Compression ratio: {:.2}x", ratio);
 
         // JSON should be significantly larger for binary data
-        assert!(ratio > 2.0, "Expected JSON to be >2x larger, got {:.2}x", ratio);
+        assert!(
+            ratio > 2.0,
+            "Expected JSON to be >2x larger, got {:.2}x",
+            ratio
+        );
     }
 
     #[test]

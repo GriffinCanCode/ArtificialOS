@@ -7,8 +7,8 @@ use super::types::{ExecutionConfig, ProcessError, ProcessResult};
 use super::validation;
 use crate::core::types::Pid;
 use crate::security::types::Limits;
-use dashmap::DashMap;
 use ahash::RandomState;
+use dashmap::DashMap;
 use log::{error, info, warn};
 use std::process::{Child, Command, Stdio};
 use std::sync::Arc;
@@ -180,7 +180,7 @@ impl ProcessExecutor {
     /// This is called AFTER fork() but BEFORE exec(), ensuring limits are atomic
     #[cfg(unix)]
     fn apply_rlimits_preexec(limits: &Limits) -> std::io::Result<()> {
-        use nix::libc::{rlimit, setrlimit, RLIMIT_AS, RLIMIT_NPROC, RLIMIT_NOFILE};
+        use nix::libc::{rlimit, setrlimit, RLIMIT_AS, RLIMIT_NOFILE, RLIMIT_NPROC};
 
         // Memory limit (address space)
         if let Some(memory_bytes) = limits.memory_bytes {
@@ -346,7 +346,9 @@ mod tests {
 
         // Test with ./ sequences (the bypass mentioned)
         assert!(validation::contains_path_traversal("./../../etc/passwd"));
-        assert!(validation::contains_path_traversal("foo/./bar/../../../etc"));
+        assert!(validation::contains_path_traversal(
+            "foo/./bar/../../../etc"
+        ));
 
         // Test absolute paths with traversal
         assert!(validation::contains_path_traversal("/../../../etc/passwd"));
@@ -357,10 +359,18 @@ mod tests {
         // Safe paths - should NOT be detected as traversal
         assert!(!validation::contains_path_traversal("./valid/path.txt"));
         assert!(!validation::contains_path_traversal("./subdir/file.txt"));
-        assert!(!validation::contains_path_traversal("dir1/dir2/../file.txt")); // stays within bounds
-        assert!(!validation::contains_path_traversal("dir1/dir2/dir3/../../file.txt")); // stays within bounds
-        assert!(!validation::contains_path_traversal("/absolute/path/file.txt"));
-        assert!(!validation::contains_path_traversal("relative/path/file.txt"));
+        assert!(!validation::contains_path_traversal(
+            "dir1/dir2/../file.txt"
+        )); // stays within bounds
+        assert!(!validation::contains_path_traversal(
+            "dir1/dir2/dir3/../../file.txt"
+        )); // stays within bounds
+        assert!(!validation::contains_path_traversal(
+            "/absolute/path/file.txt"
+        ));
+        assert!(!validation::contains_path_traversal(
+            "relative/path/file.txt"
+        ));
     }
 
     #[test]
@@ -368,32 +378,44 @@ mod tests {
         let executor = ProcessExecutor::new();
 
         // Test command with .. in argument
-        let config = ExecutionConfig::new("cat".to_string())
-            .with_args(vec!["../etc/passwd".to_string()]);
+        let config =
+            ExecutionConfig::new("cat".to_string()).with_args(vec!["../etc/passwd".to_string()]);
         let result = executor.spawn(1, "test-traversal".to_string(), config);
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), ProcessError::PermissionDenied(_)));
+        assert!(matches!(
+            result.unwrap_err(),
+            ProcessError::PermissionDenied(_)
+        ));
 
         // Test command with /./ and .. combination (the bypass)
         let config = ExecutionConfig::new("cat".to_string())
             .with_args(vec!["./../../etc/passwd".to_string()]);
         let result = executor.spawn(2, "test-bypass".to_string(), config);
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), ProcessError::PermissionDenied(_)));
+        assert!(matches!(
+            result.unwrap_err(),
+            ProcessError::PermissionDenied(_)
+        ));
 
         // Test URL encoded traversal
         let config = ExecutionConfig::new("cat".to_string())
             .with_args(vec!["%2e%2e/etc/passwd".to_string()]);
         let result = executor.spawn(3, "test-encoded".to_string(), config);
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), ProcessError::PermissionDenied(_)));
+        assert!(matches!(
+            result.unwrap_err(),
+            ProcessError::PermissionDenied(_)
+        ));
 
         // Test Windows-style traversal
         let config = ExecutionConfig::new("cat".to_string())
             .with_args(vec!["..\\..\\windows\\system32".to_string()]);
         let result = executor.spawn(4, "test-windows".to_string(), config);
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), ProcessError::PermissionDenied(_)));
+        assert!(matches!(
+            result.unwrap_err(),
+            ProcessError::PermissionDenied(_)
+        ));
 
         // Test safe path - should succeed (or fail for other reasons, but not path validation)
         let config = ExecutionConfig::new("echo".to_string())
@@ -403,7 +425,10 @@ mod tests {
         // (might fail if echo doesn't exist, but that's ok)
         if result.is_err() {
             // If it fails, it should NOT be due to permission denied for path traversal
-            assert!(!matches!(result.unwrap_err(), ProcessError::PermissionDenied(_)));
+            assert!(!matches!(
+                result.unwrap_err(),
+                ProcessError::PermissionDenied(_)
+            ));
         }
     }
 
@@ -412,22 +437,27 @@ mod tests {
         let executor = ProcessExecutor::new();
 
         let bypass_attempts = vec![
-            "%2e%2e/etc/passwd",      // URL encoded
-            "%252e%252e/etc/passwd",  // Double encoded
-            "..%2fetc/passwd",        // Encoded slash
-            "%2e./etc/passwd",        // Partial encoding
-            ".%2e/etc/passwd",        // Partial encoding
-            "..%5cetc",               // Encoded backslash
+            "%2e%2e/etc/passwd",     // URL encoded
+            "%252e%252e/etc/passwd", // Double encoded
+            "..%2fetc/passwd",       // Encoded slash
+            "%2e./etc/passwd",       // Partial encoding
+            ".%2e/etc/passwd",       // Partial encoding
+            "..%5cetc",              // Encoded backslash
         ];
 
         for (i, attempt) in bypass_attempts.iter().enumerate() {
-            let config = ExecutionConfig::new("cat".to_string())
-                .with_args(vec![attempt.to_string()]);
+            let config =
+                ExecutionConfig::new("cat".to_string()).with_args(vec![attempt.to_string()]);
             let result = executor.spawn(100 + i as u32, format!("bypass-{}", i), config);
-            assert!(result.is_err(), "Failed to block bypass attempt: {}", attempt);
+            assert!(
+                result.is_err(),
+                "Failed to block bypass attempt: {}",
+                attempt
+            );
             assert!(
                 matches!(result.unwrap_err(), ProcessError::PermissionDenied(_)),
-                "Wrong error type for bypass attempt: {}", attempt
+                "Wrong error type for bypass attempt: {}",
+                attempt
             );
         }
     }

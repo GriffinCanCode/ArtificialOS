@@ -3,9 +3,9 @@
  * Send, receive, and message data handling operations
  */
 
+use super::super::types::{IpcError, IpcResult, QueueId};
 use super::manager::{Queue, QueueManager};
 use super::types::{QueueMessage, MAX_MESSAGE_SIZE};
-use super::super::types::{IpcError, IpcResult, QueueId};
 use crate::core::types::{Pid, Priority};
 use log::{debug, warn};
 use std::sync::atomic::Ordering;
@@ -115,7 +115,7 @@ impl QueueManager {
     fn try_receive_pubsub(&self, queue_id: QueueId, pid: Pid) -> IpcResult<Option<QueueMessage>> {
         if let Some(queue) = self.queues.get(&queue_id) {
             if matches!(queue.value(), Queue::PubSub(_)) {
-                if let Some(mut rx) = self.pubsub_receivers.get_mut(&(queue_id, pid)) {
+                if let Some(rx) = self.pubsub_receivers.get_mut(&(queue_id, pid)) {
                     match rx.try_recv() {
                         Ok(message) => return Ok(Some(message)),
                         Err(_) => return Ok(None),
@@ -157,9 +157,7 @@ impl QueueManager {
     fn read_data_from_memory(&self, message: &QueueMessage) -> IpcResult<Vec<u8>> {
         self.memory_manager
             .read_bytes(message.data_address, message.data_length)
-            .map_err(|e| {
-                IpcError::InvalidOperation(format!("Failed to read message data: {}", e))
-            })
+            .map_err(|e| IpcError::InvalidOperation(format!("Failed to read message data: {}", e)))
     }
 
     /// Deallocate message memory

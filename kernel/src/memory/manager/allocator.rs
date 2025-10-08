@@ -137,7 +137,9 @@ impl MemoryManager {
                     let mut free_list = match self.free_list.lock() {
                         Ok(guard) => guard,
                         Err(poisoned) => {
-                            log::error!("Free list mutex poisoned during deallocation - recovering");
+                            log::error!(
+                                "Free list mutex poisoned during deallocation - recovering"
+                            );
                             poisoned.into_inner()
                         }
                     };

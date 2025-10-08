@@ -5,12 +5,11 @@
 */
 
 use crate::core::types::Pid;
-use crate::permissions::{PermissionChecker, PermissionRequest, Resource, Action};
+use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
 
 use log::info;
 use std::time::Duration;
 
-use crate::security::Capability;
 
 use super::executor::{SyscallExecutor, SYSTEM_START};
 use super::types::SyscallResult;
@@ -18,7 +17,13 @@ use super::types::SyscallResult;
 impl SyscallExecutor {
     pub(super) fn sleep(&self, pid: Pid, duration_ms: u64) -> SyscallResult {
         // Check permission using centralized manager
-        let request = PermissionRequest::new(pid, Resource::System { name: "time".to_string() }, Action::Read);
+        let request = PermissionRequest::new(
+            pid,
+            Resource::System {
+                name: "time".to_string(),
+            },
+            Action::Read,
+        );
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -41,7 +46,13 @@ impl SyscallExecutor {
 
     pub(super) fn get_uptime(&self, pid: Pid) -> SyscallResult {
         // Check permission using centralized manager
-        let request = PermissionRequest::new(pid, Resource::System { name: "time".to_string() }, Action::Read);
+        let request = PermissionRequest::new(
+            pid,
+            Resource::System {
+                name: "time".to_string(),
+            },
+            Action::Read,
+        );
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {

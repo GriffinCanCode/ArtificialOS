@@ -3,9 +3,9 @@
  * PubSub subscribe/unsubscribe and async polling
  */
 
+use super::super::types::{IpcError, IpcResult, QueueId};
 use super::manager::{Queue, QueueManager};
 use super::types::QueueMessage;
-use super::super::types::{IpcError, IpcResult, QueueId};
 use crate::core::types::Pid;
 
 impl QueueManager {
@@ -96,11 +96,10 @@ impl QueueManager {
             // Slow path: async wait on centralized WaitQueue
             // This uses futex on Linux (zero CPU spinning) via spawn_blocking
             let wait_queue_clone = wait_queue.clone();
-            let _ = tokio::task::spawn_blocking(move || {
-                wait_queue_clone.wait(queue_id, Some(timeout))
-            })
-            .await
-            .map_err(|e| IpcError::InvalidOperation(format!("Wait task failed: {}", e)))?;
+            let _ =
+                tokio::task::spawn_blocking(move || wait_queue_clone.wait(queue_id, Some(timeout)))
+                    .await
+                    .map_err(|e| IpcError::InvalidOperation(format!("Wait task failed: {}", e)))?;
 
             // After wake or timeout, check for message again (loop)
         }
@@ -111,7 +110,10 @@ impl QueueManager {
     /// # Performance
     ///
     /// Returns centralized WaitQueue that uses futex on Linux
-    fn get_queue_wait_queue(&self, queue_id: QueueId) -> IpcResult<std::sync::Arc<crate::core::sync::WaitQueue<QueueId>>> {
+    fn get_queue_wait_queue(
+        &self,
+        queue_id: QueueId,
+    ) -> IpcResult<std::sync::Arc<crate::core::sync::WaitQueue<QueueId>>> {
         let queue = self
             .queues
             .get(&queue_id)

@@ -53,7 +53,7 @@ fn bench_small_payload_serialize(c: &mut Criterion) {
     };
 
     group.throughput(Throughput::Bytes(
-        serde_json::to_vec(&small_result).unwrap().len() as u64
+        serde_json::to_vec(&small_result).unwrap().len() as u64,
     ));
 
     group.bench_function("optimized", |b| {

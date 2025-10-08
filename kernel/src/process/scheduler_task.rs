@@ -122,7 +122,10 @@ async fn run_scheduler_loop(
     } else {
         "logical only"
     };
-    info!("Scheduler loop started with {}μs quantum ({})", initial_quantum, mode);
+    info!(
+        "Scheduler loop started with {}μs quantum ({})",
+        initial_quantum, mode
+    );
 
     loop {
         tokio::select! {

@@ -115,7 +115,10 @@ unsafe fn find_byte_avx512(haystack: &[u8], needle: u8) -> Option<usize> {
     }
 
     // Handle remaining bytes with scalar search
-    haystack[offset..].iter().position(|&b| b == needle).map(|p| offset + p)
+    haystack[offset..]
+        .iter()
+        .position(|&b| b == needle)
+        .map(|p| offset + p)
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -145,7 +148,10 @@ unsafe fn find_byte_avx2(haystack: &[u8], needle: u8) -> Option<usize> {
     }
 
     // Handle remaining bytes
-    haystack[offset..].iter().position(|&b| b == needle).map(|p| offset + p)
+    haystack[offset..]
+        .iter()
+        .position(|&b| b == needle)
+        .map(|p| offset + p)
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -174,7 +180,10 @@ unsafe fn find_byte_sse2(haystack: &[u8], needle: u8) -> Option<usize> {
     }
 
     // Handle remaining bytes
-    haystack[offset..].iter().position(|&b| b == needle).map(|p| offset + p)
+    haystack[offset..]
+        .iter()
+        .position(|&b| b == needle)
+        .map(|p| offset + p)
 }
 
 #[cfg(target_arch = "x86_64")]

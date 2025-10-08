@@ -23,7 +23,7 @@ fn test_namespace_manager_initialization() {
 
 #[test]
 fn test_create_full_isolation_namespace() {
-    let manager = NamespaceManager::with_simulation();
+    let manager = NamespaceManager::new();
     let config = NamespaceConfig::full_isolation(100);
 
     let result = manager.create(config.clone());
@@ -38,7 +38,7 @@ fn test_create_full_isolation_namespace() {
 
 #[test]
 fn test_create_private_network_namespace() {
-    let manager = NamespaceManager::with_simulation();
+    let manager = NamespaceManager::new();
     let config = NamespaceConfig::private_network(101);
 
     let result = manager.create(config.clone());
@@ -57,7 +57,7 @@ fn test_create_private_network_namespace() {
 
 #[test]
 fn test_namespace_lifecycle() {
-    let manager = NamespaceManager::with_simulation();
+    let manager = NamespaceManager::new();
     let pid = 200;
     let config = NamespaceConfig::full_isolation(pid);
 
@@ -81,7 +81,7 @@ fn test_namespace_lifecycle() {
 
 #[test]
 fn test_multiple_namespaces() {
-    let manager = NamespaceManager::with_simulation();
+    let manager = NamespaceManager::new();
 
     let config1 = NamespaceConfig::full_isolation(301);
     let config2 = NamespaceConfig::private_network(302);
@@ -111,7 +111,7 @@ fn test_multiple_namespaces() {
 
 #[test]
 fn test_namespace_stats() {
-    let manager = NamespaceManager::with_simulation();
+    let manager = NamespaceManager::new();
     let config = NamespaceConfig::private_network(400);
 
     assert!(manager.create(config.clone()).is_ok());
@@ -139,7 +139,7 @@ fn test_interface_config() {
 
 #[test]
 fn test_isolation_modes() {
-    let manager = NamespaceManager::with_simulation();
+    let manager = NamespaceManager::new();
 
     let modes = vec![
         IsolationMode::Full,
@@ -269,7 +269,7 @@ fn test_namespace_config_builders() {
 fn test_concurrent_namespace_operations() {
     use std::thread;
 
-    let manager = NamespaceManager::with_simulation();
+    let manager = NamespaceManager::new();
     let manager_clone = manager.clone();
 
     let handle = thread::spawn(move || {
@@ -291,7 +291,7 @@ fn test_concurrent_namespace_operations() {
 
 #[test]
 fn test_namespace_with_port_forwards() {
-    let manager = NamespaceManager::with_simulation();
+    let manager = NamespaceManager::new();
     let mut config = NamespaceConfig::private_network(700);
 
     // Add port forwarding rules

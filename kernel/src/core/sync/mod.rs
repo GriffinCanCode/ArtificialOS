@@ -25,18 +25,18 @@
  * - **IPC synchronization**: Coordinate between processes
  */
 
+mod condvar;
+mod config;
+mod futex;
+mod spinwait;
 mod traits;
 mod wait;
-mod futex;
-mod condvar;
-mod spinwait;
-mod config;
 
+pub use config::{StrategyType, SyncConfig};
 pub use traits::{WaitStrategy, WakeResult};
-pub use wait::{WaitQueue, WaitResult, WaitError};
-pub use config::{SyncConfig, StrategyType};
+pub use wait::{WaitError, WaitQueue, WaitResult};
 
 // Re-export specific strategies for advanced users
-pub use futex::FutexWait;
 pub use condvar::CondvarWait;
+pub use futex::FutexWait;
 pub use spinwait::SpinWait;

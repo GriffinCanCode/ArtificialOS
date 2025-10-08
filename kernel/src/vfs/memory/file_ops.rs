@@ -228,7 +228,9 @@ impl MemFS {
                 return Err(VfsError::IsADirectory(path.display().to_string()))
             }
             None => return Err(VfsError::NotFound(path.display().to_string())),
-            Some(Node::File { data, permissions, .. }) => {
+            Some(Node::File {
+                data, permissions, ..
+            }) => {
                 // Check if file is readonly
                 if permissions.is_readonly() {
                     return Err(VfsError::PermissionDenied(format!(

@@ -1025,5 +1025,8 @@ fn test_open_flags_respect_file_permissions() {
         OpenFlags::read_only(),
         OpenMode::default(),
     );
-    assert!(result.is_ok(), "Should be able to open readonly file for reading");
+    assert!(
+        result.is_ok(),
+        "Should be able to open readonly file for reading"
+    );
 }

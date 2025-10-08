@@ -13,6 +13,5 @@ pub use streaming::StreamingManager;
 
 // Re-export io_uring types for execution layer
 pub use crate::syscalls::{
-    IoUringExecutor, IoUringManager, SyscallCompletionEntry,
-    SyscallSubmissionEntry, SyscallOpType,
+    IoUringExecutor, IoUringManager, SyscallCompletionEntry, SyscallOpType, SyscallSubmissionEntry,
 };

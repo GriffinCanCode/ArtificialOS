@@ -3,9 +3,9 @@
  * Per-process async task tracking and cleanup
  */
 
-use super::{ResourceCleanup, CleanupStats};
-use crate::core::types::Pid;
+use super::{CleanupStats, ResourceCleanup};
 use crate::api::execution::AsyncTaskManager;
+use crate::core::types::Pid;
 
 /// Async task resource cleanup wrapper
 pub struct TaskResource {

@@ -1033,7 +1033,6 @@ fn test_delivery_hook_pending_count() {
 
 #[test]
 fn test_outcome_to_state_terminated() {
-
     let outcome = SignalOutcome::Terminated;
     let state = outcome_to_state(outcome);
 
@@ -1043,7 +1042,6 @@ fn test_outcome_to_state_terminated() {
 
 #[test]
 fn test_outcome_to_state_stopped() {
-
     let outcome = SignalOutcome::Stopped;
     let state = outcome_to_state(outcome);
 
@@ -1053,7 +1051,6 @@ fn test_outcome_to_state_stopped() {
 
 #[test]
 fn test_outcome_to_state_continued() {
-
     let outcome = SignalOutcome::Continued;
     let state = outcome_to_state(outcome);
 

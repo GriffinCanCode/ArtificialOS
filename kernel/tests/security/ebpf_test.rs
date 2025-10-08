@@ -6,14 +6,14 @@ use ai_os_kernel::security::ebpf::*;
 
 #[test]
 fn test_ebpf_manager_init() {
-    let manager = EbpfManagerImpl::with_simulation();
+    let manager = EbpfManagerImpl::new();
     assert!(manager.is_supported());
     assert_eq!(manager.platform(), EbpfPlatform::Simulation);
 }
 
 #[test]
 fn test_program_lifecycle() {
-    let manager = EbpfManagerImpl::with_simulation();
+    let manager = EbpfManagerImpl::new();
 
     let config = ProgramConfig {
         name: "test_prog".to_string(),
@@ -50,7 +50,7 @@ fn test_program_lifecycle() {
 
 #[test]
 fn test_multiple_programs() {
-    let manager = EbpfManagerImpl::with_simulation();
+    let manager = EbpfManagerImpl::new();
 
     let programs = vec![
         ("syscall_entry", ProgramType::SyscallEntry),
@@ -78,7 +78,7 @@ fn test_multiple_programs() {
 
 #[test]
 fn test_filter_management() {
-    let manager = EbpfManagerImpl::with_simulation();
+    let manager = EbpfManagerImpl::new();
 
     // Add filter
     let filter = SyscallFilter {
@@ -102,7 +102,7 @@ fn test_filter_management() {
 
 #[test]
 fn test_filter_priority() {
-    let manager = EbpfManagerImpl::with_simulation();
+    let manager = EbpfManagerImpl::new();
 
     // Add filters with different priorities
     for i in 0..3 {
@@ -126,7 +126,7 @@ fn test_filter_priority() {
 
 #[test]
 fn test_syscall_checking() {
-    let manager = EbpfManagerImpl::with_simulation();
+    let manager = EbpfManagerImpl::new();
 
     // No filters - should allow everything
     assert!(manager.check_syscall(100, 1));
@@ -154,7 +154,7 @@ fn test_syscall_checking() {
 
 #[test]
 fn test_filter_actions() {
-    let manager = EbpfManagerImpl::with_simulation();
+    let manager = EbpfManagerImpl::new();
 
     // Test allow action
     let filter = SyscallFilter {
@@ -196,7 +196,7 @@ fn test_filter_actions() {
 
 #[test]
 fn test_process_monitoring() {
-    let manager = EbpfManagerImpl::with_simulation();
+    let manager = EbpfManagerImpl::new();
 
     // Monitor processes
     assert!(manager.monitor_process(100).is_ok());
@@ -218,7 +218,7 @@ fn test_process_monitoring() {
 
 #[test]
 fn test_syscall_counting() {
-    let manager = EbpfManagerImpl::with_simulation();
+    let manager = EbpfManagerImpl::new();
 
     manager.monitor_process(100).unwrap();
 
@@ -231,7 +231,7 @@ fn test_syscall_counting() {
 
 #[test]
 fn test_event_retrieval() {
-    let manager = EbpfManagerImpl::with_simulation();
+    let manager = EbpfManagerImpl::new();
 
     // Get recent events (empty initially in simulation)
     let events = manager.get_recent_events(10);
@@ -244,7 +244,7 @@ fn test_event_retrieval() {
 
 #[test]
 fn test_subscription() {
-    let manager = EbpfManagerImpl::with_simulation();
+    let manager = EbpfManagerImpl::new();
 
     // Subscribe to syscall events
     let sub_id = manager.subscribe_syscall(Box::new(|_event| {
@@ -277,7 +277,7 @@ fn test_subscription() {
 
 #[test]
 fn test_statistics() {
-    let manager = EbpfManagerImpl::with_simulation();
+    let manager = EbpfManagerImpl::new();
 
     // Load some programs
     for i in 0..3 {
@@ -311,7 +311,7 @@ fn test_statistics() {
 
 #[test]
 fn test_manager_lifecycle() {
-    let manager = EbpfManagerImpl::with_simulation();
+    let manager = EbpfManagerImpl::new();
 
     // Initialize
     assert!(manager.init().is_ok());
@@ -323,7 +323,7 @@ fn test_manager_lifecycle() {
 
 #[test]
 fn test_clear_filters() {
-    let manager = EbpfManagerImpl::with_simulation();
+    let manager = EbpfManagerImpl::new();
 
     // Add multiple filters
     for i in 0..5 {
@@ -358,7 +358,7 @@ fn test_syscall_name_mapping() {
 
 #[test]
 fn test_integrated_monitor() {
-    let ebpf = EbpfManagerImpl::with_simulation();
+    let ebpf = EbpfManagerImpl::new();
     let monitor = IntegratedEbpfMonitor::new(ebpf);
 
     assert!(monitor.init().is_ok());

@@ -75,4 +75,3 @@ mod tests {
         assert!(caps.neon);
     }
 }
-

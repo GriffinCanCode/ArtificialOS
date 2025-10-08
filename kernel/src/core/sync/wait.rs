@@ -133,7 +133,12 @@ where
     /// # Performance
     ///
     /// The predicate should be fast (< 1µs ideally)
-    pub fn wait_while<F>(&self, key: K, timeout: Option<Duration>, mut predicate: F) -> WaitResult<()>
+    pub fn wait_while<F>(
+        &self,
+        key: K,
+        timeout: Option<Duration>,
+        mut predicate: F,
+    ) -> WaitResult<()>
     where
         F: FnMut() -> bool,
     {
@@ -329,9 +334,7 @@ mod tests {
         let handles: Vec<_> = (0..3)
             .map(|_| {
                 let queue_clone = queue.clone();
-                thread::spawn(move || {
-                    queue_clone.wait(200, Some(Duration::from_secs(1)))
-                })
+                thread::spawn(move || queue_clone.wait(200, Some(Duration::from_secs(1))))
             })
             .collect();
 

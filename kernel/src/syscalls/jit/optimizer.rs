@@ -92,7 +92,10 @@ impl SyscallOptimizer {
     pub fn is_safe(&self, pattern: &SyscallPattern, optimization: &Optimization) -> bool {
         match (pattern, optimization) {
             // Skip permission checks only for read-only syscalls
-            (SyscallPattern::Simple(SimpleSyscallType::GetProcessList), Optimization::SkipPermissionCheck) => true,
+            (
+                SyscallPattern::Simple(SimpleSyscallType::GetProcessList),
+                Optimization::SkipPermissionCheck,
+            ) => true,
             (_, Optimization::SkipPermissionCheck) => false,
 
             // Eliminate bounds checks only for fixed-size operations
@@ -155,13 +158,9 @@ mod tests {
     #[test]
     fn test_estimate_speedup() {
         let optimizer = SyscallOptimizer::new();
-        let optimizations = vec![
-            Optimization::FastPath,
-            Optimization::Inlining,
-        ];
+        let optimizations = vec![Optimization::FastPath, Optimization::Inlining];
 
         let speedup = optimizer.estimate_speedup(&optimizations);
         assert!(speedup > 1.0);
     }
 }
-
