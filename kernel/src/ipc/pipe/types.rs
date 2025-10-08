@@ -42,7 +42,7 @@ pub enum PipeError {
     #[error("Memory allocation failed: {0}")]
     AllocationFailed(String),
 
-    #[error("Operation timed out after {elapsed_ms}ms (timeout: {}ms)", timeout_ms.map(|t| t.to_string()).unwrap_or_else(|| "none".to_string()))]
+    #[error("Operation timed out after {elapsed_ms}ms (timeout: {}ms)", timeout_ms.map(|t| t.to_string()).unwrap_or_else(|| "none".to_string().into()))]
     Timeout {
         elapsed_ms: u64,
         timeout_ms: Option<u64>,
@@ -56,9 +56,9 @@ pub enum PipeError {
 impl From<PipeError> for IpcError {
     fn from(err: PipeError) -> Self {
         match err {
-            PipeError::NotFound(id) => IpcError::NotFound(format!("Pipe {}", id)),
+            PipeError::NotFound(id) => IpcError::NotFound(format!("Pipe {}", id).into()),
             PipeError::PermissionDenied(msg) => IpcError::PermissionDenied(msg),
-            PipeError::Closed => IpcError::Closed("Pipe closed".to_string()),
+            PipeError::Closed => IpcError::Closed("Pipe closed".into()),
             PipeError::WouldBlock(msg) => IpcError::WouldBlock(msg),
             PipeError::CapacityExceeded {
                 requested,
@@ -66,16 +66,16 @@ impl From<PipeError> for IpcError {
             } => IpcError::LimitExceeded(format!(
                 "Capacity exceeded: requested {}, capacity {}",
                 requested, capacity
-            )),
+            ).into()),
             PipeError::ProcessLimitExceeded(current, max) => {
-                IpcError::LimitExceeded(format!("Process pipe limit exceeded: {}/{}", current, max))
+                IpcError::LimitExceeded(format!("Process pipe limit exceeded: {}/{}", current, max).into())
             }
             PipeError::GlobalMemoryExceeded(current, max) => IpcError::LimitExceeded(format!(
                 "Global pipe memory limit exceeded: {}/{} bytes",
                 current, max
-            )),
+            ).into()),
             PipeError::AllocationFailed(msg) => {
-                IpcError::InvalidOperation(format!("Memory allocation failed: {}", msg))
+                IpcError::InvalidOperation(format!("Memory allocation failed: {}", msg).into())
             }
             PipeError::Timeout {
                 elapsed_ms,

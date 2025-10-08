@@ -55,17 +55,17 @@ impl PipeManager {
                 0,
                 RandomState::new(),
                 ShardManager::shards(WorkloadProfile::MediumContention), // pipes: moderate I/O contention
-            )),
+            ).into()),
             next_id: Arc::new(AtomicU32::new(1)),
             process_pipes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
                 0,
                 RandomState::new(),
                 ShardManager::shards(WorkloadProfile::LowContention), // per-process tracking: light access
-            )),
+            ).into()),
             memory_manager,
-            free_ids: Arc::new(SegQueue::new()),
+            free_ids: Arc::new(SegQueue::new().into()),
             // Use long_wait config for pipe I/O (typically 1-30s waits, futex optimal)
-            wait_queue: Arc::new(WaitQueue::long_wait()),
+            wait_queue: Arc::new(WaitQueue::long_wait().into()),
             collector: None,
         }
     }
@@ -126,7 +126,7 @@ impl PipeManager {
         let address = self
             .memory_manager
             .allocate(capacity, writer_pid)
-            .map_err(|e| PipeError::AllocationFailed(e.to_string()))?;
+            .map_err(|e| PipeError::AllocationFailed(e.to_string().into()))?;
 
         // Try to recycle an ID from the lock-free free list, otherwise allocate new
         let pipe_id = if let Some(recycled_id) = self.free_ids.pop() {
@@ -185,7 +185,7 @@ impl PipeManager {
             .ok_or(PipeError::NotFound(pipe_id))?;
 
         if pipe.writer_pid != pid {
-            return Err(PipeError::PermissionDenied("Not the write end".to_string()));
+            return Err(PipeError::PermissionDenied("Not the write end".to_string().into()));
         }
 
         let written = pipe.write(data)?;
@@ -227,7 +227,7 @@ impl PipeManager {
             .ok_or(PipeError::NotFound(pipe_id))?;
 
         if pipe.reader_pid != pid {
-            return Err(PipeError::PermissionDenied("Not the read end".to_string()));
+            return Err(PipeError::PermissionDenied("Not the read end".to_string().into()));
         }
 
         let data = pipe.read(size)?;

@@ -134,12 +134,12 @@ impl ProcessManagerBuilder {
 
             // Register IPC if available
             if let Some(ref ipc_mgr) = self.ipc_manager {
-                orch = orch.register(crate::process::resources::IpcResource::new(ipc_mgr.clone()));
+                orch = orch.register(crate::process::resources::IpcResource::new(ipc_mgr.clone().into()));
             }
 
             // Register FD if available
             if let Some(ref fd_mgr) = self.fd_manager {
-                orch = orch.register(crate::process::resources::FdResource::new(fd_mgr.clone()));
+                orch = orch.register(crate::process::resources::FdResource::new(fd_mgr.clone().into()));
             }
 
             orch
@@ -149,14 +149,14 @@ impl ProcessManagerBuilder {
 
         let scheduler = self
             .scheduler_policy
-            .map(|policy| Arc::new(RwLock::new(Scheduler::new(policy))));
+            .map(|policy| Arc::new(RwLock::new(Scheduler::new(policy).into())));
 
         // Create preemption controller if both scheduler and executor are available
         let preemption = match (&scheduler, &executor) {
             (Some(sched), Some(exec)) => Some(Arc::new(PreemptionController::new(
                 Arc::clone(sched),
-                Arc::new(exec.clone()),
-            ))),
+                Arc::new(exec.clone().into()),
+            ).into())),
             _ => None,
         };
 
@@ -213,13 +213,13 @@ impl ProcessManagerBuilder {
             // Register zero-copy IPC if we have IPC manager
             if let Some(ref ipc_mgr) = self.ipc_manager {
                 if let Some(zerocopy) = ipc_mgr.zerocopy() {
-                    registry = registry.with_zerocopy_ipc(Arc::new(zerocopy.clone()));
+                    registry = registry.with_zerocopy_ipc(Arc::new(zerocopy.clone().into()));
                 }
             }
 
             // Register FD manager if available
             if let Some(ref fd_mgr) = self.fd_manager {
-                registry = registry.with_fd_manager(Arc::new(fd_mgr.clone()));
+                registry = registry.with_fd_manager(Arc::new(fd_mgr.clone().into()));
             }
 
             features.push("lifecycle-hooks");
@@ -236,7 +236,7 @@ impl ProcessManagerBuilder {
                 0,
                 RandomState::new(),
                 ShardManager::shards(WorkloadProfile::HighContention), // process table: heavy concurrent access
-            )),
+            ).into()),
             next_pid: Arc::new(AtomicU32::new(1)),
             memory_manager: self.memory_manager,
             executor,
@@ -251,7 +251,7 @@ impl ProcessManagerBuilder {
                 0,
                 RandomState::new(),
                 ShardManager::shards(WorkloadProfile::MediumContention), // child tracking: moderate access
-            )),
+            ).into()),
             lifecycle,
             collector: self.collector,
         }

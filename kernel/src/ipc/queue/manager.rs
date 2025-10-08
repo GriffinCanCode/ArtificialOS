@@ -79,13 +79,13 @@ impl QueueManager {
             MAX_QUEUE_CAPACITY
         );
         Self {
-            queues: Arc::new(DashMap::with_hasher(RandomState::new())),
+            queues: Arc::new(DashMap::with_hasher(RandomState::new().into())),
             next_id: Arc::new(AtomicU64::new(1)),
             next_msg_id: Arc::new(AtomicU64::new(1)),
-            process_queues: Arc::new(DashMap::with_hasher(RandomState::new())),
-            pubsub_receivers: Arc::new(DashMap::with_hasher(RandomState::new())),
+            process_queues: Arc::new(DashMap::with_hasher(RandomState::new().into())),
+            pubsub_receivers: Arc::new(DashMap::with_hasher(RandomState::new().into())),
             memory_manager,
-            free_ids: Arc::new(SegQueue::new()),
+            free_ids: Arc::new(SegQueue::new().into()),
             collector: None,
         }
     }

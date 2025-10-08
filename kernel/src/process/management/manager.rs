@@ -62,7 +62,7 @@ impl ProcessManager {
                 0,
                 RandomState::new(),
                 ShardManager::shards(WorkloadProfile::HighContention), // process table: heavy concurrent access
-            )),
+            ).into()),
             next_pid: Arc::new(AtomicU32::new(1)),
             memory_manager: None,
             executor: None,
@@ -77,7 +77,7 @@ impl ProcessManager {
                 0,
                 RandomState::new(),
                 ShardManager::shards(WorkloadProfile::MediumContention), // child tracking: moderate access
-            )),
+            ).into()),
             lifecycle: None,
             collector: None,
         }

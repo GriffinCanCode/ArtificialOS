@@ -97,25 +97,25 @@ impl MemoryManager {
                 0,
                 RandomState::new(),
                 ShardManager::shards(WorkloadProfile::HighContention), // memory blocks: heavy concurrent access
-            )),
-            next_address: Arc::new(AtomicU64::new(0)),
+            ).into()),
+            next_address: Arc::new(AtomicU64::new(0).into()),
             total_memory: total,
-            used_memory: Arc::new(FlatCombiningCounter::new(0)),
+            used_memory: Arc::new(FlatCombiningCounter::new(0).into()),
             warning_threshold: 0.80,
             critical_threshold: 0.95,
             gc_threshold: 1000,
-            deallocated_count: Arc::new(FlatCombiningCounter::new(0)),
+            deallocated_count: Arc::new(FlatCombiningCounter::new(0).into()),
             process_tracking: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
                 0,
                 RandomState::new(),
                 ShardManager::shards(WorkloadProfile::MediumContention), // per-process tracking: moderate access
-            )),
+            ).into()),
             memory_storage: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
                 0,
                 RandomState::new(),
                 ShardManager::shards(WorkloadProfile::HighContention), // storage map: high I/O contention
-            )),
-            free_list: Arc::new(Mutex::new(SegregatedFreeList::new())),
+            ).into()),
+            free_list: Arc::new(Mutex::new(SegregatedFreeList::new().into())),
             collector: None,
         }
     }
@@ -138,10 +138,11 @@ impl MemoryManager {
 
     /// Fork process memory using CoW semantics
     pub fn fork_memory(&self, parent_pid: Pid, child_pid: Pid) {
-        let parent_blocks: Vec<_> = self.blocks
+        let parent_blocks: Vec<_> = self
+            .blocks
             .iter()
             .filter(|e| e.value().allocated && e.value().owner_pid == Some(parent_pid))
-            .map(|e| (e.key().clone(), e.value().clone()))
+            .map(|e| (e.key().clone(), e.value().clone().into()))
             .collect();
 
         for (addr, mut block) in parent_blocks {
@@ -149,7 +150,10 @@ impl MemoryManager {
                 let child_cow = parent_cow.clone_cow();
 
                 block.owner_pid = Some(child_pid);
-                let child_addr = self.next_address.fetch_add(1, std::sync::atomic::Ordering::SeqCst) as Address;
+                let child_addr = self
+                    .next_address
+                    .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+                    as Address;
                 block.address = child_addr;
 
                 self.blocks.insert(child_addr, block);

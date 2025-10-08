@@ -128,7 +128,7 @@ impl LinuxBridgeManager {
             Err(NamespaceError::NotFound(format!(
                 "Bridge {} not found",
                 bridge_name
-            )))
+            ).into()))
         }
     }
 
@@ -165,7 +165,7 @@ impl LinuxBridgeManager {
                     bridge_name, e
                 ))
             })?
-            .ok_or_else(|| NamespaceError::NotFound(format!("Bridge {} not found", bridge_name)))?;
+            .ok_or_else(|| NamespaceError::NotFound(format!("Bridge {} not found", bridge_name).into()))?;
 
         // Get the interface index
         let mut iface_links = handle
@@ -252,7 +252,7 @@ impl LinuxBridgeManager {
             Err(NamespaceError::NotFound(format!(
                 "Interface {} not found",
                 iface_name
-            )))
+            ).into()))
         }
     }
 
@@ -321,7 +321,7 @@ impl LinuxBridgeManager {
             Err(NamespaceError::NotFound(format!(
                 "Bridge {} not found",
                 bridge_name
-            )))
+            ).into()))
         }
     }
 

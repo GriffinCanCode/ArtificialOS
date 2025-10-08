@@ -130,7 +130,7 @@ impl SyscallExecutorWithIpc {
                     "freed_bytes": freed,
                     "target_pid": target
                 })) {
-                    Ok(data) => Ok(SyscallResult::success_with_data(data)),
+                    Ok(data) => Ok(SyscallResult::success_with_data(data).into()),
                     Err(e) => {
                         warn!("Failed to serialize GC result: {}", e);
                         Err("Internal serialization error".to_string())
@@ -163,7 +163,7 @@ impl SyscallExecutorWithIpc {
                     "processes_cleaned": stats.processes_cleaned,
                     "duration_ms": stats.duration_ms
                 })) {
-                    Ok(data) => Ok(SyscallResult::success_with_data(data)),
+                    Ok(data) => Ok(SyscallResult::success_with_data(data).into()),
                     Err(e) => {
                         warn!("Failed to serialize global GC result: {}", e);
                         Err("Internal serialization error".to_string())

@@ -39,8 +39,8 @@ impl ZeroCopyIpc {
     pub fn new(memory_manager: MemoryManager) -> Self {
         info!("Initializing zero-copy IPC with io_uring-inspired design");
         Self {
-            rings: Arc::new(DashMap::with_hasher(RandomState::new())),
-            buffer_pools: Arc::new(DashMap::with_hasher(RandomState::new())),
+            rings: Arc::new(DashMap::with_hasher(RandomState::new().into())),
+            buffer_pools: Arc::new(DashMap::with_hasher(RandomState::new().into())),
             memory_manager,
         }
     }
@@ -64,7 +64,7 @@ impl ZeroCopyIpc {
         let address = self
             .memory_manager
             .allocate(ring_size, pid)
-            .map_err(|e| ZeroCopyError::AllocationFailed(format!("{}", e)))?;
+            .map_err(|e| ZeroCopyError::AllocationFailed(format!("{}", e).into()))?;
 
         // Create the ring
         let ring = Arc::new(ZeroCopyRing::new(pid, address, sq_size, cq_size));
@@ -73,7 +73,7 @@ impl ZeroCopyIpc {
         self.rings.insert(pid, ring.clone());
 
         // Create buffer pool for this process
-        let buffer_pool = Arc::new(BufferPool::new(pid, self.memory_manager.clone()));
+        let buffer_pool = Arc::new(BufferPool::new(pid, self.memory_manager.clone().into()));
         self.buffer_pools.insert(pid, buffer_pool);
 
         info!(
@@ -146,7 +146,7 @@ impl ZeroCopyIpc {
             // Deallocate memory
             self.memory_manager
                 .deallocate(ring.address())
-                .map_err(|e| ZeroCopyError::DeallocationFailed(format!("{}", e)))?;
+                .map_err(|e| ZeroCopyError::DeallocationFailed(format!("{}", e).into()))?;
         }
 
         // Remove buffer pool

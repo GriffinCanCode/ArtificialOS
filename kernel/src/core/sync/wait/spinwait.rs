@@ -138,7 +138,7 @@ where
         }
 
         // Fall back to condvar for longer waits
-        let remaining_timeout = timeout.map(|t| t.saturating_sub(start.elapsed()));
+        let remaining_timeout = timeout.map(|t| t.saturating_sub(start.elapsed().into()));
         self.fallback.wait(key, remaining_timeout)
     }
 
@@ -171,7 +171,7 @@ mod tests {
     fn test_spinwait_timeout() {
         let sw = SpinWait::<u64>::with_defaults();
         let start = Instant::now();
-        let result = sw.wait(99, Some(Duration::from_millis(50)));
+        let result = sw.wait(99, Some(Duration::from_millis(50).into()));
         let elapsed = start.elapsed();
 
         assert!(!result); // Should timeout

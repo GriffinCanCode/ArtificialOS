@@ -46,7 +46,7 @@ pub async fn handle_create_process(
                     .filter_map(|e| {
                         let parts: Vec<&str> = e.splitn(2, '=').collect();
                         if parts.len() == 2 {
-                            Some((parts[0].to_string(), parts[1].to_string()))
+                            Some((parts[0].to_string(), parts[1].to_string().into()))
                         } else {
                             None
                         }

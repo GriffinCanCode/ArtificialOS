@@ -18,12 +18,12 @@ pub async fn handle_schedule_next(
             success: true,
             next_pid: Some(pid),
             error: String::new(),
-        })),
+        }).into()),
         None => Ok(Response::new(ScheduleNextResponse {
             success: true,
             next_pid: None,
             error: String::new(),
-        })),
+        }).into()),
     }
 }
 

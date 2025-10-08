@@ -38,7 +38,7 @@ impl QueueManager {
                 "Message size {} exceeds limit {}",
                 data.len(),
                 MAX_MESSAGE_SIZE
-            )));
+            ).into()));
         }
 
         let data_address = self.allocate_message_memory(from_pid, &data)?;
@@ -52,7 +52,7 @@ impl QueueManager {
         let data_address = self
             .memory_manager
             .allocate(data_len, from_pid)
-            .map_err(|e| IpcError::InvalidOperation(format!("Memory allocation failed: {}", e)))?;
+            .map_err(|e| IpcError::InvalidOperation(format!("Memory allocation failed: {}", e).into()))?;
 
         if data_len > 0 {
             self.memory_manager
@@ -92,7 +92,7 @@ impl QueueManager {
         let mut queue = self
             .queues
             .get_mut(&queue_id)
-            .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id)))?;
+            .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id).into()))?;
 
         match queue.value_mut() {
             Queue::Fifo(q) => q.push(message)?,
@@ -177,7 +177,7 @@ impl QueueManager {
             if matches!(queue.value(), Queue::PubSub(_)) {
                 if let Some(rx) = self.pubsub_receivers.get_mut(&(queue_id, pid)) {
                     match rx.try_recv() {
-                        Ok(message) => return Ok(Some(message)),
+                        Ok(message) => return Ok(Some(message).into()),
                         Err(_) => return Ok(None),
                     }
                 } else {
@@ -195,7 +195,7 @@ impl QueueManager {
         let mut queue = self
             .queues
             .get_mut(&queue_id)
-            .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id)))?;
+            .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id).into()))?;
 
         let msg = match queue.value_mut() {
             Queue::Fifo(q) => q.pop(),
@@ -217,7 +217,7 @@ impl QueueManager {
     fn read_data_from_memory(&self, message: &QueueMessage) -> IpcResult<Vec<u8>> {
         self.memory_manager
             .read_bytes(message.data_address, message.data_length)
-            .map_err(|e| IpcError::InvalidOperation(format!("Failed to read message data: {}", e)))
+            .map_err(|e| IpcError::InvalidOperation(format!("Failed to read message data: {}", e).into()))
     }
 
     /// Deallocate message memory

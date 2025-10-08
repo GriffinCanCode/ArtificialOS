@@ -76,10 +76,10 @@ impl SyscallGuard {
         let duration_micros = self.start_time.elapsed().as_micros() as u64;
 
         let mut payload = vec![
-            ("syscall", self.syscall_name.to_string()),
-            ("pid", self.pid.to_string()),
-            ("duration_micros", duration_micros.to_string()),
-            ("success", success.to_string()),
+            ("syscall", self.syscall_name.to_string().into()),
+            ("pid", self.pid.to_string().into()),
+            ("duration_micros", duration_micros.to_string().into()),
+            ("success", success.to_string().into()),
         ];
 
         if let Some(err) = error_msg {

@@ -85,7 +85,7 @@ impl Detector {
     /// Create a new anomaly detector
     pub fn new() -> Self {
         Self {
-            metrics: Arc::new(StripedMap::new(32)),
+            metrics: Arc::new(StripedMap::new(32).into()),
         }
     }
 
@@ -126,10 +126,10 @@ impl Detector {
         match &event.payload {
             Payload::SyscallExit {
                 name, duration_us, ..
-            } => Some((format!("syscall.{}.duration_us", name), *duration_us as f64)),
+            } => Some((format!("syscall.{}.duration_us", name), *duration_us as f64).into()),
             Payload::SyscallSlow {
                 name, duration_ms, ..
-            } => Some((format!("syscall.{}.duration_ms", name), *duration_ms as f64)),
+            } => Some((format!("syscall.{}.duration_ms", name), *duration_ms as f64).into()),
             Payload::MemoryAllocated { size, .. } => {
                 Some(("memory.allocation.size".to_string(), *size as f64))
             }
@@ -145,7 +145,7 @@ impl Detector {
             Payload::CpuThrottled { usage_pct, .. } => {
                 Some(("cpu.usage_pct".to_string(), *usage_pct as f64))
             }
-            Payload::MetricUpdate { name, value, .. } => Some((name.clone(), *value)),
+            Payload::MetricUpdate { name, value, .. } => Some((name.clone(), *value).into()),
             _ => None,
         }
     }

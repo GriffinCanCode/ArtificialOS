@@ -13,15 +13,15 @@ pub fn syscall_result_to_proto(result: SyscallResult) -> SyscallResponse {
         SyscallResult::Success { data } => SyscallResponse {
             result: Some(syscall_response::Result::Success(SuccessResult {
                 data: data.unwrap_or_default(),
-            })),
+            }).into()),
         },
         SyscallResult::Error { message } => SyscallResponse {
-            result: Some(syscall_response::Result::Error(ErrorResult { message })),
+            result: Some(syscall_response::Result::Error(ErrorResult { message }).into()),
         },
         SyscallResult::PermissionDenied { reason } => SyscallResponse {
             result: Some(syscall_response::Result::PermissionDenied(
                 PermissionDeniedResult { reason },
-            )),
+            ).into()),
         },
     }
 }

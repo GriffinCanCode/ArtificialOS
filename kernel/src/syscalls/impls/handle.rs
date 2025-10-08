@@ -30,7 +30,7 @@ impl FileHandle {
     #[inline]
     pub fn from_std(file: File) -> Self {
         Self {
-            inner: RwLock::new(Box::new(StdFileHandle { file })),
+            inner: RwLock::new(Box::new(StdFileHandle { file }).into()),
         }
     }
 
@@ -58,7 +58,7 @@ impl FileHandle {
     pub fn sync_data(&self) -> std::io::Result<()> {
         // VFS sync() syncs all, map to same operation
         self.sync()
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string().into()))
     }
 
     /// Set file length
@@ -104,14 +104,14 @@ impl OpenFile for StdFileHandle {
     fn sync(&mut self) -> VfsResult<()> {
         self.file
             .sync_all()
-            .map_err(|e| VfsError::IoError(e.to_string()))
+            .map_err(|e| VfsError::IoError(e.to_string().into()))
     }
 
     fn metadata(&self) -> VfsResult<crate::vfs::Metadata> {
         let md = self
             .file
             .metadata()
-            .map_err(|e| VfsError::IoError(e.to_string()))?;
+            .map_err(|e| VfsError::IoError(e.to_string().into()))?;
 
         #[cfg(unix)]
         let mode = {
@@ -144,7 +144,7 @@ impl OpenFile for StdFileHandle {
     fn set_len(&mut self, size: u64) -> VfsResult<()> {
         self.file
             .set_len(size)
-            .map_err(|e| VfsError::IoError(e.to_string()))
+            .map_err(|e| VfsError::IoError(e.to_string().into()))
     }
 }
 

@@ -68,7 +68,7 @@ use std::time::{Duration, Instant};
 /// ```ignore
 /// let result = self.timeout_executor.execute_with_retry(
 ///     || pipe_manager.read(pipe_id, pid, size),
-///     |e| matches!(e, PipeError::WouldBlock(_)),
+///     |e| matches!(e, PipeError::WouldBlock(_).into()),
 ///     timeout,
 ///     "pipe_read"
 /// )?;
@@ -336,7 +336,7 @@ impl TimeoutExecutor {
 #[derive(Debug, thiserror::Error)]
 pub enum TimeoutError<E> {
     /// Operation timed out
-    #[error("Operation timed out: {resource_type} ({category}) after {elapsed_ms}ms (timeout: {}ms)", timeout_ms.map(|t| t.to_string()).unwrap_or_else(|| "none".to_string()))]
+    #[error("Operation timed out: {resource_type} ({category}) after {elapsed_ms}ms (timeout: {}ms)", timeout_ms.map(|t| t.to_string()).unwrap_or_else(|| "none".to_string().into()))]
     Timeout {
         resource_type: &'static str,
         category: &'static str,
@@ -433,7 +433,7 @@ mod tests {
         let result: Result<(), _> = executor.execute_with_retry(
             || {
                 counter_clone.fetch_add(1, Ordering::SeqCst);
-                Err(TestError::Fatal("boom".to_string()))
+                Err(TestError::Fatal("boom".to_string().into()))
             },
             |e| matches!(e, TestError::WouldBlock),
             TimeoutPolicy::None,
@@ -442,7 +442,7 @@ mod tests {
 
         assert!(matches!(
             result,
-            Err(TimeoutError::Operation(TestError::Fatal(_)))
+            Err(TimeoutError::Operation(TestError::Fatal(_).into()))
         ));
         assert_eq!(counter.load(Ordering::SeqCst), 1); // Only called once
     }
@@ -454,12 +454,12 @@ mod tests {
         let result = executor.execute_with_retry(
             || Err::<i32, TestError>(TestError::WouldBlock),
             |e| matches!(e, TestError::WouldBlock),
-            TimeoutPolicy::Lock(Duration::from_millis(50)),
+            TimeoutPolicy::Lock(Duration::from_millis(50).into()),
             "test_lock",
         );
 
         assert!(result.is_err());
-        assert!(matches!(result, Err(TimeoutError::Timeout { .. })));
+        assert!(matches!(result, Err(TimeoutError::Timeout { .. }).into()));
     }
 
     #[test]
@@ -470,7 +470,7 @@ mod tests {
         let result = executor.execute_with_retry(
             || Err::<i32, TestError>(TestError::WouldBlock),
             |e| matches!(e, TestError::WouldBlock),
-            TimeoutPolicy::Lock(Duration::from_millis(50)),
+            TimeoutPolicy::Lock(Duration::from_millis(50).into()),
             "test",
         );
 

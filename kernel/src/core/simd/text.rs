@@ -183,8 +183,8 @@ unsafe fn ascii_to_lower_avx2(data: &mut [u8]) {
         let chars = _mm256_loadu_si256(ptr);
 
         // Check if char >= 'A' and char <= 'Z'
-        let ge_a = _mm256_cmpgt_epi8(chars, _mm256_sub_epi8(upper_a, _mm256_set1_epi8(1)));
-        let le_z = _mm256_cmpgt_epi8(_mm256_add_epi8(upper_z, _mm256_set1_epi8(1)), chars);
+        let ge_a = _mm256_cmpgt_epi8(chars, _mm256_sub_epi8(upper_a, _mm256_set1_epi8(1).into()));
+        let le_z = _mm256_cmpgt_epi8(_mm256_add_epi8(upper_z, _mm256_set1_epi8(1).into()), chars);
         let is_upper = _mm256_and_si256(ge_a, le_z);
 
         // Add 32 to uppercase letters
@@ -258,8 +258,8 @@ unsafe fn ascii_to_upper_avx2(data: &mut [u8]) {
         let chars = _mm256_loadu_si256(ptr);
 
         // Check if char >= 'a' and char <= 'z'
-        let ge_a = _mm256_cmpgt_epi8(chars, _mm256_sub_epi8(lower_a, _mm256_set1_epi8(1)));
-        let le_z = _mm256_cmpgt_epi8(_mm256_add_epi8(lower_z, _mm256_set1_epi8(1)), chars);
+        let ge_a = _mm256_cmpgt_epi8(chars, _mm256_sub_epi8(lower_a, _mm256_set1_epi8(1).into()));
+        let le_z = _mm256_cmpgt_epi8(_mm256_add_epi8(lower_z, _mm256_set1_epi8(1).into()), chars);
         let is_lower = _mm256_and_si256(ge_a, le_z);
 
         // Subtract 32 from lowercase letters

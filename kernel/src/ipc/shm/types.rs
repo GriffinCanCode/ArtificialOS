@@ -58,7 +58,7 @@ pub enum ShmError {
 impl From<ShmError> for IpcError {
     fn from(err: ShmError) -> Self {
         match err {
-            ShmError::NotFound(id) => IpcError::NotFound(format!("Shared memory segment {}", id)),
+            ShmError::NotFound(id) => IpcError::NotFound(format!("Shared memory segment {}", id).into()),
             ShmError::PermissionDenied(msg) => IpcError::PermissionDenied(msg),
             ShmError::InvalidSize(msg) => IpcError::InvalidOperation(msg),
             ShmError::InvalidRange {
@@ -68,19 +68,19 @@ impl From<ShmError> for IpcError {
             } => IpcError::InvalidOperation(format!(
                 "Invalid range: offset {}, size {}, segment size {}",
                 offset, size, segment_size
-            )),
+            ).into()),
             ShmError::SizeExceeded { requested, max } => IpcError::LimitExceeded(format!(
                 "Segment size exceeds limit: requested {}, max {}",
                 requested, max
-            )),
+            ).into()),
             ShmError::ProcessLimitExceeded(current, max) => IpcError::LimitExceeded(format!(
                 "Process segment limit exceeded: {}/{}",
                 current, max
-            )),
+            ).into()),
             ShmError::GlobalMemoryExceeded(current, max) => IpcError::LimitExceeded(format!(
                 "Global shared memory limit exceeded: {}/{} bytes",
                 current, max
-            )),
+            ).into()),
             ShmError::AllocationFailed(msg) => {
                 IpcError::InvalidOperation(format!("Memory allocation failed: {}", msg))
             }

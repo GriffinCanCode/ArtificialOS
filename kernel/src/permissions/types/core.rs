@@ -134,19 +134,19 @@ impl PermissionRequest {
     pub fn to_capability(&self) -> Option<Capability> {
         match (&self.resource, self.action) {
             (Resource::File { path }, Action::Read) => {
-                Some(Capability::ReadFile(Some(path.clone())))
+                Some(Capability::ReadFile(Some(path.clone().into())))
             }
             (Resource::File { path }, Action::Write) => {
-                Some(Capability::WriteFile(Some(path.clone())))
+                Some(Capability::WriteFile(Some(path.clone().into())))
             }
             (Resource::File { path }, Action::Create) => {
-                Some(Capability::CreateFile(Some(path.clone())))
+                Some(Capability::CreateFile(Some(path.clone().into())))
             }
             (Resource::File { path }, Action::Delete) => {
-                Some(Capability::DeleteFile(Some(path.clone())))
+                Some(Capability::DeleteFile(Some(path.clone().into())))
             }
             (Resource::Directory { path }, Action::List) => {
-                Some(Capability::ListDirectory(Some(path.clone())))
+                Some(Capability::ListDirectory(Some(path.clone().into())))
             }
             (Resource::Process { .. }, Action::Kill) => Some(Capability::KillProcess),
             (Resource::Process { .. }, Action::Create) => Some(Capability::SpawnProcess),
@@ -264,6 +264,6 @@ mod tests {
         let req = PermissionRequest::file_read(100, PathBuf::from("/tmp/test.txt"));
         let cap = req.to_capability();
         assert!(cap.is_some());
-        assert!(matches!(cap.unwrap(), Capability::ReadFile(_)));
+        assert!(matches!(cap.unwrap(), Capability::ReadFile(_).into()));
     }
 }

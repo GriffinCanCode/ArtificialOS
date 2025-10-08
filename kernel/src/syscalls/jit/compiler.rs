@@ -348,7 +348,7 @@ impl JitCompiler {
 
             _ => {
                 debug!(pattern = ?pattern, "Unsupported pattern for JIT compilation");
-                Err(JitError::UnsupportedPattern(pattern.clone()))
+                Err(JitError::UnsupportedPattern(pattern.clone().into()))
             }
         }
     }

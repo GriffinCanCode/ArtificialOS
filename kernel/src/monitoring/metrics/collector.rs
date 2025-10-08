@@ -101,17 +101,17 @@ impl MetricsCollector {
                 0,
                 RandomState::new(),
                 shards,
-            )),
+            ).into()),
             gauges: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
                 0,
                 RandomState::new(),
                 shards,
-            )),
+            ).into()),
             histograms: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
                 0,
                 RandomState::new(),
                 shards,
-            )),
+            ).into()),
             start_time: Instant::now(),
         }
     }
@@ -154,13 +154,13 @@ impl MetricsCollector {
         let counters: HashMap<String, f64> = self
             .counters
             .iter()
-            .map(|entry| (entry.key().clone(), *entry.value()))
+            .map(|entry| (entry.key().clone(), *entry.value().into()))
             .collect();
 
         let gauges: HashMap<String, f64> = self
             .gauges
             .iter()
-            .map(|entry| (entry.key().clone(), *entry.value()))
+            .map(|entry| (entry.key().clone(), *entry.value().into()))
             .collect();
 
         let histogram_stats: HashMap<String, HistogramStats> = self

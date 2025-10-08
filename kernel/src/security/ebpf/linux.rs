@@ -58,7 +58,7 @@ impl LinuxEbpfProvider {
                 monitored_pids: HashSet::new(),
                 initialized: false,
                 aya_handles: None,
-            })),
+            }).into()),
             loader: ProgramLoader::new(),
             filters: FilterManager::new(),
             events: EventCollector::new(),

@@ -38,7 +38,7 @@ impl SharedSegment {
         let mut permissions = HashMap::default();
         permissions.insert(owner_pid, ShmPermission::ReadWrite);
 
-        let cow_data = Arc::new(RwLock::new(Some(CowMemory::new(vec![0u8; size]))));
+        let cow_data = Arc::new(RwLock::new(Some(CowMemory::new(vec![0u8; size]).into())));
 
         Self {
             id,

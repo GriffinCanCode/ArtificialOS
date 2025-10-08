@@ -47,7 +47,7 @@
  * # use ai_os_kernel::process::scheduler::SchedulerTask;
  * # use ai_os_kernel::process::core::types::SchedulingPolicy;
  * # async fn example() {
- * let scheduler = Arc::new(RwLock::new(Scheduler::new(SchedulingPolicy::Fair)));
+ * let scheduler = Arc::new(RwLock::new(Scheduler::new(SchedulingPolicy::Fair).into()));
  * let task = SchedulerTask::spawn(scheduler);
  *
  * // ... use task ...
@@ -298,7 +298,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_scheduler_task_lifecycle() {
-        let scheduler = Arc::new(RwLock::new(Scheduler::new(SchedulingPolicy::Fair)));
+        let scheduler = Arc::new(RwLock::new(Scheduler::new(SchedulingPolicy::Fair).into()));
 
         // Spawn task
         let task = SchedulerTask::spawn(scheduler.clone());
@@ -312,7 +312,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_quantum_update() {
-        let scheduler = Arc::new(RwLock::new(Scheduler::new(SchedulingPolicy::RoundRobin)));
+        let scheduler = Arc::new(RwLock::new(Scheduler::new(SchedulingPolicy::RoundRobin).into()));
         let task = SchedulerTask::spawn(scheduler.clone());
 
         // Add a process
@@ -329,7 +329,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_pause_resume() {
-        let scheduler = Arc::new(RwLock::new(Scheduler::new(SchedulingPolicy::Priority)));
+        let scheduler = Arc::new(RwLock::new(Scheduler::new(SchedulingPolicy::Priority).into()));
         let task = SchedulerTask::spawn(scheduler.clone());
 
         scheduler.read().add(1, 5);
@@ -349,7 +349,7 @@ mod tests {
     #[tokio::test]
     async fn test_graceful_shutdown_prevents_abort() {
         // Test that calling shutdown() properly cleans up without abort
-        let scheduler = Arc::new(RwLock::new(Scheduler::new(SchedulingPolicy::Fair)));
+        let scheduler = Arc::new(RwLock::new(Scheduler::new(SchedulingPolicy::Fair).into()));
         let task = SchedulerTask::spawn(scheduler.clone());
 
         // Add some work
@@ -367,7 +367,7 @@ mod tests {
     #[tokio::test]
     async fn test_drop_without_shutdown_aborts() {
         // Test that dropping without shutdown() triggers abort fallback
-        let scheduler = Arc::new(RwLock::new(Scheduler::new(SchedulingPolicy::Fair)));
+        let scheduler = Arc::new(RwLock::new(Scheduler::new(SchedulingPolicy::Fair).into()));
         let task = SchedulerTask::spawn(scheduler.clone());
 
         // Add some work
@@ -386,7 +386,7 @@ mod tests {
     #[tokio::test]
     async fn test_shutdown_is_idempotent() {
         // Test that shutdown can only happen once (consumes self)
-        let scheduler = Arc::new(RwLock::new(Scheduler::new(SchedulingPolicy::Fair)));
+        let scheduler = Arc::new(RwLock::new(Scheduler::new(SchedulingPolicy::Fair).into()));
         let task = SchedulerTask::spawn(scheduler.clone());
 
         // This compiles because shutdown consumes self

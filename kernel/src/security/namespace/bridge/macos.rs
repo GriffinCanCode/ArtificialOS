@@ -39,7 +39,7 @@ impl MacosBridgeManager {
             return Err(NamespaceError::NetworkError(format!(
                 "Failed to create bridge: {}",
                 stderr
-            )));
+            ).into()));
         }
 
         // The output contains the name of the created bridge (e.g., "bridge0")
@@ -76,7 +76,7 @@ impl MacosBridgeManager {
             return Err(NamespaceError::NetworkError(format!(
                 "Failed to delete bridge {}: {}",
                 bridge_name, stderr
-            )));
+            ).into()));
         }
 
         debug!("Bridge deleted successfully");
@@ -116,7 +116,7 @@ impl MacosBridgeManager {
             return Err(NamespaceError::NetworkError(format!(
                 "Failed to attach {} to bridge {}: {}",
                 iface_name, bridge_name, stderr
-            )));
+            ).into()));
         }
 
         debug!("Interface attached to bridge successfully");
@@ -211,7 +211,7 @@ impl MacosBridgeManager {
             return Err(NamespaceError::NetworkError(format!(
                 "Failed to set IP on bridge {}: {}",
                 bridge_name, stderr
-            )));
+            ).into()));
         }
 
         // Bring bridge up

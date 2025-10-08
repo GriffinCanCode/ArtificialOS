@@ -77,7 +77,7 @@ fn validate_absolute_command_path(command: &str) -> ProcessResult<()> {
         return Err(ProcessError::PermissionDenied(format!(
             "Command path not in allowed directories: {}",
             command
-        )));
+        ).into()));
     }
 
     Ok(())

@@ -136,7 +136,7 @@ impl SyscallHandler for IoUringHandler {
         } else {
             // Non-blocking: return task ID for polling
             Some(SyscallResult::Success {
-                data: Some(format!("io_uring_seq_{}", seq).into_bytes()),
+                data: Some(format!("io_uring_seq_{}", seq).into_bytes().into()),
             })
         }
     }

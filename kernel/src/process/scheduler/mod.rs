@@ -81,14 +81,14 @@ impl Scheduler {
         );
 
         Self {
-            policy: Arc::new(RwLock::new(policy)),
-            quantum: Arc::new(RwLock::new(quantum)),
-            rr_queue: Arc::new(RwLock::new(VecDeque::new())),
-            priority_queue: Arc::new(RwLock::new(BinaryHeap::new())),
-            fair_queue: Arc::new(RwLock::new(BinaryHeap::new())),
-            current: Arc::new(RwLock::new(None)),
-            process_locations: Arc::new(DashMap::new()),
-            stats: Arc::new(AtomicSchedulerStats::new(policy, quantum)),
+            policy: Arc::new(RwLock::new(policy).into()),
+            quantum: Arc::new(RwLock::new(quantum).into()),
+            rr_queue: Arc::new(RwLock::new(VecDeque::new().into())),
+            priority_queue: Arc::new(RwLock::new(BinaryHeap::new().into())),
+            fair_queue: Arc::new(RwLock::new(BinaryHeap::new().into())),
+            current: Arc::new(RwLock::new(None).into()),
+            process_locations: Arc::new(DashMap::new().into()),
+            stats: Arc::new(AtomicSchedulerStats::new(policy, quantum).into()),
             collector: None,
         }
     }

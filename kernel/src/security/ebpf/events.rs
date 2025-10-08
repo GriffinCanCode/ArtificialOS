@@ -54,8 +54,8 @@ struct EventStats {
 impl EventCollector {
     pub fn new() -> Self {
         Self {
-            history: Arc::new(RwLock::new(VecDeque::with_capacity(MAX_EVENT_HISTORY))),
-            subscriptions: Arc::new(StripedMap::new(32)),
+            history: Arc::new(RwLock::new(VecDeque::with_capacity(MAX_EVENT_HISTORY).into())),
+            subscriptions: Arc::new(StripedMap::new(32).into()),
             stats: Arc::new(RwLock::new(EventStats {
                 syscall_events: 0,
                 network_events: 0,
@@ -63,7 +63,7 @@ impl EventCollector {
                 total_events: 0,
                 events_per_sec: 0.0,
                 last_update: std::time::Instant::now(),
-            })),
+            }).into()),
         }
     }
 

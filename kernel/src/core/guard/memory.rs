@@ -107,7 +107,7 @@ impl Guard for MemoryGuard {
         self.active = false;
         self.manager
             .deallocate(self.address)
-            .map_err(|e| GuardError::OperationFailed(e.to_string()))?;
+            .map_err(|e| GuardError::OperationFailed(e.to_string().into()))?;
 
         self.emit_dropped();
         Ok(())
@@ -155,9 +155,9 @@ impl Observable for MemoryGuard {
                     name: "memory_guard_used".to_string(),
                     value: 1.0,
                     labels: vec![
-                        ("pid".to_string(), self.pid.to_string()),
-                        ("address".to_string(), self.address.to_string()),
-                        ("operation".to_string(), operation.to_string()),
+                        ("pid".to_string(), self.pid.to_string().into()),
+                        ("address".to_string(), self.address.to_string().into()),
+                        ("operation".to_string(), operation.to_string().into()),
                     ],
                 },
             )
@@ -191,9 +191,9 @@ impl Observable for MemoryGuard {
                     name: "memory_guard_error".to_string(),
                     value: 1.0,
                     labels: vec![
-                        ("pid".to_string(), self.pid.to_string()),
-                        ("address".to_string(), self.address.to_string()),
-                        ("error".to_string(), error.to_string()),
+                        ("pid".to_string(), self.pid.to_string().into()),
+                        ("address".to_string(), self.address.to_string().into()),
+                        ("error".to_string(), error.to_string().into()),
                     ],
                 },
             )
@@ -250,7 +250,7 @@ impl MemoryGuardRef {
         };
 
         Self {
-            inner: Arc::new(std::sync::Mutex::new(state)),
+            inner: Arc::new(std::sync::Mutex::new(state).into()),
             metadata,
         }
     }
@@ -309,7 +309,7 @@ impl Guard for MemoryGuardRef {
         state
             .manager
             .deallocate(state.address)
-            .map_err(|e| GuardError::OperationFailed(e.to_string()))?;
+            .map_err(|e| GuardError::OperationFailed(e.to_string().into()))?;
 
         Ok(())
     }

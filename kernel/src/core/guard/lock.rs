@@ -62,7 +62,7 @@ impl<T: Send + 'static> LockGuard<T, Unlocked> {
     /// Create a new unlocked guard
     pub fn new(data: T) -> Self {
         Self {
-            data: Arc::new(Mutex::new(data)),
+            data: Arc::new(Mutex::new(data).into()),
             lock_held: false,
             metadata: GuardMetadata::new("lock"),
             poisoned: false,
@@ -87,7 +87,7 @@ impl<T: Send + 'static> LockGuard<T, Unlocked> {
         let _guard = self
             .data
             .lock()
-            .map_err(|e| GuardError::Poisoned(format!("Lock poisoned: {:?}", e)))?;
+            .map_err(|e| GuardError::Poisoned(format!("Lock poisoned: {:?}", e).into()))?;
 
         // Immediately drop the guard - we'll reacquire on access
         drop(_guard);

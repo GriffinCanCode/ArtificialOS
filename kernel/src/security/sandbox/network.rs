@@ -116,7 +116,7 @@ mod tests {
     #[test]
     fn test_allow_all() {
         let rules = vec![NetworkRule::AllowAll];
-        assert!(check_network_access(&rules, "example.com", Some(80)));
+        assert!(check_network_access(&rules, "example.com", Some(80).into()));
     }
 
     #[test]
@@ -125,8 +125,8 @@ mod tests {
             host: "example.com".to_string(),
             port: Some(443),
         }];
-        assert!(check_network_access(&rules, "example.com", Some(443)));
-        assert!(!check_network_access(&rules, "example.com", Some(80)));
+        assert!(check_network_access(&rules, "example.com", Some(443).into()));
+        assert!(!check_network_access(&rules, "example.com", Some(80).into()));
     }
 
     #[test]
@@ -135,8 +135,8 @@ mod tests {
             host: "*.example.com".to_string(),
             port: None,
         }];
-        assert!(check_network_access(&rules, "api.example.com", Some(443)));
-        assert!(!check_network_access(&rules, "other.com", Some(443)));
+        assert!(check_network_access(&rules, "api.example.com", Some(443).into()));
+        assert!(!check_network_access(&rules, "other.com", Some(443).into()));
     }
 
     #[test]

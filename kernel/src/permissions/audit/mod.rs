@@ -77,9 +77,9 @@ pub struct AuditLogger {
 impl AuditLogger {
     pub fn new() -> Self {
         Self {
-            events: parking_lot::RwLock::new(VecDeque::with_capacity(MAX_AUDIT_EVENTS)),
-            pid_events: Arc::new(DashMap::with_hasher(RandomState::new())),
-            denial_counts: Arc::new(DashMap::with_hasher(RandomState::new())),
+            events: parking_lot::RwLock::new(VecDeque::with_capacity(MAX_AUDIT_EVENTS).into()),
+            pid_events: Arc::new(DashMap::with_hasher(RandomState::new().into())),
+            denial_counts: Arc::new(DashMap::with_hasher(RandomState::new().into())),
         }
     }
 
@@ -143,7 +143,7 @@ impl AuditLogger {
     pub fn pids_with_denials(&self) -> Vec<(Pid, u64)> {
         self.denial_counts
             .iter()
-            .map(|entry| (*entry.key(), *entry.value()))
+            .map(|entry| (*entry.key(), *entry.value().into()))
             .collect()
     }
 
@@ -237,7 +237,7 @@ mod tests {
 
         // Add more than MAX_AUDIT_EVENTS
         for i in 0..(MAX_AUDIT_EVENTS + 100) {
-            let req = PermissionRequest::file_read(100, PathBuf::from(format!("/test{}", i)));
+            let req = PermissionRequest::file_read(100, PathBuf::from(format!("/test{}", i).into()));
             let resp = PermissionResponse::allow(req.clone(), "test");
             logger.log(AuditEvent::new(req, resp));
         }

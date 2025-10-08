@@ -99,7 +99,7 @@ impl<T: Send + 'static> AsyncTaskGuard<T> {
         if let Some(handle) = self.handle.take() {
             handle
                 .await
-                .map_err(|e| GuardError::OperationFailed(format!("Task join error: {:?}", e)))
+                .map_err(|e| GuardError::OperationFailed(format!("Task join error: {:?}", e).into()))
         } else {
             Err(GuardError::AlreadyReleased)
         }

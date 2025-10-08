@@ -42,7 +42,7 @@ impl StreamingManager {
             loop {
                 match reader.read(&mut buffer).await {
                     Ok(0) => break, // EOF
-                    Ok(n) => yield Ok(buffer[..n].to_vec()),
+                    Ok(n) => yield Ok(buffer[..n].to_vec().into()),
                     Err(e) => {
                         yield Err(format!("Read error: {}", e));
                         break;

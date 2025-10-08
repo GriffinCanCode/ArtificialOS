@@ -112,7 +112,7 @@ where
         return Err(serde::de::Error::custom(format!(
             "invalid permission mode: 0o{:o} exceeds maximum 0o7777",
             mode
-        )));
+        ).into()));
     }
     Ok(mode)
 }

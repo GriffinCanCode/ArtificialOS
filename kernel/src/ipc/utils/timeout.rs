@@ -73,7 +73,7 @@ impl TimeoutPipeOps {
                             });
                         }
                         Err(_) => {
-                            return Err(PipeError::InvalidOperation("Wait cancelled".to_string()))
+                            return Err(PipeError::InvalidOperation("Wait cancelled".to_string().into()))
                         }
                     }
                 }
@@ -122,7 +122,7 @@ impl TimeoutPipeOps {
                             });
                         }
                         Err(_) => {
-                            return Err(PipeError::InvalidOperation("Wait cancelled".to_string()))
+                            return Err(PipeError::InvalidOperation("Wait cancelled".to_string().into()))
                         }
                     }
                 }
@@ -154,7 +154,7 @@ impl TimeoutQueueOps {
     pub fn new(manager: Arc<QueueManager>) -> Self {
         Self {
             manager,
-            wait_queue: Arc::new(WaitQueue::with_defaults()),
+            wait_queue: Arc::new(WaitQueue::with_defaults().into()),
         }
     }
 
@@ -197,7 +197,7 @@ impl TimeoutQueueOps {
                             });
                         }
                         Err(_) => {
-                            return Err(IpcError::InvalidOperation("Wait cancelled".to_string()))
+                            return Err(IpcError::InvalidOperation("Wait cancelled".to_string().into()))
                         }
                     }
                 }
@@ -246,7 +246,7 @@ mod tests {
     fn test_pipe_read_timeout() {
         let memory_manager = MemoryManager::new();
         let pipe_manager = Arc::new(PipeManager::new(memory_manager));
-        let timeout_ops = Arc::new(TimeoutPipeOps::new(pipe_manager.clone()));
+        let timeout_ops = Arc::new(TimeoutPipeOps::new(pipe_manager.clone().into()));
 
         let pipe_id = pipe_manager.create(1, 2, None).unwrap();
 
@@ -258,14 +258,14 @@ mod tests {
 
         // Let it timeout
         let result = handle.join().unwrap();
-        assert!(matches!(result, Err(PipeError::Timeout { .. })));
+        assert!(matches!(result, Err(PipeError::Timeout { .. }).into()));
     }
 
     #[test]
     fn test_pipe_read_with_data() {
         let memory_manager = MemoryManager::new();
         let pipe_manager = Arc::new(PipeManager::new(memory_manager));
-        let timeout_ops = Arc::new(TimeoutPipeOps::new(pipe_manager.clone()));
+        let timeout_ops = Arc::new(TimeoutPipeOps::new(pipe_manager.clone().into()));
 
         let pipe_id = pipe_manager.create(1, 2, None).unwrap();
 

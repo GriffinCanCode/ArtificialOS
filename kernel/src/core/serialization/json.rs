@@ -20,7 +20,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use std::cell::RefCell;
 use std::sync::OnceLock;
 
-use crate::core::{PooledBuffer, simd::SimdCapabilities};
+use crate::core::{simd::SimdCapabilities, PooledBuffer};
 
 // ============================================================================
 // Configuration Constants

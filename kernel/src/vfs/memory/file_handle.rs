@@ -72,7 +72,7 @@ impl OpenFile for MemFile {
                     return Err(VfsError::PermissionDenied(format!(
                         "file is readonly: {}",
                         self.path.display()
-                    )));
+                    ).into()));
                 }
             }
             let data = self.cursor.get_ref().clone();
@@ -92,7 +92,7 @@ impl OpenFile for MemFile {
                 return Err(VfsError::PermissionDenied(format!(
                     "file is readonly: {}",
                     self.path.display()
-                )));
+                ).into()));
             }
         }
         let data = self.cursor.get_mut();

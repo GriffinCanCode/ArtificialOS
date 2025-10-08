@@ -37,9 +37,9 @@ impl PermissionManager {
         debug!("Initializing centralized permission manager");
         Self {
             sandbox,
-            policy: Arc::new(PolicyEngine::new()),
-            cache: Arc::new(PermissionCache::default()),
-            audit: Arc::new(AuditLogger::new()),
+            policy: Arc::new(PolicyEngine::new().into()),
+            cache: Arc::new(PermissionCache::default().into()),
+            audit: Arc::new(AuditLogger::new().into()),
             collector: None,
         }
     }
@@ -65,7 +65,7 @@ impl PermissionManager {
             sandbox,
             policy: Arc::new(policy),
             cache: Arc::new(cache),
-            audit: Arc::new(AuditLogger::new()),
+            audit: Arc::new(AuditLogger::new().into()),
             collector: None,
         }
     }
@@ -267,9 +267,9 @@ mod tests {
 
         let manager = PermissionManager::new(sandbox);
         let requests = vec![
-            PermissionRequest::file_read(100, PathBuf::from("/tmp/test1.txt")),
-            PermissionRequest::file_read(100, PathBuf::from("/tmp/test2.txt")),
-            PermissionRequest::file_read(100, PathBuf::from("/etc/passwd")),
+            PermissionRequest::file_read(100, PathBuf::from("/tmp/test1.txt").into()),
+            PermissionRequest::file_read(100, PathBuf::from("/tmp/test2.txt").into()),
+            PermissionRequest::file_read(100, PathBuf::from("/etc/passwd").into()),
         ];
 
         let responses = manager.check_batch(&requests);

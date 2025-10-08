@@ -58,8 +58,8 @@ impl MountManager {
     /// Create new mount manager
     pub fn new() -> Self {
         Self {
-            mounts: Arc::new(DashMap::with_hasher(RandomState::new())),
-            mount_order: Arc::new(RwLock::new(Vec::new())),
+            mounts: Arc::new(DashMap::with_hasher(RandomState::new().into())),
+            mount_order: Arc::new(RwLock::new(Vec::new().into())),
             collector: None,
             slow_operation_threshold_ms: 100, // Default 100ms threshold
         }
@@ -99,7 +99,7 @@ impl MountManager {
             return Err(VfsError::AlreadyExists(format!(
                 "mount point already exists: {}",
                 mount_path.display()
-            )));
+            ).into()));
         }
 
         self.mounts
@@ -108,7 +108,7 @@ impl MountManager {
         // Update mount order (longest paths first)
         let mut order = self.mount_order.write();
         order.push(mount_path);
-        order.sort_by(|a, b| b.as_os_str().len().cmp(&a.as_os_str().len()));
+        order.sort_by(|a, b| b.as_os_str().len().cmp(&a.as_os_str().len().into()));
 
         Ok(())
     }
@@ -126,7 +126,7 @@ impl MountManager {
             return Err(VfsError::NotFound(format!(
                 "mount point not found: {}",
                 mount_path.display()
-            )));
+            ).into()));
         }
 
         let mut order = self.mount_order.write();
@@ -167,7 +167,7 @@ impl MountManager {
         Err(VfsError::NotFound(format!(
             "no filesystem mounted for path: {}",
             path.display()
-        )))
+        ).into()))
     }
 
     /// Check if mount point allows writes
@@ -192,7 +192,7 @@ impl MountManager {
     pub fn list_mounts(&self) -> Vec<(PathBuf, String)> {
         self.mounts
             .iter()
-            .map(|entry| (entry.key().clone(), entry.value().fs.name().to_string()))
+            .map(|entry| (entry.key().clone(), entry.value().fs.name().to_string().into()))
             .collect()
     }
 
@@ -290,7 +290,7 @@ impl FileSystem for MountManager {
 
     fn exists(&self, path: &Path) -> bool {
         self.resolve(path)
-            .and_then(|(fs, rel_path, _)| Ok(fs.exists(&rel_path)))
+            .and_then(|(fs, rel_path, _)| Ok(fs.exists(&rel_path).into()))
             .unwrap_or(false)
     }
 
@@ -434,8 +434,8 @@ mod tests {
         assert_eq!(data, b"hello");
 
         // Check existence
-        assert!(mgr.exists(Path::new("/data/test.txt")));
-        assert!(!mgr.exists(Path::new("/data/missing.txt")));
+        assert!(mgr.exists(Path::new("/data/test.txt").into()));
+        assert!(!mgr.exists(Path::new("/data/missing.txt").into()));
     }
 
     #[test]
@@ -444,7 +444,7 @@ mod tests {
 
         let mem_fs = Arc::new(MemFS::new());
         let temp = TempDir::new().unwrap();
-        let local_fs = Arc::new(LocalFS::new(temp.path()));
+        let local_fs = Arc::new(LocalFS::new(temp.path().into()));
 
         mgr.mount("/mem", mem_fs).unwrap();
         mgr.mount("/local", local_fs).unwrap();
@@ -458,8 +458,8 @@ mod tests {
         assert_eq!(mgr.read(Path::new("/local/test2.txt")).unwrap(), b"local");
 
         // Verify isolation
-        assert!(!mgr.exists(Path::new("/mem/test2.txt")));
-        assert!(!mgr.exists(Path::new("/local/test1.txt")));
+        assert!(!mgr.exists(Path::new("/mem/test2.txt").into()));
+        assert!(!mgr.exists(Path::new("/local/test1.txt").into()));
     }
 
     #[test]
@@ -511,12 +511,12 @@ mod tests {
     fn test_list_mounts() {
         let mgr = MountManager::new();
 
-        mgr.mount("/data", Arc::new(MemFS::new())).unwrap();
-        mgr.mount("/tmp", Arc::new(MemFS::new())).unwrap();
+        mgr.mount("/data", Arc::new(MemFS::new().into())).unwrap();
+        mgr.mount("/tmp", Arc::new(MemFS::new().into())).unwrap();
 
         let mounts = mgr.list_mounts();
         assert_eq!(mounts.len(), 2);
-        assert!(mounts.iter().any(|(p, _)| p == &PathBuf::from("/data")));
-        assert!(mounts.iter().any(|(p, _)| p == &PathBuf::from("/tmp")));
+        assert!(mounts.iter().any(|(p, _)| p == &PathBuf::from("/data").into()));
+        assert!(mounts.iter().any(|(p, _)| p == &PathBuf::from("/tmp").into()));
     }
 }

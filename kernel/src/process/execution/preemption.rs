@@ -31,7 +31,7 @@ impl PreemptionController {
         Self {
             scheduler,
             executor,
-            last_scheduled: Arc::new(RwLock::new(None)),
+            last_scheduled: Arc::new(RwLock::new(None).into()),
         }
     }
 
@@ -161,7 +161,7 @@ mod tests {
 
     #[test]
     fn test_preemption_controller_creation() {
-        let scheduler = Arc::new(RwLock::new(Scheduler::new(SchedulingPolicy::Fair)));
+        let scheduler = Arc::new(RwLock::new(Scheduler::new(SchedulingPolicy::Fair).into()));
         let executor = Arc::new(ProcessExecutor::new());
 
         let controller = PreemptionController::new(scheduler, executor);
@@ -170,7 +170,7 @@ mod tests {
 
     #[test]
     fn test_schedule_with_no_processes() {
-        let scheduler = Arc::new(RwLock::new(Scheduler::new(SchedulingPolicy::RoundRobin)));
+        let scheduler = Arc::new(RwLock::new(Scheduler::new(SchedulingPolicy::RoundRobin).into()));
         let executor = Arc::new(ProcessExecutor::new());
 
         let controller = PreemptionController::new(scheduler, executor);
@@ -179,7 +179,7 @@ mod tests {
 
     #[test]
     fn test_cleanup_process() {
-        let scheduler = Arc::new(RwLock::new(Scheduler::new(SchedulingPolicy::Priority)));
+        let scheduler = Arc::new(RwLock::new(Scheduler::new(SchedulingPolicy::Priority).into()));
         let executor = Arc::new(ProcessExecutor::new());
 
         let controller = PreemptionController::new(scheduler.clone(), executor);

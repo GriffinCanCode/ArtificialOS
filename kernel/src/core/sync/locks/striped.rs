@@ -41,7 +41,7 @@ impl<K: Hash + Eq, V> StripedMap<K, V> {
 
         let mut stripes = Vec::with_capacity(stripe_count);
         for _ in 0..stripe_count {
-            stripes.push(RwLock::new(HashMap::new()));
+            stripes.push(RwLock::new(HashMap::new().into()));
         }
 
         Self {

@@ -13,22 +13,30 @@ use crate::core::{simd_memcpy, PooledBuffer};
 
 impl MemFS {
     pub(super) fn read_impl(&self, path: &Path) -> VfsResult<Vec<u8>> {
-        let path = self.normalize(path);
+        use crate::core::memory::arena::with_arena;
 
-        match self.nodes.get(&path).map(|n| n.clone()) {
-            Some(Node::File { data, .. }) => {
-                let cow_guard = data.lock();
-                let content = cow_guard.read(|buf| {
-                    let mut result = PooledBuffer::get(buf.len());
-                    result.resize(buf.len(), 0);
-                    simd_memcpy(&mut result, buf);
-                    result.into_vec()
-                });
-                Ok(content)
+        with_arena(|arena| {
+            let path = self.normalize(path);
+
+            match self.nodes.get(&path).map(|n| n.clone()) {
+                Some(Node::File { data, .. }) => {
+                    let cow_guard = data.lock();
+                    let content = cow_guard.read(|buf| {
+                        let mut vec = bumpalo::collections::Vec::with_capacity_in(buf.len(), arena);
+                        vec.resize(buf.len(), 0);
+                        simd_memcpy(&mut vec, buf);
+                        vec.into_iter().collect()
+                    });
+                    Ok(content)
+                }
+                Some(Node::Directory { .. }) => {
+                    Err(VfsError::IsADirectory(format!("{}", path.display().into())))
+                }
+                None => {
+                    Err(VfsError::NotFound(format!("{}", path.display().into())))
+                }
             }
-            Some(Node::Directory { .. }) => Err(VfsError::IsADirectory(path.display().to_string())),
-            None => Err(VfsError::NotFound(path.display().to_string())),
-        }
+        })
     }
 
     pub(super) fn write_impl(&self, path: &Path, data: &[u8]) -> VfsResult<()> {
@@ -42,7 +50,7 @@ impl MemFS {
                     return Err(VfsError::PermissionDenied(format!(
                         "file is readonly: {}",
                         path.display()
-                    )));
+                    ).into()));
                 }
             }
             true
@@ -59,7 +67,7 @@ impl MemFS {
                             return Err(VfsError::PermissionDenied(format!(
                                 "parent directory is readonly: {}",
                                 parent_path.display()
-                            )));
+                            ).into()));
                         }
                     }
                 }
@@ -118,7 +126,9 @@ impl MemFS {
         self.nodes.insert(
             path,
             Node::File {
-                data: Arc::new(parking_lot::Mutex::new(CowMemory::new(file_data.into_vec()))),
+                data: Arc::new(parking_lot::Mutex::new(CowMemory::new(
+                    file_data.into_vec(),
+                ).into())),
                 permissions: Permissions::readwrite(),
                 modified: now,
                 created: now,
@@ -144,7 +154,7 @@ impl MemFS {
                     return Err(VfsError::PermissionDenied(format!(
                         "file is readonly: {}",
                         path.display()
-                    )));
+                    ).into()));
                 }
             }
         }
@@ -153,31 +163,26 @@ impl MemFS {
         self.check_and_reserve_space(data.len())?;
 
         match self.nodes.get(&path) {
-            Some(entry) => {
-                match entry.value() {
-                    Node::File {
-                        data: cow_data,
-                        ..
-                    } => {
-                        let mut cow_guard = cow_data.lock();
-                        cow_guard.write(|buf| {
-                            buf.extend_from_slice(data);
-                        });
-                        drop(cow_guard);
+            Some(entry) => match entry.value() {
+                Node::File { data: cow_data, .. } => {
+                    let mut cow_guard = cow_data.lock();
+                    cow_guard.write(|buf| {
+                        buf.extend_from_slice(data);
+                    });
+                    drop(cow_guard);
 
-                        if let Some(mut entry_mut) = self.nodes.get_mut(&path) {
-                            if let Node::File { modified, .. } = entry_mut.value_mut() {
-                                *modified = SystemTime::now();
-                            }
+                    if let Some(mut entry_mut) = self.nodes.get_mut(&path) {
+                        if let Node::File { modified, .. } = entry_mut.value_mut() {
+                            *modified = SystemTime::now();
                         }
-                        Ok(())
                     }
-                    Node::Directory { .. } => {
-                        self.release_space(data.len());
-                        Err(VfsError::IsADirectory(path.display().to_string()))
-                    }
+                    Ok(())
                 }
-            }
+                Node::Directory { .. } => {
+                    self.release_space(data.len());
+                    Err(VfsError::IsADirectory(path.display().to_string().into()))
+                }
+            },
             None => {
                 self.release_space(data.len());
                 self.write_impl(&path, data)
@@ -200,7 +205,7 @@ impl MemFS {
                         return Err(VfsError::PermissionDenied(format!(
                             "parent directory is readonly: {}",
                             parent_path.display()
-                        )));
+                        ).into()));
                     }
                 }
             }
@@ -221,8 +226,8 @@ impl MemFS {
                     Ok(())
                 }
             }
-            Some(Node::Directory { .. }) => Err(VfsError::IsADirectory(path.display().to_string())),
-            None => Err(VfsError::NotFound(path.display().to_string())),
+            Some(Node::Directory { .. }) => Err(VfsError::IsADirectory(path.display().to_string().into())),
+            None => Err(VfsError::NotFound(path.display().to_string().into())),
         }
     }
 
@@ -232,9 +237,9 @@ impl MemFS {
 
         let old_size = match self.nodes.get(&path).map(|n| n.clone()) {
             Some(Node::Directory { .. }) => {
-                return Err(VfsError::IsADirectory(path.display().to_string()))
+                return Err(VfsError::IsADirectory(path.display().to_string().into()))
             }
-            None => return Err(VfsError::NotFound(path.display().to_string())),
+            None => return Err(VfsError::NotFound(path.display().to_string().into())),
             Some(Node::File {
                 data, permissions, ..
             }) => {
@@ -242,7 +247,7 @@ impl MemFS {
                     return Err(VfsError::PermissionDenied(format!(
                         "file is readonly: {}",
                         path.display()
-                    )));
+                    ).into()));
                 }
                 data.lock().len()
             }
@@ -273,13 +278,13 @@ impl MemFS {
                 if new_size > old_size {
                     self.release_space(new_size - old_size);
                 }
-                Err(VfsError::NotFound(path.display().to_string()))
+                Err(VfsError::NotFound(path.display().to_string().into()))
             }
         } else {
             if new_size > old_size {
                 self.release_space(new_size - old_size);
             }
-            Err(VfsError::NotFound(path.display().to_string()))
+            Err(VfsError::NotFound(path.display().to_string().into()))
         }
     }
 }

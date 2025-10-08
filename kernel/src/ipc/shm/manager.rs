@@ -50,11 +50,11 @@ impl ShmManager {
             GLOBAL_SHM_MEMORY_LIMIT / (1024 * 1024)
         );
         Self {
-            segments: Arc::new(DashMap::with_hasher(RandomState::new())),
+            segments: Arc::new(DashMap::with_hasher(RandomState::new().into())),
             next_id: Arc::new(AdaptiveLock::new(1)),
-            process_segments: Arc::new(DashMap::with_hasher(RandomState::new())),
+            process_segments: Arc::new(DashMap::with_hasher(RandomState::new().into())),
             memory_manager,
-            free_ids: Arc::new(Mutex::new(Vec::new())),
+            free_ids: Arc::new(Mutex::new(Vec::new().into())),
             collector: None,
         }
     }
@@ -72,7 +72,7 @@ impl ShmManager {
 
     pub fn create(&self, size: Size, owner_pid: Pid) -> Result<ShmId, ShmError> {
         if size == 0 {
-            return Err(ShmError::InvalidSize("Size cannot be zero".to_string()));
+            return Err(ShmError::InvalidSize("Size cannot be zero".to_string().into()));
         }
 
         if size > MAX_SEGMENT_SIZE {
@@ -108,7 +108,7 @@ impl ShmManager {
         let address = self
             .memory_manager
             .allocate(size, owner_pid)
-            .map_err(|e| ShmError::AllocationFailed(e.to_string()))?;
+            .map_err(|e| ShmError::AllocationFailed(e.to_string().into()))?;
 
         // Try to recycle an ID from the free list, otherwise allocate new
         let segment_id = {

@@ -55,7 +55,7 @@ impl MemoryGuardExt for MemoryManager {
             address,
             size,
             pid,
-            Arc::new(self.clone()),
+            Arc::new(self.clone().into()),
             self.collector(),
         ))
     }
@@ -69,7 +69,7 @@ impl MemoryGuardExt for MemoryManager {
             address,
             size,
             pid,
-            Arc::new(self.clone()),
+            Arc::new(self.clone().into()),
             self.collector(),
         ))
     }

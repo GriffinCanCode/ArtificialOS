@@ -22,8 +22,8 @@ impl SimulationNamespaceManager {
     pub fn new() -> Self {
         info!("Network isolation manager initialized (simulation mode)");
         Self {
-            namespaces: Arc::new(DashMap::with_hasher(RandomState::new())),
-            pid_to_ns: Arc::new(DashMap::with_hasher(RandomState::new())),
+            namespaces: Arc::new(DashMap::with_hasher(RandomState::new().into())),
+            pid_to_ns: Arc::new(DashMap::with_hasher(RandomState::new().into())),
         }
     }
 }
@@ -86,7 +86,7 @@ impl NamespaceProvider for SimulationNamespaceManager {
     fn get_by_pid(&self, pid: Pid) -> Option<NamespaceInfo> {
         self.pid_to_ns
             .get(&pid)
-            .and_then(|ns_id| self.get_info(ns_id.value()))
+            .and_then(|ns_id| self.get_info(ns_id.value().into()))
     }
 
     fn get_stats(&self, id: &NamespaceId) -> Option<NamespaceStats> {

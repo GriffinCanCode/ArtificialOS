@@ -18,8 +18,8 @@ pub struct FilterManager {
 impl FilterManager {
     pub fn new() -> Self {
         Self {
-            filters: Arc::new(RwLock::new(Vec::new())),
-            cache: Arc::new(StripedMap::new(64)),
+            filters: Arc::new(RwLock::new(Vec::new().into())),
+            cache: Arc::new(StripedMap::new(64).into()),
         }
     }
 

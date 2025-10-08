@@ -39,7 +39,7 @@ impl CowMemory {
     /// Create new CoW memory region
     pub fn new(data: Vec<u8>) -> Self {
         Self {
-            data: Arc::new(Mutex::new(data)),
+            data: Arc::new(Mutex::new(data).into()),
             has_written: false,
         }
     }

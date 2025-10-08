@@ -64,7 +64,7 @@ impl EbpfManagerImpl {
     /// Force simulation mode (for testing)
     pub fn with_simulation() -> Self {
         Self {
-            provider: EbpfProviderImpl::Simulation(SimulationEbpfProvider::new()),
+            provider: EbpfProviderImpl::Simulation(SimulationEbpfProvider::new().into()),
         }
     }
 

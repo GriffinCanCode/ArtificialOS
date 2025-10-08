@@ -26,11 +26,11 @@ pub struct SimulationEbpfProvider {
 impl SimulationEbpfProvider {
     pub fn new() -> Self {
         Self {
-            programs: Arc::new(DashMap::with_hasher(RandomState::new())),
-            filters: Arc::new(RwLock::new(Vec::new())),
-            events: Arc::new(RwLock::new(VecDeque::with_capacity(1000))),
-            monitored_pids: Arc::new(DashMap::with_hasher(RandomState::new())),
-            event_count: Arc::new(RwLock::new((0, 0, 0))),
+            programs: Arc::new(DashMap::with_hasher(RandomState::new().into())),
+            filters: Arc::new(RwLock::new(Vec::new().into())),
+            events: Arc::new(RwLock::new(VecDeque::with_capacity(1000).into())),
+            monitored_pids: Arc::new(DashMap::with_hasher(RandomState::new().into())),
+            event_count: Arc::new(RwLock::new((0, 0, 0).into())),
         }
     }
 
@@ -203,19 +203,19 @@ impl SyscallFilterProvider for SimulationEbpfProvider {
 impl EventMonitor for SimulationEbpfProvider {
     fn subscribe_syscall(&self, _callback: EventCallback) -> EbpfResult<String> {
         // Note: In simulation mode, callbacks are not actually invoked
-        Ok(format!("sim_syscall_{}", Self::current_timestamp()))
+        Ok(format!("sim_syscall_{}", Self::current_timestamp().into()))
     }
 
     fn subscribe_network(&self, _callback: EventCallback) -> EbpfResult<String> {
-        Ok(format!("sim_network_{}", Self::current_timestamp()))
+        Ok(format!("sim_network_{}", Self::current_timestamp().into()))
     }
 
     fn subscribe_file(&self, _callback: EventCallback) -> EbpfResult<String> {
-        Ok(format!("sim_file_{}", Self::current_timestamp()))
+        Ok(format!("sim_file_{}", Self::current_timestamp().into()))
     }
 
     fn subscribe_all(&self, _callback: EventCallback) -> EbpfResult<String> {
-        Ok(format!("sim_all_{}", Self::current_timestamp()))
+        Ok(format!("sim_all_{}", Self::current_timestamp().into()))
     }
 
     fn unsubscribe(&self, _subscription_id: &str) -> EbpfResult<()> {
@@ -267,7 +267,7 @@ impl ProcessMonitor for SimulationEbpfProvider {
         events
             .iter()
             .filter_map(|e| match e {
-                EbpfEvent::Network(ne) if ne.pid == pid => Some(ne.clone()),
+                EbpfEvent::Network(ne) if ne.pid == pid => Some(ne.clone().into()),
                 _ => None,
             })
             .collect()
@@ -278,7 +278,7 @@ impl ProcessMonitor for SimulationEbpfProvider {
         events
             .iter()
             .filter_map(|e| match e {
-                EbpfEvent::File(fe) if fe.pid == pid => Some(fe.clone()),
+                EbpfEvent::File(fe) if fe.pid == pid => Some(fe.clone().into()),
                 _ => None,
             })
             .collect()

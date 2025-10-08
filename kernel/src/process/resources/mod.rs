@@ -90,7 +90,7 @@ impl ResourceOrchestrator {
     /// Create a new orchestrator with no resources
     pub fn new() -> Self {
         Self {
-            resources: std::sync::Arc::new(Vec::new()),
+            resources: std::sync::Arc::new(Vec::new().into()),
         }
     }
 
@@ -130,39 +130,39 @@ impl ResourceOrchestrator {
 
             // Cleanup in reverse order (LIFO)
             for resource in self.resources.iter().rev() {
-            if resource.has_resources(pid) {
-                let start = Instant::now();
-                let mut stats = resource.cleanup(pid);
-                stats.cleanup_duration_micros = start.elapsed().as_micros() as u64;
+                if resource.has_resources(pid) {
+                    let start = Instant::now();
+                    let mut stats = resource.cleanup(pid);
+                    stats.cleanup_duration_micros = start.elapsed().as_micros() as u64;
 
-                // Track per-type counts
-                let resource_type = resource.resource_type();
-                stats
-                    .by_type
-                    .insert(resource_type.to_string(), stats.resources_freed);
+                    // Track per-type counts
+                    let resource_type = resource.resource_type();
+                    stats
+                        .by_type
+                        .insert(resource_type.to_string(), stats.resources_freed);
 
-                // Save values before merging
-                let resources_freed = stats.resources_freed;
-                let errors_encountered = stats.errors_encountered;
-                let duration_micros = stats.cleanup_duration_micros;
+                    // Save values before merging
+                    let resources_freed = stats.resources_freed;
+                    let errors_encountered = stats.errors_encountered;
+                    let duration_micros = stats.cleanup_duration_micros;
 
-                if errors_encountered > 0 {
-                    error_msgs.push(format!(
-                        "{}: {} errors during cleanup",
-                        resource_type, errors_encountered
-                    ));
+                    if errors_encountered > 0 {
+                        error_msgs.push(format!(
+                            "{}: {} errors during cleanup",
+                            resource_type, errors_encountered
+                        ));
+                    }
+
+                    total_stats.merge(stats);
+
+                    log::info!(
+                        "Cleaned {} resources for PID {} (type: {}, took {}μs)",
+                        resources_freed,
+                        pid,
+                        resource_type,
+                        duration_micros
+                    );
                 }
-
-                total_stats.merge(stats);
-
-                log::info!(
-                    "Cleaned {} resources for PID {} (type: {}, took {}μs)",
-                    resources_freed,
-                    pid,
-                    resource_type,
-                    duration_micros
-                );
-            }
             }
 
             error_msgs.into_iter().collect::<Vec<_>>()

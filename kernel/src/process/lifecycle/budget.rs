@@ -242,6 +242,6 @@ mod tests {
         usage.file_descriptors = 900; // 90% of 1024
 
         let near_limits = usage.near_limit(&budget);
-        assert!(near_limits.contains(&"file_descriptors".to_string()));
+        assert!(near_limits.contains(&"file_descriptors".to_string().into()));
     }
 }

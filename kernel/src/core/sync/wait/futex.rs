@@ -215,7 +215,7 @@ mod tests {
     fn test_futex_timeout() {
         let futex = FutexWait::<u64>::new();
         let start = Instant::now();
-        let result = futex.wait(99, Some(Duration::from_millis(50)));
+        let result = futex.wait(99, Some(Duration::from_millis(50).into()));
         let elapsed = start.elapsed();
 
         assert!(!result); // Should timeout

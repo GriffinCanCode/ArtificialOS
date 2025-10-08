@@ -44,20 +44,20 @@ impl Sampler {
     /// Create a new adaptive sampler starting at 100% rate
     pub fn new() -> Self {
         Self {
-            rate: Arc::new(AtomicU8::new(100)),
-            evaluated: Arc::new(AtomicU64::new(0)),
-            accepted: Arc::new(AtomicU64::new(0)),
-            overhead_pct: Arc::new(AtomicU8::new(0)),
+            rate: Arc::new(AtomicU8::new(100).into()),
+            evaluated: Arc::new(AtomicU64::new(0).into()),
+            accepted: Arc::new(AtomicU64::new(0).into()),
+            overhead_pct: Arc::new(AtomicU8::new(0).into()),
             category_rates: [
-                Arc::new(AtomicU8::new(100)),
-                Arc::new(AtomicU8::new(100)),
-                Arc::new(AtomicU8::new(100)),
-                Arc::new(AtomicU8::new(100)),
-                Arc::new(AtomicU8::new(100)),
-                Arc::new(AtomicU8::new(100)),
-                Arc::new(AtomicU8::new(100)),
-                Arc::new(AtomicU8::new(100)),
-                Arc::new(AtomicU8::new(100)),
+                Arc::new(AtomicU8::new(100).into()),
+                Arc::new(AtomicU8::new(100).into()),
+                Arc::new(AtomicU8::new(100).into()),
+                Arc::new(AtomicU8::new(100).into()),
+                Arc::new(AtomicU8::new(100).into()),
+                Arc::new(AtomicU8::new(100).into()),
+                Arc::new(AtomicU8::new(100).into()),
+                Arc::new(AtomicU8::new(100).into()),
+                Arc::new(AtomicU8::new(100).into()),
             ],
         }
     }

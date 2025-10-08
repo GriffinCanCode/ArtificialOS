@@ -271,17 +271,17 @@ impl SyscallExecutorWithIpc {
     /// Build the handler registry with all syscall handlers
     fn build_handler_registry(executor: &Self) -> SyscallHandlerRegistry {
         SyscallHandlerRegistry::new()
-            .register(Arc::new(FileSystemHandler::new(executor.clone())))
-            .register(Arc::new(ProcessHandler::new(executor.clone())))
-            .register(Arc::new(SystemHandler::new(executor.clone())))
-            .register(Arc::new(IpcHandler::new(executor.clone())))
-            .register(Arc::new(MmapHandler::new(executor.clone())))
-            .register(Arc::new(SchedulerHandler::new(executor.clone())))
-            .register(Arc::new(TimeHandler::new(executor.clone())))
-            .register(Arc::new(MemoryHandler::new(executor.clone())))
-            .register(Arc::new(SignalHandler::new(executor.clone())))
-            .register(Arc::new(NetworkHandler::new(executor.clone())))
-            .register(Arc::new(FileDescriptorHandler::new(executor.clone())))
+            .register(Arc::new(FileSystemHandler::new(executor.clone().into())))
+            .register(Arc::new(ProcessHandler::new(executor.clone().into())))
+            .register(Arc::new(SystemHandler::new(executor.clone().into())))
+            .register(Arc::new(IpcHandler::new(executor.clone().into())))
+            .register(Arc::new(MmapHandler::new(executor.clone().into())))
+            .register(Arc::new(SchedulerHandler::new(executor.clone().into())))
+            .register(Arc::new(TimeHandler::new(executor.clone().into())))
+            .register(Arc::new(MemoryHandler::new(executor.clone().into())))
+            .register(Arc::new(SignalHandler::new(executor.clone().into())))
+            .register(Arc::new(NetworkHandler::new(executor.clone().into())))
+            .register(Arc::new(FileDescriptorHandler::new(executor.clone().into())))
     }
 }
 

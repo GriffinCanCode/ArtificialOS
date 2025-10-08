@@ -58,7 +58,7 @@ impl MacOSEbpfProvider {
                 monitored_pids: HashSet::new(),
                 initialized: false,
                 dtrace_handles: None,
-            })),
+            }).into()),
             loader: ProgramLoader::new(),
             filters: FilterManager::new(),
             events: EventCollector::new(),

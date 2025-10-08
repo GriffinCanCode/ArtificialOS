@@ -24,18 +24,18 @@ impl SyscallHandler for SchedulerHandler {
     #[inline]
     fn handle(&self, pid: Pid, syscall: &Syscall) -> Option<SyscallResult> {
         match syscall {
-            Syscall::ScheduleNext => Some(self.executor.schedule_next(pid)),
-            Syscall::YieldProcess => Some(self.executor.yield_process(pid)),
-            Syscall::GetCurrentScheduled => Some(self.executor.get_current_scheduled(pid)),
-            Syscall::GetSchedulerStats => Some(self.executor.get_scheduler_stats(pid)),
+            Syscall::ScheduleNext => Some(self.executor.schedule_next(pid).into()),
+            Syscall::YieldProcess => Some(self.executor.yield_process(pid).into()),
+            Syscall::GetCurrentScheduled => Some(self.executor.get_current_scheduled(pid).into()),
+            Syscall::GetSchedulerStats => Some(self.executor.get_scheduler_stats(pid).into()),
             Syscall::SetSchedulingPolicy { ref policy } => {
                 Some(self.executor.set_scheduling_policy(pid, policy))
             }
-            Syscall::GetSchedulingPolicy => Some(self.executor.get_scheduling_policy(pid)),
+            Syscall::GetSchedulingPolicy => Some(self.executor.get_scheduling_policy(pid).into()),
             Syscall::SetTimeQuantum { quantum_micros } => {
                 Some(self.executor.set_time_quantum(pid, *quantum_micros))
             }
-            Syscall::GetTimeQuantum => Some(self.executor.get_time_quantum(pid)),
+            Syscall::GetTimeQuantum => Some(self.executor.get_time_quantum(pid).into()),
             Syscall::GetProcessSchedulerStats { target_pid } => {
                 Some(self.executor.get_process_scheduler_stats(pid, *target_pid))
             }

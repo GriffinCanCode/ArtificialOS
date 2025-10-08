@@ -35,7 +35,7 @@ impl Collector {
     pub fn new() -> Self {
         Self {
             stream: EventStream::new(),
-            metrics: Arc::new(MetricsCollector::new()),
+            metrics: Arc::new(MetricsCollector::new().into()),
             sampler: Sampler::new(),
             detector: Detector::new(),
             causality_gen: Arc::new(std::sync::atomic::AtomicU64::new(1)),

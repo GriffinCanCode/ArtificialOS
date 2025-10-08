@@ -65,15 +65,15 @@ impl PooledBuffer {
         } else {
             // Very large: don't pool
             return Self {
-                inner: Some(Vec::with_capacity(size_hint)),
+                inner: Some(Vec::with_capacity(size_hint).into()),
                 pool_category: PoolCategory::None,
             };
         };
 
         let mut vec = match pool_category {
-            PoolCategory::Small => SMALL_POOL.with(|pool| pool.borrow_mut().pop()),
-            PoolCategory::Medium => MEDIUM_POOL.with(|pool| pool.borrow_mut().pop()),
-            PoolCategory::Large => LARGE_POOL.with(|pool| pool.borrow_mut().pop()),
+            PoolCategory::Small => SMALL_POOL.with(|pool| pool.borrow_mut().pop().into()),
+            PoolCategory::Medium => MEDIUM_POOL.with(|pool| pool.borrow_mut().pop().into()),
+            PoolCategory::Large => LARGE_POOL.with(|pool| pool.borrow_mut().pop().into()),
             PoolCategory::None => unreachable!(),
         };
 
@@ -187,9 +187,9 @@ impl SharedPool {
     /// Create new shared pool
     pub fn new() -> Self {
         Self {
-            small: Arc::new(ArrayQueue::new(MAX_POOL_SIZE * 4)),
-            medium: Arc::new(ArrayQueue::new(MAX_POOL_SIZE * 2)),
-            large: Arc::new(ArrayQueue::new(MAX_POOL_SIZE)),
+            small: Arc::new(ArrayQueue::new(MAX_POOL_SIZE * 4).into()),
+            medium: Arc::new(ArrayQueue::new(MAX_POOL_SIZE * 2).into()),
+            large: Arc::new(ArrayQueue::new(MAX_POOL_SIZE).into()),
         }
     }
 

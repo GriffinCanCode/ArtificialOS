@@ -65,14 +65,14 @@ pub async fn handle_get_async_status(
                 TaskStatus::Running => (async_status_response::Status::Running, None),
                 TaskStatus::Completed(res) => (
                     async_status_response::Status::Completed,
-                    Some(syscall_result_to_proto(res)),
+                    Some(syscall_result_to_proto(res).into()),
                 ),
                 TaskStatus::Failed(msg) => (
                     async_status_response::Status::Failed,
                     Some(SyscallResponse {
                         result: Some(syscall_response::Result::Error(ErrorResult {
                             message: msg,
-                        })),
+                        }).into()),
                     }),
                 ),
                 TaskStatus::Cancelled => (async_status_response::Status::Cancelled, None),
@@ -84,7 +84,7 @@ pub async fn handle_get_async_status(
                 progress,
             }))
         }
-        None => Err(Status::not_found("Task not found")),
+        None => Err(Status::not_found("Task not found").into()),
     }
 }
 
@@ -139,11 +139,11 @@ pub async fn handle_execute_syscall_batch(
     for syscall_req in req.requests {
         let pid = syscall_req.pid;
         match proto_to_syscall_simple(&syscall_req) {
-            Ok(syscall) => syscalls.push((pid, syscall)),
+            Ok(syscall) => syscalls.push((pid, syscall).into()),
             Err(e) => {
                 return Ok(Response::new(BatchSyscallResponse {
                     responses: vec![SyscallResponse {
-                        result: Some(syscall_response::Result::Error(ErrorResult { message: e })),
+                        result: Some(syscall_response::Result::Error(ErrorResult { message: e }).into()),
                     }],
                     success_count: 0,
                     failure_count: 1,
@@ -341,7 +341,7 @@ pub async fn handle_reap_iouring_completions(
         Err(e) => Err(Status::internal(format!(
             "Failed to reap completions: {}",
             e
-        ))),
+        ).into())),
     }
 }
 
@@ -375,7 +375,7 @@ pub async fn handle_submit_iouring_batch(
         let syscall = match proto_to_syscall_simple(&syscall_req) {
             Ok(s) => s,
             Err(e) => {
-                return Err(Status::invalid_argument(format!("Invalid syscall: {}", e)));
+                return Err(Status::invalid_argument(format!("Invalid syscall: {}", e).into()));
             }
         };
 
@@ -402,12 +402,12 @@ pub async fn handle_submit_iouring_batch(
             sequences: seqs,
             accepted: true,
             error: String::new(),
-        })),
+        }).into()),
         Err(e) => Ok(Response::new(IoUringBatchResponse {
             sequences: vec![],
             accepted: false,
             error: format!("Batch submission failed: {}", e),
-        })),
+        }).into()),
     }
 }
 

@@ -28,7 +28,7 @@ pub struct CallbackRegistry {
 impl CallbackRegistry {
     pub fn new() -> Self {
         Self {
-            handlers: Arc::new(DashMap::with_hasher(RandomState::new())),
+            handlers: Arc::new(DashMap::with_hasher(RandomState::new().into())),
             next_id: Arc::new(AtomicU64::new(1)),
         }
     }

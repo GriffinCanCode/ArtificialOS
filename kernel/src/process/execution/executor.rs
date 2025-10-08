@@ -39,7 +39,7 @@ impl ProcessExecutor {
     pub fn new() -> Self {
         info!("Process executor initialized");
         Self {
-            processes: Arc::new(DashMap::with_hasher(RandomState::new())),
+            processes: Arc::new(DashMap::with_hasher(RandomState::new().into())),
         }
     }
 
@@ -96,7 +96,7 @@ impl ProcessExecutor {
         // Spawn process
         let child = cmd
             .spawn()
-            .map_err(|e| ProcessError::SpawnFailed(format!("{}: {}", config.command, e)))?;
+            .map_err(|e| ProcessError::SpawnFailed(format!("{}: {}", config.command, e).into()))?;
 
         let os_pid = child.id();
 
@@ -131,7 +131,7 @@ impl ProcessExecutor {
                 }
                 Err(e) => {
                     error!("Failed to kill process PID {}: {}", pid, e);
-                    Err(ProcessError::SpawnFailed(e.to_string()))
+                    Err(ProcessError::SpawnFailed(e.to_string().into()))
                 }
             }
         } else {
@@ -163,7 +163,7 @@ impl ProcessExecutor {
                 }
                 Err(e) => {
                     error!("Failed to wait for process PID {}: {}", pid, e);
-                    Err(ProcessError::SpawnFailed(e.to_string()))
+                    Err(ProcessError::SpawnFailed(e.to_string().into()))
                 }
             }
         } else {
@@ -455,7 +455,7 @@ mod tests {
                 attempt
             );
             assert!(
-                matches!(result.unwrap_err(), ProcessError::PermissionDenied(_)),
+                matches!(result.unwrap_err(), ProcessError::PermissionDenied(_).into()),
                 "Wrong error type for bypass attempt: {}",
                 attempt
             );

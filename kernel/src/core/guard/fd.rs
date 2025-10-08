@@ -129,12 +129,12 @@ impl Observable for FdGuard {
     fn emit_created(&self) {
         if let Some(ref collector) = self.collector {
             let mut labels = vec![
-                ("pid".to_string(), self.pid.to_string()),
-                ("fd".to_string(), self.fd.to_string()),
+                ("pid".to_string(), self.pid.to_string().into()),
+                ("fd".to_string(), self.fd.to_string().into()),
             ];
 
             if let Some(ref path) = self.path {
-                labels.push(("path".to_string(), path.clone()));
+                labels.push(("path".to_string(), path.clone().into()));
             }
 
             let event = Event::new(
@@ -160,9 +160,9 @@ impl Observable for FdGuard {
                     name: "fd_operation".to_string(),
                     value: 1.0,
                     labels: vec![
-                        ("pid".to_string(), self.pid.to_string()),
-                        ("fd".to_string(), self.fd.to_string()),
-                        ("operation".to_string(), operation.to_string()),
+                        ("pid".to_string(), self.pid.to_string().into()),
+                        ("fd".to_string(), self.fd.to_string().into()),
+                        ("operation".to_string(), operation.to_string().into()),
                     ],
                 },
             )
@@ -181,9 +181,9 @@ impl Observable for FdGuard {
                     name: "fd_closed".to_string(),
                     value: lifetime as f64,
                     labels: vec![
-                        ("pid".to_string(), self.pid.to_string()),
-                        ("fd".to_string(), self.fd.to_string()),
-                        ("lifetime_micros".to_string(), lifetime.to_string()),
+                        ("pid".to_string(), self.pid.to_string().into()),
+                        ("fd".to_string(), self.fd.to_string().into()),
+                        ("lifetime_micros".to_string(), lifetime.to_string().into()),
                     ],
                 },
             )
@@ -201,9 +201,9 @@ impl Observable for FdGuard {
                     name: "fd_error".to_string(),
                     value: 1.0,
                     labels: vec![
-                        ("pid".to_string(), self.pid.to_string()),
-                        ("fd".to_string(), self.fd.to_string()),
-                        ("error".to_string(), error.to_string()),
+                        ("pid".to_string(), self.pid.to_string().into()),
+                        ("fd".to_string(), self.fd.to_string().into()),
+                        ("error".to_string(), error.to_string().into()),
                     ],
                 },
             )
@@ -235,7 +235,7 @@ mod tests {
         };
 
         {
-            let guard = FdGuard::new(3, 1, Some("/test/file".to_string()), close_fn, None);
+            let guard = FdGuard::new(3, 1, Some("/test/file".to_string().into()), close_fn, None);
             assert_eq!(guard.fd(), 3);
             assert_eq!(guard.path(), Some("/test/file"));
             assert!(!closed.load(Ordering::SeqCst));

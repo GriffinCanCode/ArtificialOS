@@ -126,8 +126,8 @@ impl Signal {
             29 => Ok(Signal::SIGIO),
             30 => Ok(Signal::SIGPWR),
             31 => Ok(Signal::SIGSYS),
-            n @ SIGRTMIN..=SIGRTMAX => Ok(Signal::SIGRT(n)),
-            _ => Err(SignalError::InvalidSignal(n)),
+            n @ SIGRTMIN..=SIGRTMAX => Ok(Signal::SIGRT(n).into()),
+            _ => Err(SignalError::InvalidSignal(n).into()),
         }
     }
 

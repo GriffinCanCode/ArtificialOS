@@ -85,7 +85,7 @@ pub enum GuardError {
     #[error("Operation failed: {0}")]
     OperationFailed(String),
 
-    #[error("Operation timed out: {resource_type} ({category}) after {elapsed_ms}ms (timeout: {}ms)", timeout_ms.map(|t| t.to_string()).unwrap_or_else(|| "none".to_string()))]
+    #[error("Operation timed out: {resource_type} ({category}) after {elapsed_ms}ms (timeout: {}ms)", timeout_ms.map(|t| t.to_string()).unwrap_or_else(|| "none".to_string().into()))]
     Timeout {
         resource_type: &'static str,
         category: &'static str,

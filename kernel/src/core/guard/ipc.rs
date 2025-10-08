@@ -162,12 +162,12 @@ impl Observable for IpcGuard {
                     name: "ipc_guard_created".to_string(),
                     value: 1.0,
                     labels: vec![
-                        ("pid".to_string(), self.pid.to_string()),
+                        ("pid".to_string(), self.pid.to_string().into()),
                         (
                             "resource_type".to_string(),
                             self.resource_type.as_str().to_string(),
                         ),
-                        ("resource_id".to_string(), self.resource_id.to_string()),
+                        ("resource_id".to_string(), self.resource_id.to_string().into()),
                     ],
                 },
             )
@@ -185,13 +185,13 @@ impl Observable for IpcGuard {
                     name: "ipc_guard_used".to_string(),
                     value: 1.0,
                     labels: vec![
-                        ("pid".to_string(), self.pid.to_string()),
+                        ("pid".to_string(), self.pid.to_string().into()),
                         (
                             "resource_type".to_string(),
                             self.resource_type.as_str().to_string(),
                         ),
-                        ("resource_id".to_string(), self.resource_id.to_string()),
-                        ("operation".to_string(), operation.to_string()),
+                        ("resource_id".to_string(), self.resource_id.to_string().into()),
+                        ("operation".to_string(), operation.to_string().into()),
                     ],
                 },
             )
@@ -210,13 +210,13 @@ impl Observable for IpcGuard {
                     name: "ipc_guard_dropped".to_string(),
                     value: lifetime as f64,
                     labels: vec![
-                        ("pid".to_string(), self.pid.to_string()),
+                        ("pid".to_string(), self.pid.to_string().into()),
                         (
                             "resource_type".to_string(),
                             self.resource_type.as_str().to_string(),
                         ),
-                        ("resource_id".to_string(), self.resource_id.to_string()),
-                        ("lifetime_micros".to_string(), lifetime.to_string()),
+                        ("resource_id".to_string(), self.resource_id.to_string().into()),
+                        ("lifetime_micros".to_string(), lifetime.to_string().into()),
                     ],
                 },
             )
@@ -234,13 +234,13 @@ impl Observable for IpcGuard {
                     name: "ipc_guard_error".to_string(),
                     value: 1.0,
                     labels: vec![
-                        ("pid".to_string(), self.pid.to_string()),
+                        ("pid".to_string(), self.pid.to_string().into()),
                         (
                             "resource_type".to_string(),
                             self.resource_type.as_str().to_string(),
                         ),
-                        ("resource_id".to_string(), self.resource_id.to_string()),
-                        ("error".to_string(), error.to_string()),
+                        ("resource_id".to_string(), self.resource_id.to_string().into()),
+                        ("error".to_string(), error.to_string().into()),
                     ],
                 },
             )
@@ -295,7 +295,7 @@ impl IpcGuardRef {
         };
 
         Self {
-            inner: Arc::new(std::sync::Mutex::new(state)),
+            inner: Arc::new(std::sync::Mutex::new(state).into()),
             metadata,
         }
     }

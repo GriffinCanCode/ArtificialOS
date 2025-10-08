@@ -50,7 +50,7 @@ impl MemFS {
         Self {
             nodes: Arc::new(nodes),
             max_size: None,
-            current_size: Arc::new(AtomicUsize::new(0)),
+            current_size: Arc::new(AtomicUsize::new(0).into()),
         }
     }
 
@@ -149,7 +149,7 @@ impl MemFS {
         path.file_name()
             .and_then(|n| n.to_str())
             .map(|s| s.to_string())
-            .ok_or_else(|| VfsError::InvalidPath(format!("invalid path: {}", path.display())))
+            .ok_or_else(|| VfsError::InvalidPath(format!("invalid path: {}", path.display().into())))
     }
 
     /// Ensure parent directory exists
@@ -157,11 +157,11 @@ impl MemFS {
         if let Some(parent) = self.parent_path(path) {
             // Check and validate parent in one atomic operation to avoid TOCTOU
             let node = self.nodes.get(&parent).ok_or_else(|| {
-                VfsError::NotFound(format!("parent directory not found: {}", parent.display()))
+                VfsError::NotFound(format!("parent directory not found: {}", parent.display().into()))
             })?;
 
             if !node.is_dir() {
-                return Err(VfsError::NotADirectory(parent.display().to_string()));
+                return Err(VfsError::NotADirectory(parent.display().to_string().into()));
             }
         }
         Ok(())
@@ -179,10 +179,10 @@ impl MemFS {
                 children.insert(child_name.to_string(), child_path.clone());
                 Ok(())
             } else {
-                Err(VfsError::NotADirectory(parent_path.display().to_string()))
+                Err(VfsError::NotADirectory(parent_path.display().to_string().into()))
             }
         } else {
-            Err(VfsError::NotADirectory(parent_path.display().to_string()))
+            Err(VfsError::NotADirectory(parent_path.display().to_string().into()))
         }
     }
 
@@ -193,10 +193,10 @@ impl MemFS {
                 children.remove(child_name);
                 Ok(())
             } else {
-                Err(VfsError::NotADirectory(parent_path.display().to_string()))
+                Err(VfsError::NotADirectory(parent_path.display().to_string().into()))
             }
         } else {
-            Err(VfsError::NotADirectory(parent_path.display().to_string()))
+            Err(VfsError::NotADirectory(parent_path.display().to_string().into()))
         }
     }
 }

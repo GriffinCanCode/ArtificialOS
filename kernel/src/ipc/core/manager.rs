@@ -42,10 +42,10 @@ impl IPCManager {
             IPC_MANAGER_QUEUE_SIZE
         );
         Self {
-            message_queues: Arc::new(DashMap::with_hasher(RandomState::new())),
-            pipe_manager: PipeManager::new(memory_manager.clone()),
-            shm_manager: ShmManager::new(memory_manager.clone()),
-            queue_manager: QueueManager::new(memory_manager.clone()),
+            message_queues: Arc::new(DashMap::with_hasher(RandomState::new().into())),
+            pipe_manager: PipeManager::new(memory_manager.clone().into()),
+            shm_manager: ShmManager::new(memory_manager.clone().into()),
+            queue_manager: QueueManager::new(memory_manager.clone().into()),
             zerocopy_ipc: None,
             memory_manager,
         }
@@ -58,11 +58,11 @@ impl IPCManager {
             IPC_MANAGER_QUEUE_SIZE
         );
         Self {
-            message_queues: Arc::new(DashMap::with_hasher(RandomState::new())),
-            pipe_manager: PipeManager::new(memory_manager.clone()),
-            shm_manager: ShmManager::new(memory_manager.clone()),
-            queue_manager: QueueManager::new(memory_manager.clone()),
-            zerocopy_ipc: Some(ZeroCopyIpc::new(memory_manager.clone())),
+            message_queues: Arc::new(DashMap::with_hasher(RandomState::new().into())),
+            pipe_manager: PipeManager::new(memory_manager.clone().into()),
+            shm_manager: ShmManager::new(memory_manager.clone().into()),
+            queue_manager: QueueManager::new(memory_manager.clone().into()),
+            zerocopy_ipc: Some(ZeroCopyIpc::new(memory_manager.clone().into())),
             memory_manager,
         }
     }
@@ -94,7 +94,7 @@ impl IPCManager {
                 "Message size {} exceeds limit {}",
                 data.len(),
                 MAX_MESSAGE_SIZE
-            )));
+            ).into()));
         }
 
         let mut queue = self.message_queues.entry(to).or_default();
@@ -104,7 +104,7 @@ impl IPCManager {
             return Err(IpcError::LimitExceeded(format!(
                 "Queue for PID {} is full ({} messages)",
                 to, IPC_MANAGER_QUEUE_SIZE
-            )));
+            ).into()));
         }
 
         let mut message = Message::new(from, to, data);
@@ -114,7 +114,7 @@ impl IPCManager {
         let address = self
             .memory_manager
             .allocate(message_size, from)
-            .map_err(|e| IpcError::LimitExceeded(format!("Memory allocation failed: {}", e)))?;
+            .map_err(|e| IpcError::LimitExceeded(format!("Memory allocation failed: {}", e).into()))?;
 
         // Store address for later deallocation
         message.mem_address = Some(address);
@@ -240,7 +240,7 @@ impl MessageQueue for IPCManager {
 
     fn receive(&self, pid: Pid) -> IpcResult<Message> {
         self.receive_message(pid)
-            .ok_or_else(|| IpcError::WouldBlock("No messages available".to_string()))
+            .ok_or_else(|| IpcError::WouldBlock("No messages available".to_string().into()))
     }
 
     fn try_receive(&self, pid: Pid) -> IpcResult<Option<Message>> {

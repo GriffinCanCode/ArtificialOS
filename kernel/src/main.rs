@@ -92,8 +92,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
     info!("Initializing IPC system with memory management...");
     let ipc_manager = IPCManager::new(memory_manager.clone());
 
-    info!("Initializing sandbox manager...");
-    let sandbox_manager = SandboxManager::new();
+    info!("Initializing sandbox manager with network namespace support...");
+    let sandbox_manager = SandboxManager::with_namespaces();
+
+    // Initialize async networking components (VethManager/BridgeManager)
+    if let Some(ns_mgr) = sandbox_manager.namespace_manager() {
+        info!("Initializing namespace networking components (async)...");
+        if let Err(e) = ns_mgr.init().await {
+            tracing::warn!(error = %e, "Failed to initialize namespace networking - continuing with limited functionality");
+        } else {
+            info!("Namespace networking components initialized successfully");
+        }
+    }
 
     info!("Initializing VFS with default mount points...");
     let vfs = MountManager::new();
@@ -105,7 +115,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     if let Err(e) = std::fs::create_dir_all(&storage_path) {
         tracing::warn!(error = %e, "Could not create storage directory");
     }
-    if let Err(e) = vfs.mount("/storage", Arc::new(LocalFS::new(&storage_path))) {
+    if let Err(e) = vfs.mount("/storage", Arc::new(LocalFS::new(&storage_path).into())) {
         tracing::error!(error = %e, "Failed to mount /storage");
         return Err("Failed to mount /storage filesystem".into());
     }
@@ -116,7 +126,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         "/tmp",
         Arc::new(MemFS::with_capacity(
             ai_os_kernel::core::limits::TMP_FILESYSTEM_CAPACITY,
-        )),
+        ).into()),
     ) {
         tracing::error!(error = %e, "Failed to mount /tmp");
         return Err("Failed to mount /tmp filesystem".into());
@@ -128,14 +138,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
         "/cache",
         Arc::new(MemFS::with_capacity(
             ai_os_kernel::core::limits::CACHE_FILESYSTEM_CAPACITY,
-        )),
+        ).into()),
     ) {
         tracing::error!(error = %e, "Failed to mount /cache");
         return Err("Failed to mount /cache filesystem".into());
     }
 
     info!("Initializing mmap manager with VFS support...");
-    let mmap_manager = MmapManager::with_vfs(Arc::new(vfs.clone()));
+    let mmap_manager = MmapManager::with_vfs(Arc::new(vfs.clone().into()));
 
     info!("Initializing syscall executor with IPC, VFS, and mmap support...");
     let syscall_executor = SyscallExecutorWithIpc::with_ipc_direct(
@@ -153,7 +163,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     info!("Initializing resource managers for comprehensive cleanup...");
     let signal_manager = SignalManagerImpl::new();
     let zerocopy_ipc = ZeroCopyIpc::new(memory_manager.clone());
-    let iouring_executor = Arc::new(IoUringExecutor::new(syscall_executor.clone()));
+    let iouring_executor = Arc::new(IoUringExecutor::new(syscall_executor.clone().into()));
     let iouring_manager = IoUringManager::new(iouring_executor);
     let async_task_manager = AsyncTaskManager::new(syscall_executor.clone());
 
@@ -161,9 +171,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Resources are registered in dependency order (LIFO cleanup - first registered = last cleaned)
     info!("Building unified resource cleanup orchestrator...");
     let resource_orchestrator = ResourceOrchestrator::new()
-        .register(MemoryResource::new(memory_manager.clone()))       // Freed last
+        .register(MemoryResource::new(memory_manager.clone().into()))       // Freed last
         .register(MappingResource::new(mmap_manager))                // Depends on memory
-        .register(IpcResource::new(ipc_manager.clone()))             // Message queues, pipes, shm
+        .register(IpcResource::new(ipc_manager.clone().into()))             // Message queues, pipes, shm
         .register(TaskResource::new(async_task_manager))             // Async tasks
         .register(
             RingResource::new()
@@ -174,7 +184,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .register(SocketResource::new(
             syscall_executor.socket_manager().clone(),
         ))                                                            // Network sockets
-        .register(FdResource::new(syscall_executor.fd_manager().clone())); // Freed first
+        .register(FdResource::new(syscall_executor.fd_manager().clone().into())); // Freed first
 
     // Validate comprehensive coverage
     resource_orchestrator.validate_coverage(&[
@@ -250,8 +260,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         match Server::builder()
             .timeout(Duration::from_secs(30))
-            .http2_keepalive_interval(Some(Duration::from_secs(60)))
-            .http2_keepalive_timeout(Some(Duration::from_secs(20)))
+            .http2_keepalive_interval(Some(Duration::from_secs(60).into()))
+            .http2_keepalive_timeout(Some(Duration::from_secs(20).into()))
             .http2_adaptive_window(Some(true))
             .tcp_nodelay(true)
             .add_service(service)
@@ -317,7 +327,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 // Give each process 5 seconds to terminate
                 match tokio::time::timeout(
                     tokio::time::Duration::from_secs(5),
-                    tokio::task::spawn_blocking(move || pm.terminate_process(pid)),
+                    tokio::task::spawn_blocking(move || pm.terminate_process(pid).into()),
                 )
                 .await
                 {

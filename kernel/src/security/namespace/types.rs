@@ -100,9 +100,9 @@ impl Default for InterfaceConfig {
     fn default() -> Self {
         Self {
             name: "veth0".to_string(),
-            ip_addr: IpAddr::V4(std::net::Ipv4Addr::new(10, 0, 0, 2)),
+            ip_addr: IpAddr::V4(std::net::Ipv4Addr::new(10, 0, 0, 2).into()),
             prefix_len: 24,
-            gateway: Some(IpAddr::V4(std::net::Ipv4Addr::new(10, 0, 0, 1))),
+            gateway: Some(IpAddr::V4(std::net::Ipv4Addr::new(10, 0, 0, 1).into())),
             mtu: 1500,
         }
     }
@@ -147,10 +147,10 @@ impl NamespaceConfig {
             id: NamespaceId::from_pid(pid),
             pid,
             mode: IsolationMode::Private,
-            interface: Some(InterfaceConfig::default()),
+            interface: Some(InterfaceConfig::default().into()),
             dns_servers: vec![
-                IpAddr::V4(std::net::Ipv4Addr::new(8, 8, 8, 8)),
-                IpAddr::V4(std::net::Ipv4Addr::new(8, 8, 4, 4)),
+                IpAddr::V4(std::net::Ipv4Addr::new(8, 8, 8, 8).into()),
+                IpAddr::V4(std::net::Ipv4Addr::new(8, 8, 4, 4).into()),
             ],
             enable_ipv6: true,
             port_forwards: vec![],

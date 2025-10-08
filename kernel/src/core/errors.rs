@@ -66,7 +66,7 @@ pub enum ProcessError {
 // Allow conversion from MemoryError to ProcessError
 impl From<MemoryError> for ProcessError {
     fn from(err: MemoryError) -> Self {
-        ProcessError::MemoryAllocationFailed(err.to_string())
+        ProcessError::MemoryAllocationFailed(err.to_string().into())
     }
 }
 
@@ -304,7 +304,7 @@ mod tests {
             "test message".to_string(),
             "extra info".to_string(),
         );
-        assert_eq!(error.details, Some("extra info".to_string()));
+        assert_eq!(error.details, Some("extra info".to_string().into()));
     }
 
     #[test]

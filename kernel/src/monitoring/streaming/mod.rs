@@ -41,11 +41,11 @@ impl EventStream {
     /// Create a new event stream
     pub fn new() -> Self {
         Self {
-            queue: Arc::new(ArrayQueue::new(RING_SIZE)),
-            produced: Arc::new(AtomicU64::new(0)),
-            consumed: Arc::new(AtomicU64::new(0)),
-            dropped: Arc::new(AtomicU64::new(0)),
-            subscribers: Arc::new(AtomicUsize::new(0)),
+            queue: Arc::new(ArrayQueue::new(RING_SIZE).into()),
+            produced: Arc::new(AtomicU64::new(0).into()),
+            consumed: Arc::new(AtomicU64::new(0).into()),
+            dropped: Arc::new(AtomicU64::new(0).into()),
+            subscribers: Arc::new(AtomicUsize::new(0).into()),
         }
     }
 
@@ -231,7 +231,7 @@ mod tests {
             },
         );
 
-        assert!(stream.publish(event.clone()));
+        assert!(stream.publish(event.clone().into()));
 
         let consumed = stream.try_consume();
         assert!(consumed.is_some());

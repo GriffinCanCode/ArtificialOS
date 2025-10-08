@@ -85,7 +85,7 @@ impl SyscallExecutorWithIpc {
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
         span.record("queue_id", &format!("{}", queue_id));
-        span.record("data_len", &format!("{}", data.len()));
+        span.record("data_len", &format!("{}", data.len().into()));
         if let Some(p) = priority {
             span.record("priority", &format!("{}", p));
         }
@@ -172,7 +172,7 @@ impl SyscallExecutorWithIpc {
             || match queue_manager.receive(queue_id, pid) {
                 Ok(Some(msg)) => Ok(msg),
                 Ok(None) => Err(ReceiveError::NoMessage),
-                Err(e) => Err(ReceiveError::Ipc(e)),
+                Err(e) => Err(ReceiveError::Ipc(e).into()),
             },
             |e| matches!(e, ReceiveError::NoMessage),
             self.timeout_config().queue_receive,
@@ -190,7 +190,7 @@ impl SyscallExecutorWithIpc {
                             data.len(),
                             queue_id
                         );
-                        span.record("bytes_received", &format!("{}", data.len()));
+                        span.record("bytes_received", &format!("{}", data.len().into()));
                         span.record_result(true);
 
                         #[derive(serde::Serialize)]
@@ -209,7 +209,7 @@ impl SyscallExecutorWithIpc {
                         };
 
                         match bincode::serialize_ipc_message(&response) {
-                            Ok(serialized) => SyscallResult::success_with_data(serialized.to_vec()),
+                            Ok(serialized) => SyscallResult::success_with_data(serialized.to_vec().into()),
                             Err(e) => {
                                 error!("Failed to serialize message: {}", e);
                                 SyscallResult::error("Serialization failed")
@@ -231,7 +231,7 @@ impl SyscallExecutorWithIpc {
                 span.record_error(&format!("Timeout after {}ms", elapsed_ms));
                 SyscallResult::error("Queue receive timed out")
             }
-            Err(super::super::TimeoutError::Operation(ReceiveError::Ipc(e))) => {
+            Err(super::super::TimeoutError::Operation(ReceiveError::Ipc(e).into())) => {
                 error!("Queue receive failed: {}", e);
                 span.record_error(&format!("Receive failed: {}", e));
                 SyscallResult::error(format!("Receive failed: {}", e))

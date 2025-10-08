@@ -248,7 +248,7 @@ where
             return Err(serde::de::Error::custom(format!(
                 "value {} exceeds maximum {}",
                 value, max
-            )));
+            ).into()));
         }
         Ok(value)
     }
@@ -265,7 +265,7 @@ where
             return Err(serde::de::Error::custom(format!(
                 "value {} exceeds maximum {}",
                 value, max
-            )));
+            ).into()));
         }
         Ok(value)
     }
@@ -282,7 +282,7 @@ where
             return Err(serde::de::Error::custom(format!(
                 "value {} is outside range [{}, {}]",
                 value, min, max
-            )));
+            ).into()));
         }
         Ok(value)
     }
@@ -299,7 +299,7 @@ where
             return Err(serde::de::Error::custom(format!(
                 "value {} is outside range [{}, {}]",
                 value, min, max
-            )));
+            ).into()));
         }
         Ok(value)
     }
@@ -366,7 +366,7 @@ pub mod optional_system_time_micros {
         D: Deserializer<'de>,
     {
         let opt = Option::<u64>::deserialize(deserializer)?;
-        Ok(opt.map(|micros| UNIX_EPOCH + std::time::Duration::from_micros(micros)))
+        Ok(opt.map(|micros| UNIX_EPOCH + std::time::Duration::from_micros(micros).into()))
     }
 }
 
@@ -425,13 +425,13 @@ mod tests {
         assert!(is_default(&0u64));
         assert!(!is_default(&1u64));
         assert!(is_none::<String>(&None));
-        assert!(!is_none(&Some(1)));
+        assert!(!is_none(&Some(1).into()));
         assert!(is_empty_vec::<i32>(&vec![]));
         assert!(!is_empty_vec(&vec![1]));
         assert!(is_empty_slice::<i32>(&[]));
         assert!(!is_empty_slice(&[1]));
-        assert!(is_empty_string(&String::new()));
-        assert!(!is_empty_string(&"test".to_string()));
+        assert!(is_empty_string(&String::new().into()));
+        assert!(!is_empty_string(&"test".to_string().into()));
         assert!(is_zero_u8(&0));
         assert!(is_zero_u16(&0));
         assert!(is_zero_u32(&0));

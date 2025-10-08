@@ -300,7 +300,7 @@ mod tests {
         assert_eq!(config.command, "test");
         assert_eq!(config.args, vec!["arg1", "arg2"]);
         assert_eq!(config.env, vec![("KEY".to_string(), "VALUE".to_string())]);
-        assert_eq!(config.working_dir, Some("/tmp".to_string()));
+        assert_eq!(config.working_dir, Some("/tmp".to_string().into()));
     }
 
     #[test]

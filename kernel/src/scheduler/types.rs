@@ -30,7 +30,7 @@ impl SchedulerPolicy {
             _ => Err(format!(
                 "Invalid policy '{}'. Valid: round_robin, priority, fair",
                 s
-            )),
+            ).into()),
         }
     }
 

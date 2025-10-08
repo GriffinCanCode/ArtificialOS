@@ -6,7 +6,7 @@
 
 use crate::syscalls::timeout::executor::TimeoutError;
 
-use crate::core::{PooledBuffer, serialization::json, types::Pid};
+use crate::core::{serialization::json, types::Pid, PooledBuffer};
 use crate::monitoring::span_operation;
 use crate::permissions::{PermissionChecker, PermissionRequest};
 
@@ -77,10 +77,10 @@ impl SocketManager {
         info!("Socket manager initialized with unified storage and lock-free FD recycling");
         span.record_result(true);
         Self {
-            next_fd: Arc::new(AtomicU32::new(1000)), // Start socket FDs at 1000
-            sockets: Arc::new(DashMap::with_hasher(RandomState::new())),
-            process_sockets: Arc::new(DashMap::with_hasher(RandomState::new())),
-            free_fds: Arc::new(SegQueue::new()),
+            next_fd: Arc::new(AtomicU32::new(1000).into()), // Start socket FDs at 1000
+            sockets: Arc::new(DashMap::with_hasher(RandomState::new().into())),
+            process_sockets: Arc::new(DashMap::with_hasher(RandomState::new().into())),
+            free_fds: Arc::new(SegQueue::new().into()),
         }
     }
 
@@ -462,7 +462,7 @@ impl SyscallExecutorWithIpc {
                                 Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                                     Err(AcceptError::NoPendingConnections)
                                 }
-                                Err(e) => Err(AcceptError::Other(e.to_string())),
+                                Err(e) => Err(AcceptError::Other(e.to_string().into())),
                             }
                         }
                         _ => Err(AcceptError::NotListener),
@@ -527,7 +527,7 @@ impl SyscallExecutorWithIpc {
                 span.record_error("No pending connections");
                 SyscallResult::error("No pending connections")
             }
-            Err(TimeoutError::Operation(AcceptError::Other(e))) => {
+            Err(TimeoutError::Operation(AcceptError::Other(e).into())) => {
                 span.record_error(&format!("Accept failed: {}", e));
                 SyscallResult::error(format!("Accept failed: {}", e))
             }
@@ -603,7 +603,7 @@ impl SyscallExecutorWithIpc {
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
         span.record("sockfd", &format!("{}", sockfd));
-        span.record("data_size", &format!("{}", data.len()));
+        span.record("data_size", &format!("{}", data.len().into()));
 
         // Send on existing connection - permissions already checked at connect/accept time
 
@@ -630,7 +630,7 @@ impl SyscallExecutorWithIpc {
                             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                                 Err(SendError::WouldBlock)
                             }
-                            Err(e) => Err(SendError::Other(e.to_string())),
+                            Err(e) => Err(SendError::Other(e.to_string().into())),
                         },
                         _ => Err(SendError::NotStream),
                     }
@@ -680,7 +680,7 @@ impl SyscallExecutorWithIpc {
                 span.record_error("Send would block");
                 SyscallResult::error("Send would block")
             }
-            Err(TimeoutError::Operation(SendError::Other(e))) => {
+            Err(TimeoutError::Operation(SendError::Other(e).into())) => {
                 warn!("Send failed on socket {}: {}", sockfd, e);
                 span.record_error(&format!("Send failed: {}", e));
                 SyscallResult::error(format!("Send failed: {}", e))
@@ -728,7 +728,7 @@ impl SyscallExecutorWithIpc {
                                 Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                                     Err(RecvError::WouldBlock)
                                 }
-                                Err(e) => Err(RecvError::Other(e.to_string())),
+                                Err(e) => Err(RecvError::Other(e.to_string().into())),
                             }
                         }
                         _ => Err(RecvError::NotStream),
@@ -750,7 +750,7 @@ impl SyscallExecutorWithIpc {
                     buffer.len(),
                     sockfd
                 );
-                span.record("bytes_received", &format!("{}", buffer.len()));
+                span.record("bytes_received", &format!("{}", buffer.len().into()));
                 span.record_result(true);
                 SyscallResult::success_with_data(buffer)
             }
@@ -774,7 +774,7 @@ impl SyscallExecutorWithIpc {
                 span.record_error("Recv would block");
                 SyscallResult::error("Recv would block")
             }
-            Err(TimeoutError::Operation(RecvError::Other(e))) => {
+            Err(TimeoutError::Operation(RecvError::Other(e).into())) => {
                 warn!("Recv failed on socket {}: {}", sockfd, e);
                 span.record_error(&format!("Recv failed: {}", e));
                 SyscallResult::error(format!("Recv failed: {}", e))
@@ -795,7 +795,7 @@ impl SyscallExecutorWithIpc {
         span.record("pid", &format!("{}", pid));
         span.record("sockfd", &format!("{}", sockfd));
         span.record("address", address);
-        span.record("data_size", &format!("{}", data.len()));
+        span.record("data_size", &format!("{}", data.len().into()));
 
         // Parse host:port from address and check network access
         let parts: Vec<&str> = address.split(':').collect();

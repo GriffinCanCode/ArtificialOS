@@ -102,9 +102,9 @@ impl GlobalGarbageCollector {
         );
 
         Self {
-            memory_manager: Arc::new(RwLock::new(memory_manager)),
-            threshold: Arc::new(RwLock::new(threshold)),
-            last_gc: Arc::new(RwLock::new(std::time::Instant::now())),
+            memory_manager: Arc::new(RwLock::new(memory_manager).into()),
+            threshold: Arc::new(RwLock::new(threshold).into()),
+            last_gc: Arc::new(RwLock::new(std::time::Instant::now().into())),
             min_interval: 5, // 5 seconds minimum between GCs
         }
     }

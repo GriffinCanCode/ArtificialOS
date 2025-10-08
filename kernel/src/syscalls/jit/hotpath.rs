@@ -37,8 +37,8 @@ impl HotpathDetector {
     /// Create a new hot path detector
     pub fn new() -> Self {
         Self {
-            process_counts: Arc::new(DashMap::with_hasher(RandomState::new())),
-            global_counts: Arc::new(DashMap::with_hasher(RandomState::new())),
+            process_counts: Arc::new(DashMap::with_hasher(RandomState::new().into())),
+            global_counts: Arc::new(DashMap::with_hasher(RandomState::new().into())),
             total_syscalls: AtomicU64::new(0),
         }
     }
@@ -49,7 +49,7 @@ impl HotpathDetector {
 
         // Increment process-specific count
         self.process_counts
-            .entry((pid, pattern.clone()))
+            .entry((pid, pattern.clone().into()))
             .or_insert_with(|| AtomicU64::new(0))
             .fetch_add(1, Ordering::Relaxed);
 
@@ -116,7 +116,7 @@ impl HotpathDetector {
     /// Get count for a specific pattern
     pub fn get_count(&self, pid: Pid, pattern: &SyscallPattern) -> u64 {
         self.process_counts
-            .get(&(pid, pattern.clone()))
+            .get(&(pid, pattern.clone().into()))
             .map(|c| c.load(Ordering::Relaxed))
             .unwrap_or(0)
     }

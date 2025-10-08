@@ -140,7 +140,7 @@ impl TimeoutPolicy {
         match self {
             Self::Lock(d) => SyncConfig {
                 strategy,
-                spin_duration: (*d).min(Duration::from_micros(50)), // Cap spin at 50µs
+                spin_duration: (*d).min(Duration::from_micros(50).into()), // Cap spin at 50µs
                 max_spins: 500,
             },
             Self::Ipc(_) | Self::Io(_) | Self::Task(_) | Self::Custom(_) | Self::None => {

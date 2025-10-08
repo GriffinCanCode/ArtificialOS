@@ -75,8 +75,8 @@ mod tests {
             .with_metadata("source", "test")
             .with_metadata("version", "1.0");
 
-        assert_eq!(req_ctx.metadata.get("source"), Some(&"test".to_string()));
-        assert_eq!(req_ctx.metadata.get("version"), Some(&"1.0".to_string()));
+        assert_eq!(req_ctx.metadata.get("source"), Some(&"test".to_string().into()));
+        assert_eq!(req_ctx.metadata.get("version"), Some(&"1.0".to_string().into()));
     }
 
     #[test]

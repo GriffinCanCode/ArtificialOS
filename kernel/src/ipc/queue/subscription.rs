@@ -14,7 +14,7 @@ impl QueueManager {
         let mut queue = self
             .queues
             .get_mut(&queue_id)
-            .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id)))?;
+            .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id).into()))?;
 
         if let Queue::PubSub(q) = queue.value_mut() {
             let rx = q.subscribe(pid);
@@ -32,7 +32,7 @@ impl QueueManager {
         let mut queue = self
             .queues
             .get_mut(&queue_id)
-            .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id)))?;
+            .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id).into()))?;
 
         if let Queue::PubSub(q) = queue.value_mut() {
             q.unsubscribe(pid);
@@ -97,9 +97,9 @@ impl QueueManager {
             // This uses futex on Linux (zero CPU spinning) via spawn_blocking
             let wait_queue_clone = wait_queue.clone();
             let _ =
-                tokio::task::spawn_blocking(move || wait_queue_clone.wait(queue_id, Some(timeout)))
+                tokio::task::spawn_blocking(move || wait_queue_clone.wait(queue_id, Some(timeout).into()))
                     .await
-                    .map_err(|e| IpcError::InvalidOperation(format!("Wait task failed: {}", e)))?;
+                    .map_err(|e| IpcError::InvalidOperation(format!("Wait task failed: {}", e).into()))?;
 
             // After wake or timeout, check for message again (loop)
         }
@@ -117,14 +117,14 @@ impl QueueManager {
         let queue = self
             .queues
             .get(&queue_id)
-            .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id)))?;
+            .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id).into()))?;
 
         match queue.value() {
-            Queue::Fifo(q) => Ok(q.wait_queue.clone()),
-            Queue::Priority(q) => Ok(q.wait_queue.clone()),
+            Queue::Fifo(q) => Ok(q.wait_queue.clone().into()),
+            Queue::Priority(q) => Ok(q.wait_queue.clone().into()),
             Queue::PubSub(_) => Err(IpcError::InvalidOperation(
                 "Use subscribe for PubSub queues".into(),
-            )),
+            ).into()),
         }
     }
 
@@ -133,7 +133,7 @@ impl QueueManager {
         let queue = self
             .queues
             .get(&queue_id)
-            .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id)))?;
+            .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id).into()))?;
 
         let closed = match queue.value() {
             Queue::Fifo(q) => q.closed,

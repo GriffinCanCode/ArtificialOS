@@ -150,7 +150,7 @@ impl SyscallExecutorWithIpc {
 
         let mut transaction = TransactionGuard::new(
             Some(pid),
-            |_ops| Ok(()), // Commit is a no-op for move (operation is atomic at OS level)
+            |_ops| Ok(().into()), // Commit is a no-op for move (operation is atomic at OS level)
             move |_ops| {
                 // Rollback: If destination was created, try to remove it
                 // This is best-effort cleanup
@@ -168,7 +168,7 @@ impl SyscallExecutorWithIpc {
             let mut buf = PooledBuffer::get(bytes.len());
             buf.extend_from_slice(bytes);
             transaction
-                .add_operation(Operation::new("move", buf.into_vec()))
+                .add_operation(Operation::new("move", buf.into_vec().into()))
                 .ok();
         }
 
@@ -233,7 +233,7 @@ impl SyscallExecutorWithIpc {
 
         let mut transaction = TransactionGuard::new(
             Some(pid),
-            |_ops| Ok(()), // Commit is a no-op (copy operation is complete)
+            |_ops| Ok(().into()), // Commit is a no-op (copy operation is complete)
             move |_ops| {
                 // Rollback: Remove partially copied file on failure
                 if dst_backup.exists() {
@@ -250,7 +250,7 @@ impl SyscallExecutorWithIpc {
             let mut buf = PooledBuffer::get(bytes.len());
             buf.extend_from_slice(bytes);
             transaction
-                .add_operation(Operation::new("copy", buf.into_vec()))
+                .add_operation(Operation::new("copy", buf.into_vec().into()))
                 .ok();
         }
 
@@ -378,7 +378,7 @@ impl SyscallExecutorWithIpc {
 
         let mut transaction = TransactionGuard::new(
             Some(pid),
-            |_ops| Ok(()), // Commit is a no-op (truncate is atomic)
+            |_ops| Ok(().into()), // Commit is a no-op (truncate is atomic)
             move |_ops| {
                 // Rollback: Restore original size if possible
                 if let Some(orig_size) = original_size {
@@ -397,7 +397,7 @@ impl SyscallExecutorWithIpc {
             let mut buf = PooledBuffer::get(bytes.len());
             buf.extend_from_slice(bytes);
             transaction
-                .add_operation(Operation::new("truncate", buf.into_vec()))
+                .add_operation(Operation::new("truncate", buf.into_vec().into()))
                 .ok();
         }
 

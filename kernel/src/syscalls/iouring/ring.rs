@@ -36,9 +36,9 @@ impl SyscallCompletionRing {
     pub fn new(pid: Pid, sq_size: usize, cq_size: usize) -> Self {
         Self {
             pid,
-            submission_queue: Arc::new(SyscallSubmissionQueue::new(sq_size)),
-            completion_queue: Arc::new(SyscallCompletionQueue::new(cq_size)),
-            stats: Arc::new(RingStats::default()),
+            submission_queue: Arc::new(SyscallSubmissionQueue::new(sq_size).into()),
+            completion_queue: Arc::new(SyscallCompletionQueue::new(cq_size).into()),
+            stats: Arc::new(RingStats::default().into()),
             // Use low_latency config for syscall completions
             wait_queue: WaitQueue::low_latency(),
         }

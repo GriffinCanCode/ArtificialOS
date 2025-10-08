@@ -390,22 +390,22 @@ impl Scheduler {
                     let queue = self.rr_queue.read();
                     stats.extend(queue.iter().map(|entry| ProcessStats {
                         pid: entry.pid,
-                    priority: entry.priority,
-                    cpu_time_micros: entry.cpu_time_micros,
-                    vruntime: entry.vruntime,
-                    is_current: false,
-                }));
-            }
-            SchedulingPolicy::Priority => {
-                let queue = self.priority_queue.read();
-                stats.extend(queue.iter().map(|entry| ProcessStats {
-                    pid: entry.pid,
-                    priority: entry.priority,
-                    cpu_time_micros: entry.cpu_time_micros,
-                    vruntime: entry.vruntime,
-                    is_current: false,
-                }));
-            }
+                        priority: entry.priority,
+                        cpu_time_micros: entry.cpu_time_micros,
+                        vruntime: entry.vruntime,
+                        is_current: false,
+                    }));
+                }
+                SchedulingPolicy::Priority => {
+                    let queue = self.priority_queue.read();
+                    stats.extend(queue.iter().map(|entry| ProcessStats {
+                        pid: entry.pid,
+                        priority: entry.priority,
+                        cpu_time_micros: entry.cpu_time_micros,
+                        vruntime: entry.vruntime,
+                        is_current: false,
+                    }));
+                }
                 SchedulingPolicy::Fair => {
                     let queue = self.fair_queue.read();
                     stats.extend(queue.iter().map(|entry| ProcessStats {

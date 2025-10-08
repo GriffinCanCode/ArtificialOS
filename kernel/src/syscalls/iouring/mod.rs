@@ -48,7 +48,7 @@ impl IoUringManager {
     pub fn new(executor: Arc<IoUringExecutor>) -> Self {
         info!("Initializing io_uring-style syscall completion manager");
         Self {
-            rings: Arc::new(DashMap::with_hasher(RandomState::new())),
+            rings: Arc::new(DashMap::with_hasher(RandomState::new().into())),
             executor,
         }
     }

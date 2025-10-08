@@ -151,7 +151,7 @@ impl SignalHandler {
 
 impl Default for SignalHandler {
     fn default() -> Self {
-        Self::new(Arc::new(CallbackRegistry::new()))
+        Self::new(Arc::new(CallbackRegistry::new().into()))
     }
 }
 

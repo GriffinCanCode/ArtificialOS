@@ -43,8 +43,8 @@ impl SignalManagerImpl {
                 0,
                 RandomState::new(),
                 ShardManager::shards(WorkloadProfile::HighContention), // signal delivery: high contention
-            )),
-            handler: Arc::new(SignalHandler::new(callbacks.clone())),
+            ).into()),
+            handler: Arc::new(SignalHandler::new(callbacks.clone().into())),
             callbacks,
             next_handler_id: Arc::new(AtomicU64::new(1)),
             stats: Arc::new(RwLock::new(SignalStats {
@@ -54,7 +54,7 @@ impl SignalManagerImpl {
                 total_signals_queued: 0,
                 pending_signals: 0,
                 handlers_registered: 0,
-            })),
+            }).into()),
         }
     }
 
@@ -288,7 +288,7 @@ impl SignalHandlerRegistry for SignalManagerImpl {
             return Err(SignalError::PermissionDenied(format!(
                 "Signal {:?} cannot be caught",
                 signal
-            )));
+            ).into()));
         }
 
         let mut proc = self
@@ -378,7 +378,7 @@ impl SignalMasking for SignalManagerImpl {
             return Err(SignalError::PermissionDenied(format!(
                 "Signal {:?} cannot be blocked",
                 signal
-            )));
+            ).into()));
         }
 
         let mut proc = self
@@ -428,7 +428,7 @@ impl SignalMasking for SignalManagerImpl {
                 return Err(SignalError::PermissionDenied(format!(
                     "Signal {:?} cannot be blocked",
                     signal
-                )));
+                ).into()));
             }
         }
 
@@ -486,7 +486,7 @@ impl SignalStateManager for SignalManagerImpl {
             pid: proc.pid,
             pending_signals: proc.pending.iter().map(|ps| ps.signal.clone()).collect(),
             blocked_signals: proc.blocked.iter().copied().collect(),
-            handlers: proc.handlers.iter().map(|(s, a)| (*s, a.clone())).collect(),
+            handlers: proc.handlers.iter().map(|(s, a)| (*s, a.clone().into())).collect(),
         })
     }
 
@@ -495,7 +495,7 @@ impl SignalStateManager for SignalManagerImpl {
             return Err(SignalError::OperationFailed(format!(
                 "Process {} already initialized",
                 pid
-            )));
+            ).into()));
         }
 
         self.processes.insert(pid, ProcessSignals::new(pid));

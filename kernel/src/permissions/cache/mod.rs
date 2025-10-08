@@ -65,7 +65,7 @@ impl PermissionCache {
     /// Create new cache
     pub fn new(max_size: usize, ttl: Duration) -> Self {
         Self {
-            cache: DashMap::with_capacity_and_hasher(max_size, RandomState::new()),
+            cache: DashMap::with_capacity_and_hasher(max_size, RandomState::new().into()),
             max_size,
             ttl,
             hits: AtomicU64::new(0),

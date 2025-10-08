@@ -32,7 +32,7 @@ impl<T> LockFreeRing<T> {
     pub fn new(capacity: usize) -> Self {
         assert!(capacity > 0, "Capacity must be greater than 0");
         Self {
-            queue: Arc::new(ArrayQueue::new(capacity)),
+            queue: Arc::new(ArrayQueue::new(capacity).into()),
         }
     }
 

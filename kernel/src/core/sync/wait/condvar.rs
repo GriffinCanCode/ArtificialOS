@@ -41,7 +41,7 @@ impl CondvarSlot {
     const fn new() -> Self {
         Self {
             condvar: Condvar::new(),
-            mutex: Mutex::new(()),
+            mutex: Mutex::new(().into()),
             waiters: AtomicUsize::new(0),
         }
     }
@@ -190,7 +190,7 @@ mod tests {
     fn test_condvar_timeout() {
         let cv = CondvarWait::<u64>::new();
         let start = Instant::now();
-        let result = cv.wait(99, Some(Duration::from_millis(50)));
+        let result = cv.wait(99, Some(Duration::from_millis(50).into()));
         let elapsed = start.elapsed();
 
         assert!(!result); // Should timeout

@@ -28,7 +28,7 @@ impl SyscallHandlerRegistry {
     /// Create a new empty registry
     pub fn new() -> Self {
         Self {
-            handlers: Arc::new(Vec::new()),
+            handlers: Arc::new(Vec::new().into()),
         }
     }
 
@@ -74,7 +74,7 @@ mod tests {
     impl SyscallHandler for TestHandler {
         fn handle(&self, _pid: Pid, syscall: &Syscall) -> Option<SyscallResult> {
             match syscall {
-                Syscall::GetSystemInfo => Some(SyscallResult::success()),
+                Syscall::GetSystemInfo => Some(SyscallResult::success().into()),
                 _ => None,
             }
         }

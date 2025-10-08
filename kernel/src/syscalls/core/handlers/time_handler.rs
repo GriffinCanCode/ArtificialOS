@@ -24,8 +24,8 @@ impl SyscallHandler for TimeHandler {
     #[inline]
     fn handle(&self, pid: Pid, syscall: &Syscall) -> Option<SyscallResult> {
         match syscall {
-            Syscall::Sleep { duration_ms } => Some(self.executor.sleep(pid, *duration_ms)),
-            Syscall::GetUptime => Some(self.executor.get_uptime(pid)),
+            Syscall::Sleep { duration_ms } => Some(self.executor.sleep(pid, *duration_ms).into()),
+            Syscall::GetUptime => Some(self.executor.get_uptime(pid).into()),
             _ => None, // Not a time syscall
         }
     }

@@ -50,7 +50,7 @@ pub async fn handle_stream_events(
                         event: Some(kernel_event::Event::ProcessCreated(ProcessCreatedEvent {
                             pid: proc.pid,
                             name: proc.name.clone(),
-                        })),
+                        }).into()),
                     };
 
                     if tx.send(Ok(event)).await.is_err() {
@@ -69,7 +69,7 @@ pub async fn handle_stream_events(
                             pid: 0,
                             syscall_type: "schedule_next".to_string(),
                             success: true,
-                        })),
+                        }).into()),
                     };
 
                     if tx.send(Ok(event)).await.is_err() {
@@ -92,7 +92,7 @@ pub async fn handle_stream_events(
                                 syscall_type: "unknown".to_string(),
                                 reason: "Capability check failed".to_string(),
                             },
-                        )),
+                        ).into()),
                     };
 
                     if tx.send(Ok(event)).await.is_err() {
@@ -109,7 +109,7 @@ pub async fn handle_stream_events(
 
     Ok(Response::new(tokio_stream::wrappers::ReceiverStream::new(
         rx,
-    )))
+    ).into()))
 }
 
 pub async fn handle_stream_syscall(
@@ -144,10 +144,10 @@ pub async fn handle_stream_syscall(
                             while let Some(result) = file_stream.next().await {
                                 let chunk = match result {
                                     Ok(data) => StreamSyscallChunk {
-                                        chunk: Some(stream_syscall_chunk::Chunk::Data(data)),
+                                        chunk: Some(stream_syscall_chunk::Chunk::Data(data).into()),
                                     },
                                     Err(e) => StreamSyscallChunk {
-                                        chunk: Some(stream_syscall_chunk::Chunk::Error(e)),
+                                        chunk: Some(stream_syscall_chunk::Chunk::Error(e).into()),
                                     },
                                 };
                                 if tx.send(Ok(chunk)).await.is_err() {
@@ -158,7 +158,7 @@ pub async fn handle_stream_syscall(
                         Err(e) => {
                             let _ = tx
                                 .send(Ok(StreamSyscallChunk {
-                                    chunk: Some(stream_syscall_chunk::Chunk::Error(e)),
+                                    chunk: Some(stream_syscall_chunk::Chunk::Error(e).into()),
                                 }))
                                 .await;
                             return;
@@ -175,5 +175,5 @@ pub async fn handle_stream_syscall(
 
     Ok(Response::new(tokio_stream::wrappers::ReceiverStream::new(
         rx,
-    )))
+    ).into()))
 }

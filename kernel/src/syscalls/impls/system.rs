@@ -18,42 +18,49 @@ use crate::syscalls::types::{SyscallResult, SystemInfo};
 
 impl SyscallExecutorWithIpc {
     pub(in crate::syscalls) fn get_system_info(&self, pid: Pid) -> SyscallResult {
-        let span = span_operation("get_system_info");
-        let _guard = span.enter();
-        span.record("pid", &format!("{}", pid));
+        use crate::core::memory::arena::with_arena;
 
-        let request = PermissionRequest::new(
-            pid,
-            Resource::System {
-                name: "info".to_string(),
-            },
-            Action::Inspect,
-        );
-        let response = self.permission_manager().check(&request);
+        with_arena(|arena| {
+            let span = span_operation("get_system_info");
+            let _guard = span.enter();
 
-        if !response.is_allowed() {
-            span.record_error(response.reason());
-            return SyscallResult::permission_denied(response.reason());
-        }
+            let pid_str = arena.alloc_str(&pid.to_string());
+            span.record("pid", pid_str);
 
-        let info = SystemInfo::current();
-        trace!(
-            "System info: os={}, arch={}, family={}",
-            info.os,
-            info.arch,
-            info.family
-        );
+            let name = arena.alloc_str("info");
+            let request = PermissionRequest::new(
+                pid,
+                Resource::System {
+                    name: name.to_string(),
+                },
+                Action::Inspect,
+            );
+            let response = self.permission_manager().check(&request);
 
-        info!("PID {} retrieved system info", pid);
-        span.record_result(true);
-        match json::to_vec(&info) {
-            Ok(data) => SyscallResult::success_with_data(data),
-            Err(e) => {
-                error!("Failed to serialize system info: {}", e);
-                span.record_error("Serialization failed");
-                SyscallResult::error(format!("Failed to serialize system info: {}", e))
+            if !response.is_allowed() {
+                span.record_error(response.reason());
+                return SyscallResult::permission_denied(response.reason());
             }
-        }
+
+            let info = SystemInfo::current();
+            trace!(
+                "System info: os={}, arch={}, family={}",
+                info.os,
+                info.arch,
+                info.family
+            );
+
+            info!("PID {} retrieved system info", pid);
+            span.record_result(true);
+            match json::to_vec(&info) {
+                Ok(data) => SyscallResult::success_with_data(data),
+                Err(e) => {
+                    error!("Failed to serialize system info: {}", e);
+                    span.record_error("Serialization failed");
+                    SyscallResult::error(format!("Failed to serialize system info: {}", e))
+                }
+            }
+        })
     }
 
     pub(in crate::syscalls) fn get_current_time(&self, pid: Pid) -> SyscallResult {
@@ -160,82 +167,86 @@ impl SyscallExecutorWithIpc {
     }
 
     pub(in crate::syscalls) fn network_request(&self, pid: Pid, url: &str) -> SyscallResult {
-        let span = span_operation("http_request");
-        let _guard = span.enter();
-        span.record("pid", &format!("{}", pid));
-        span.record("url", url);
+        use crate::core::memory::arena::with_arena;
 
-        // Parse URL to extract host and use proper network permission check
-        let host = url
-            .split("://")
-            .nth(1)
-            .unwrap_or(url)
-            .split('/')
-            .next()
-            .unwrap_or("unknown")
-            .to_string();
+        with_arena(|arena| {
+            let span = span_operation("http_request");
+            let _guard = span.enter();
 
-        trace!("Extracted host from URL: {}", host);
+            let pid_str = arena.alloc_str(&pid.to_string());
+            span.record("pid", pid_str);
+            span.record("url", url);
 
-        let request = PermissionRequest::net_connect(pid, host.clone(), None);
-        let response = self.permission_manager().check_and_audit(&request);
+            let host = url
+                .split("://")
+                .nth(1)
+                .unwrap_or(url)
+                .split('/')
+                .next()
+                .unwrap_or("unknown");
 
-        if !response.is_allowed() {
-            span.record_error(response.reason());
-            return SyscallResult::permission_denied(response.reason());
-        }
+            trace!("Extracted host from URL: {}", host);
 
-        span.record("host", &host);
+            let request = PermissionRequest::net_connect(pid, host.to_string(), None);
+            let response = self.permission_manager().check_and_audit(&request);
 
-        // Use timeout executor for consistent timeout handling and observability
-        // HTTP requests can hang on slow networks, DNS resolution, or unresponsive servers
-        let url_clone = url.to_string();
-        let result: Result<(reqwest::StatusCode, bytes::Bytes), TimeoutError<reqwest::Error>> =
-            self.timeout_executor().execute_with_deadline(
-                || {
-                    // Create client without timeout (we handle timeout at executor level)
-                    let client = reqwest::blocking::Client::builder()
-                        .user_agent("ai-os-kernel/0.1.0")
-                        .build()?;
+            if !response.is_allowed() {
+                span.record_error(response.reason());
+                return SyscallResult::permission_denied(response.reason());
+            }
 
-                    let response = client.get(&url_clone).send()?;
-                    let status = response.status();
-                    let body = response.bytes()?;
+            span.record("host", host);
 
-                    Ok((status, body))
-                },
-                self.timeout_config().network,
-                "http_request",
-            );
+            let url_clone = url.to_string();
+            let result: Result<(reqwest::StatusCode, bytes::Bytes), TimeoutError<reqwest::Error>> =
+                self.timeout_executor().execute_with_deadline(
+                    || {
+                        let client = reqwest::blocking::Client::builder()
+                            .user_agent("ai-os-kernel/0.1.0")
+                            .build()?;
 
-        match result {
-            Ok((status, body)) => {
-                if !status.is_success() {
-                    warn!("PID {} received HTTP {} for {}", pid, status.as_u16(), url);
-                }
+                        let response = client.get(&url_clone).send()?;
+                        let status = response.status();
+                        let body = response.bytes()?;
 
-                info!(
-                    "PID {} fetched {} ({} bytes, status: {})",
-                    pid,
-                    url,
-                    body.len(),
-                    status.as_u16()
+                        Ok((status, body))
+                    },
+                    self.timeout_config().network,
+                    "http_request",
                 );
-                span.record("bytes_received", &format!("{}", body.len()));
-                span.record("status_code", &format!("{}", status.as_u16()));
-                span.record_result(true);
-                SyscallResult::success_with_data(body.to_vec())
+
+            match result {
+                Ok((status, body)) => {
+                    if !status.is_success() {
+                        warn!("PID {} received HTTP {} for {}", pid, status.as_u16(), url);
+                    }
+
+                    info!(
+                        "PID {} fetched {} ({} bytes, status: {})",
+                        pid,
+                        url,
+                        body.len(),
+                        status.as_u16()
+                    );
+
+                    let bytes_str = arena.alloc_str(&body.len().to_string());
+                    let status_str = arena.alloc_str(&status.as_u16().to_string());
+                    span.record("bytes_received", bytes_str);
+                    span.record("status_code", status_str);
+                    span.record_result(true);
+                    SyscallResult::success_with_data(body.to_vec())
+                }
+                Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
+                    error!("HTTP request timed out for {} after {}ms (slow network or unresponsive server?)", url, elapsed_ms);
+                    span.record_error(arena.alloc(format!("Timeout after {}ms", elapsed_ms).into()));
+                    SyscallResult::error(format!("Network request timed out after {}ms", elapsed_ms))
+                }
+                Err(TimeoutError::Operation(e)) => {
+                    error!("Failed to fetch {}: {}", url, e);
+                    span.record_error(arena.alloc(format!("Network request failed: {}", e).into()));
+                    SyscallResult::error(format!("Network request failed: {}", e))
+                }
             }
-            Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
-                error!("HTTP request timed out for {} after {}ms (slow network or unresponsive server?)", url, elapsed_ms);
-                span.record_error(&format!("Timeout after {}ms", elapsed_ms));
-                SyscallResult::error(format!("Network request timed out after {}ms", elapsed_ms))
-            }
-            Err(TimeoutError::Operation(e)) => {
-                error!("Failed to fetch {}: {}", url, e);
-                span.record_error(&format!("Network request failed: {}", e));
-                SyscallResult::error(format!("Network request failed: {}", e))
-            }
-        }
+        })
     }
 }

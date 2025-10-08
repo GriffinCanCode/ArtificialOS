@@ -78,7 +78,7 @@ impl Pipe {
         let available = self.buffer.available_space();
 
         if available == 0 {
-            return Err(PipeError::WouldBlock("Pipe buffer full".to_string()));
+            return Err(PipeError::WouldBlock("Pipe buffer full".to_string().into()));
         }
 
         // Lock-free write - zero contention in SPSC pattern
@@ -92,7 +92,7 @@ impl Pipe {
             if self.closed {
                 return Ok(Vec::new()); // EOF
             }
-            return Err(PipeError::WouldBlock("No data available".to_string()));
+            return Err(PipeError::WouldBlock("No data available".to_string().into()));
         }
 
         // Lock-free read - zero contention in SPSC pattern

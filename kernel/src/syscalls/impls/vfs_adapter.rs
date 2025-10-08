@@ -62,7 +62,7 @@ impl SyscallExecutorWithIpc {
                         path,
                         data.len()
                     );
-                    span.record("bytes_read", &format!("{}", data.len()));
+                    span.record("bytes_read", &format!("{}", data.len().into()));
                     span.record("method", "vfs");
                     span.record_result(true);
                     return SyscallResult::success_with_data(data);
@@ -96,7 +96,7 @@ impl SyscallExecutorWithIpc {
         match result {
             Ok(data) => {
                 info!("PID {} read file: {:?} ({} bytes)", pid, path, data.len());
-                span.record("bytes_read", &format!("{}", data.len()));
+                span.record("bytes_read", &format!("{}", data.len().into()));
                 span.record("method", "std::fs");
                 span.record_result(true);
                 SyscallResult::success_with_data(data)
@@ -129,7 +129,7 @@ impl SyscallExecutorWithIpc {
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
         span.record("path", &format!("{:?}", path));
-        span.record("data_len", &format!("{}", data.len()));
+        span.record("data_len", &format!("{}", data.len().into()));
 
         let file_exists = path.exists();
         let check_path = if file_exists {
@@ -530,152 +530,152 @@ impl SyscallExecutorWithIpc {
     /// List directory using VFS if available
     /// Can block on slow storage, especially for large directories
     pub(in crate::syscalls) fn vfs_list_dir(&self, pid: Pid, path: &Path) -> SyscallResult {
-        let span = span_operation("vfs_list_dir");
-        let _guard = span.enter();
-        span.record("pid", &format!("{}", pid));
-        span.record("path", &format!("{:?}", path));
+        use crate::core::memory::arena::with_arena;
 
-        // Check permission using centralized manager
-        let request = PermissionRequest::dir_list(pid, path.to_path_buf());
-        let response = self.permission_manager().check_and_audit(&request);
+        with_arena(|arena| {
+            let span = span_operation("vfs_list_dir");
+            let _guard = span.enter();
 
-        if !response.is_allowed() {
-            span.record_error(response.reason());
-            return SyscallResult::permission_denied(response.reason());
-        }
+            span.record("pid", arena.alloc(format!("{}", pid).into()));
+            span.record("path", arena.alloc(format!("{:?}", path).into()));
 
-        // Try VFS first with timeout
-        if let Some(vfs) = &self.optional().vfs {
-            let vfs_clone = vfs.clone();
+            let request = PermissionRequest::dir_list(pid, path.to_path_buf());
+            let response = self.permission_manager().check_and_audit(&request);
+
+            if !response.is_allowed() {
+                span.record_error(response.reason());
+                return SyscallResult::permission_denied(response.reason());
+            }
+
+            if let Some(vfs) = &self.optional().vfs {
+                let vfs_clone = vfs.clone();
+                let path_clone = path.to_path_buf();
+
+                let result = self.timeout_executor().execute_with_deadline(
+                    || vfs_clone.list_dir(&path_clone),
+                    self.timeout_config().file_io,
+                    "vfs_list_dir",
+                );
+
+                match result {
+                    Ok(entries) => {
+                        let files: Vec<serde_json::Value> = entries
+                            .into_iter()
+                            .map(|e| {
+                                let is_dir =
+                                    matches!(e.file_type, crate::vfs::types::FileType::Directory);
+                                serde_json::json!({
+                                    "name": e.name,
+                                    "is_dir": is_dir,
+                                    "type": if is_dir { "directory" } else { "file" }
+                                })
+                            })
+                            .collect();
+
+                        info!(
+                            "PID {} listed directory via VFS: {:?} ({} entries)",
+                            pid,
+                            path,
+                            files.len()
+                        );
+
+                        let count_str = arena.alloc_str(&files.len().to_string());
+                        span.record("entry_count", count_str);
+                        span.record("method", "vfs");
+
+                        match json::serialize_vfs_batch(&files) {
+                            Ok(json) => {
+                                span.record_result(true);
+                                return SyscallResult::success_with_data(json.to_vec());
+                            }
+                            Err(e) => {
+                                error!("Failed to serialize VFS directory listing: {}", e);
+                                span.record_error(arena.alloc(format!("Serialization failed: {}", e).into()));
+                                return SyscallResult::error(format!("Failed to serialize directory listing: {}", e));
+                            }
+                        }
+                    }
+                    Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
+                        warn!(
+                            "VFS list_dir timed out for {:?} after {}ms (slow storage or large directory?), falling back to std::fs",
+                            path, elapsed_ms
+                        );
+                        span.record("vfs_timeout_ms", arena.alloc(format!("{}", elapsed_ms).into()));
+                    }
+                    Err(TimeoutError::Operation(e)) => {
+                        warn!(
+                            "VFS list_dir failed for {:?}: {}, falling back to std::fs",
+                            path, e
+                        );
+                        span.record("vfs_error", arena.alloc(format!("{}", e).into()));
+                    }
+                }
+            }
+
+            trace!("Falling back to std::fs for list_dir");
             let path_clone = path.to_path_buf();
-
             let result = self.timeout_executor().execute_with_deadline(
-                || vfs_clone.list_dir(&path_clone),
+                || fs::read_dir(&path_clone),
                 self.timeout_config().file_io,
-                "vfs_list_dir",
+                "fs_list_dir",
             );
 
             match result {
                 Ok(entries) => {
-                    // Include file type information in the response
                     let files: Vec<serde_json::Value> = entries
-                        .into_iter()
-                        .map(|e| {
-                            let is_dir =
-                                matches!(e.file_type, crate::vfs::types::FileType::Directory);
-                            serde_json::json!({
-                                "name": e.name,
+                        .filter_map(|e| e.ok())
+                        .filter_map(|entry| {
+                            let name = entry.file_name().into_string().ok()?;
+                            let is_dir = entry.file_type().ok()?.is_dir();
+                            Some(serde_json::json!({
+                                "name": name,
                                 "is_dir": is_dir,
                                 "type": if is_dir { "directory" } else { "file" }
-                            })
+                            }))
                         })
                         .collect();
 
                     info!(
-                        "PID {} listed directory via VFS: {:?} ({} entries)",
+                        "PID {} listed directory: {:?} ({} entries)",
                         pid,
                         path,
                         files.len()
                     );
-                    span.record("entry_count", &format!("{}", files.len()));
-                    span.record("method", "vfs");
+
+                    let count_str = arena.alloc_str(&files.len().to_string());
+                    span.record("entry_count", count_str);
+                    span.record("method", "std::fs");
 
                     match json::serialize_vfs_batch(&files) {
                         Ok(json) => {
                             span.record_result(true);
-                            return SyscallResult::success_with_data(json.to_vec());
+                            SyscallResult::success_with_data(json.to_vec())
                         }
                         Err(e) => {
-                            error!("Failed to serialize VFS directory listing: {}", e);
-                            span.record_error(&format!("Serialization failed: {}", e));
-                            return SyscallResult::error(format!(
-                                "Failed to serialize directory listing: {}",
-                                e
-                            ));
+                            error!("Failed to serialize directory listing: {}", e);
+                            span.record_error(arena.alloc(format!("Serialization failed: {}", e).into()));
+                            SyscallResult::error(format!("Failed to serialize directory listing: {}", e))
                         }
                     }
                 }
                 Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
-                    warn!(
-                        "VFS list_dir timed out for {:?} after {}ms (slow storage or large directory?), falling back to std::fs",
+                    error!(
+                        "List directory timed out for {:?} after {}ms",
                         path, elapsed_ms
                     );
-                    span.record("vfs_timeout_ms", &format!("{}", elapsed_ms));
+                    span.record_error(arena.alloc(format!("Timeout after {}ms", elapsed_ms).into()));
+                    SyscallResult::error(format!(
+                        "List directory timed out after {}ms (slow storage or large directory?)",
+                        elapsed_ms
+                    ))
                 }
                 Err(TimeoutError::Operation(e)) => {
-                    warn!(
-                        "VFS list_dir failed for {:?}: {}, falling back to std::fs",
-                        path, e
-                    );
-                    span.record("vfs_error", &format!("{}", e));
+                    error!("List directory failed for {:?}: {}", path, e);
+                    span.record_error(arena.alloc(format!("List failed: {}", e).into()));
+                    SyscallResult::error(format!("List failed: {}", e))
                 }
             }
-        }
-
-        // Fallback to std::fs with timeout
-        trace!("Falling back to std::fs for list_dir");
-        let path_clone = path.to_path_buf();
-        let result = self.timeout_executor().execute_with_deadline(
-            || fs::read_dir(&path_clone),
-            self.timeout_config().file_io,
-            "fs_list_dir",
-        );
-
-        match result {
-            Ok(entries) => {
-                let files: Vec<serde_json::Value> = entries
-                    .filter_map(|e| e.ok())
-                    .filter_map(|entry| {
-                        let name = entry.file_name().into_string().ok()?;
-                        let is_dir = entry.file_type().ok()?.is_dir();
-                        Some(serde_json::json!({
-                            "name": name,
-                            "is_dir": is_dir,
-                            "type": if is_dir { "directory" } else { "file" }
-                        }))
-                    })
-                    .collect();
-
-                info!(
-                    "PID {} listed directory: {:?} ({} entries)",
-                    pid,
-                    path,
-                    files.len()
-                );
-                span.record("entry_count", &format!("{}", files.len()));
-                span.record("method", "std::fs");
-                match json::serialize_vfs_batch(&files) {
-                    Ok(json) => {
-                        span.record_result(true);
-                        SyscallResult::success_with_data(json.to_vec())
-                    }
-                    Err(e) => {
-                        error!("Failed to serialize directory listing: {}", e);
-                        span.record_error(&format!("Serialization failed: {}", e));
-                        SyscallResult::error(format!(
-                            "Failed to serialize directory listing: {}",
-                            e
-                        ))
-                    }
-                }
-            }
-            Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
-                error!(
-                    "List directory timed out for {:?} after {}ms",
-                    path, elapsed_ms
-                );
-                span.record_error(&format!("Timeout after {}ms", elapsed_ms));
-                SyscallResult::error(format!(
-                    "List directory timed out after {}ms (slow storage or large directory?)",
-                    elapsed_ms
-                ))
-            }
-            Err(TimeoutError::Operation(e)) => {
-                error!("List directory failed for {:?}: {}", path, e);
-                span.record_error(&format!("List failed: {}", e));
-                SyscallResult::error(format!("List failed: {}", e))
-            }
-        }
+        })
     }
 }
 

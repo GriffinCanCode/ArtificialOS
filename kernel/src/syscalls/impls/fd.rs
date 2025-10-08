@@ -51,11 +51,11 @@ impl FdManager {
     pub fn new() -> Self {
         info!("FD manager initialized with lock-free FD recycling and O(1) tracking");
         Self {
-            next_fd: Arc::new(AtomicU32::new(3)), // Start at 3 (0, 1, 2 are stdin, stdout, stderr)
-            open_files: Arc::new(DashMap::with_hasher(RandomState::new())),
-            process_fds: Arc::new(DashMap::with_hasher(RandomState::new())),
-            process_fd_counts: Arc::new(DashMap::with_hasher(RandomState::new())),
-            free_fds: Arc::new(SegQueue::new()),
+            next_fd: Arc::new(AtomicU32::new(3).into()), // Start at 3 (0, 1, 2 are stdin, stdout, stderr)
+            open_files: Arc::new(DashMap::with_hasher(RandomState::new().into())),
+            process_fds: Arc::new(DashMap::with_hasher(RandomState::new().into())),
+            process_fd_counts: Arc::new(DashMap::with_hasher(RandomState::new().into())),
+            free_fds: Arc::new(SegQueue::new().into()),
         }
     }
 
@@ -194,63 +194,134 @@ impl SyscallExecutorWithIpc {
         flags: u32,
         mode: u32,
     ) -> SyscallResult {
-        let span = span_operation("fd_open");
-        let _guard = span.enter();
+        use crate::core::memory::arena::with_arena;
 
-        // Check per-process FD limit BEFORE doing expensive operations
-        use crate::security::ResourceLimitProvider;
-        if let Some(limits) = self.sandbox_manager().get_limits(pid) {
-            let current_fd_count = self.fd_manager().get_fd_count(pid);
-            if current_fd_count >= limits.max_file_descriptors {
-                error!(
-                    "PID {} exceeded FD limit: {}/{} file descriptors",
-                    pid, current_fd_count, limits.max_file_descriptors
-                );
-                return SyscallResult::permission_denied(format!(
-                    "File descriptor limit exceeded: {}/{} FDs open",
-                    current_fd_count, limits.max_file_descriptors
-                ));
+        with_arena(|arena| {
+            let span = span_operation("fd_open");
+            let _guard = span.enter();
+
+            use crate::security::ResourceLimitProvider;
+            if let Some(limits) = self.sandbox_manager().get_limits(pid) {
+                let current_fd_count = self.fd_manager().get_fd_count(pid);
+                if current_fd_count >= limits.max_file_descriptors {
+                    error!(
+                        "PID {} exceeded FD limit: {}/{} file descriptors",
+                        pid, current_fd_count, limits.max_file_descriptors
+                    );
+                    return SyscallResult::permission_denied(format!(
+                        "File descriptor limit exceeded: {}/{} FDs open",
+                        current_fd_count, limits.max_file_descriptors
+                    ));
+                }
             }
-        }
 
-        // Check permissions based on flags
-        let read_flag = flags & 0x0001; // O_RDONLY or O_RDWR
-        let write_flag = flags & 0x0002; // O_WRONLY or O_RDWR
-        let create_flag = flags & 0x0040; // O_CREAT
+            let read_flag = flags & 0x0001;
+            let write_flag = flags & 0x0002;
+            let create_flag = flags & 0x0040;
 
-        // For permission checks, use the path as-is (VFS handles its own resolution)
-        let check_path = path.clone();
+            let check_path = path.clone();
 
-        // Check permissions using centralized manager based on operation
-        if create_flag != 0 {
-            let request = PermissionRequest::file_create(pid, check_path.clone());
-            let response = self.permission_manager().check_and_audit(&request);
-            if !response.is_allowed() {
-                return SyscallResult::permission_denied(response.reason());
+            if create_flag != 0 {
+                let request = PermissionRequest::file_create(pid, check_path.clone());
+                let response = self.permission_manager().check_and_audit(&request);
+                if !response.is_allowed() {
+                    return SyscallResult::permission_denied(response.reason());
+                }
+            } else if write_flag != 0 {
+                let request = PermissionRequest::file_write(pid, check_path.clone());
+                let response = self.permission_manager().check_and_audit(&request);
+                if !response.is_allowed() {
+                    return SyscallResult::permission_denied(response.reason());
+                }
+            } else if read_flag != 0 {
+                let request = PermissionRequest::file_read(pid, check_path.clone());
+                let response = self.permission_manager().check_and_audit(&request);
+                if !response.is_allowed() {
+                    return SyscallResult::permission_denied(response.reason());
+                }
             }
-        } else if write_flag != 0 {
-            let request = PermissionRequest::file_write(pid, check_path.clone());
-            let response = self.permission_manager().check_and_audit(&request);
-            if !response.is_allowed() {
-                return SyscallResult::permission_denied(response.reason());
-            }
-        } else if read_flag != 0 {
-            let request = PermissionRequest::file_read(pid, check_path.clone());
-            let response = self.permission_manager().check_and_audit(&request);
-            if !response.is_allowed() {
-                return SyscallResult::permission_denied(response.reason());
-            }
-        }
 
-        // Try VFS first for unified file handle
-        if let Some(ref vfs) = self.optional().vfs {
-            let vfs_flags = OpenFlags::from_posix(flags);
-            let vfs_mode = OpenMode::new(mode);
+            if let Some(ref vfs) = self.optional().vfs {
+                let vfs_flags = OpenFlags::from_posix(flags);
+                let vfs_mode = OpenMode::new(mode);
 
-            match vfs.open(path, vfs_flags, vfs_mode) {
-                Ok(vfs_file) => {
-                    // Use FdGuard for automatic cleanup on error (panic-safe)
-                    let handle = Arc::new(FileHandle::from_vfs(vfs_file));
+                match vfs.open(path, vfs_flags, vfs_mode) {
+                    Ok(vfs_file) => {
+                        let handle = Arc::new(FileHandle::from_vfs(vfs_file));
+                        let path_str = path.to_string_lossy().to_string();
+                        let fd_guard = self
+                            .fd_manager()
+                            .allocate_fd_guard(pid, handle, Some(path_str));
+                        let fd = fd_guard.fd();
+
+                        info!(
+                            "PID {} opened {:?} via VFS with FD {}, flags: 0x{:x}",
+                            pid, path, fd, flags
+                        );
+
+                        let fd_str = arena.alloc_str(&fd.to_string());
+                        span.record("fd", fd_str);
+                        span.record("method", "vfs");
+                        span.record_result(true);
+
+                        return match json::to_vec(&serde_json::json!({ "fd": fd })) {
+                            Ok(data) => {
+                                std::mem::forget(fd_guard);
+                                SyscallResult::success_with_data(data)
+                            }
+                            Err(e) => {
+                                warn!("Failed to serialize open result: {}", e);
+                                span.record_error("Serialization failed");
+                                SyscallResult::error("Internal serialization error")
+                            }
+                        };
+                    }
+                    Err(e) => {
+                        warn!(
+                            "VFS open failed for {:?}: {}, falling back to std::fs",
+                            path, e
+                        );
+                        span.record("vfs_error", arena.alloc(format!("{}", e).into()));
+                    }
+                }
+            }
+
+            trace!("Falling back to std::fs for open");
+            let std_path = match path.canonicalize() {
+                Ok(p) => p,
+                Err(_) => {
+                    if create_flag != 0 {
+                        path.clone()
+                    } else {
+                        span.record_error("File does not exist");
+                        return SyscallResult::error("File does not exist");
+                    }
+                }
+            };
+
+            let mut options = OpenOptions::new();
+
+            if flags & 0x0002 != 0 {
+                options.write(true);
+            } else if flags & 0x0003 != 0 {
+                options.read(true).write(true);
+            } else {
+                options.read(true);
+            }
+
+            if flags & 0x0040 != 0 {
+                options.create(true);
+            }
+            if flags & 0x0200 != 0 {
+                options.truncate(true);
+            }
+            if flags & 0x0400 != 0 {
+                options.append(true);
+            }
+
+            match options.open(&std_path) {
+                Ok(file) => {
+                    let handle = Arc::new(FileHandle::from_std(file));
                     let path_str = path.to_string_lossy().to_string();
                     let fd_guard = self
                         .fd_manager()
@@ -258,112 +329,34 @@ impl SyscallExecutorWithIpc {
                     let fd = fd_guard.fd();
 
                     info!(
-                        "PID {} opened {:?} via VFS with FD {}, flags: 0x{:x}",
-                        pid, path, fd, flags
+                        "PID {} opened {:?} with FD {}, flags: 0x{:x}, mode: 0o{:o}",
+                        pid, path, fd, flags, mode
                     );
-                    span.record("fd", &format!("{}", fd));
-                    span.record("method", "vfs");
+
+                    let fd_str = arena.alloc_str(&fd.to_string());
+                    span.record("fd", fd_str);
+                    span.record("method", "std::fs");
                     span.record_result(true);
 
-                    return match json::to_vec(&serde_json::json!({ "fd": fd })) {
+                    match json::to_vec(&serde_json::json!({ "fd": fd })) {
                         Ok(data) => {
-                            // Success - release guard without cleanup (FD stays open)
                             std::mem::forget(fd_guard);
                             SyscallResult::success_with_data(data)
                         }
                         Err(e) => {
-                            // FdGuard auto-closes on drop - no manual cleanup needed!
                             warn!("Failed to serialize open result: {}", e);
                             span.record_error("Serialization failed");
                             SyscallResult::error("Internal serialization error")
                         }
-                    };
+                    }
                 }
                 Err(e) => {
-                    warn!(
-                        "VFS open failed for {:?}: {}, falling back to std::fs",
-                        path, e
-                    );
-                    span.record("vfs_error", &format!("{}", e));
+                    error!("Failed to open file {:?}: {}", path, e);
+                    span.record_error(arena.alloc(format!("Open failed: {}", e).into()));
+                    SyscallResult::error(format!("Open failed: {}", e))
                 }
             }
-        }
-
-        // Fallback to std::fs if VFS unavailable or failed
-        trace!("Falling back to std::fs for open");
-        // Canonicalize path for std::fs (only for real filesystem)
-        let std_path = match path.canonicalize() {
-            Ok(p) => p,
-            Err(_) => {
-                if create_flag != 0 {
-                    path.clone()
-                } else {
-                    span.record_error("File does not exist");
-                    return SyscallResult::error("File does not exist");
-                }
-            }
-        };
-
-        let mut options = OpenOptions::new();
-
-        // Access mode
-        if flags & 0x0002 != 0 {
-            options.write(true); // O_WRONLY
-        } else if flags & 0x0003 != 0 {
-            options.read(true).write(true); // O_RDWR
-        } else {
-            options.read(true); // O_RDONLY (default)
-        }
-
-        // Additional flags
-        if flags & 0x0040 != 0 {
-            options.create(true); // O_CREAT
-        }
-        if flags & 0x0200 != 0 {
-            options.truncate(true); // O_TRUNC
-        }
-        if flags & 0x0400 != 0 {
-            options.append(true); // O_APPEND
-        }
-
-        match options.open(&std_path) {
-            Ok(file) => {
-                // Use FdGuard for automatic cleanup on error (panic-safe)
-                let handle = Arc::new(FileHandle::from_std(file));
-                let path_str = path.to_string_lossy().to_string();
-                let fd_guard = self
-                    .fd_manager()
-                    .allocate_fd_guard(pid, handle, Some(path_str));
-                let fd = fd_guard.fd();
-
-                info!(
-                    "PID {} opened {:?} with FD {}, flags: 0x{:x}, mode: 0o{:o}",
-                    pid, path, fd, flags, mode
-                );
-                span.record("fd", &format!("{}", fd));
-                span.record("method", "std::fs");
-                span.record_result(true);
-
-                match json::to_vec(&serde_json::json!({ "fd": fd })) {
-                    Ok(data) => {
-                        // Success - release guard without cleanup (FD stays open)
-                        std::mem::forget(fd_guard);
-                        SyscallResult::success_with_data(data)
-                    }
-                    Err(e) => {
-                        // FdGuard auto-closes on drop - no manual cleanup needed!
-                        warn!("Failed to serialize open result: {}", e);
-                        span.record_error("Serialization failed");
-                        SyscallResult::error("Internal serialization error")
-                    }
-                }
-            }
-            Err(e) => {
-                error!("Failed to open file {:?}: {}", path, e);
-                span.record_error(&format!("Open failed: {}", e));
-                SyscallResult::error(format!("Open failed: {}", e))
-            }
-        }
+        })
     }
 
     pub(in crate::syscalls) fn close_fd(&self, pid: Pid, fd: u32) -> SyscallResult {

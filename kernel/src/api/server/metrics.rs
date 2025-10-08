@@ -21,7 +21,7 @@ impl MetricsService {
     pub fn get_metrics_json(&self) -> Result<String, Status> {
         let snapshot = self.collector.snapshot();
         serde_json::to_string(&snapshot)
-            .map_err(|e| Status::internal(format!("Failed to serialize metrics: {}", e)))
+            .map_err(|e| Status::internal(format!("Failed to serialize metrics: {}", e).into()))
     }
 
     /// Get metrics in Prometheus format

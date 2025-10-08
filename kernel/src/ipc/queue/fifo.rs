@@ -33,7 +33,7 @@ impl FifoQueue {
             capacity: capacity.min(MAX_QUEUE_CAPACITY),
             messages: VecDeque::new(),
             // Use long_wait config for IPC operations (futex on Linux, zero CPU spinning)
-            wait_queue: Arc::new(WaitQueue::long_wait()),
+            wait_queue: Arc::new(WaitQueue::long_wait().into()),
             closed: false,
         }
     }
@@ -48,7 +48,7 @@ impl FifoQueue {
                 "Queue full: {}/{}",
                 self.messages.len(),
                 self.capacity
-            )));
+            ).into()));
         }
 
         self.messages.push_back(message);

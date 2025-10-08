@@ -72,10 +72,10 @@ impl SyscallTimeoutConfig {
             pipe_read: TimeoutPolicy::Ipc(RESTRICTED_IPC_TIMEOUT),
             pipe_write: TimeoutPolicy::Ipc(RESTRICTED_IPC_TIMEOUT),
             queue_receive: TimeoutPolicy::Ipc(RESTRICTED_IPC_TIMEOUT),
-            file_io: TimeoutPolicy::Io(Duration::from_secs(5)),
-            file_sync: TimeoutPolicy::Io(Duration::from_secs(10)),
-            network: TimeoutPolicy::Io(Duration::from_secs(10)),
-            process_wait: TimeoutPolicy::Io(Duration::from_secs(30)),
+            file_io: TimeoutPolicy::Io(Duration::from_secs(5).into()),
+            file_sync: TimeoutPolicy::Io(Duration::from_secs(10).into()),
+            network: TimeoutPolicy::Io(Duration::from_secs(10).into()),
+            process_wait: TimeoutPolicy::Io(Duration::from_secs(30).into()),
             enabled: true,
         }
     }
@@ -87,10 +87,10 @@ impl SyscallTimeoutConfig {
             pipe_read: TimeoutPolicy::Ipc(RELAXED_IPC_TIMEOUT),
             pipe_write: TimeoutPolicy::Ipc(RELAXED_IPC_TIMEOUT),
             queue_receive: TimeoutPolicy::Ipc(RELAXED_IPC_TIMEOUT),
-            file_io: TimeoutPolicy::Io(Duration::from_secs(300)),
-            file_sync: TimeoutPolicy::Io(Duration::from_secs(600)),
-            network: TimeoutPolicy::Io(Duration::from_secs(600)),
-            process_wait: TimeoutPolicy::Io(Duration::from_secs(1800)),
+            file_io: TimeoutPolicy::Io(Duration::from_secs(300).into()),
+            file_sync: TimeoutPolicy::Io(Duration::from_secs(600).into()),
+            network: TimeoutPolicy::Io(Duration::from_secs(600).into()),
+            process_wait: TimeoutPolicy::Io(Duration::from_secs(1800).into()),
             enabled: true,
         }
     }

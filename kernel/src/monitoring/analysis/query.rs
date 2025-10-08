@@ -222,7 +222,7 @@ impl Query {
                 "pid" => event
                     .pid
                     .map(|p| p.to_string())
-                    .unwrap_or_else(|| "none".to_string()),
+                    .unwrap_or_else(|| "none".to_string().into()),
                 _ => "unknown".to_string(),
             };
 

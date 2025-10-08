@@ -5,10 +5,12 @@
 
 use super::traits::*;
 use super::types::*;
+use super::veth::VethManager;
+use super::bridge::BridgeManager;
 use crate::core::types::Pid;
 use ahash::RandomState;
 use dashmap::DashMap;
-use log::info;
+use log::{debug, info, warn};
 use std::sync::Arc;
 
 #[cfg(target_os = "linux")]
@@ -18,19 +20,47 @@ use std::fs;
 #[cfg(target_os = "linux")]
 use std::os::unix::io::AsRawFd;
 
-/// Linux network namespace manager
+/// Linux network namespace manager with integrated veth and bridge support
 pub struct LinuxNamespaceManager {
     namespaces: Arc<DashMap<NamespaceId, NamespaceInfo, RandomState>>,
     pid_to_ns: Arc<DashMap<Pid, NamespaceId, RandomState>>,
+    veth_manager: Arc<tokio::sync::Mutex<VethManager>>,
+    bridge_manager: Arc<tokio::sync::Mutex<BridgeManager>>,
+    initialized: Arc<tokio::sync::OnceCell<()>>,
 }
 
 impl LinuxNamespaceManager {
     pub fn new() -> Self {
-        info!("Linux network namespace manager initialized");
+        info!("Linux network namespace manager initialized (networking pending async init)");
         Self {
-            namespaces: Arc::new(DashMap::with_hasher(RandomState::new())),
-            pid_to_ns: Arc::new(DashMap::with_hasher(RandomState::new())),
+            namespaces: Arc::new(DashMap::with_hasher(RandomState::new().into())),
+            pid_to_ns: Arc::new(DashMap::with_hasher(RandomState::new().into())),
+            veth_manager: Arc::new(tokio::sync::Mutex::new(VethManager::new())),
+            bridge_manager: Arc::new(tokio::sync::Mutex::new(BridgeManager::new())),
+            initialized: Arc::new(tokio::sync::OnceCell::new()),
         }
+    }
+
+    /// Initialize networking components (async) - call once before use
+    pub async fn init(&self) -> NamespaceResult<()> {
+        self.initialized
+            .get_or_init(|| async {
+                info!("Initializing Linux namespace networking components");
+
+                // Initialize veth manager
+                if let Err(e) = self.veth_manager.lock().await.init().await {
+                    warn!("Failed to initialize veth manager: {}", e);
+                }
+
+                // Initialize bridge manager
+                if let Err(e) = self.bridge_manager.lock().await.init().await {
+                    warn!("Failed to initialize bridge manager: {}", e);
+                }
+
+                info!("Linux namespace networking components initialized");
+            })
+            .await;
+        Ok(())
     }
 
     #[cfg(target_os = "linux")]
@@ -48,7 +78,7 @@ impl LinuxNamespaceManager {
         // Create namespace file
         let ns_path = netns_dir.join(ns_name);
         if ns_path.exists() {
-            return Err(NamespaceError::AlreadyExists(ns_name.to_string()));
+            return Err(NamespaceError::AlreadyExists(ns_name.to_string().into()));
         }
 
         // Create the namespace
@@ -112,14 +142,73 @@ impl LinuxNamespaceManager {
             ns_name, host_veth, ns_veth
         );
 
-        // In a production implementation, we would use rtnetlink here
-        // For now, we'll use system commands as a reference
-        debug!("Would create veth pair: {} <-> {}", host_veth, ns_veth);
+        // Actual veth creation happens via async helper
+        debug!("Veth pair configuration: {} <-> {}", host_veth, ns_veth);
         debug!(
-            "Would configure IP: {}/{}",
+            "IP configuration: {}/{}",
             iface_config.ip_addr, iface_config.prefix_len
         );
+        // Note: Actual creation should be called via self.setup_private_network_async()
 
+        Ok(())
+    }
+
+    /// Setup private network with veth pair (async helper)
+    #[cfg(target_os = "linux")]
+    pub async fn setup_private_network_async(
+        &self,
+        config: &NamespaceConfig,
+        iface_config: &InterfaceConfig,
+    ) -> NamespaceResult<()> {
+        let ns_name = config.id.as_str();
+        let host_veth = format!("veth-{}", &ns_name[..8.min(ns_name.len())]);
+        let ns_veth = iface_config.name.clone();
+
+        info!(
+            "Creating veth pair for {} (async): {} <-> {}",
+            ns_name, host_veth, ns_veth
+        );
+
+        // Create veth pair using VethManager
+        let veth_mgr = self.veth_manager.lock().await;
+        veth_mgr.create_pair(&host_veth, &ns_veth, &config.id).await?;
+        veth_mgr.set_ip(&ns_veth, iface_config.ip_addr, iface_config.prefix_len).await?;
+        veth_mgr.set_state(&ns_veth, true).await?;
+        veth_mgr.set_state(&host_veth, true).await?;
+
+        debug!("Private network setup complete for {}", ns_name);
+        Ok(())
+    }
+
+    /// Setup bridged network (async helper)
+    #[cfg(target_os = "linux")]
+    pub async fn setup_bridged_network(
+        &self,
+        config: &NamespaceConfig,
+        bridge_name: &str,
+    ) -> NamespaceResult<()> {
+        let ns_name = config.id.as_str();
+
+        info!(
+            "Setting up bridged network for {} with bridge: {}",
+            ns_name, bridge_name
+        );
+
+        // Create bridge using BridgeManager
+        let bridge_mgr = self.bridge_manager.lock().await;
+        bridge_mgr.create_bridge(bridge_name).await?;
+
+        // If interface config is provided, attach to bridge
+        if let Some(ref iface_config) = config.interface {
+            bridge_mgr.set_bridge_ip(
+                bridge_name,
+                iface_config.ip_addr,
+                iface_config.prefix_len,
+            ).await?;
+            bridge_mgr.enable_forwarding(bridge_name).await?;
+        }
+
+        debug!("Bridged network setup complete for {}", ns_name);
         Ok(())
     }
 
@@ -187,7 +276,7 @@ impl NamespaceProvider for LinuxNamespaceManager {
     fn get_by_pid(&self, pid: Pid) -> Option<NamespaceInfo> {
         self.pid_to_ns
             .get(&pid)
-            .and_then(|ns_id| self.get_info(ns_id.value()))
+            .and_then(|ns_id| self.get_info(ns_id.value().into()))
     }
 
     fn get_stats(&self, id: &NamespaceId) -> Option<NamespaceStats> {
@@ -215,6 +304,9 @@ impl Clone for LinuxNamespaceManager {
         Self {
             namespaces: Arc::clone(&self.namespaces),
             pid_to_ns: Arc::clone(&self.pid_to_ns),
+            veth_manager: Arc::clone(&self.veth_manager),
+            bridge_manager: Arc::clone(&self.bridge_manager),
+            initialized: Arc::clone(&self.initialized),
         }
     }
 }

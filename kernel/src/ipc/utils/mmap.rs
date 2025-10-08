@@ -142,7 +142,7 @@ impl MmapManager {
                 0,
                 RandomState::new(),
                 ShardManager::shards(WorkloadProfile::LowContention), // mmap: infrequent access
-            )),
+            ).into()),
             next_id: Arc::new(AtomicU32::new(1)),
             vfs: None,
         }
@@ -157,7 +157,7 @@ impl MmapManager {
                 0,
                 RandomState::new(),
                 ShardManager::shards(WorkloadProfile::LowContention), // mmap: infrequent access
-            )),
+            ).into()),
             next_id: Arc::new(AtomicU32::new(1)),
             vfs: Some(vfs),
         }
@@ -204,7 +204,7 @@ impl MmapManager {
             prot,
             flags,
             owner_pid: pid,
-            data: Arc::new(parking_lot::Mutex::new(CowMemory::new(mapped_data))),
+            data: Arc::new(parking_lot::Mutex::new(CowMemory::new(mapped_data).into())),
         };
 
         self.mappings.insert(id, entry);
@@ -414,14 +414,16 @@ impl MmapManager {
     }
 
     pub fn get_info(&self, mmap_id: MmapId) -> Option<MmapInfo> {
-        self.mappings.get(&mmap_id).map(|e| MmapInfo::from(e.value()))
+        self.mappings
+            .get(&mmap_id)
+            .map(|e| MmapInfo::from(e.value().into()))
     }
 
     pub fn list_mappings(&self, pid: Pid) -> Vec<MmapInfo> {
         self.mappings
             .iter()
             .filter(|entry| entry.value().owner_pid == pid)
-            .map(|entry| MmapInfo::from(entry.value()))
+            .map(|entry| MmapInfo::from(entry.value().into()))
             .collect()
     }
 }

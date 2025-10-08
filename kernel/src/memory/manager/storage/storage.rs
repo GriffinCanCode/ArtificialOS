@@ -31,13 +31,10 @@ impl MemoryManager {
         if let Some(base_addr) = base_addr {
             let offset = address - base_addr;
 
-            let mut entry = self
-                .memory_storage
-                .entry(base_addr)
-                .or_insert_with(|| {
-                    use crate::core::memory::CowMemory;
-                    CowMemory::new(vec![0u8; block_size])
-                });
+            let mut entry = self.memory_storage.entry(base_addr).or_insert_with(|| {
+                use crate::core::memory::CowMemory;
+                CowMemory::new(vec![0u8; block_size])
+            });
 
             entry.write(|buffer| {
                 if buffer.len() < block_size {

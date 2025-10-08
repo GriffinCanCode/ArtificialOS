@@ -27,14 +27,14 @@ impl SyscallHandler for ProcessHandler {
             Syscall::SpawnProcess {
                 ref command,
                 ref args,
-            } => Some(self.executor.spawn_process(pid, command, args)),
+            } => Some(self.executor.spawn_process(pid, command, args).into()),
             Syscall::KillProcess { target_pid } => {
                 Some(self.executor.kill_process(pid, *target_pid))
             }
             Syscall::GetProcessInfo { target_pid } => {
                 Some(self.executor.get_process_info(pid, *target_pid))
             }
-            Syscall::GetProcessList => Some(self.executor.get_process_list(pid)),
+            Syscall::GetProcessList => Some(self.executor.get_process_list(pid).into()),
             Syscall::SetProcessPriority {
                 target_pid,
                 priority,
@@ -51,7 +51,7 @@ impl SyscallHandler for ProcessHandler {
             Syscall::WaitProcess {
                 target_pid,
                 timeout_ms,
-            } => Some(self.executor.wait_process(pid, *target_pid, *timeout_ms)),
+            } => Some(self.executor.wait_process(pid, *target_pid, *timeout_ms).into()),
             _ => None, // Not a process syscall
         }
     }

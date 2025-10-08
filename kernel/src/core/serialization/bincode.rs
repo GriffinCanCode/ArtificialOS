@@ -97,11 +97,11 @@ pub fn to_vec<T: Serialize>(value: &T) -> BincodeResult<Vec<u8>> {
     let mut buf = PooledBuffer::get(size_hint);
 
     match bincode::serialize_into(&mut *buf, value) {
-        Ok(_) => Ok(buf.into_vec()),
+        Ok(_) => Ok(buf.into_vec().into()),
         Err(source) => Err(BincodeError::Serialization {
             context: "pooled serialization",
             source,
-        })
+        }),
     }
 }
 
@@ -273,13 +273,13 @@ pub fn from_slice_compressed<T: DeserializeOwned>(bytes: &[u8]) -> BincodeResult
         0x01 => {
             // LZ4 compressed
             let decompressed = lz4_flex::decompress_size_prepended(payload)
-                .map_err(|e| BincodeError::Decompression(e.to_string()))?;
+                .map_err(|e| BincodeError::Decompression(e.to_string().into()))?;
             from_slice(&decompressed)
         }
         _ => Err(BincodeError::Decompression(format!(
             "Unknown compression flag: {:#x}",
             compression_flag
-        ))),
+        ).into())),
     }
 }
 

@@ -121,7 +121,7 @@ impl TransactionGuard {
         }
 
         // Catch panics and poison the transaction
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(self)));
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(self).into()));
 
         match result {
             Ok(Ok(value)) => Ok(value),

@@ -32,9 +32,9 @@ impl ZeroCopyRing {
             pid,
             address,
             ring_size: sq_size + cq_size,
-            submission_queue: Arc::new(RwLock::new(SubmissionQueue::new(sq_size))),
-            completion_queue: Arc::new(RwLock::new(CompletionQueue::new(cq_size))),
-            stats: Arc::new(RingStats::default()),
+            submission_queue: Arc::new(RwLock::new(SubmissionQueue::new(sq_size).into())),
+            completion_queue: Arc::new(RwLock::new(CompletionQueue::new(cq_size).into())),
+            stats: Arc::new(RingStats::default().into()),
             // Use long_wait config since IPC operations may take a while
             wait_queue: WaitQueue::long_wait(),
         }

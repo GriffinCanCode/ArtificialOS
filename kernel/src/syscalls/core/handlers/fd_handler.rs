@@ -28,14 +28,14 @@ impl SyscallHandler for FileDescriptorHandler {
                 ref path,
                 flags,
                 mode,
-            } => Some(self.executor.open(pid, path, *flags, *mode)),
-            Syscall::Close { fd } => Some(self.executor.close_fd(pid, *fd)),
-            Syscall::Dup { fd } => Some(self.executor.dup(pid, *fd)),
-            Syscall::Dup2 { oldfd, newfd } => Some(self.executor.dup2(pid, *oldfd, *newfd)),
+            } => Some(self.executor.open(pid, path, *flags, *mode).into()),
+            Syscall::Close { fd } => Some(self.executor.close_fd(pid, *fd).into()),
+            Syscall::Dup { fd } => Some(self.executor.dup(pid, *fd).into()),
+            Syscall::Dup2 { oldfd, newfd } => Some(self.executor.dup2(pid, *oldfd, *newfd).into()),
             Syscall::Lseek { fd, offset, whence } => {
                 Some(self.executor.lseek(pid, *fd, *offset, *whence))
             }
-            Syscall::Fcntl { fd, cmd, arg } => Some(self.executor.fcntl(pid, *fd, *cmd, *arg)),
+            Syscall::Fcntl { fd, cmd, arg } => Some(self.executor.fcntl(pid, *fd, *cmd, *arg).into()),
             _ => None, // Not an fd syscall
         }
     }

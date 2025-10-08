@@ -20,13 +20,13 @@ impl MemFS {
                 let mut entries = Vec::new();
                 for (name, child_path) in children {
                     if let Some(node) = self.nodes.get(&child_path) {
-                        entries.push(Entry::new_unchecked(name.clone(), node.file_type()));
+                        entries.push(Entry::new_unchecked(name.clone(), node.file_type().into()));
                     }
                 }
                 Ok(entries)
             }
-            Some(Node::File { .. }) => Err(VfsError::NotADirectory(path.display().to_string())),
-            None => Err(VfsError::NotFound(path.display().to_string())),
+            Some(Node::File { .. }) => Err(VfsError::NotADirectory(path.display().to_string().into())),
+            None => Err(VfsError::NotFound(path.display().to_string().into())),
         }
     }
 
@@ -42,7 +42,7 @@ impl MemFS {
                         return Err(VfsError::PermissionDenied(format!(
                             "parent directory is readonly: {}",
                             parent_path.display()
-                        )));
+                        ).into()));
                     }
                 }
             }
@@ -57,7 +57,7 @@ impl MemFS {
                 // Safe: current always has parent since we start from "/" and push components
                 let parent = current
                     .parent()
-                    .ok_or_else(|| VfsError::InvalidPath("path has no parent".to_string()))?
+                    .ok_or_else(|| VfsError::InvalidPath("path has no parent".to_string().into()))?
                     .to_path_buf();
 
                 // Safe: current always has filename since we just pushed a component
@@ -65,7 +65,7 @@ impl MemFS {
                     .file_name()
                     .and_then(|n| n.to_str())
                     .ok_or_else(|| {
-                        VfsError::InvalidPath("invalid UTF-8 in path component".to_string())
+                        VfsError::InvalidPath("invalid UTF-8 in path component".to_string().into())
                     })?
                     .to_string();
 
@@ -100,7 +100,7 @@ impl MemFS {
                         return Err(VfsError::PermissionDenied(format!(
                             "parent directory is readonly: {}",
                             parent_path.display()
-                        )));
+                        ).into()));
                     }
                 }
             }
@@ -109,7 +109,7 @@ impl MemFS {
         match self.nodes.get(&path).map(|n| n.clone()) {
             Some(Node::Directory { children, .. }) => {
                 if !children.is_empty() {
-                    return Err(VfsError::InvalidArgument("directory not empty".to_string()));
+                    return Err(VfsError::InvalidArgument("directory not empty".to_string().into()));
                 }
 
                 self.nodes.remove(&path);
@@ -122,8 +122,8 @@ impl MemFS {
 
                 Ok(())
             }
-            Some(Node::File { .. }) => Err(VfsError::NotADirectory(path.display().to_string())),
-            None => Err(VfsError::NotFound(path.display().to_string())),
+            Some(Node::File { .. }) => Err(VfsError::NotADirectory(path.display().to_string().into())),
+            None => Err(VfsError::NotFound(path.display().to_string().into())),
         }
     }
 

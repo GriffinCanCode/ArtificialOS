@@ -43,7 +43,7 @@ impl QueueManager {
             return Err(IpcError::LimitExceeded(format!(
                 "Process queue limit exceeded: {}/{}",
                 count, MAX_QUEUES_PER_PROCESS
-            )));
+            ).into()));
         }
         Ok(())
     }
@@ -70,11 +70,11 @@ impl QueueManager {
         capacity: usize,
     ) -> Queue {
         match queue_type {
-            QueueType::Fifo => Queue::Fifo(FifoQueue::new(queue_id, owner_pid, capacity)),
+            QueueType::Fifo => Queue::Fifo(FifoQueue::new(queue_id, owner_pid, capacity).into()),
             QueueType::Priority => {
                 Queue::Priority(PriorityQueue::new(queue_id, owner_pid, capacity))
             }
-            QueueType::PubSub => Queue::PubSub(PubSubQueue::new(queue_id, owner_pid, capacity)),
+            QueueType::PubSub => Queue::PubSub(PubSubQueue::new(queue_id, owner_pid, capacity).into()),
         }
     }
 
@@ -92,7 +92,7 @@ impl QueueManager {
         let mut queue = self
             .queues
             .get_mut(&queue_id)
-            .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id)))?;
+            .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id).into()))?;
 
         if queue.owner() != pid {
             return Err(IpcError::PermissionDenied(
@@ -123,7 +123,7 @@ impl QueueManager {
         let queue = self
             .queues
             .get(&queue_id)
-            .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id)))?;
+            .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id).into()))?;
 
         if queue.owner() != pid {
             return Err(IpcError::PermissionDenied(
@@ -189,7 +189,7 @@ impl QueueManager {
         let queue = self
             .queues
             .get(&queue_id)
-            .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id)))?;
+            .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id).into()))?;
 
         let stats = match queue.value() {
             Queue::Fifo(q) => self.create_fifo_stats(q),

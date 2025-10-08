@@ -59,7 +59,7 @@ impl FileSystem for MemFS {
                     created: node.created(),
                 })
             }
-            None => Err(VfsError::NotFound(path.display().to_string())),
+            None => Err(VfsError::NotFound(path.display().to_string().into())),
         }
     }
 
@@ -91,7 +91,7 @@ impl FileSystem for MemFS {
         let node = self
             .nodes
             .remove(&from)
-            .ok_or_else(|| VfsError::NotFound(from.display().to_string()))?
+            .ok_or_else(|| VfsError::NotFound(from.display().to_string().into()))?
             .1;
 
         // Update parent directories
@@ -141,7 +141,7 @@ impl FileSystem for MemFS {
                     Ok(())
                 }
             },
-            None => Err(VfsError::NotFound(path.display().to_string())),
+            None => Err(VfsError::NotFound(path.display().to_string().into())),
         }
     }
 
@@ -157,7 +157,7 @@ impl FileSystem for MemFS {
                     return Err(VfsError::PermissionDenied(format!(
                         "file is readonly: {}",
                         path.display()
-                    )));
+                    ).into()));
                 }
             }
         }
@@ -180,7 +180,7 @@ impl FileSystem for MemFS {
             self.nodes.insert(
                 path.clone(),
                 Node::File {
-                    data: Arc::new(parking_lot::Mutex::new(CowMemory::new(Vec::new()))),
+                    data: Arc::new(parking_lot::Mutex::new(CowMemory::new(Vec::new().into()))),
                     permissions: mode.permissions,
                     modified: now,
                     created: now,
@@ -194,7 +194,7 @@ impl FileSystem for MemFS {
 
             Vec::new()
         } else {
-            return Err(VfsError::NotFound(path.display().to_string()));
+            return Err(VfsError::NotFound(path.display().to_string().into()));
         };
 
         Ok(Box::new(MemFile {

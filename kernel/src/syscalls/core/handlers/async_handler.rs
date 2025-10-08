@@ -37,7 +37,7 @@ impl AsyncSyscallHandlerRegistry {
     /// Create a new empty registry
     pub fn new() -> Self {
         Self {
-            handlers: Arc::new(Vec::new()),
+            handlers: Arc::new(Vec::new().into()),
         }
     }
 

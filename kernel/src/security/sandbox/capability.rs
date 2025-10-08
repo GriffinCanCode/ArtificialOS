@@ -18,11 +18,11 @@ pub fn can_access_file(
     path: &Path,
 ) -> bool {
     let required = match operation {
-        FileOperation::Read => Capability::ReadFile(Some(path.to_path_buf())),
-        FileOperation::Write => Capability::WriteFile(Some(path.to_path_buf())),
-        FileOperation::Create => Capability::CreateFile(Some(path.to_path_buf())),
-        FileOperation::Delete => Capability::DeleteFile(Some(path.to_path_buf())),
-        FileOperation::List => Capability::ListDirectory(Some(path.to_path_buf())),
+        FileOperation::Read => Capability::ReadFile(Some(path.to_path_buf().into())),
+        FileOperation::Write => Capability::WriteFile(Some(path.to_path_buf().into())),
+        FileOperation::Create => Capability::CreateFile(Some(path.to_path_buf().into())),
+        FileOperation::Delete => Capability::DeleteFile(Some(path.to_path_buf().into())),
+        FileOperation::List => Capability::ListDirectory(Some(path.to_path_buf().into())),
     };
 
     has_capability(capabilities, &required)
@@ -45,7 +45,7 @@ mod tests {
     #[test]
     fn test_granular_read_permission() {
         let mut caps = HashSet::new();
-        caps.insert(Capability::ReadFile(Some(PathBuf::from("/tmp"))));
+        caps.insert(Capability::ReadFile(Some(PathBuf::from("/tmp").into())));
 
         assert!(can_access_file(
             &caps,

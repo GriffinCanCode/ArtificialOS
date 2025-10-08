@@ -47,11 +47,11 @@ impl JitManager {
     pub fn new(executor: Arc<crate::syscalls::core::executor::SyscallExecutorWithIpc>) -> Self {
         info!("Initializing JIT manager for syscall optimization");
         Self {
-            detector: Arc::new(HotpathDetector::new()),
-            compiler: Arc::new(JitCompiler::new(executor)),
-            optimizer: Arc::new(SyscallOptimizer::new()),
-            compiled_cache: Arc::new(DashMap::with_hasher(RandomState::new())),
-            stats: SeqlockStats::new(JitStats::default()),
+            detector: Arc::new(HotpathDetector::new().into()),
+            compiler: Arc::new(JitCompiler::new(executor).into()),
+            optimizer: Arc::new(SyscallOptimizer::new().into()),
+            compiled_cache: Arc::new(DashMap::with_hasher(RandomState::new().into())),
+            stats: SeqlockStats::new(JitStats::default().into()),
         }
     }
 

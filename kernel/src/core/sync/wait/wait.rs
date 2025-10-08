@@ -141,8 +141,8 @@ where
         let strategy_type = config.select_strategy();
 
         let strategy = match strategy_type {
-            StrategyType::Futex => WaitStrategyImpl::Futex(FutexWait::new()),
-            StrategyType::Condvar => WaitStrategyImpl::Condvar(CondvarWait::new()),
+            StrategyType::Futex => WaitStrategyImpl::Futex(FutexWait::new().into()),
+            StrategyType::Condvar => WaitStrategyImpl::Condvar(CondvarWait::new().into()),
             StrategyType::SpinWait => {
                 WaitStrategyImpl::SpinWait(SpinWait::new(config.spin_duration, config.max_spins))
             }
@@ -227,7 +227,7 @@ where
             }
 
             // Calculate remaining timeout
-            let remaining = timeout.map(|t| t.saturating_sub(start.elapsed()));
+            let remaining = timeout.map(|t| t.saturating_sub(start.elapsed().into()));
 
             // Wait for notification
             self.wait(key, remaining)?;
@@ -301,7 +301,7 @@ mod tests {
     fn test_wait_queue_timeout() {
         let queue = WaitQueue::<u64>::with_defaults();
         let start = Instant::now();
-        let result = queue.wait(99, Some(Duration::from_millis(50)));
+        let result = queue.wait(99, Some(Duration::from_millis(50).into()));
 
         assert!(matches!(result, Err(WaitError::Timeout)));
         assert!(start.elapsed() >= Duration::from_millis(50));

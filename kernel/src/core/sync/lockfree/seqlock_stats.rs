@@ -68,7 +68,7 @@ impl<T: Clone + Copy> SeqlockStats<T> {
     #[inline]
     pub fn new(initial: T) -> Self {
         Self {
-            inner: Arc::new(InnerSeqLock::new(initial)),
+            inner: Arc::new(InnerSeqLock::new(initial).into()),
         }
     }
 

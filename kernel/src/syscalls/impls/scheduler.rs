@@ -352,7 +352,7 @@ impl SyscallExecutorWithIpc {
             None => SyscallResult::error(format!(
                 "No scheduler stats available for process {}",
                 target_pid
-            )),
+            ).into()),
         }
     }
 

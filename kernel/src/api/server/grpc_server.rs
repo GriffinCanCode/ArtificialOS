@@ -54,7 +54,7 @@ impl KernelServiceImpl {
         let batch_executor = BatchExecutor::new(syscall_executor.clone());
 
         // Initialize io_uring manager for efficient I/O syscall completion
-        let iouring_executor = Arc::new(IoUringExecutor::new(syscall_executor.clone()));
+        let iouring_executor = Arc::new(IoUringExecutor::new(syscall_executor.clone().into()));
         let iouring_manager = Arc::new(IoUringManager::new(iouring_executor));
 
         Self {
@@ -255,7 +255,7 @@ impl GrpcServer {
             syscall_executor,
             process_manager,
             sandbox_manager,
-            running: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            running: Arc::new(std::sync::atomic::AtomicBool::new(false).into()),
         }
     }
 }
@@ -281,16 +281,16 @@ impl ServerLifecycle for GrpcServer {
                 .timeout(Duration::from_secs(self.config.timeout_secs))
                 .http2_keepalive_interval(Some(Duration::from_secs(
                     self.config.keepalive_interval_secs,
-                )))
+                ).into()))
                 .http2_keepalive_timeout(Some(Duration::from_secs(
                     self.config.keepalive_timeout_secs,
-                )))
+                ).into()))
                 .http2_adaptive_window(Some(true))
                 .tcp_nodelay(true)
                 .add_service(KernelServiceServer::new(service))
                 .serve(self.config.address)
                 .await
-                .map_err(|e| ApiError::InternalError(format!("Server error: {}", e)))?;
+                .map_err(|e| ApiError::InternalError(format!("Server error: {}", e).into()))?;
 
             self.running
                 .store(false, std::sync::atomic::Ordering::SeqCst);

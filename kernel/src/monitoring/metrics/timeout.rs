@@ -55,10 +55,10 @@ impl TimeoutObserver {
                 name: "ipc_operation_timeout".to_string(),
                 value: elapsed.as_millis() as f64,
                 labels: vec![
-                    ("resource_type".to_string(), resource_type.to_string()),
-                    ("resource_id".to_string(), resource_id.to_string()),
-                    ("elapsed_ms".to_string(), elapsed.as_millis().to_string()),
-                    ("timeout_ms".to_string(), timeout.as_millis().to_string()),
+                    ("resource_type".to_string(), resource_type.to_string().into()),
+                    ("resource_id".to_string(), resource_id.to_string().into()),
+                    ("elapsed_ms".to_string(), elapsed.as_millis().to_string().into()),
+                    ("timeout_ms".to_string(), timeout.as_millis().to_string().into()),
                 ],
             },
         )
@@ -83,10 +83,10 @@ impl TimeoutObserver {
                 name: "io_operation_timeout".to_string(),
                 value: elapsed.as_millis() as f64,
                 labels: vec![
-                    ("operation".to_string(), operation.to_string()),
-                    ("fd".to_string(), fd.to_string()),
-                    ("elapsed_ms".to_string(), elapsed.as_millis().to_string()),
-                    ("timeout_ms".to_string(), timeout.as_millis().to_string()),
+                    ("operation".to_string(), operation.to_string().into()),
+                    ("fd".to_string(), fd.to_string().into()),
+                    ("elapsed_ms".to_string(), elapsed.as_millis().to_string().into()),
+                    ("timeout_ms".to_string(), timeout.as_millis().to_string().into()),
                 ],
             },
         )
@@ -104,12 +104,12 @@ impl TimeoutObserver {
         timeout: Duration,
     ) {
         let mut labels = vec![
-            ("elapsed_ms".to_string(), elapsed.as_millis().to_string()),
-            ("timeout_ms".to_string(), timeout.as_millis().to_string()),
+            ("elapsed_ms".to_string(), elapsed.as_millis().to_string().into()),
+            ("timeout_ms".to_string(), timeout.as_millis().to_string().into()),
         ];
 
         if let Some(id) = task_id {
-            labels.push(("task_id".to_string(), id.to_string()));
+            labels.push(("task_id".to_string(), id.to_string().into()));
         }
 
         let mut event = Event::new(
@@ -140,13 +140,13 @@ impl TimeoutObserver {
         timeout: Option<Duration>,
     ) {
         let mut labels = vec![
-            ("resource_type".to_string(), resource_type.to_string()),
-            ("category".to_string(), category.to_string()),
-            ("elapsed_ms".to_string(), elapsed.as_millis().to_string()),
+            ("resource_type".to_string(), resource_type.to_string().into()),
+            ("category".to_string(), category.to_string().into()),
+            ("elapsed_ms".to_string(), elapsed.as_millis().to_string().into()),
         ];
 
         if let Some(t) = timeout {
-            labels.push(("timeout_ms".to_string(), t.as_millis().to_string()));
+            labels.push(("timeout_ms".to_string(), t.as_millis().to_string().into()));
         }
 
         let mut event = Event::new(
@@ -175,9 +175,9 @@ impl TimeoutObserver {
                 name: "timeout_summary".to_string(),
                 value: count as f64,
                 labels: vec![
-                    ("category".to_string(), category.to_string()),
-                    ("count".to_string(), count.to_string()),
-                    ("avg_elapsed_ms".to_string(), avg_elapsed_ms.to_string()),
+                    ("category".to_string(), category.to_string().into()),
+                    ("count".to_string(), count.to_string().into()),
+                    ("avg_elapsed_ms".to_string(), avg_elapsed_ms.to_string().into()),
                 ],
             },
         );

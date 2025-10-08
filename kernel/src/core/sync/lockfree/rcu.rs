@@ -56,7 +56,7 @@ impl<T> RcuCell<T> {
     #[inline]
     pub fn new(value: T) -> Self {
         Self {
-            inner: Arc::new(ArcSwap::from_pointee(value)),
+            inner: Arc::new(ArcSwap::from_pointee(value).into()),
         }
     }
 
@@ -191,7 +191,7 @@ mod tests {
 
     #[test]
     fn test_concurrent_reads() {
-        let cell = Arc::new(RcuCell::new(HashMap::from([("key1", 100), ("key2", 200)])));
+        let cell = Arc::new(RcuCell::new(HashMap::from([("key1", 100), ("key2", 200)]).into()));
 
         let mut handles = vec![];
 

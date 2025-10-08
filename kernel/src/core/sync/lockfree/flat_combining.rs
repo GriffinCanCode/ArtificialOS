@@ -88,7 +88,7 @@ impl FlatCombiningCounter {
         Self {
             value: AtomicU64::new(initial),
             _pad1: [0; 56],
-            combiner_lock: Mutex::new(()),
+            combiner_lock: Mutex::new(().into()),
             pending: ArrayQueue::new(MAX_PENDING),
         }
     }

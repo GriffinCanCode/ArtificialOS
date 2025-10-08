@@ -29,9 +29,9 @@ impl BufferPool {
         Self {
             pid,
             memory_manager,
-            small_buffers: Mutex::new(VecDeque::new()),
-            medium_buffers: Mutex::new(VecDeque::new()),
-            large_buffers: Mutex::new(VecDeque::new()),
+            small_buffers: Mutex::new(VecDeque::new().into()),
+            medium_buffers: Mutex::new(VecDeque::new().into()),
+            large_buffers: Mutex::new(VecDeque::new().into()),
         }
     }
 

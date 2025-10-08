@@ -172,7 +172,7 @@ impl CompositeGuardBuilder {
 
     /// Add a named guard
     pub fn with<G: Guard + 'static>(mut self, name: impl Into<String>, guard: G) -> Self {
-        self.guards.push((name.into(), Box::new(guard)));
+        self.guards.push((name.into(), Box::new(guard).into()));
         self
     }
 

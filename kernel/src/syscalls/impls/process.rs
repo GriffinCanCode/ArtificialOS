@@ -29,7 +29,7 @@ impl SyscallExecutorWithIpc {
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
         span.record("command", command);
-        span.record("args_count", &format!("{}", args.len()));
+        span.record("args_count", &format!("{}", args.len().into()));
 
         let request = PermissionRequest::new(pid, Resource::Process { pid: 0 }, Action::Create);
         let response = self.permission_manager().check_and_audit(&request);
@@ -194,7 +194,7 @@ impl SyscallExecutorWithIpc {
         };
 
         let processes = process_manager.list_processes();
-        span.record("process_count", &format!("{}", processes.len()));
+        span.record("process_count", &format!("{}", processes.len().into()));
         match json::to_vec(&processes) {
             Ok(data) => {
                 info!("PID {} listed {} processes", pid, processes.len());
@@ -269,7 +269,7 @@ impl SyscallExecutorWithIpc {
                     SyscallResult::error("Serialization failed")
                 }
             },
-            None => SyscallResult::error(format!("Process {} not found", target_pid)),
+            None => SyscallResult::error(format!("Process {} not found", target_pid).into()),
         }
     }
 
@@ -302,7 +302,7 @@ impl SyscallExecutorWithIpc {
                     SyscallResult::error("Serialization failed")
                 }
             },
-            None => SyscallResult::error(format!("No stats available for process {}", target_pid)),
+            None => SyscallResult::error(format!("No stats available for process {}", target_pid).into()),
         }
     }
 
@@ -345,7 +345,7 @@ impl SyscallExecutorWithIpc {
 
         span.record(
             "timeout_ms",
-            &format!("{:?}", timeout.duration().map(|d| d.as_millis())),
+            &format!("{:?}", timeout.duration().map(|d| d.as_millis().into())),
         );
 
         // Define error type for process wait
