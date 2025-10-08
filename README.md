@@ -500,19 +500,37 @@ A real desktop OS needs to run different types of applications. AgentOS supports
 
 ### 1. Blueprint Apps (Existing System)
 
-I needed a way to define applications that could be both AI-generated and human-readable. Traditional approaches failed on one dimension or the other. Blueprint emerged from a simple insight: if LLMs are going to generate applications, the format needs to be streaming-first. Not an afterthought. Baked in.
+I needed a way to define applications that could be both AI-generated and human-readable. Traditional approaches failed: either you generate arbitrary code (unreliable, hallucination-prone) or you constrain the AI so much it's useless. Blueprint emerged from a simple insight: **treat it like a Backend-as-a-Service** (Firebase, Supabase).
+
+**The Key Insight: Specification, Not Code Generation**
+
+Instead of generating code, the LLM generates a **specification** that composes prebuilt, tested components. This eliminates hallucination as a critical issue:
+
+- ✅ LLM can't generate broken code (it doesn't generate code at all)
+- ✅ Every component is pre-tested and proven to work
+- ✅ No runtime errors from AI hallucinations
+- ✅ Deterministic execution every time
+- ✅ Security by design (no arbitrary code execution)
+
+**It's like Firebase:** You don't generate database code, you configure a schema. Blueprint apps don't generate UI code, they configure proven components.
 
 Applications can be created in two ways:
 
-1. **AI Generation**: Natural language → LLM generates Blueprint JSON
+1. **AI Generation**: Natural language → LLM generates Blueprint JSON specification
 2. **Manual Definition**: Write `.bp` files directly and drop in `/apps/blueprint` directory
 
-### Why I Chose JSON (And Why It Matters)
+### Why JSON Works
 
-**Streaming-First Design:**
+**Streaming-Friendly:**
 - Components render incrementally as they're generated
 - Explicit JSON structure enables real-time parsing during token streaming
 - No special syntax in keys - just clean `type`, `id`, `props` fields
+
+**Composition Over Generation:**
+- Blueprint is a **configuration format**, not a programming language
+- LLM picks from a fixed registry of proven components
+- Components have validated schemas (Zod types)
+- Tool bindings reference registered functions, not arbitrary code
 
 **Example Blueprint:**
 ```json
@@ -733,7 +751,17 @@ All three types:
 
 When you do use AI generation, AgentOS follows a fundamentally different pattern than chat-based AI interfaces. I watched too many demos where every button click went back to the LLM — 2-5 seconds per interaction, burning tokens like kindling. That's not an application. That's an expensive conversation.
 
-The AI generation in AgentOS (which is optional) follows a better philosophy: generate the application specification once, execute it many times locally. Separate AI generation from application execution at the architectural level. But most apps don't need AI generation at all — they're either prebuilt Blueprint apps (loaded from `.bp` files) or hand-coded native applications.
+**The Core Architectural Principle: Specification, Not Code**
+
+AgentOS treats AI generation like Firebase treats backend configuration — the LLM generates a **specification** that references prebuilt, tested components. This architectural decision has massive implications:
+
+- **Reliability**: No code generation = no hallucination bugs in production
+- **Performance**: Generate spec once (~2-5s), execute locally forever (<10ms per interaction)
+- **Security**: LLM can't introduce vulnerabilities because it only generates JSON config
+- **Determinism**: Same spec always behaves identically (no LLM variance at runtime)
+- **Separation of Concerns**: AI generation layer completely separate from execution layer
+
+The AI generation in AgentOS (which is optional) follows this philosophy: generate the application specification once, execute it many times locally using proven components. But most apps don't need AI generation at all — they're either prebuilt Blueprint apps (loaded from `.bp` files) or hand-coded native applications.
 
 ### Application Lifecycle
 
@@ -758,20 +786,27 @@ The AI generation in AgentOS (which is optional) follows a better philosophy: ge
 
 ### Why This Matters — A Comparison
 
-**Traditional AI Approach (The Slow Way):**
-- Every interaction requires LLM inference
-- 2-5 seconds per button click
+**Traditional AI Approach (Code Generation):**
+- LLM generates arbitrary code (Python, JavaScript, etc.)
+- Code may have bugs from hallucinations
+- Security vulnerabilities in generated code
+- Every interaction might regenerate code
+- 2-5 seconds per button click if going back to LLM
 - High token cost per interaction
 - Non-deterministic behavior
 - Unusable for actual applications
 
-**AgentOS Approach (The Fast Way):**
-- Blueprint apps: UI spec loaded once (instant from `.bp` file or 2-5s from LLM), tools execute locally many times
-- Native apps: Zero generation time, just TypeScript/React development
-- Native processes: Direct OS process execution
-- Sub-10ms tool execution for all app types
-- Deterministic, local execution
-- No network latency for interactions
+**AgentOS Approach (Specification, Not Code):**
+- **Blueprint apps**: LLM generates JSON spec referencing prebuilt components
+  - Load spec once (instant from `.bp` file or 2-5s from LLM generation)
+  - Execute locally using proven, tested components
+  - No hallucination bugs (LLM can't break what it doesn't generate)
+  - Sub-10ms tool execution
+  - Deterministic execution every time
+- **Native apps**: Zero generation time, full TypeScript/React development
+- **Native processes**: Direct OS process execution
+- **BaaS Architecture**: Like Firebase, you configure behavior rather than generate code
+- No network latency for interactions after spec is loaded
 - Actually feels like software, not a chatbot
 
 ### Component System
@@ -1231,10 +1266,13 @@ Building cross-platform network isolation taught me why most projects just suppo
 - Timeout enforcement
 
 **Application Security** (Why Blueprint Apps Are Safe):
-- **No Arbitrary Code Execution**: Blueprint specs are pure JSON data — it's data, not code
-- **Pre-defined Tools**: All operations go through registered tool functions — no dynamic code execution
-- **Sandboxed by Design**: Blueprint apps can only invoke predefined tools, not create new syscalls or operations
-- **AI-Generated Apps Follow Same Rules**: When you use AI to generate a Blueprint, it's still just JSON data — huge security win
+- **Configuration, Not Code**: Blueprint specs are pure JSON data — a specification, not executable code
+- **BaaS-Style Safety**: Like Firebase/Supabase, you configure behavior rather than generate code
+- **Prebuilt Component Registry**: All UI elements are pre-tested, proven components with Zod validation
+- **Tool Registry Pattern**: All operations reference registered functions, no dynamic code execution
+- **Hallucination-Proof**: LLM can't generate broken code because it only generates JSON configuration
+- **Sandboxed by Design**: Blueprint apps can only invoke predefined tools, not create new syscalls
+- **AI-Generated Apps Follow Same Rules**: AI-generated specs use the exact same components as hand-written ones — no special cases
 
 **Automatic Cleanup:**
 - Zombie process reaping via waitpid

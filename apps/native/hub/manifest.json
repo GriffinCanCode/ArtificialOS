@@ -1,0 +1,30 @@
+{
+  "id": "hub",
+  "name": "App Hub",
+  "type": "native_web",
+  "version": "1.0.0",
+  "icon": "🚀",
+  "category": "system",
+  "author": "system",
+  "description": "Application launcher and manager with advanced search, categories, and favorites",
+  "permissions": [
+    "READ_FILE",
+    "LIST_DIRECTORY"
+  ],
+  "services": ["storage"],
+  "exports": {
+    "component": "Hub"
+  },
+  "tags": ["launcher", "apps", "system", "utilities"],
+  "features": [
+    "Virtualized app grid for performance",
+    "Fuzzy search across apps",
+    "Category filtering",
+    "Favorites and recents tracking",
+    "Keyboard-first navigation",
+    "Context menus",
+    "Responsive grid layout",
+    "Launch apps instantly"
+  ]
+}
+

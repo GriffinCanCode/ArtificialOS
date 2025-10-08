@@ -11,6 +11,8 @@ import type { SortResult } from "../../../features/dnd";
 import { Tooltip } from "../../../features/floating";
 import { BrandLogo } from "../typography/BrandLogo";
 import { DockItem } from "./DockItem";
+import { Grid as IconGrid } from "../../../features/icons";
+import type { IconType } from "../../../features/icons";
 import "./Desktop.css";
 
 interface DesktopProps {
@@ -86,12 +88,30 @@ export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpen
     [toggle, remove]
   );
 
+  // Handle icon double-click (launch app)
+  const handleIconDoubleClick = useCallback(
+    (icon: IconType) => {
+      if (icon.type === "app" && icon.metadata.type === "app") {
+        onLaunchApp(icon.metadata.appId);
+      } else if (icon.type === "native" && icon.metadata.type === "native") {
+        onLaunchApp(icon.metadata.packageId);
+      }
+    },
+    [onLaunchApp]
+  );
+
   return (
     <div className="desktop">
       {/* Desktop Background */}
       <div className="desktop-background">
         <div className="desktop-gradient" />
       </div>
+
+      {/* Desktop Icons Grid */}
+      <IconGrid
+        onIconDoubleClick={handleIconDoubleClick}
+        onBackgroundClick={() => {}}
+      />
 
       {/* Top Menu Bar */}
       <div className="desktop-menubar">

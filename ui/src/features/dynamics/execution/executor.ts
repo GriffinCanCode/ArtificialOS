@@ -172,14 +172,19 @@ export class ToolExecutor {
   async execute(toolId: string, params: Record<string, any> = {}): Promise<any> {
     const startTime = performance.now();
     try {
-      logger.debug("Executing tool", {
-        component: "ToolExecutor",
-        toolId,
-        paramsCount: Object.keys(params).length,
-      });
+      // Skip debug logging for high-frequency polling operations
+      const isHighFrequencyTool = toolId === "terminal.read";
+
+      if (!isHighFrequencyTool) {
+        logger.debug("Executing tool", {
+          component: "ToolExecutor",
+          toolId,
+          paramsCount: Object.keys(params).length,
+        });
+      }
 
       // Check if this is a service tool (backend providers)
-      const servicePrefixes = ["storage", "auth", "ai", "sync", "media", "scraper", "math"];
+      const servicePrefixes = ["storage", "auth", "ai", "sync", "media", "scraper", "math", "terminal"];
       const [category] = toolId.split(".");
 
       let result;
@@ -279,10 +284,14 @@ export class ToolExecutor {
       }
 
       const duration = performance.now() - startTime;
-      logger.performance("Tool execution", duration, {
-        component: "ToolExecutor",
-        toolId,
-      });
+
+      // Skip performance logging for high-frequency polling operations
+      if (!isHighFrequencyTool) {
+        logger.performance("Tool execution", duration, {
+          component: "ToolExecutor",
+          toolId,
+        });
+      }
 
       return result;
     } catch (error) {
