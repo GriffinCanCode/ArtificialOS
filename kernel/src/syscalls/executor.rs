@@ -40,8 +40,7 @@ pub struct SyscallExecutor {
     pub(super) fd_manager: super::fd::FdManager,
     pub(super) socket_manager: super::network::SocketManager,
     handler_registry: SyscallHandlerRegistry,
-    pub(super) timeout_pipe_ops: Option<Arc<crate::ipc::TimeoutPipeOps>>,
-    pub(super) timeout_queue_ops: Option<Arc<crate::ipc::TimeoutQueueOps>>,
+    pub(super) timeout_executor: super::timeout_executor::TimeoutExecutor,
     pub(super) timeout_config: super::timeout_config::SyscallTimeoutConfig,
 }
 
@@ -69,8 +68,7 @@ impl SyscallExecutor {
             fd_manager: super::fd::FdManager::new(),
             socket_manager: super::network::SocketManager::new(),
             handler_registry: SyscallHandlerRegistry::new(),
-            timeout_pipe_ops: None,
-            timeout_queue_ops: None,
+            timeout_executor: super::timeout_executor::TimeoutExecutor::disabled(),
             timeout_config: super::timeout_config::SyscallTimeoutConfig::new(),
         };
 
@@ -84,7 +82,13 @@ impl SyscallExecutor {
     }
 
     pub fn with_collector(mut self, collector: Arc<Collector>) -> Self {
-        self.collector = Some(collector);
+        self.collector = Some(collector.clone());
+        // Enable timeout executor with observability
+        if self.timeout_config.enabled {
+            use crate::monitoring::TimeoutObserver;
+            let observer = Arc::new(TimeoutObserver::new(collector));
+            self.timeout_executor = super::timeout_executor::TimeoutExecutor::new(Some(observer));
+        }
         self
     }
 
@@ -104,14 +108,10 @@ impl SyscallExecutor {
         let permission_manager = PermissionManager::new(sandbox_manager.clone());
         info!("Syscall executor initialized with IPC support and centralized permissions");
 
-        // Create timeout-aware operations
-        let pipe_manager_arc = Arc::new(pipe_manager);
-        let timeout_pipe_ops = Arc::new(crate::ipc::TimeoutPipeOps::new(pipe_manager_arc.clone()));
-
         let mut executor = Self {
             sandbox_manager,
             permission_manager,
-            pipe_manager: Some((*pipe_manager_arc).clone()),
+            pipe_manager: Some(pipe_manager),
             shm_manager: Some(shm_manager),
             queue_manager: None,
             mmap_manager: None,
@@ -124,23 +124,18 @@ impl SyscallExecutor {
             fd_manager: super::fd::FdManager::new(),
             socket_manager: super::network::SocketManager::new(),
             handler_registry: SyscallHandlerRegistry::new(),
-            timeout_pipe_ops: Some(timeout_pipe_ops),
-            timeout_queue_ops: None,
+            timeout_executor: super::timeout_executor::TimeoutExecutor::disabled(),
             timeout_config: super::timeout_config::SyscallTimeoutConfig::new(),
         };
 
         executor.handler_registry = Self::build_handler_registry(&executor);
-        info!("Timeout support enabled for IPC operations");
+        info!("Generic timeout executor ready for all blocking operations");
         executor
     }
 
     pub fn with_queues(mut self, queue_manager: crate::ipc::QueueManager) -> Self {
-        let queue_manager_arc = Arc::new(queue_manager);
-        let timeout_queue_ops = Arc::new(crate::ipc::TimeoutQueueOps::new(queue_manager_arc.clone()));
-
-        self.queue_manager = Some((*queue_manager_arc).clone());
-        self.timeout_queue_ops = Some(timeout_queue_ops);
-        info!("Queue support enabled for syscall executor with timeout support");
+        self.queue_manager = Some(queue_manager);
+        info!("Queue support enabled for syscall executor (using generic timeout executor)");
         self.handler_registry = Self::build_handler_registry(&self);
         self
     }
@@ -194,8 +189,7 @@ impl SyscallExecutor {
             fd_manager: super::fd::FdManager::new(),
             socket_manager: super::network::SocketManager::new(),
             handler_registry: SyscallHandlerRegistry::new(),
-            timeout_pipe_ops: None,
-            timeout_queue_ops: None,
+            timeout_executor: super::timeout_executor::TimeoutExecutor::disabled(),
             timeout_config: super::timeout_config::SyscallTimeoutConfig::default(),
         };
 

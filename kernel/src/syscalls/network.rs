@@ -360,45 +360,85 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        // Get the listener and try to accept (non-blocking)
-        if let Some(socket) = self.socket_manager.sockets.get(&sockfd) {
-            match socket.value() {
-                Socket::TcpListener(listener) => {
-                    if let Ok((stream, addr)) = listener.accept() {
-                        drop(socket); // Release lock on listener
+        // Use timeout executor for blocking accept
+        #[derive(Debug)]
+        enum AcceptError {
+            NoPendingConnections,
+            NotListener,
+            InvalidSocket,
+            Other(String),
+        }
 
-                        // Allocate new FD for the accepted connection
-                        let client_fd = self.socket_manager.allocate_fd();
-                        self.socket_manager
-                            .sockets
-                            .insert(client_fd, Socket::TcpStream(stream));
-
-                        // Track the new client socket for this process
-                        self.socket_manager.track_socket(pid, client_fd);
-
-                        info!(
-                            "PID {} accepted connection on socket {}, client FD {} from {}",
-                            pid, sockfd, client_fd, addr
-                        );
-
-                        match json::to_vec(&serde_json::json!({
-                            "client_fd": client_fd,
-                            "address": addr.to_string()
-                        })) {
-                            Ok(data) => SyscallResult::success_with_data(data),
-                            Err(e) => {
-                                warn!("Failed to serialize accept result: {}", e);
-                                SyscallResult::error("Internal serialization error")
+        let result = self.timeout_executor.execute_with_retry(
+            || {
+                if let Some(socket) = self.socket_manager.sockets.get(&sockfd) {
+                    match socket.value() {
+                        Socket::TcpListener(listener) => {
+                            match listener.accept() {
+                                Ok((stream, addr)) => {
+                                    drop(socket); // Release lock before returning
+                                    Ok((stream, addr))
+                                }
+                                Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                                    Err(AcceptError::NoPendingConnections)
+                                }
+                                Err(e) => Err(AcceptError::Other(e.to_string())),
                             }
                         }
-                    } else {
-                        SyscallResult::error("No pending connections")
+                        _ => Err(AcceptError::NotListener),
+                    }
+                } else {
+                    Err(AcceptError::InvalidSocket)
+                }
+            },
+            |e| matches!(e, AcceptError::NoPendingConnections),
+            self.timeout_config.network,
+            "socket_accept",
+        );
+
+        match result {
+            Ok((stream, addr)) => {
+                // Allocate new FD for the accepted connection
+                let client_fd = self.socket_manager.allocate_fd();
+                self.socket_manager
+                    .sockets
+                    .insert(client_fd, Socket::TcpStream(stream));
+
+                // Track the new client socket for this process
+                self.socket_manager.track_socket(pid, client_fd);
+
+                info!(
+                    "PID {} accepted connection on socket {}, client FD {} from {}",
+                    pid, sockfd, client_fd, addr
+                );
+
+                match json::to_vec(&serde_json::json!({
+                    "client_fd": client_fd,
+                    "address": addr.to_string()
+                })) {
+                    Ok(data) => SyscallResult::success_with_data(data),
+                    Err(e) => {
+                        warn!("Failed to serialize accept result: {}", e);
+                        SyscallResult::error("Internal serialization error")
                     }
                 }
-                _ => SyscallResult::error("Socket is not a TCP listener"),
             }
-        } else {
-            SyscallResult::error("Invalid socket or not listening")
+            Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+                error!("Accept timed out for PID {}, socket {} after {}ms", pid, sockfd, elapsed_ms);
+                SyscallResult::error("Accept timed out")
+            }
+            Err(super::TimeoutError::Operation(AcceptError::NotListener)) => {
+                SyscallResult::error("Socket is not a TCP listener")
+            }
+            Err(super::TimeoutError::Operation(AcceptError::InvalidSocket)) => {
+                SyscallResult::error("Invalid socket or not listening")
+            }
+            Err(super::TimeoutError::Operation(AcceptError::NoPendingConnections)) => {
+                SyscallResult::error("No pending connections")
+            }
+            Err(super::TimeoutError::Operation(AcceptError::Other(e))) => {
+                SyscallResult::error(format!("Accept failed: {}", e))
+            }
         }
     }
 
@@ -415,8 +455,15 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        // Try to connect to the address
-        match TcpStream::connect(address) {
+        // Use timeout executor for blocking connect
+        let address_owned = address.to_string();
+        let result = self.timeout_executor.execute_with_deadline(
+            || TcpStream::connect(&address_owned),
+            self.timeout_config.network,
+            "socket_connect",
+        );
+
+        match result {
             Ok(stream) => {
                 self.socket_manager
                     .sockets
@@ -424,7 +471,11 @@ impl SyscallExecutor {
                 info!("PID {} connected socket {} to {}", pid, sockfd, address);
                 SyscallResult::success()
             }
-            Err(e) => {
+            Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+                error!("Connect timed out for PID {}, socket {} to {} after {}ms", pid, sockfd, address, elapsed_ms);
+                SyscallResult::error("Connect timed out")
+            }
+            Err(super::TimeoutError::Operation(e)) => {
                 warn!("Failed to connect socket {} to {}: {}", sockfd, address, e);
                 SyscallResult::error(format!("Connect failed: {}", e))
             }
@@ -433,71 +484,134 @@ impl SyscallExecutor {
 
     pub(super) fn send(&self, pid: Pid, sockfd: u32, data: &[u8], _flags: u32) -> SyscallResult {
         // Send on existing connection - permissions already checked at connect/accept time
-        // Could add additional check here if needed
 
         use std::io::Write;
 
-        // Try to send on TCP stream
-        if let Some(mut socket) = self.socket_manager.sockets.get_mut(&sockfd) {
-            match socket.value_mut() {
-                Socket::TcpStream(stream) => match stream.write(data) {
-                    Ok(bytes_sent) => {
-                        info!(
-                            "PID {} sent {} bytes on TCP socket {}",
-                            pid, bytes_sent, sockfd
-                        );
-                        match json::to_vec(&serde_json::json!({
-                            "bytes_sent": bytes_sent
-                        })) {
-                            Ok(result) => SyscallResult::success_with_data(result),
-                            Err(e) => {
-                                warn!("Failed to serialize send result: {}", e);
-                                SyscallResult::error("Internal serialization error")
+        #[derive(Debug)]
+        enum SendError {
+            WouldBlock,
+            NotStream,
+            InvalidSocket,
+            Other(String),
+        }
+
+        let data_to_send = data.to_vec();
+        let result = self.timeout_executor.execute_with_retry(
+            || {
+                if let Some(mut socket) = self.socket_manager.sockets.get_mut(&sockfd) {
+                    match socket.value_mut() {
+                        Socket::TcpStream(stream) => match stream.write(&data_to_send) {
+                            Ok(bytes_sent) => Ok(bytes_sent),
+                            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                                Err(SendError::WouldBlock)
                             }
-                        }
+                            Err(e) => Err(SendError::Other(e.to_string())),
+                        },
+                        _ => Err(SendError::NotStream),
                     }
+                } else {
+                    Err(SendError::InvalidSocket)
+                }
+            },
+            |e| matches!(e, SendError::WouldBlock),
+            self.timeout_config.network,
+            "socket_send",
+        );
+
+        match result {
+            Ok(bytes_sent) => {
+                info!("PID {} sent {} bytes on TCP socket {}", pid, bytes_sent, sockfd);
+                match json::to_vec(&serde_json::json!({ "bytes_sent": bytes_sent })) {
+                    Ok(result) => SyscallResult::success_with_data(result),
                     Err(e) => {
-                        warn!("Send failed on socket {}: {}", sockfd, e);
-                        SyscallResult::error(format!("Send failed: {}", e))
+                        warn!("Failed to serialize send result: {}", e);
+                        SyscallResult::error("Internal serialization error")
                     }
-                },
-                _ => SyscallResult::error("Socket is not a TCP stream"),
+                }
             }
-        } else {
-            SyscallResult::error("Invalid socket or not connected")
+            Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+                error!("Send timed out for PID {}, socket {} after {}ms", pid, sockfd, elapsed_ms);
+                SyscallResult::error("Send timed out")
+            }
+            Err(super::TimeoutError::Operation(SendError::NotStream)) => {
+                SyscallResult::error("Socket is not a TCP stream")
+            }
+            Err(super::TimeoutError::Operation(SendError::InvalidSocket)) => {
+                SyscallResult::error("Invalid socket or not connected")
+            }
+            Err(super::TimeoutError::Operation(SendError::WouldBlock)) => {
+                SyscallResult::error("Send would block")
+            }
+            Err(super::TimeoutError::Operation(SendError::Other(e))) => {
+                warn!("Send failed on socket {}: {}", sockfd, e);
+                SyscallResult::error(format!("Send failed: {}", e))
+            }
         }
     }
 
     pub(super) fn recv(&self, pid: Pid, sockfd: u32, size: usize, _flags: u32) -> SyscallResult {
         // Receive on existing connection - permissions already checked at connect/accept time
-        // Could add additional check here if needed
 
         use std::io::Read;
 
-        // Try to receive from TCP stream
-        if let Some(mut socket) = self.socket_manager.sockets.get_mut(&sockfd) {
-            match socket.value_mut() {
-                Socket::TcpStream(stream) => {
-                    let mut buffer = vec![0u8; size];
-                    match stream.read(&mut buffer) {
-                        Ok(bytes_read) => {
-                            buffer.truncate(bytes_read);
-                            info!(
-                                "PID {} received {} bytes on TCP socket {}",
-                                pid, bytes_read, sockfd
-                            );
-                            SyscallResult::success_with_data(buffer)
+        #[derive(Debug)]
+        enum RecvError {
+            WouldBlock,
+            NotStream,
+            InvalidSocket,
+            Other(String),
+        }
+
+        let result = self.timeout_executor.execute_with_retry(
+            || {
+                if let Some(mut socket) = self.socket_manager.sockets.get_mut(&sockfd) {
+                    match socket.value_mut() {
+                        Socket::TcpStream(stream) => {
+                            let mut buffer = vec![0u8; size];
+                            match stream.read(&mut buffer) {
+                                Ok(bytes_read) => {
+                                    buffer.truncate(bytes_read);
+                                    Ok(buffer)
+                                }
+                                Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                                    Err(RecvError::WouldBlock)
+                                }
+                                Err(e) => Err(RecvError::Other(e.to_string())),
+                            }
                         }
-                        Err(e) => {
-                            warn!("Recv failed on socket {}: {}", sockfd, e);
-                            SyscallResult::error(format!("Recv failed: {}", e))
-                        }
+                        _ => Err(RecvError::NotStream),
                     }
+                } else {
+                    Err(RecvError::InvalidSocket)
                 }
-                _ => SyscallResult::error("Socket is not a TCP stream"),
+            },
+            |e| matches!(e, RecvError::WouldBlock),
+            self.timeout_config.network,
+            "socket_recv",
+        );
+
+        match result {
+            Ok(buffer) => {
+                info!("PID {} received {} bytes on TCP socket {}", pid, buffer.len(), sockfd);
+                SyscallResult::success_with_data(buffer)
             }
-        } else {
-            SyscallResult::error("Invalid socket or not connected")
+            Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+                error!("Recv timed out for PID {}, socket {} after {}ms", pid, sockfd, elapsed_ms);
+                SyscallResult::error("Recv timed out")
+            }
+            Err(super::TimeoutError::Operation(RecvError::NotStream)) => {
+                SyscallResult::error("Socket is not a TCP stream")
+            }
+            Err(super::TimeoutError::Operation(RecvError::InvalidSocket)) => {
+                SyscallResult::error("Invalid socket or not connected")
+            }
+            Err(super::TimeoutError::Operation(RecvError::WouldBlock)) => {
+                SyscallResult::error("Recv would block")
+            }
+            Err(super::TimeoutError::Operation(RecvError::Other(e))) => {
+                warn!("Recv failed on socket {}: {}", sockfd, e);
+                SyscallResult::error(format!("Recv failed: {}", e))
+            }
         }
     }
 
