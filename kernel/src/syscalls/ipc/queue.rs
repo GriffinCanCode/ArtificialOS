@@ -85,7 +85,7 @@ impl SyscallExecutorWithIpc {
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
         span.record("queue_id", &format!("{}", queue_id));
-        span.record("data_len", &format!("{}", data.len().into()));
+        span.record("data_len", &format!("{}", data.len()));
         if let Some(p) = priority {
             span.record("priority", &format!("{}", p));
         }
@@ -179,18 +179,20 @@ impl SyscallExecutorWithIpc {
             "queue_receive",
         );
 
+        use crate::core::memory::arena::with_arena;
+
         match result {
             Ok(msg) => {
-                // Read message data from MemoryManager
                 match queue_manager.read_message_data(&msg) {
-                    Ok(data) => {
+                    Ok(data) => with_arena(|arena| {
                         info!(
                             "PID {} received {} bytes from queue {}",
                             pid,
                             data.len(),
                             queue_id
                         );
-                        span.record("bytes_received", &format!("{}", data.len().into()));
+                        let bytes_str = arena.alloc_str(&data.len().to_string());
+                        span.record("bytes_received", bytes_str);
                         span.record_result(true);
 
                         #[derive(serde::Serialize)]
@@ -215,12 +217,13 @@ impl SyscallExecutorWithIpc {
                                 SyscallResult::error("Serialization failed")
                             }
                         }
-                    }
-                    Err(e) => {
+                    }),
+                    Err(e) => with_arena(|arena| {
                         error!("Failed to read message data: {}", e);
-                        span.record_error(&format!("Read failed: {}", e));
+                        let err_msg = arena.alloc(format!("Read failed: {}", e));
+                        span.record_error(err_msg);
                         SyscallResult::error(format!("Read failed: {}", e))
-                    }
+                    })
                 }
             }
             Err(super::super::TimeoutError::Timeout { elapsed_ms, .. }) => {
@@ -231,7 +234,7 @@ impl SyscallExecutorWithIpc {
                 span.record_error(&format!("Timeout after {}ms", elapsed_ms));
                 SyscallResult::error("Queue receive timed out")
             }
-            Err(super::super::TimeoutError::Operation(ReceiveError::Ipc(e).into())) => {
+            Err(super::super::TimeoutError::Operation(ReceiveError::Ipc(e))) => {
                 error!("Queue receive failed: {}", e);
                 span.record_error(&format!("Receive failed: {}", e));
                 SyscallResult::error(format!("Receive failed: {}", e))

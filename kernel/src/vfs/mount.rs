@@ -137,37 +137,39 @@ impl MountManager {
 
     /// Resolve path to (filesystem, relative_path, readonly)
     fn resolve(&self, path: &Path) -> VfsResult<(Arc<dyn FileSystem>, PathBuf, bool)> {
-        let path = self.normalize_path(path);
-        let order = self.mount_order.read();
+        use crate::core::memory::arena::with_arena;
 
-        // Find longest matching mount point
-        for mount_path in order.iter() {
-            if path.starts_with(mount_path) {
-                // Atomically get mount entry - handle concurrent unmount race condition
-                let entry = self.mounts.get(mount_path).ok_or_else(|| {
-                    VfsError::NotFound(format!(
-                        "mount point was removed concurrently: {}",
-                        mount_path.display()
-                    ))
-                })?;
+        with_arena(|_arena| {
+            let path = self.normalize_path(path);
+            let order = self.mount_order.read();
 
-                let fs = entry.fs.clone();
-                let readonly = entry.readonly;
-                let rel_path = if path == *mount_path {
-                    PathBuf::from("/")
-                } else {
-                    path.strip_prefix(mount_path)
-                        .map(|p| PathBuf::from("/").join(p))
-                        .unwrap_or_else(|_| PathBuf::from("/"))
-                };
-                return Ok((fs, rel_path, readonly));
+            for mount_path in order.iter() {
+                if path.starts_with(mount_path) {
+                    let entry = self.mounts.get(mount_path).ok_or_else(|| {
+                            VfsError::NotFound(format!(
+                            "mount point was removed concurrently: {}",
+                            mount_path.display()
+                        ).into())
+                    })?;
+
+                    let fs = entry.fs.clone();
+                    let readonly = entry.readonly;
+                    let rel_path = if path == *mount_path {
+                        PathBuf::from("/")
+                    } else {
+                        path.strip_prefix(mount_path)
+                            .map(|p| PathBuf::from("/").join(p))
+                            .unwrap_or_else(|_| PathBuf::from("/"))
+                    };
+                    return Ok((fs, rel_path, readonly));
+                }
             }
-        }
 
-        Err(VfsError::NotFound(format!(
-            "no filesystem mounted for path: {}",
-            path.display()
-        ).into()))
+            Err(VfsError::NotFound(format!(
+                "no filesystem mounted for path: {}",
+                path.display()
+            ).into()))
+        })
     }
 
     /// Check if mount point allows writes

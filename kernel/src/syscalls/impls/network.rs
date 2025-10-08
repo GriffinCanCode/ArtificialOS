@@ -293,26 +293,31 @@ impl SyscallExecutorWithIpc {
         // Track socket for this process (socket will be created on bind/connect)
         self.socket_manager().track_socket(pid, sockfd);
 
-        info!(
-            "PID {} allocated socket FD {} (domain={}, type={}, protocol={})",
-            pid, sockfd, domain, socket_type, protocol
-        );
-        span.record("sockfd", &format!("{}", sockfd));
-        span.record_result(true);
+        use crate::core::memory::arena::with_arena;
 
-        match json::to_vec(&serde_json::json!({
-            "sockfd": sockfd,
-            "domain": domain,
-            "type": socket_type,
-            "protocol": protocol
-        })) {
-            Ok(data) => SyscallResult::success_with_data(data),
-            Err(e) => {
-                warn!("Failed to serialize socket result: {}", e);
-                span.record_error("Serialization failed");
-                SyscallResult::error("Internal serialization error")
+        with_arena(|arena| {
+            info!(
+                "PID {} allocated socket FD {} (domain={}, type={}, protocol={})",
+                pid, sockfd, domain, socket_type, protocol
+            );
+            let sockfd_str = arena.alloc_str(&sockfd.to_string());
+            span.record("sockfd", sockfd_str);
+            span.record_result(true);
+
+            match json::to_vec(&serde_json::json!({
+                "sockfd": sockfd,
+                "domain": domain,
+                "type": socket_type,
+                "protocol": protocol
+            })) {
+                Ok(data) => SyscallResult::success_with_data(data),
+                Err(e) => {
+                    warn!("Failed to serialize socket result: {}", e);
+                    span.record_error("Serialization failed");
+                    SyscallResult::error("Internal serialization error")
+                }
             }
-        }
+        })
     }
 
     pub(in crate::syscalls) fn bind(&self, pid: Pid, sockfd: u32, address: &str) -> SyscallResult {
@@ -527,7 +532,7 @@ impl SyscallExecutorWithIpc {
                 span.record_error("No pending connections");
                 SyscallResult::error("No pending connections")
             }
-            Err(TimeoutError::Operation(AcceptError::Other(e).into())) => {
+            Err(TimeoutError::Operation(AcceptError::Other(e))) => {
                 span.record_error(&format!("Accept failed: {}", e));
                 SyscallResult::error(format!("Accept failed: {}", e))
             }
@@ -603,7 +608,7 @@ impl SyscallExecutorWithIpc {
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
         span.record("sockfd", &format!("{}", sockfd));
-        span.record("data_size", &format!("{}", data.len().into()));
+        span.record("data_size", &format!("{}", data.len()));
 
         // Send on existing connection - permissions already checked at connect/accept time
 
@@ -680,7 +685,7 @@ impl SyscallExecutorWithIpc {
                 span.record_error("Send would block");
                 SyscallResult::error("Send would block")
             }
-            Err(TimeoutError::Operation(SendError::Other(e).into())) => {
+            Err(TimeoutError::Operation(SendError::Other(e))) => {
                 warn!("Send failed on socket {}: {}", sockfd, e);
                 span.record_error(&format!("Send failed: {}", e));
                 SyscallResult::error(format!("Send failed: {}", e))
@@ -750,7 +755,7 @@ impl SyscallExecutorWithIpc {
                     buffer.len(),
                     sockfd
                 );
-                span.record("bytes_received", &format!("{}", buffer.len().into()));
+                span.record("bytes_received", &format!("{}", buffer.len()));
                 span.record_result(true);
                 SyscallResult::success_with_data(buffer)
             }
@@ -774,7 +779,7 @@ impl SyscallExecutorWithIpc {
                 span.record_error("Recv would block");
                 SyscallResult::error("Recv would block")
             }
-            Err(TimeoutError::Operation(RecvError::Other(e).into())) => {
+            Err(TimeoutError::Operation(RecvError::Other(e))) => {
                 warn!("Recv failed on socket {}: {}", sockfd, e);
                 span.record_error(&format!("Recv failed: {}", e));
                 SyscallResult::error(format!("Recv failed: {}", e))
@@ -795,7 +800,7 @@ impl SyscallExecutorWithIpc {
         span.record("pid", &format!("{}", pid));
         span.record("sockfd", &format!("{}", sockfd));
         span.record("address", address);
-        span.record("data_size", &format!("{}", data.len().into()));
+        span.record("data_size", &format!("{}", data.len()));
 
         // Parse host:port from address and check network access
         let parts: Vec<&str> = address.split(':').collect();

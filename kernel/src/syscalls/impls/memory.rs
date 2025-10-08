@@ -39,17 +39,21 @@ impl SyscallExecutorWithIpc {
             None => return SyscallResult::error("Memory manager not available"),
         };
 
-        let stats = memory_manager.stats();
-        match json::to_vec(&stats) {
-            Ok(data) => {
-                info!("PID {} retrieved global memory stats", pid);
-                SyscallResult::success_with_data(data)
+        use crate::core::memory::arena::with_arena;
+
+        with_arena(|_arena| {
+            let stats = memory_manager.stats();
+            match json::to_vec(&stats) {
+                Ok(data) => {
+                    info!("PID {} retrieved global memory stats", pid);
+                    SyscallResult::success_with_data(data)
+                }
+                Err(e) => {
+                    error!("Failed to serialize memory stats: {}", e);
+                    SyscallResult::error("Serialization failed")
+                }
             }
-            Err(e) => {
-                error!("Failed to serialize memory stats: {}", e);
-                SyscallResult::error("Serialization failed")
-            }
-        }
+        })
     }
 
     pub(in crate::syscalls) fn get_process_memory_stats(

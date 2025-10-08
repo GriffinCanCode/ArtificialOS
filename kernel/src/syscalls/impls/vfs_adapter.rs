@@ -62,7 +62,7 @@ impl SyscallExecutorWithIpc {
                         path,
                         data.len()
                     );
-                    span.record("bytes_read", &format!("{}", data.len().into()));
+                    span.record("bytes_read", &format!("{}", data.len()));
                     span.record("method", "vfs");
                     span.record_result(true);
                     return SyscallResult::success_with_data(data);
@@ -96,7 +96,7 @@ impl SyscallExecutorWithIpc {
         match result {
             Ok(data) => {
                 info!("PID {} read file: {:?} ({} bytes)", pid, path, data.len());
-                span.record("bytes_read", &format!("{}", data.len().into()));
+                span.record("bytes_read", &format!("{}", data.len()));
                 span.record("method", "std::fs");
                 span.record_result(true);
                 SyscallResult::success_with_data(data)
@@ -129,7 +129,7 @@ impl SyscallExecutorWithIpc {
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
         span.record("path", &format!("{:?}", path));
-        span.record("data_len", &format!("{}", data.len().into()));
+        span.record("data_len", &format!("{}", data.len()));
 
         let file_exists = path.exists();
         let check_path = if file_exists {
@@ -536,8 +536,8 @@ impl SyscallExecutorWithIpc {
             let span = span_operation("vfs_list_dir");
             let _guard = span.enter();
 
-            span.record("pid", arena.alloc(format!("{}", pid).into()));
-            span.record("path", arena.alloc(format!("{:?}", path).into()));
+            span.record("pid", arena.alloc(format!("{}", pid)));
+            span.record("path", arena.alloc(format!("{:?}", path)));
 
             let request = PermissionRequest::dir_list(pid, path.to_path_buf());
             let response = self.permission_manager().check_and_audit(&request);
@@ -590,7 +590,7 @@ impl SyscallExecutorWithIpc {
                             }
                             Err(e) => {
                                 error!("Failed to serialize VFS directory listing: {}", e);
-                                span.record_error(arena.alloc(format!("Serialization failed: {}", e).into()));
+                                span.record_error(arena.alloc(format!("Serialization failed: {}", e)));
                                 return SyscallResult::error(format!("Failed to serialize directory listing: {}", e));
                             }
                         }
@@ -600,14 +600,14 @@ impl SyscallExecutorWithIpc {
                             "VFS list_dir timed out for {:?} after {}ms (slow storage or large directory?), falling back to std::fs",
                             path, elapsed_ms
                         );
-                        span.record("vfs_timeout_ms", arena.alloc(format!("{}", elapsed_ms).into()));
+                        span.record("vfs_timeout_ms", arena.alloc(format!("{}", elapsed_ms)));
                     }
                     Err(TimeoutError::Operation(e)) => {
                         warn!(
                             "VFS list_dir failed for {:?}: {}, falling back to std::fs",
                             path, e
                         );
-                        span.record("vfs_error", arena.alloc(format!("{}", e).into()));
+                        span.record("vfs_error", arena.alloc(format!("{}", e)));
                     }
                 }
             }
@@ -622,18 +622,19 @@ impl SyscallExecutorWithIpc {
 
             match result {
                 Ok(entries) => {
-                    let files: Vec<serde_json::Value> = entries
-                        .filter_map(|e| e.ok())
-                        .filter_map(|entry| {
-                            let name = entry.file_name().into_string().ok()?;
-                            let is_dir = entry.file_type().ok()?.is_dir();
-                            Some(serde_json::json!({
-                                "name": name,
-                                "is_dir": is_dir,
-                                "type": if is_dir { "directory" } else { "file" }
-                            }))
-                        })
-                        .collect();
+                    let mut files = bumpalo::collections::Vec::new_in(arena);
+                    for entry in entries {
+                        if let Ok(entry) = entry {
+                            if let (Ok(name), Ok(file_type)) = (entry.file_name().into_string(), entry.file_type()) {
+                                let is_dir = file_type.is_dir();
+                                files.push(serde_json::json!({
+                                    "name": name,
+                                    "is_dir": is_dir,
+                                    "type": if is_dir { "directory" } else { "file" }
+                                }));
+                            }
+                        }
+                    }
 
                     info!(
                         "PID {} listed directory: {:?} ({} entries)",
@@ -646,14 +647,16 @@ impl SyscallExecutorWithIpc {
                     span.record("entry_count", count_str);
                     span.record("method", "std::fs");
 
-                    match json::serialize_vfs_batch(&files) {
+                    let files_vec: Vec<_> = files.into_iter().collect();
+                    match json::serialize_vfs_batch(&files_vec) {
                         Ok(json) => {
                             span.record_result(true);
                             SyscallResult::success_with_data(json.to_vec())
                         }
                         Err(e) => {
                             error!("Failed to serialize directory listing: {}", e);
-                            span.record_error(arena.alloc(format!("Serialization failed: {}", e).into()));
+                            let err_msg = arena.alloc(format!("Serialization failed: {}", e));
+                            span.record_error(err_msg);
                             SyscallResult::error(format!("Failed to serialize directory listing: {}", e))
                         }
                     }
@@ -663,7 +666,7 @@ impl SyscallExecutorWithIpc {
                         "List directory timed out for {:?} after {}ms",
                         path, elapsed_ms
                     );
-                    span.record_error(arena.alloc(format!("Timeout after {}ms", elapsed_ms).into()));
+                    span.record_error(arena.alloc(format!("Timeout after {}ms", elapsed_ms)));
                     SyscallResult::error(format!(
                         "List directory timed out after {}ms (slow storage or large directory?)",
                         elapsed_ms
@@ -671,7 +674,7 @@ impl SyscallExecutorWithIpc {
                 }
                 Err(TimeoutError::Operation(e)) => {
                     error!("List directory failed for {:?}: {}", path, e);
-                    span.record_error(arena.alloc(format!("List failed: {}", e).into()));
+                    span.record_error(arena.alloc(format!("List failed: {}", e)));
                     SyscallResult::error(format!("List failed: {}", e))
                 }
             }

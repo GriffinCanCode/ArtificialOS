@@ -40,59 +40,49 @@ impl LocalFS {
     /// Prevents directory traversal attacks by manual component processing
     /// This approach works for both existing and non-existing paths
     fn resolve(&self, path: &Path) -> PathBuf {
-        // Strip leading / from absolute paths
-        let path_to_process = if path.is_absolute() {
-            path.strip_prefix("/").unwrap_or(path)
-        } else {
-            path
-        };
+        use crate::core::memory::arena::with_arena;
 
-        // Build normalized path by processing components
-        // This prevents .. from escaping the root boundary
-        let mut components = Vec::with_capacity(8);
+        with_arena(|arena| {
+            let path_to_process = if path.is_absolute() {
+                path.strip_prefix("/").unwrap_or(path)
+            } else {
+                path
+            };
 
-        for component in path_to_process.components() {
-            match component {
-                std::path::Component::Normal(name) => {
-                    components.push(name);
-                }
-                std::path::Component::ParentDir => {
-                    // Only allow .. if we have components to pop
-                    // This prevents escaping the root
-                    if !components.is_empty() {
-                        components.pop();
+            let mut components = bumpalo::collections::Vec::with_capacity_in(8, arena);
+
+            for component in path_to_process.components() {
+                match component {
+                    std::path::Component::Normal(name) => {
+                        components.push(name);
                     }
-                    // If components is empty, we're at root boundary - ignore the ..
-                }
-                std::path::Component::CurDir => {
-                    // Ignore . components
-                }
-                _ => {
-                    // Ignore other component types (Prefix on Windows, RootDir)
+                    std::path::Component::ParentDir => {
+                        if !components.is_empty() {
+                            components.pop();
+                        }
+                    }
+                    std::path::Component::CurDir => {}
+                    _ => {}
                 }
             }
-        }
 
-        // Build final path from root + normalized components
-        let mut result = self.root.clone();
-        for component in components {
-            result.push(component);
-        }
+            let mut result = self.root.clone();
+            for component in components.iter() {
+                result.push(component);
+            }
 
-        // For existing paths, verify with canonicalization as a safety check
-        if result.exists() {
-            if let Ok(canonical) = result.canonicalize() {
-                if let Ok(canonical_root) = self.root.canonicalize() {
-                    // Extra safety: verify the canonical path is within root
-                    if canonical.starts_with(&canonical_root) {
-                        return canonical;
+            if result.exists() {
+                if let Ok(canonical) = result.canonicalize() {
+                    if let Ok(canonical_root) = self.root.canonicalize() {
+                        if canonical.starts_with(&canonical_root) {
+                            return canonical;
+                        }
                     }
-                    // If not within root, use the manually normalized path
                 }
             }
-        }
 
-        result
+            result
+        })
     }
 
     /// Check write permission
@@ -106,11 +96,12 @@ impl LocalFS {
     /// Convert std::io::Error to VfsError
     fn io_error(e: std::io::Error, context: impl Into<String>) -> VfsError {
         use std::io::ErrorKind;
+        let context_str: String = context.into();
         match e.kind() {
-            ErrorKind::NotFound => VfsError::NotFound(context.into()),
-            ErrorKind::PermissionDenied => VfsError::PermissionDenied(context.into()),
-            ErrorKind::AlreadyExists => VfsError::AlreadyExists(context.into()),
-            _ => VfsError::IoError(format!("{}: {}", context.into(), e)),
+            ErrorKind::NotFound => VfsError::NotFound(context_str.into()),
+            ErrorKind::PermissionDenied => VfsError::PermissionDenied(context_str.into()),
+            ErrorKind::AlreadyExists => VfsError::AlreadyExists(context_str.into()),
+            _ => VfsError::IoError(format!("{}: {}", context_str, e).into()),
         }
     }
 
@@ -258,7 +249,7 @@ impl FileSystem for LocalFS {
             let name = entry
                 .file_name()
                 .into_string()
-                .map_err(|_| VfsError::InvalidPath(format!("invalid UTF-8 in filename")))?;
+                .map_err(|_| VfsError::InvalidPath(format!("invalid UTF-8 in filename").into()))?;
             let file_type = entry
                 .file_type()
                 .map_err(|e| Self::io_error(e, format!("get file type for {}", name)))?;
@@ -462,21 +453,21 @@ impl OpenFile for LocalFile {
     fn sync(&mut self) -> VfsResult<()> {
         self.file
             .sync_all()
-            .map_err(|e| VfsError::IoError(format!("sync: {}", e)))
+            .map_err(|e| VfsError::IoError(format!("sync: {}", e).into()))
     }
 
     fn metadata(&self) -> VfsResult<Metadata> {
         let md = self
             .file
             .metadata()
-            .map_err(|e| VfsError::IoError(format!("metadata: {}", e)))?;
+            .map_err(|e| VfsError::IoError(format!("metadata: {}", e).into()))?;
         Ok(LocalFS::convert_metadata(md))
     }
 
     fn set_len(&mut self, size: u64) -> VfsResult<()> {
         self.file
             .set_len(size)
-            .map_err(|e| VfsError::IoError(format!("set_len: {}", e)))
+            .map_err(|e| VfsError::IoError(format!("set_len: {}", e).into()))
     }
 }
 

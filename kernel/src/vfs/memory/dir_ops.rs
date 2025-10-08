@@ -13,21 +13,25 @@ use super::MemFS;
 
 impl MemFS {
     pub(super) fn list_dir_impl(&self, path: &Path) -> VfsResult<Vec<Entry>> {
-        let path = self.normalize(path);
+        use crate::core::memory::arena::with_arena;
 
-        match self.nodes.get(&path).map(|n| n.clone()) {
-            Some(Node::Directory { children, .. }) => {
-                let mut entries = Vec::new();
-                for (name, child_path) in children {
-                    if let Some(node) = self.nodes.get(&child_path) {
-                        entries.push(Entry::new_unchecked(name.clone(), node.file_type().into()));
+        with_arena(|arena| {
+            let path = self.normalize(path);
+
+            match self.nodes.get(&path).map(|n| n.clone()) {
+                Some(Node::Directory { children, .. }) => {
+                    let mut entries = bumpalo::collections::Vec::with_capacity_in(children.len(), arena);
+                    for (name, child_path) in children {
+                        if let Some(node) = self.nodes.get(&child_path) {
+                            entries.push(Entry::new_unchecked(name.clone(), node.file_type().into()));
+                        }
                     }
+                    Ok(entries.into_iter().collect())
                 }
-                Ok(entries)
+                Some(Node::File { .. }) => Err(VfsError::NotADirectory(path.display().to_string().into())),
+                None => Err(VfsError::NotFound(path.display().to_string().into())),
             }
-            Some(Node::File { .. }) => Err(VfsError::NotADirectory(path.display().to_string().into())),
-            None => Err(VfsError::NotFound(path.display().to_string().into())),
-        }
+        })
     }
 
     pub(super) fn create_dir_impl(&self, path: &Path) -> VfsResult<()> {
@@ -128,43 +132,45 @@ impl MemFS {
     }
 
     pub(super) fn remove_dir_all_impl(&self, path: &Path) -> VfsResult<()> {
-        let path = self.normalize(path);
+        use crate::core::memory::arena::with_arena;
 
-        // Collect all paths to remove
-        let mut to_remove = Vec::new();
-        let mut to_visit = vec![path.clone()];
+        with_arena(|arena| {
+            let path = self.normalize(path);
 
-        while let Some(current) = to_visit.pop() {
-            if let Some(entry) = self.nodes.get(&current) {
-                if let Node::Directory { children, .. } = entry.value() {
-                    for child_path in children.values() {
-                        to_visit.push(child_path.clone());
+            let mut to_remove = bumpalo::collections::Vec::new_in(arena);
+            let mut to_visit = bumpalo::collections::Vec::new_in(arena);
+            to_visit.push(path.clone());
+
+            while let Some(current) = to_visit.pop() {
+                if let Some(entry) = self.nodes.get(&current) {
+                    if let Node::Directory { children, .. } = entry.value() {
+                        for child_path in children.values() {
+                            to_visit.push(child_path.clone());
+                        }
                     }
                 }
+                to_remove.push(current);
             }
-            to_remove.push(current);
-        }
 
-        // Remove in reverse order (children before parents)
-        to_remove.reverse();
-        let mut total_size = 0;
+            to_remove.reverse();
+            let mut total_size = 0;
 
-        for path_to_remove in to_remove {
-            if let Some(entry) = self.nodes.get(&path_to_remove) {
-                if let Node::File { data, .. } = entry.value() {
-                    total_size += data.lock().len();
+            for path_to_remove in to_remove.iter() {
+                if let Some(entry) = self.nodes.get(path_to_remove) {
+                    if let Node::File { data, .. } = entry.value() {
+                        total_size += data.lock().len();
+                    }
                 }
+                self.nodes.remove(path_to_remove);
             }
-            self.nodes.remove(&path_to_remove);
-        }
 
-        // Remove from parent
-        if let Some(parent) = self.parent_path(&path) {
-            let dir_name = self.file_name(&path)?;
-            self.remove_child(&parent, &dir_name)?;
-        }
+            if let Some(parent) = self.parent_path(&path) {
+                let dir_name = self.file_name(&path)?;
+                self.remove_child(&parent, &dir_name)?;
+            }
 
-        self.update_size_delta(-(total_size as isize));
-        Ok(())
+            self.update_size_delta(-(total_size as isize));
+            Ok(())
+        })
     }
 }

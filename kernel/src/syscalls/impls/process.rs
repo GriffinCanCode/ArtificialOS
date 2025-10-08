@@ -29,7 +29,7 @@ impl SyscallExecutorWithIpc {
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
         span.record("command", command);
-        span.record("args_count", &format!("{}", args.len().into()));
+        span.record("args_count", &format!("{}", args.len()));
 
         let request = PermissionRequest::new(pid, Resource::Process { pid: 0 }, Action::Create);
         let response = self.permission_manager().check_and_audit(&request);
@@ -78,18 +78,23 @@ impl SyscallExecutorWithIpc {
                     exit_code: output.status.code().unwrap_or(-1),
                 };
 
-                self.sandbox_manager().record_termination(pid);
-                span.record("exit_code", &format!("{}", process_output.exit_code));
-                span.record_result(true);
+                use crate::core::memory::arena::with_arena;
 
-                match json::to_vec(&process_output) {
-                    Ok(result) => SyscallResult::success_with_data(result),
-                    Err(e) => {
-                        error!("Failed to serialize process output: {}", e);
-                        span.record_error("Failed to serialize process output");
-                        SyscallResult::error("Failed to serialize process output")
+                with_arena(|arena| {
+                    self.sandbox_manager().record_termination(pid);
+                    let exit_code_str = arena.alloc_str(&process_output.exit_code.to_string());
+                    span.record("exit_code", exit_code_str);
+                    span.record_result(true);
+
+                    match json::to_vec(&process_output) {
+                        Ok(result) => SyscallResult::success_with_data(result),
+                        Err(e) => {
+                            error!("Failed to serialize process output: {}", e);
+                            span.record_error("Failed to serialize process output");
+                            SyscallResult::error("Failed to serialize process output")
+                        }
                     }
-                }
+                })
             }
             Err(e) => {
                 error!("Failed to spawn process: {}", e);
@@ -194,7 +199,7 @@ impl SyscallExecutorWithIpc {
         };
 
         let processes = process_manager.list_processes();
-        span.record("process_count", &format!("{}", processes.len().into()));
+        span.record("process_count", &format!("{}", processes.len()));
         match json::to_vec(&processes) {
             Ok(data) => {
                 info!("PID {} listed {} processes", pid, processes.len());
@@ -269,7 +274,7 @@ impl SyscallExecutorWithIpc {
                     SyscallResult::error("Serialization failed")
                 }
             },
-            None => SyscallResult::error(format!("Process {} not found", target_pid).into()),
+            None => SyscallResult::error(format!("Process {} not found", target_pid)),
         }
     }
 
@@ -302,7 +307,7 @@ impl SyscallExecutorWithIpc {
                     SyscallResult::error("Serialization failed")
                 }
             },
-            None => SyscallResult::error(format!("No stats available for process {}", target_pid).into()),
+            None => SyscallResult::error(format!("No stats available for process {}", target_pid)),
         }
     }
 
@@ -345,7 +350,7 @@ impl SyscallExecutorWithIpc {
 
         span.record(
             "timeout_ms",
-            &format!("{:?}", timeout.duration().map(|d| d.as_millis().into())),
+            &format!("{:?}", timeout.duration().map(|d| d.as_millis())),
         );
 
         // Define error type for process wait
