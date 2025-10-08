@@ -43,20 +43,28 @@ impl BatchExecutor {
         let mut output = Vec::with_capacity(count);
         for r in results {
             output.push(r.unwrap_or_else(|e| SyscallResult::Error {
-                message: format!("Task error: {}", e),
+                message: format!("Task error: {}", e).into(),
             }));
         }
         output
     }
 
     async fn execute_sequential(&self, requests: Vec<(Pid, Syscall)>) -> Vec<SyscallResult> {
+        use crate::core::optimization::prefetch_read;
+
         let mut results = Vec::with_capacity(requests.len());
-        for (pid, syscall) in requests {
+        let len = requests.len();
+
+        for (i, (pid, syscall)) in requests.into_iter().enumerate() {
+            if i + 2 < len {
+                prefetch_read(&pid as *const _);
+            }
+
             let executor = self.executor.clone();
             let result = tokio::task::spawn_blocking(move || executor.execute(pid, syscall))
                 .await
                 .unwrap_or_else(|e| SyscallResult::Error {
-                    message: format!("Task error: {}", e),
+                    message: format!("Task error: {}", e).into(),
                 });
             results.push(result);
         }

@@ -161,8 +161,13 @@ impl MemFS {
 
             to_remove.reverse();
             let mut total_size = 0;
+            let len = to_remove.len();
 
-            for path_to_remove in to_remove.iter() {
+            for (i, path_to_remove) in to_remove.iter().enumerate() {
+                if i + 3 < len {
+                    crate::core::optimization::prefetch_read(&to_remove[i + 3] as *const PathBuf);
+                }
+
                 if let Some(entry) = self.nodes.get(path_to_remove) {
                     if let Node::File { data, .. } = entry.value() {
                         total_size += data.lock().len();

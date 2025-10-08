@@ -53,6 +53,8 @@ impl SyscallCompletionQueue {
     /// This operation requires scanning the queue and is O(n). For best performance,
     /// prefer popping in order rather than searching for specific completions.
     pub fn find_and_remove(&self, seq: u64) -> Option<SyscallCompletionEntry> {
+        use crate::core::optimization::prefetch_write;
+
         let mut temp = Vec::with_capacity(32);
         let mut found = None;
 
@@ -64,8 +66,11 @@ impl SyscallCompletionQueue {
             }
         }
 
-        for entry in temp {
-            let _ = self.ring.push(entry);
+        for (i, entry) in temp.iter().enumerate() {
+            if i + 4 < temp.len() {
+                prefetch_write(&temp[i + 4] as *const _);
+            }
+            let _ = self.ring.push(entry.clone());
         }
 
         found

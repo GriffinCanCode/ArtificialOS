@@ -113,15 +113,20 @@ impl IoUringManager {
         pid: Pid,
         entries: Vec<SyscallSubmissionEntry>,
     ) -> Result<Vec<u64>, IoUringError> {
+        use crate::core::optimization::prefetch_read;
+
         let ring = self.get_or_create_ring(pid)?;
         let mut seqs = Vec::with_capacity(entries.len());
+        let len = entries.len();
 
-        for entry in entries {
+        for (i, entry) in entries.into_iter().enumerate() {
+            if i + 2 < len {
+                prefetch_read(&entry as *const _);
+            }
             let seq = ring.submit(entry)?;
             seqs.push(seq);
         }
 
-        // Spawn async batch execution
         let ring_clone = ring.clone();
         let executor = self.executor.clone();
         tokio::spawn(async move {

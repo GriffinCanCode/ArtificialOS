@@ -52,7 +52,14 @@ impl Scheduler {
         self.stats.set_policy(new_policy);
 
         // Requeue all processes under new policy and update location index
-        for entry in all_entries {
+        use crate::core::optimization::prefetch_read;
+
+        let len = all_entries.len();
+        for (i, entry) in all_entries.into_iter().enumerate() {
+            if i + 3 < len {
+                prefetch_read(&entry as *const _);
+            }
+
             let pid = entry.pid;
             match new_policy {
                 SchedulingPolicy::RoundRobin => {
@@ -118,7 +125,8 @@ impl Scheduler {
                 false
             }
             QueueLocation::Priority => {
-                // For heap, need to rebuild - unavoidable with BinaryHeap
+                use crate::core::optimization::prefetch_read;
+
                 let mut queue = self.priority_queue.write();
                 let mut entries: Vec<Entry> = queue.drain().collect();
                 let found = entries.iter_mut().any(|e| {
@@ -130,8 +138,11 @@ impl Scheduler {
                     }
                 });
 
-                // Rebuild heap
-                for entry in entries {
+                let len = entries.len();
+                for (i, entry) in entries.into_iter().enumerate() {
+                    if i + 3 < len {
+                        prefetch_read(&entry as *const _);
+                    }
                     queue.push(entry);
                 }
 
@@ -144,7 +155,8 @@ impl Scheduler {
                 found
             }
             QueueLocation::Fair => {
-                // For heap, need to rebuild - unavoidable with BinaryHeap
+                use crate::core::optimization::prefetch_read;
+
                 let mut queue = self.fair_queue.write();
                 let mut entries: Vec<FairEntry> = queue.drain().collect();
                 let found = entries.iter_mut().any(|e| {
@@ -156,8 +168,11 @@ impl Scheduler {
                     }
                 });
 
-                // Rebuild heap
-                for entry in entries {
+                let len = entries.len();
+                for (i, entry) in entries.into_iter().enumerate() {
+                    if i + 3 < len {
+                        prefetch_read(&entry as *const _);
+                    }
                     queue.push(entry);
                 }
 

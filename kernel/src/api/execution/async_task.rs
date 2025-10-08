@@ -267,12 +267,19 @@ impl AsyncTaskManager {
     /// Cleanup completed tasks that have exceeded their TTL
     /// Can be called manually by gRPC handlers for immediate cleanup
     pub fn cleanup_completed(&self) -> usize {
+        use crate::core::optimization::prefetch_read;
+
         let now = Instant::now();
         let ttl = self.task_ttl;
         let mut cleaned_count = 0;
         let mut task_ids_to_remove = Vec::with_capacity(16);
 
-        for entry in self.tasks.iter() {
+        let items: Vec<_> = self.tasks.iter().collect();
+        for (i, entry) in items.iter().enumerate() {
+            if i + 4 < items.len() {
+                prefetch_read(items[i + 4].value() as *const _);
+            }
+
             let task_id = entry.key();
             let task = entry.value();
 
@@ -283,13 +290,16 @@ impl AsyncTaskManager {
             }
         }
 
-        for (task_id, pid) in task_ids_to_remove {
-            self.tasks.remove(&task_id);
+        for (i, (task_id, pid)) in task_ids_to_remove.iter().enumerate() {
+            if i + 2 < task_ids_to_remove.len() {
+                prefetch_read(&task_ids_to_remove[i + 2] as *const _);
+            }
+
+            self.tasks.remove(task_id);
             cleaned_count += 1;
 
-            // Also remove from process_tasks (O(1) HashSet removal)
-            if let Some(mut task_set) = self.process_tasks.get_mut(&pid) {
-                task_set.remove(&task_id);
+            if let Some(mut task_set) = self.process_tasks.get_mut(pid) {
+                task_set.remove(task_id);
             }
         }
 
@@ -306,11 +316,17 @@ impl AsyncTaskManager {
     /// Cleanup all completed tasks regardless of TTL
     /// Useful for testing or forced cleanup scenarios
     pub fn cleanup_completed_immediate(&self) -> usize {
+        use crate::core::optimization::prefetch_read;
+
         let mut cleaned_count = 0;
         let mut task_ids_to_remove = Vec::with_capacity(32);
 
-        // Collect all completed tasks
-        for entry in self.tasks.iter() {
+        let items: Vec<_> = self.tasks.iter().collect();
+        for (i, entry) in items.iter().enumerate() {
+            if i + 4 < items.len() {
+                prefetch_read(items[i + 4].value() as *const _);
+            }
+
             let task_id = entry.key();
             let task = entry.value();
 
@@ -322,14 +338,16 @@ impl AsyncTaskManager {
             }
         }
 
-        // Remove all completed tasks
-        for (task_id, pid) in task_ids_to_remove {
-            self.tasks.remove(&task_id);
+        for (i, (task_id, pid)) in task_ids_to_remove.iter().enumerate() {
+            if i + 2 < task_ids_to_remove.len() {
+                prefetch_read(&task_ids_to_remove[i + 2] as *const _);
+            }
+
+            self.tasks.remove(task_id);
             cleaned_count += 1;
 
-            // Also remove from process_tasks (O(1) HashSet removal)
-            if let Some(mut task_set) = self.process_tasks.get_mut(&pid) {
-                task_set.remove(&task_id);
+            if let Some(mut task_set) = self.process_tasks.get_mut(pid) {
+                task_set.remove(task_id);
             }
         }
 
@@ -338,6 +356,8 @@ impl AsyncTaskManager {
 
     /// Cleanup all tasks for a terminated process
     pub fn cleanup_process_tasks(&self, pid: Pid) -> usize {
+        use crate::core::optimization::prefetch_read;
+
         let task_ids = self
             .process_tasks
             .remove(&pid)
@@ -346,19 +366,21 @@ impl AsyncTaskManager {
 
         let mut cleaned_count = 0;
         let now = Instant::now();
+        let ids: Vec<_> = task_ids.iter().collect();
 
-        for task_id in &task_ids {
-            if let Some(mut task) = self.tasks.get_mut(task_id) {
-                // Try to cancel running tasks
+        for (i, task_id) in ids.iter().enumerate() {
+            if i + 2 < ids.len() {
+                prefetch_read(ids[i + 2] as *const _);
+            }
+
+            if let Some(mut task) = self.tasks.get_mut(*task_id) {
                 if let Some(cancel_tx) = task.cancel_tx.take() {
                     let _ = cancel_tx.send(());
                 }
-                // Mark as cancelled with timestamp
                 task.status = TaskStatus::Cancelled;
                 task.completed_at = Some(now);
             }
-            // Remove the task
-            self.tasks.remove(task_id);
+            self.tasks.remove(*task_id);
             cleaned_count += 1;
         }
 
