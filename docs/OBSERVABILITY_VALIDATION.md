@@ -274,19 +274,34 @@ if duration > threshold {
 
 ## 📊 Integration Strategy
 
-### Phase 1: Core Subsystems (Week 1)
+### Phase 1: Core Subsystems ✅ COMPLETE
 1. ✅ ProcessManager (DONE)
-2. SyscallExecutor
-3. Scheduler
+2. ✅ SyscallExecutor (DONE)
+3. ✅ Scheduler (DONE)
 
-### Phase 2: Resource Management (Week 2)
-4. Memory Manager
-5. IPC Managers (Queue, Pipe, SHM)
+### Phase 2: Resource Management ✅ COMPLETE
+4. ✅ MemoryManager (DONE)
+5. ✅ IPC QueueManager (DONE)
+6. ✅ IPC PipeManager (DONE - Sprint 2)
+7. ✅ IPC ShmManager (DONE - Sprint 2)
 
-### Phase 3: Security & Network (Week 3)
-6. PermissionManager
-7. SandboxManager
-8. NetworkManager
+### Phase 3: Security & Network ✅ COMPLETE
+8. ✅ PermissionManager (DONE)
+9. ✅ SandboxManager (DONE)
+10. 🔜 NetworkManager (Future)
+
+### Phase 4: VFS & Advanced IPC ✅ COMPLETE  
+11. ✅ VFS MountManager (DONE - Sprint 2)
+12. 🔜 Additional VFS filesystems (Future)
+
+### All Core Integrations Complete! 🎉
+**Integration ROI Achievement**: All recommended high-value subsystems (9 total) now have full observability support, providing real-time insights into:
+- Syscall performance & latency
+- Scheduler decisions & context switches
+- Memory pressure & allocation patterns
+- IPC message queues, pipes, and shared memory
+- Security violations & permission denials
+- VFS slow file operations
 
 ---
 
@@ -484,35 +499,64 @@ let timeline = CausalityTracer::timeline(&events, causality_id);
 ✅ Anomaly detection
 ✅ Causality tracking
 ✅ 46 comprehensive tests
+✅ **SyscallExecutor integration (Real-time syscall latency)**
+✅ **Scheduler integration (Context switches & preemption)**
+✅ **MemoryManager integration (Memory pressure alerts)**
+✅ **IPC QueueManager integration (Message patterns)**
+✅ **PermissionManager integration (Permission denials)**
+✅ **SandboxManager integration (Security violations)**
+✅ **PipeManager integration (Pipe operations - Sprint 2)**
+✅ **ShmManager integration (Shared memory - Sprint 2)**
+✅ **VFS MountManager integration (Slow file ops - Sprint 2)**
 
-### Ready to Integrate
-🚀 SyscallExecutor (High Value)
-🚀 Scheduler (High Value)
-🚀 Memory Manager (High Value)
-🚀 IPC Managers (High Value)
-🚀 Security subsystems (High Value)
+### Fully Integrated Subsystems (Sprint 1)
+✅ **SyscallExecutor** - Syscall latency, anomaly detection, per-process patterns
+✅ **Scheduler** - Context switch tracking, preemption events, scheduling latency
+✅ **MemoryManager** - Memory pressure alerts, allocation/deallocation tracking
+✅ **IPC QueueManager** - Message send/receive events, queue depth monitoring
+✅ **PermissionManager** - Permission denial tracking, audit integration
+✅ **SandboxManager** - Security violation alerts, capability denial tracking
+
+### Fully Integrated Subsystems (Sprint 2)
+✅ **PipeManager** - Pipe read/write operations, throughput tracking
+✅ **ShmManager** - Shared memory create/read/write/destroy events
+✅ **VFS MountManager** - Slow file operation detection (configurable threshold)
+
+### Optional Future Integrations
+🔜 Network subsystem (Connection tracking)
+🔜 Additional VFS filesystems (per-filesystem tracking)
+🔜 eBPF integration (dynamic event filtering)
 
 ### No Breaking Changes
 - Existing tracing API still works
 - Existing metrics API still works
 - New API is purely additive
-- Integration is optional and gradual
+- Integration is optional and graceful (None if not configured)
 
 ---
 
 ## 📝 Next Steps
 
-1. **Immediate** (This Sprint):
-   - Integrate SyscallExecutor with Collector
-   - Add sampling configuration
+1. **Sprint 1 Completed** ✅:
+   - ✅ Integrated SyscallExecutor with Collector (syscall latency & anomaly detection)
+   - ✅ Integrated Scheduler with Collector (context switches & preemption tracking)
+   - ✅ Integrated MemoryManager with Collector (memory pressure & allocation events)
+   - ✅ Integrated IPC QueueManager with Collector (message latency & throughput)
+   - ✅ Integrated PermissionManager with Collector (permission denial events)
+   - ✅ Integrated SandboxManager with Collector (security violation events)
+
+2. **Sprint 2 Completed** ✅:
+   - ✅ Integrated PipeManager with Collector (pipe read/write operations)
+   - ✅ Integrated ShmManager with Collector (shared memory operations)
+   - ✅ Integrated VFS MountManager with Collector (slow file operation detection)
+
+3. **Future Enhancements**:
+   - Add sampling configuration via environment variables
    - Create performance tuning guide
-
-2. **Short-term** (Next Sprint):
-   - Integrate Scheduler
-   - Integrate Memory Manager
    - Add persistent storage backend option
+   - Network event tracking
 
-3. **Long-term** (Future):
+4. **Long-term** (Future):
    - Distributed tracing integration (trace_id propagation)
    - External exporters (Prometheus, OpenTelemetry)
    - ML-based anomaly detection

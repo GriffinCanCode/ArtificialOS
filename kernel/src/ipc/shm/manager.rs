@@ -11,6 +11,7 @@ use super::types::{
 };
 use crate::core::types::{Pid, Size};
 use crate::memory::MemoryManager;
+use crate::monitoring::Collector;
 use ahash::RandomState;
 use dashmap::DashMap;
 use log::{info, warn};
@@ -34,6 +35,8 @@ pub struct ShmManager {
     memory_manager: MemoryManager,
     // Free IDs for recycling (prevents ID exhaustion)
     free_ids: Arc<Mutex<Vec<ShmId>>>,
+    // Observability collector
+    collector: Option<Arc<Collector>>,
 }
 
 impl ShmManager {
@@ -49,7 +52,19 @@ impl ShmManager {
             process_segments: Arc::new(DashMap::with_hasher(RandomState::new())),
             memory_manager,
             free_ids: Arc::new(Mutex::new(Vec::new())),
+            collector: None,
         }
+    }
+
+    /// Add observability collector
+    pub fn with_collector(mut self, collector: Arc<Collector>) -> Self {
+        self.collector = Some(collector);
+        self
+    }
+
+    /// Set collector after construction
+    pub fn set_collector(&mut self, collector: Arc<Collector>) {
+        self.collector = Some(collector);
     }
 
     pub fn create(&self, size: Size, owner_pid: Pid) -> Result<ShmId, ShmError> {
@@ -136,6 +151,22 @@ impl ShmManager {
             GLOBAL_SHM_MEMORY.load(Ordering::Relaxed)
         );
 
+        // Emit shared memory created event
+        if let Some(ref collector) = self.collector {
+            use crate::monitoring::{Category, Event, Payload, Severity};
+            collector.emit(
+                Event::new(
+                    Severity::Debug,
+                    Category::Memory,
+                    Payload::MemoryAllocated {
+                        size,
+                        region_id: segment_id as u64,
+                    },
+                )
+                .with_pid(owner_pid),
+            );
+        }
+
         Ok(segment_id)
     }
 
@@ -202,6 +233,22 @@ impl ShmManager {
             offset
         );
 
+        // Emit shared memory write event
+        if let Some(ref collector) = self.collector {
+            use crate::monitoring::{Category, Event, Payload, Severity};
+            collector.emit(
+                Event::new(
+                    Severity::Debug,
+                    Category::Ipc,
+                    Payload::MessageSent {
+                        queue_id: segment_id as u64,
+                        size: data.len(),
+                    },
+                )
+                .with_pid(pid),
+            );
+        }
+
         Ok(())
     }
 
@@ -232,6 +279,23 @@ impl ShmManager {
             segment_id,
             offset
         );
+
+        // Emit shared memory read event
+        if let Some(ref collector) = self.collector {
+            use crate::monitoring::{Category, Event, Payload, Severity};
+            collector.emit(
+                Event::new(
+                    Severity::Debug,
+                    Category::Ipc,
+                    Payload::MessageReceived {
+                        queue_id: segment_id as u64,
+                        size: data.len(),
+                        wait_time_us: 0, // Shared memory reads are synchronous
+                    },
+                )
+                .with_pid(pid),
+            );
+        }
 
         Ok(data)
     }
@@ -298,6 +362,22 @@ impl ShmManager {
             address,
             GLOBAL_SHM_MEMORY.load(Ordering::Relaxed)
         );
+
+        // Emit shared memory freed event
+        if let Some(ref collector) = self.collector {
+            use crate::monitoring::{Category, Event, Payload, Severity};
+            collector.emit(
+                Event::new(
+                    Severity::Debug,
+                    Category::Memory,
+                    Payload::MemoryFreed {
+                        size,
+                        region_id: segment_id as u64,
+                    },
+                )
+                .with_pid(pid),
+            );
+        }
 
         Ok(())
     }
@@ -385,6 +465,7 @@ impl Clone for ShmManager {
             process_segments: Arc::clone(&self.process_segments),
             memory_manager: self.memory_manager.clone(),
             free_ids: Arc::clone(&self.free_ids),
+            collector: self.collector.as_ref().map(Arc::clone),
         }
     }
 }

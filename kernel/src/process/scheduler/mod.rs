@@ -6,6 +6,7 @@
 use super::atomic_stats::AtomicSchedulerStats;
 use super::types::SchedulingPolicy;
 use crate::core::types::Pid;
+use crate::monitoring::Collector;
 use dashmap::DashMap;
 use log::info;
 use parking_lot::RwLock;
@@ -56,6 +57,9 @@ pub struct Scheduler {
 
     // Statistics - lock-free atomics for hot path updates
     stats: Arc<AtomicSchedulerStats>,
+
+    // Observability collector for event streaming
+    collector: Option<Arc<Collector>>,
 }
 
 impl Scheduler {
@@ -80,7 +84,19 @@ impl Scheduler {
             current: Arc::new(RwLock::new(None)),
             process_locations: Arc::new(DashMap::new()),
             stats: Arc::new(AtomicSchedulerStats::new(policy, quantum)),
+            collector: None,
         }
+    }
+
+    /// Add observability collector
+    pub fn with_collector(mut self, collector: Arc<Collector>) -> Self {
+        self.collector = Some(collector);
+        self
+    }
+
+    /// Set collector after construction
+    pub fn set_collector(&mut self, collector: Arc<Collector>) {
+        self.collector = Some(collector);
     }
 }
 
@@ -95,6 +111,7 @@ impl Clone for Scheduler {
             current: Arc::clone(&self.current),
             process_locations: Arc::clone(&self.process_locations),
             stats: Arc::clone(&self.stats),
+            collector: self.collector.as_ref().map(Arc::clone),
         }
     }
 }

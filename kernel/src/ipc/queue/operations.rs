@@ -7,8 +7,10 @@ use super::super::types::{IpcError, IpcResult, QueueId};
 use super::manager::{Queue, QueueManager};
 use super::types::{QueueMessage, MAX_MESSAGE_SIZE};
 use crate::core::types::{Pid, Priority};
+use crate::monitoring::{Category, Event, Payload, Severity};
 use log::{debug, warn};
 use std::sync::atomic::Ordering;
+use std::time::Instant;
 
 impl QueueManager {
     /// Send message to queue
@@ -83,6 +85,10 @@ impl QueueManager {
 
     /// Enqueue message to appropriate queue type
     fn enqueue_message(&self, queue_id: QueueId, message: QueueMessage) -> IpcResult<()> {
+        // Capture data for event emission before message is moved
+        let from_pid = message.from;
+        let data_length = message.data_length;
+
         let mut queue = self
             .queues
             .get_mut(&queue_id)
@@ -97,18 +103,72 @@ impl QueueManager {
             }
         }
 
+        // Emit message sent event
+        if let Some(ref collector) = self.collector {
+            collector.emit(
+                Event::new(
+                    Severity::Debug,
+                    Category::Ipc,
+                    Payload::MessageSent {
+                        queue_id: queue_id as u64,
+                        size: data_length,
+                    },
+                )
+                .with_pid(from_pid),
+            );
+        }
+
         Ok(())
     }
 
     /// Receive message from queue (non-blocking)
     pub fn receive(&self, queue_id: QueueId, pid: Pid) -> IpcResult<Option<QueueMessage>> {
+        let start = Instant::now();
+
         // Check for PubSub receiver
         if let Some(message) = self.try_receive_pubsub(queue_id, pid)? {
+            // Emit message received event
+            if let Some(ref collector) = self.collector {
+                let wait_time_us = start.elapsed().as_micros() as u64;
+                collector.emit(
+                    Event::new(
+                        Severity::Debug,
+                        Category::Ipc,
+                        Payload::MessageReceived {
+                            queue_id: queue_id as u64,
+                            size: message.data_length,
+                            wait_time_us,
+                        },
+                    )
+                    .with_pid(pid),
+                );
+            }
             return Ok(Some(message));
         }
 
         // For FIFO and Priority queues
-        self.receive_from_standard_queue(queue_id)
+        let message = self.receive_from_standard_queue(queue_id)?;
+
+        // Emit message received event if message was received
+        if let Some(ref msg) = message {
+            if let Some(ref collector) = self.collector {
+                let wait_time_us = start.elapsed().as_micros() as u64;
+                collector.emit(
+                    Event::new(
+                        Severity::Debug,
+                        Category::Ipc,
+                        Payload::MessageReceived {
+                            queue_id: queue_id as u64,
+                            size: msg.data_length,
+                            wait_time_us,
+                        },
+                    )
+                    .with_pid(pid),
+                );
+            }
+        }
+
+        Ok(message)
     }
 
     /// Try to receive from PubSub queue

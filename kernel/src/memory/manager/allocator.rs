@@ -7,6 +7,7 @@ use super::super::types::{MemoryBlock, MemoryError, MemoryPressure, MemoryResult
 use super::free_list::FreeBlock;
 use super::MemoryManager;
 use crate::core::types::{Address, Pid, Size};
+use crate::monitoring::{Category, Event, Payload, Severity};
 use log::{error, info, warn};
 use std::sync::atomic::Ordering;
 
@@ -99,7 +100,29 @@ impl MemoryManager {
         // Log allocation with memory pressure warnings
         let used_val = used as usize + size;
 
+        // Emit memory allocation event
+        if let Some(ref collector) = self.collector {
+            collector.emit(
+                Event::new(
+                    Severity::Debug,
+                    Category::Memory,
+                    Payload::MemoryAllocated {
+                        size,
+                        region_id: address as u64,
+                    },
+                )
+                .with_pid(pid),
+            );
+        }
+
         if let Some(level) = self.check_memory_pressure(used_val) {
+            // Emit memory pressure event
+            if let Some(ref collector) = self.collector {
+                let usage_pct = ((used_val as f64 / self.total_memory as f64) * 100.0) as u8;
+                let available_mb = ((self.total_memory - used_val) / 1024 / 1024) as u64;
+                collector.memory_pressure(usage_pct, available_mb);
+            }
+
             warn!(
                 "Memory pressure {}: Allocated {} bytes at 0x{:x} for PID {} ({:.1}% used: {} / {})",
                 level, size, address, pid,
@@ -131,6 +154,23 @@ impl MemoryManager {
                 if let Some(pid) = pid {
                     if let Some(mut track) = self.process_tracking.get_mut(&pid) {
                         track.current_bytes = track.current_bytes.saturating_sub(size);
+                    }
+                }
+
+                // Emit memory freed event
+                if let Some(ref collector) = self.collector {
+                    if let Some(pid) = pid {
+                        collector.emit(
+                            Event::new(
+                                Severity::Debug,
+                                Category::Memory,
+                                Payload::MemoryFreed {
+                                    size,
+                                    region_id: address as u64,
+                                },
+                            )
+                            .with_pid(pid),
+                        );
                     }
                 }
 

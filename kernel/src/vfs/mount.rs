@@ -8,9 +8,11 @@ use dashmap::DashMap;
 use parking_lot::RwLock;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::Instant;
 
 use super::traits::{FileSystem, OpenFile};
 use super::types::*;
+use crate::monitoring::Collector;
 
 /// Mount point configuration
 #[derive(Debug, Clone)]
@@ -48,6 +50,8 @@ struct MountEntry {
 pub struct MountManager {
     mounts: Arc<DashMap<PathBuf, MountEntry, RandomState>>,
     mount_order: Arc<RwLock<Vec<PathBuf>>>, // Longest paths first for proper resolution
+    collector: Option<Arc<Collector>>,
+    slow_operation_threshold_ms: u64, // Threshold for slow operation warnings (default: 100ms)
 }
 
 impl MountManager {
@@ -56,7 +60,25 @@ impl MountManager {
         Self {
             mounts: Arc::new(DashMap::with_hasher(RandomState::new())),
             mount_order: Arc::new(RwLock::new(Vec::new())),
+            collector: None,
+            slow_operation_threshold_ms: 100, // Default 100ms threshold
         }
+    }
+
+    /// Add observability collector
+    pub fn with_collector(mut self, collector: Arc<Collector>) -> Self {
+        self.collector = Some(collector);
+        self
+    }
+
+    /// Set collector after construction
+    pub fn set_collector(&mut self, collector: Arc<Collector>) {
+        self.collector = Some(collector);
+    }
+
+    /// Set slow operation threshold in milliseconds
+    pub fn set_slow_threshold(&mut self, threshold_ms: u64) {
+        self.slow_operation_threshold_ms = threshold_ms;
     }
 
     /// Mount a filesystem at specified path
@@ -192,27 +214,65 @@ impl Clone for MountManager {
         Self {
             mounts: Arc::clone(&self.mounts),
             mount_order: Arc::clone(&self.mount_order),
+            collector: self.collector.as_ref().map(Arc::clone),
+            slow_operation_threshold_ms: self.slow_operation_threshold_ms,
         }
+    }
+}
+
+impl MountManager {
+    /// Track operation timing and emit slow operation warning if needed
+    #[inline]
+    fn track_operation<F, R>(&self, operation: &str, f: F) -> R
+    where
+        F: FnOnce() -> R,
+    {
+        if self.collector.is_none() {
+            return f();
+        }
+
+        let start = Instant::now();
+        let result = f();
+        let duration_ms = start.elapsed().as_millis() as u64;
+
+        if duration_ms > self.slow_operation_threshold_ms {
+            if let Some(ref collector) = self.collector {
+                use crate::monitoring::{Category, Event, Payload, Severity};
+                collector.slow_operation(
+                    format!("vfs_{}", operation),
+                    duration_ms,
+                    self.slow_operation_threshold_ms,
+                );
+            }
+        }
+
+        result
     }
 }
 
 // Implement FileSystem for MountManager to act as unified interface
 impl FileSystem for MountManager {
     fn read(&self, path: &Path) -> VfsResult<Vec<u8>> {
-        let (fs, rel_path, _) = self.resolve(path)?;
-        fs.read(&rel_path)
+        self.track_operation("read", || {
+            let (fs, rel_path, _) = self.resolve(path)?;
+            fs.read(&rel_path)
+        })
     }
 
     fn write(&self, path: &Path, data: &[u8]) -> VfsResult<()> {
-        let (fs, rel_path, readonly) = self.resolve(path)?;
-        self.check_readonly(readonly)?;
-        fs.write(&rel_path, data)
+        self.track_operation("write", || {
+            let (fs, rel_path, readonly) = self.resolve(path)?;
+            self.check_readonly(readonly)?;
+            fs.write(&rel_path, data)
+        })
     }
 
     fn append(&self, path: &Path, data: &[u8]) -> VfsResult<()> {
-        let (fs, rel_path, readonly) = self.resolve(path)?;
-        self.check_readonly(readonly)?;
-        fs.append(&rel_path, data)
+        self.track_operation("append", || {
+            let (fs, rel_path, readonly) = self.resolve(path)?;
+            self.check_readonly(readonly)?;
+            fs.append(&rel_path, data)
+        })
     }
 
     fn create(&self, path: &Path) -> VfsResult<()> {
@@ -222,9 +282,11 @@ impl FileSystem for MountManager {
     }
 
     fn delete(&self, path: &Path) -> VfsResult<()> {
-        let (fs, rel_path, readonly) = self.resolve(path)?;
-        self.check_readonly(readonly)?;
-        fs.delete(&rel_path)
+        self.track_operation("delete", || {
+            let (fs, rel_path, readonly) = self.resolve(path)?;
+            self.check_readonly(readonly)?;
+            fs.delete(&rel_path)
+        })
     }
 
     fn exists(&self, path: &Path) -> bool {
@@ -239,8 +301,10 @@ impl FileSystem for MountManager {
     }
 
     fn list_dir(&self, path: &Path) -> VfsResult<Vec<Entry>> {
-        let (fs, rel_path, _) = self.resolve(path)?;
-        fs.list_dir(&rel_path)
+        self.track_operation("list_dir", || {
+            let (fs, rel_path, _) = self.resolve(path)?;
+            fs.list_dir(&rel_path)
+        })
     }
 
     fn create_dir(&self, path: &Path) -> VfsResult<()> {
@@ -262,18 +326,20 @@ impl FileSystem for MountManager {
     }
 
     fn copy(&self, from: &Path, to: &Path) -> VfsResult<()> {
-        let (from_fs, from_rel, _) = self.resolve(from)?;
-        let (to_fs, to_rel, to_readonly) = self.resolve(to)?;
-        self.check_readonly(to_readonly)?;
+        self.track_operation("copy", || {
+            let (from_fs, from_rel, _) = self.resolve(from)?;
+            let (to_fs, to_rel, to_readonly) = self.resolve(to)?;
+            self.check_readonly(to_readonly)?;
 
-        // Same filesystem - use native copy
-        if Arc::ptr_eq(&from_fs, &to_fs) {
-            from_fs.copy(&from_rel, &to_rel)
-        } else {
-            // Cross-filesystem - read and write
-            let data = from_fs.read(&from_rel)?;
-            to_fs.write(&to_rel, &data)
-        }
+            // Same filesystem - use native copy
+            if Arc::ptr_eq(&from_fs, &to_fs) {
+                from_fs.copy(&from_rel, &to_rel)
+            } else {
+                // Cross-filesystem - read and write
+                let data = from_fs.read(&from_rel)?;
+                to_fs.write(&to_rel, &data)
+            }
+        })
     }
 
     fn rename(&self, from: &Path, to: &Path) -> VfsResult<()> {

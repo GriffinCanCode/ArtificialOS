@@ -4,7 +4,7 @@
  */
 
 use crate::core::types::Pid;
-use crate::monitoring::{span_syscall, MetricsCollector};
+use crate::monitoring::{span_syscall, Collector, MetricsCollector};
 use crate::permissions::PermissionManager;
 use crate::security::SandboxManager;
 use std::sync::{Arc, OnceLock};
@@ -36,6 +36,7 @@ pub struct SyscallExecutor {
     pub(super) signal_manager: Option<crate::signals::SignalManagerImpl>,
     pub(super) vfs: Option<crate::vfs::MountManager>,
     pub(super) metrics: Option<Arc<MetricsCollector>>,
+    pub(super) collector: Option<Arc<Collector>>,
     pub(super) fd_manager: super::fd::FdManager,
     pub(super) socket_manager: super::network::SocketManager,
     handler_registry: SyscallHandlerRegistry,
@@ -61,6 +62,7 @@ impl SyscallExecutor {
             signal_manager: None,
             vfs: None,
             metrics: None,
+            collector: None,
             fd_manager: super::fd::FdManager::new(),
             socket_manager: super::network::SocketManager::new(),
             handler_registry: SyscallHandlerRegistry::new(),
@@ -72,6 +74,11 @@ impl SyscallExecutor {
 
     pub fn with_metrics(mut self, metrics: Arc<MetricsCollector>) -> Self {
         self.metrics = Some(metrics);
+        self
+    }
+
+    pub fn with_collector(mut self, collector: Arc<Collector>) -> Self {
+        self.collector = Some(collector);
         self
     }
 
@@ -103,6 +110,7 @@ impl SyscallExecutor {
             signal_manager: None,
             vfs: None,
             metrics: None,
+            collector: None,
             fd_manager: super::fd::FdManager::new(),
             socket_manager: super::network::SocketManager::new(),
             handler_registry: SyscallHandlerRegistry::new(),
@@ -152,6 +160,7 @@ impl SyscallExecutor {
             signal_manager: None,
             vfs: None,
             metrics: None,
+            collector: None,
             fd_manager: super::fd::FdManager::new(),
             socket_manager: super::network::SocketManager::new(),
             handler_registry: SyscallHandlerRegistry::new(),
@@ -216,6 +225,9 @@ impl SyscallExecutor {
         // Record syscall details
         span.record_debug("syscall_details", &syscall);
 
+        // Track timing for observability
+        let start = Instant::now();
+
         // Dispatch to appropriate handler via registry
         let result = self
             .handler_registry
@@ -224,6 +236,13 @@ impl SyscallExecutor {
                 error!("No handler found for syscall: {:?}", syscall);
                 SyscallResult::error(format!("Unhandled syscall: {}", syscall_name))
             });
+
+        // Emit observability event
+        if let Some(ref collector) = self.collector {
+            let duration_us = start.elapsed().as_micros() as u64;
+            let success = matches!(result, SyscallResult::Success { .. });
+            collector.syscall_exit(pid, syscall_name.to_string(), duration_us, success);
+        }
 
         // Record result in span for structured tracing
         match &result {

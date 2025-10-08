@@ -10,6 +10,7 @@ use super::policy::PolicyEngine;
 use super::traits::{PermissionChecker, PermissionProvider};
 use super::types::{PermissionRequest, PermissionResponse};
 use crate::core::types::Pid;
+use crate::monitoring::Collector;
 use crate::security::traits::SandboxProvider;
 use crate::security::SandboxManager;
 use log::{debug, warn};
@@ -26,6 +27,8 @@ pub struct PermissionManager {
     cache: Arc<PermissionCache>,
     /// Audit logger
     audit: Arc<AuditLogger>,
+    /// Observability collector
+    collector: Option<Arc<Collector>>,
 }
 
 impl PermissionManager {
@@ -37,7 +40,19 @@ impl PermissionManager {
             policy: Arc::new(PolicyEngine::new()),
             cache: Arc::new(PermissionCache::default()),
             audit: Arc::new(AuditLogger::new()),
+            collector: None,
         }
+    }
+
+    /// Add observability collector
+    pub fn with_collector(mut self, collector: Arc<Collector>) -> Self {
+        self.collector = Some(collector);
+        self
+    }
+
+    /// Set collector after construction
+    pub fn set_collector(&mut self, collector: Arc<Collector>) {
+        self.collector = Some(collector);
     }
 
     /// Create with custom configuration
@@ -51,6 +66,7 @@ impl PermissionManager {
             policy: Arc::new(policy),
             cache: Arc::new(cache),
             audit: Arc::new(AuditLogger::new()),
+            collector: None,
         }
     }
 
@@ -99,7 +115,27 @@ impl PermissionManager {
         let context = EvaluationContext::new(sandbox_config);
 
         // Evaluate through policy engine
-        self.policy.evaluate(request, &context)
+        let response = self.policy.evaluate(request, &context);
+
+        // Emit permission denied event if denied
+        if !response.is_allowed() {
+            if let Some(ref collector) = self.collector {
+                use crate::monitoring::{Category, Event, Payload, Severity};
+                collector.emit(
+                    Event::new(
+                        Severity::Warn,
+                        Category::Security,
+                        Payload::PermissionDenied {
+                            operation: format!("{:?}", request.action),
+                            required: format!("{:?}", request.resource),
+                        },
+                    )
+                    .with_pid(request.pid),
+                );
+            }
+        }
+
+        response
     }
 }
 

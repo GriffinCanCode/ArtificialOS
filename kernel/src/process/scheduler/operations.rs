@@ -6,6 +6,7 @@
 use super::entry::{Entry, FairEntry};
 use super::{QueueLocation, Scheduler};
 use crate::core::types::{Pid, Priority};
+use crate::monitoring::{Category, Event, Payload, Severity};
 use crate::process::types::{ProcessStats, SchedulingPolicy};
 use log::info;
 use std::time::Instant;
@@ -151,8 +152,12 @@ impl Scheduler {
                 *current = None;
 
                 // Re-add to queue with reset quantum
-                new_entry.time_slice_remaining = *self.quantum.read();
+                let quantum = *self.quantum.read();
+                new_entry.time_slice_remaining = quantum;
                 new_entry.last_scheduled = None;
+
+                // Capture quantum before moving new_entry
+                let quantum_remaining_us = new_entry.time_slice_remaining.as_micros() as u64;
 
                 match policy {
                     SchedulingPolicy::RoundRobin => {
@@ -174,6 +179,18 @@ impl Scheduler {
 
                 self.stats.inc_preemptions();
                 self.stats.inc_context_switches();
+
+                // Emit preemption event
+                if let Some(ref collector) = self.collector {
+                    collector.emit(
+                        Event::new(
+                            Severity::Debug,
+                            Category::Scheduler,
+                            Payload::ProcessPreempted { quantum_remaining_us },
+                        )
+                        .with_pid(preempted_pid),
+                    );
+                }
 
                 info!("Process {} preempted after {:?}", preempted_pid, elapsed);
             } else {
@@ -204,6 +221,23 @@ impl Scheduler {
 
             self.stats.inc_scheduled();
             self.stats.inc_context_switches();
+
+            // Emit context switch event if there was a previous process
+            if let Some(ref collector) = self.collector {
+                if let Some(prev_entry) = current.as_ref() {
+                    collector.emit(
+                        Event::new(
+                            Severity::Debug,
+                            Category::Scheduler,
+                            Payload::ContextSwitch {
+                                from_pid: prev_entry.pid,
+                                to_pid: pid,
+                                reason: "quantum_expired".to_string(),
+                            },
+                        )
+                    );
+                }
+            }
 
             info!("Scheduled process {} ({:?})", pid, policy);
             Some(pid)

@@ -11,6 +11,7 @@ use super::types::{
 };
 use crate::core::types::{Pid, Size};
 use crate::memory::MemoryManager;
+use crate::monitoring::Collector;
 use ahash::RandomState;
 use crossbeam_queue::SegQueue;
 use dashmap::DashMap;
@@ -33,6 +34,8 @@ pub struct PipeManager {
     memory_manager: MemoryManager,
     // Lock-free queue for ID recycling (prevents ID exhaustion)
     free_ids: Arc<SegQueue<PipeId>>,
+    // Observability collector
+    collector: Option<Arc<Collector>>,
 }
 
 impl PipeManager {
@@ -57,7 +60,19 @@ impl PipeManager {
             )),
             memory_manager,
             free_ids: Arc::new(SegQueue::new()),
+            collector: None,
         }
+    }
+
+    /// Add observability collector
+    pub fn with_collector(mut self, collector: Arc<Collector>) -> Self {
+        self.collector = Some(collector);
+        self
+    }
+
+    /// Set collector after construction
+    pub fn set_collector(&mut self, collector: Arc<Collector>) {
+        self.collector = Some(collector);
     }
 
     pub fn create(
@@ -128,6 +143,22 @@ impl PipeManager {
             pipe_id, reader_pid, writer_pid, capacity, address, used
         );
 
+        // Emit pipe created event
+        if let Some(ref collector) = self.collector {
+            use crate::monitoring::{Category, Event, Payload, Severity};
+            collector.emit(
+                Event::new(
+                    Severity::Debug,
+                    Category::Ipc,
+                    Payload::MessageSent {
+                        queue_id: pipe_id as u64,
+                        size: capacity,
+                    },
+                )
+                .with_pid(writer_pid),
+            );
+        }
+
         Ok(pipe_id)
     }
 
@@ -148,6 +179,22 @@ impl PipeManager {
             "Pipe {} write: {} bytes ({} buffered)",
             pipe_id, written, buffered
         );
+
+        // Emit pipe write event
+        if let Some(ref collector) = self.collector {
+            use crate::monitoring::{Category, Event, Payload, Severity};
+            collector.emit(
+                Event::new(
+                    Severity::Debug,
+                    Category::Ipc,
+                    Payload::MessageSent {
+                        queue_id: pipe_id as u64,
+                        size: written,
+                    },
+                )
+                .with_pid(pid),
+            );
+        }
 
         Ok(written)
     }
@@ -171,6 +218,23 @@ impl PipeManager {
             data.len(),
             buffered
         );
+
+        // Emit pipe read event
+        if let Some(ref collector) = self.collector {
+            use crate::monitoring::{Category, Event, Payload, Severity};
+            collector.emit(
+                Event::new(
+                    Severity::Debug,
+                    Category::Ipc,
+                    Payload::MessageReceived {
+                        queue_id: pipe_id as u64,
+                        size: data.len(),
+                        wait_time_us: 0, // Pipe reads are synchronous
+                    },
+                )
+                .with_pid(pid),
+            );
+        }
 
         Ok(data)
     }
@@ -298,6 +362,7 @@ impl Clone for PipeManager {
             process_pipes: Arc::clone(&self.process_pipes),
             memory_manager: self.memory_manager.clone(),
             free_ids: Arc::clone(&self.free_ids),
+            collector: self.collector.as_ref().map(Arc::clone),
         }
     }
 }

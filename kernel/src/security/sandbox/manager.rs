@@ -5,6 +5,7 @@
 use super::capability;
 use super::network;
 use crate::core::types::{Pid, ResourceLimits};
+use crate::monitoring::Collector;
 use crate::security::namespace::{IsolationMode, NamespaceConfig, NamespaceManager};
 use crate::security::traits::*;
 use crate::security::types::*;
@@ -20,6 +21,7 @@ pub struct SandboxManager {
     sandboxes: Arc<DashMap<Pid, SandboxConfig, RandomState>>,
     spawned_counts: Arc<DashMap<Pid, u32, RandomState>>,
     namespace_manager: Option<NamespaceManager>,
+    collector: Option<Arc<Collector>>,
 }
 
 impl SandboxManager {
@@ -39,7 +41,19 @@ impl SandboxManager {
                 32,
             )),
             namespace_manager: None,
+            collector: None,
         }
+    }
+
+    /// Add observability collector
+    pub fn with_collector(mut self, collector: Arc<Collector>) -> Self {
+        self.collector = Some(collector);
+        self
+    }
+
+    /// Set collector after construction
+    pub fn set_collector(&mut self, collector: Arc<Collector>) {
+        self.collector = Some(collector);
     }
 
     /// Create sandbox manager with network namespace support
@@ -67,6 +81,7 @@ impl SandboxManager {
                 32,
             )),
             namespace_manager: Some(ns_manager),
+            collector: None,
         }
     }
 
@@ -125,6 +140,22 @@ impl SandboxManager {
             let allowed = sandbox.has_capability(cap);
             if !allowed {
                 warn!("PID {} denied capability {:?}", pid, cap);
+
+                // Emit security event for denied capability
+                if let Some(ref collector) = self.collector {
+                    use crate::monitoring::{Category, Event, Payload, Severity};
+                    collector.emit(
+                        Event::new(
+                            Severity::Warn,
+                            Category::Security,
+                            Payload::PermissionDenied {
+                                operation: format!("capability:{:?}", cap),
+                                required: format!("{:?}", cap),
+                            },
+                        )
+                        .with_pid(pid),
+                    );
+                }
             }
             allowed
         } else {
@@ -139,6 +170,22 @@ impl SandboxManager {
             let allowed = sandbox.can_access_path(path);
             if !allowed {
                 warn!("PID {} denied path access: {:?}", pid, path);
+
+                // Emit security event for denied path access
+                if let Some(ref collector) = self.collector {
+                    use crate::monitoring::{Category, Event, Payload, Severity};
+                    collector.emit(
+                        Event::new(
+                            Severity::Warn,
+                            Category::Security,
+                            Payload::PermissionDenied {
+                                operation: format!("path_access:{}", path.display()),
+                                required: format!("path:{}", path.display()),
+                            },
+                        )
+                        .with_pid(pid),
+                    );
+                }
             }
             allowed
         } else {

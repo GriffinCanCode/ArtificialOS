@@ -10,6 +10,7 @@ use super::pubsub::PubSubQueue;
 use super::types::{QueueMessage, MAX_QUEUE_CAPACITY};
 use crate::core::types::Pid;
 use crate::memory::MemoryManager;
+use crate::monitoring::Collector;
 use ahash::RandomState;
 use crossbeam_queue::SegQueue;
 use dashmap::DashMap;
@@ -68,6 +69,7 @@ pub struct QueueManager {
         Arc<DashMap<(QueueId, Pid), flume::Receiver<QueueMessage>, RandomState>>,
     pub(super) memory_manager: MemoryManager,
     pub(super) free_ids: Arc<SegQueue<QueueId>>,
+    pub(super) collector: Option<Arc<Collector>>,
 }
 
 impl QueueManager {
@@ -84,7 +86,19 @@ impl QueueManager {
             pubsub_receivers: Arc::new(DashMap::with_hasher(RandomState::new())),
             memory_manager,
             free_ids: Arc::new(SegQueue::new()),
+            collector: None,
         }
+    }
+
+    /// Add observability collector
+    pub fn with_collector(mut self, collector: Arc<Collector>) -> Self {
+        self.collector = Some(collector);
+        self
+    }
+
+    /// Set collector after construction
+    pub fn set_collector(&mut self, collector: Arc<Collector>) {
+        self.collector = Some(collector);
     }
 }
 
@@ -98,6 +112,7 @@ impl Clone for QueueManager {
             pubsub_receivers: Arc::clone(&self.pubsub_receivers),
             memory_manager: self.memory_manager.clone(),
             free_ids: Arc::clone(&self.free_ids),
+            collector: self.collector.as_ref().map(Arc::clone),
         }
     }
 }
