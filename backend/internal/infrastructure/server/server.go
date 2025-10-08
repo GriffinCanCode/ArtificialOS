@@ -153,7 +153,7 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	handlerMetrics := http.NewHandlerMetrics(metrics)
 
 	// Create handlers
-	handlers := http.NewHandlers(appManager, serviceRegistry, appRegistry, sessionManager, aiClient, kernelClient, handlerMetrics)
+	handlers := http.NewHandlers(appManager, serviceRegistry, appRegistry, sessionManager, aiClient, kernelClient, handlerMetrics, tracer)
 	wsHandler := ws.NewHandler(appManager, aiClient)
 
 	// Serve native app bundles (static files from apps/dist)

@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -272,7 +273,9 @@ func (h *Handlers) ExecuteService(c *gin.Context) {
 				AppID:      req.AppID,
 				SandboxPID: app.SandboxPID,
 			}
-			span.SetTag("sandbox_pid", string(rune(app.SandboxPID)))
+			if app.SandboxPID != nil {
+				span.SetTag("sandbox_pid", fmt.Sprint(*app.SandboxPID))
+			}
 		}
 	}
 
