@@ -19,6 +19,7 @@ use super::types::SyscallResult;
 
 impl SyscallExecutor {
     /// Read file using VFS if available, otherwise use std::fs
+    /// Can block on slow storage (NFS, USB, slow disks)
     pub(super) fn vfs_read(&self, pid: Pid, path: &Path) -> SyscallResult {
         // Check permission using centralized manager
         let canonical_path = match path.canonicalize() {
@@ -33,9 +34,18 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        // Try VFS first
+        // Try VFS first with timeout
         if let Some(ref vfs) = self.vfs {
-            match vfs.read(path) {
+            let vfs_clone = vfs.clone();
+            let path_clone = path.to_path_buf();
+
+            let result = self.timeout_executor.execute_with_deadline(
+                || vfs_clone.read(&path_clone),
+                self.timeout_config.file_io,
+                "vfs_read",
+            );
+
+            match result {
                 Ok(data) => {
                     info!(
                         "PID {} read file via VFS: {:?} ({} bytes)",
@@ -45,7 +55,13 @@ impl SyscallExecutor {
                     );
                     return SyscallResult::success_with_data(data);
                 }
-                Err(e) => {
+                Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+                    warn!(
+                        "VFS read timed out for {:?} after {}ms (slow storage?), falling back to std::fs",
+                        path, elapsed_ms
+                    );
+                }
+                Err(super::TimeoutError::Operation(e)) => {
                     warn!(
                         "VFS read failed for {:?}: {}, falling back to std::fs",
                         path, e
@@ -54,17 +70,30 @@ impl SyscallExecutor {
             }
         }
 
-        // Fallback to std::fs
-        match fs::read(&canonical_path) {
+        // Fallback to std::fs with timeout
+        let canonical_clone = canonical_path.clone();
+        let result = self.timeout_executor.execute_with_deadline(
+            || fs::read(&canonical_clone),
+            self.timeout_config.file_io,
+            "fs_read",
+        );
+
+        match result {
             Ok(data) => {
                 info!("PID {} read file: {:?} ({} bytes)", pid, path, data.len());
                 SyscallResult::success_with_data(data)
             }
-            Err(e) => SyscallResult::error(format!("Read failed: {}", e)),
+            Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+                SyscallResult::error(format!("Read timed out after {}ms (slow storage?)", elapsed_ms))
+            }
+            Err(super::TimeoutError::Operation(e)) => {
+                SyscallResult::error(format!("Read failed: {}", e))
+            }
         }
     }
 
     /// Write file using VFS if available
+    /// Can block on slow storage (NFS, USB, slow disks)
     pub(super) fn vfs_write(&self, pid: Pid, path: &Path, data: &[u8]) -> SyscallResult {
         let check_path = if path.exists() {
             match path.canonicalize() {
@@ -86,19 +115,35 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        // Try VFS first
+        let data_len = data.len();
+
+        // Try VFS first with timeout
         if let Some(ref vfs) = self.vfs {
-            match vfs.write(path, data) {
+            let vfs_clone = vfs.clone();
+            let path_clone = path.to_path_buf();
+            let data_clone = data.to_vec();
+
+            let result = self.timeout_executor.execute_with_deadline(
+                || vfs_clone.write(&path_clone, &data_clone),
+                self.timeout_config.file_io,
+                "vfs_write",
+            );
+
+            match result {
                 Ok(()) => {
                     info!(
                         "PID {} wrote file via VFS: {:?} ({} bytes)",
-                        pid,
-                        path,
-                        data.len()
+                        pid, path, data_len
                     );
                     return SyscallResult::success();
                 }
-                Err(e) => {
+                Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+                    warn!(
+                        "VFS write timed out for {:?} after {}ms (slow storage?), falling back to std::fs",
+                        path, elapsed_ms
+                    );
+                }
+                Err(super::TimeoutError::Operation(e)) => {
                     warn!(
                         "VFS write failed for {:?}: {}, falling back to std::fs",
                         path, e
@@ -107,13 +152,26 @@ impl SyscallExecutor {
             }
         }
 
-        // Fallback to std::fs
-        match fs::write(path, data) {
+        // Fallback to std::fs with timeout
+        let path_clone = path.to_path_buf();
+        let data_clone = data.to_vec();
+        let result = self.timeout_executor.execute_with_deadline(
+            || fs::write(&path_clone, &data_clone),
+            self.timeout_config.file_io,
+            "fs_write",
+        );
+
+        match result {
             Ok(_) => {
-                info!("PID {} wrote file: {:?} ({} bytes)", pid, path, data.len());
+                info!("PID {} wrote file: {:?} ({} bytes)", pid, path, data_len);
                 SyscallResult::success()
             }
-            Err(e) => SyscallResult::error(format!("Write failed: {}", e)),
+            Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+                SyscallResult::error(format!("Write timed out after {}ms (slow storage?)", elapsed_ms))
+            }
+            Err(super::TimeoutError::Operation(e)) => {
+                SyscallResult::error(format!("Write failed: {}", e))
+            }
         }
     }
 

@@ -295,18 +295,97 @@ impl SyscallExecutor {
         &self,
         pid: Pid,
         target_pid: Pid,
-        _timeout_ms: Option<u64>,
+        timeout_ms: Option<u64>,
     ) -> SyscallResult {
+        let span = span_operation("process_wait");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+        span.record("target_pid", &format!("{}", target_pid));
+
         let request =
             PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Inspect);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
+            span.record_error(response.reason());
             return SyscallResult::permission_denied(response.reason());
         }
 
-        warn!("WaitProcess not fully implemented, returning immediately");
-        info!("PID {} waiting for PID {}", pid, target_pid);
-        SyscallResult::success()
+        let process_manager = match &self.process_manager {
+            Some(pm) => pm,
+            None => {
+                span.record_error("Process manager not available");
+                return SyscallResult::error("Process manager not available");
+            }
+        };
+
+        // Determine timeout policy: use custom timeout if provided, otherwise use default
+        use crate::core::guard::TimeoutPolicy;
+        use std::time::Duration;
+        let timeout = if let Some(ms) = timeout_ms {
+            TimeoutPolicy::Io(Duration::from_millis(ms))
+        } else {
+            self.timeout_config.process_wait
+        };
+
+        span.record("timeout_ms", &format!("{:?}", timeout.duration().map(|d| d.as_millis())));
+
+        // Define error type for process wait
+        #[derive(Debug)]
+        enum WaitError {
+            StillRunning,
+            NotFound,
+        }
+
+        // Use timeout executor to wait for process completion
+        let result = self.timeout_executor.execute_with_retry(
+            || {
+                // Check if process still exists and is running
+                match process_manager.get_process(target_pid) {
+                    Some(process) => {
+                        // Check if process has terminated
+                        if process.state == crate::process::types::ProcessState::Terminated {
+                            Ok(())
+                        } else {
+                            // Process still running - retry
+                            Err(WaitError::StillRunning)
+                        }
+                    }
+                    None => {
+                        // Process not found - either never existed or already cleaned up
+                        // Consider this success (process is "done")
+                        Ok(())
+                    }
+                }
+            },
+            |e| matches!(e, WaitError::StillRunning),
+            timeout,
+            "process_wait",
+        );
+
+        match result {
+            Ok(()) => {
+                info!("PID {} successfully waited for PID {} completion", pid, target_pid);
+                span.record_result(true);
+                SyscallResult::success()
+            }
+            Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+                warn!(
+                    "Process wait timed out: PID {} waiting for PID {} after {}ms",
+                    pid, target_pid, elapsed_ms
+                );
+                span.record_error(&format!("Timeout after {}ms", elapsed_ms));
+                SyscallResult::error(format!("Process wait timed out after {}ms", elapsed_ms))
+            }
+            Err(super::TimeoutError::Operation(WaitError::NotFound)) => {
+                span.record_error(&format!("Process {} not found", target_pid));
+                SyscallResult::error(format!("Process {} not found", target_pid))
+            }
+            Err(super::TimeoutError::Operation(WaitError::StillRunning)) => {
+                // This shouldn't happen (retry should handle this)
+                span.record_error("Unexpected still running state");
+                SyscallResult::error("Process still running")
+            }
+        }
     }
 }

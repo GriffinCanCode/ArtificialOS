@@ -22,8 +22,14 @@ pub struct SyscallTimeoutConfig {
     /// Timeout for file I/O operations (default: 30s)
     pub file_io: TimeoutPolicy,
 
+    /// Timeout for file sync operations (default: 60s, sync can be slow)
+    pub file_sync: TimeoutPolicy,
+
     /// Timeout for network operations (default: 60s)
     pub network: TimeoutPolicy,
+
+    /// Timeout for process wait operations (default: 300s)
+    pub process_wait: TimeoutPolicy,
 
     /// Enable timeout enforcement globally
     pub enabled: bool,
@@ -37,7 +43,9 @@ impl SyscallTimeoutConfig {
             pipe_write: TimeoutPolicy::Ipc(Duration::from_secs(10)),
             queue_receive: TimeoutPolicy::Ipc(Duration::from_secs(10)),
             file_io: TimeoutPolicy::Io(Duration::from_secs(30)),
+            file_sync: TimeoutPolicy::Io(Duration::from_secs(60)),
             network: TimeoutPolicy::Io(Duration::from_secs(60)),
+            process_wait: TimeoutPolicy::Io(Duration::from_secs(300)),
             enabled: true,
         }
     }
@@ -49,7 +57,9 @@ impl SyscallTimeoutConfig {
             pipe_write: TimeoutPolicy::None,
             queue_receive: TimeoutPolicy::None,
             file_io: TimeoutPolicy::None,
+            file_sync: TimeoutPolicy::None,
             network: TimeoutPolicy::None,
+            process_wait: TimeoutPolicy::None,
             enabled: false,
         }
     }
@@ -61,7 +71,9 @@ impl SyscallTimeoutConfig {
             pipe_write: TimeoutPolicy::Ipc(Duration::from_secs(2)),
             queue_receive: TimeoutPolicy::Ipc(Duration::from_secs(2)),
             file_io: TimeoutPolicy::Io(Duration::from_secs(5)),
+            file_sync: TimeoutPolicy::Io(Duration::from_secs(10)),
             network: TimeoutPolicy::Io(Duration::from_secs(10)),
+            process_wait: TimeoutPolicy::Io(Duration::from_secs(30)),
             enabled: true,
         }
     }
@@ -73,7 +85,9 @@ impl SyscallTimeoutConfig {
             pipe_write: TimeoutPolicy::Ipc(Duration::from_secs(60)),
             queue_receive: TimeoutPolicy::Ipc(Duration::from_secs(60)),
             file_io: TimeoutPolicy::Io(Duration::from_secs(300)),
+            file_sync: TimeoutPolicy::Io(Duration::from_secs(600)),
             network: TimeoutPolicy::Io(Duration::from_secs(600)),
+            process_wait: TimeoutPolicy::Io(Duration::from_secs(1800)),
             enabled: true,
         }
     }

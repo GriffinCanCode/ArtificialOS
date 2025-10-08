@@ -478,14 +478,32 @@ impl SyscallExecutor {
 
     pub(super) fn fsync_fd(&self, pid: Pid, fd: u32) -> SyscallResult {
         // Fsync synchronizes file data and metadata to disk
+        // Can block for extended periods on slow storage (NFS, USB, etc.)
 
         if let Some(handle_arc) = self.fd_manager.open_files.get(&fd) {
-            match handle_arc.sync() {
-                Ok(_) => {
+            // Clone Arc for use in closure
+            let handle = Arc::clone(&handle_arc);
+
+            // Use timeout executor - fsync can block on slow storage
+            let result = self.timeout_executor.execute_with_deadline(
+                || handle.sync(),
+                self.timeout_config.file_sync,
+                "fsync",
+            );
+
+            match result {
+                Ok(()) => {
                     info!("PID {} synchronized FD {} to disk", pid, fd);
                     SyscallResult::success()
                 }
-                Err(e) => {
+                Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+                    error!(
+                        "Fsync timed out for PID {}, FD {} after {}ms (slow storage?)",
+                        pid, fd, elapsed_ms
+                    );
+                    SyscallResult::error(format!("Fsync timed out after {}ms", elapsed_ms))
+                }
+                Err(super::TimeoutError::Operation(e)) => {
                     error!("Fsync failed for FD {}: {}", fd, e);
                     SyscallResult::error(format!("Fsync failed: {}", e))
                 }
@@ -498,14 +516,32 @@ impl SyscallExecutor {
     #[allow(dead_code)]
     pub(super) fn fdatasync_fd(&self, pid: Pid, fd: u32) -> SyscallResult {
         // Fdatasync synchronizes file data (not metadata) to disk
+        // Can block for extended periods on slow storage
 
         if let Some(handle_arc) = self.fd_manager.open_files.get(&fd) {
-            match handle_arc.sync_data() {
-                Ok(_) => {
+            // Clone Arc for use in closure
+            let handle = Arc::clone(&handle_arc);
+
+            // Use timeout executor - fdatasync can block on slow storage
+            let result = self.timeout_executor.execute_with_deadline(
+                || handle.sync_data(),
+                self.timeout_config.file_sync,
+                "fdatasync",
+            );
+
+            match result {
+                Ok(()) => {
                     info!("PID {} synchronized FD {} data to disk", pid, fd);
                     SyscallResult::success()
                 }
-                Err(e) => {
+                Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+                    error!(
+                        "Fdatasync timed out for PID {}, FD {} after {}ms (slow storage?)",
+                        pid, fd, elapsed_ms
+                    );
+                    SyscallResult::error(format!("Fdatasync timed out after {}ms", elapsed_ms))
+                }
+                Err(super::TimeoutError::Operation(e)) => {
                     error!("Fdatasync failed for FD {}: {}", fd, e);
                     SyscallResult::error(format!("Fdatasync failed: {}", e))
                 }
