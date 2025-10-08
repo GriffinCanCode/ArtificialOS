@@ -37,32 +37,11 @@ pub use ipc::{
 
 // Memory
 pub use memory::{
-    ascii_to_lower,
-    ascii_to_upper,
-    avg_u64,
-    contains_byte,
-    count_byte,
-    find_byte,
-    // SIMD operations
-    init_simd,
-    is_ascii,
-    max_u64,
-    min_u64,
-    rfind_byte,
-    simd_capabilities,
-    simd_memcmp,
-    simd_memcpy,
-    simd_memmove,
-    simd_memset,
-    sum_u32,
-    sum_u64,
-    trim,
     MemoryBlock,
     MemoryError,
     MemoryManager,
     MemoryStats,
     ProcessMemoryStats,
-    SimdCapabilities,
 };
 
 // Monitoring - Dual-layer observability system

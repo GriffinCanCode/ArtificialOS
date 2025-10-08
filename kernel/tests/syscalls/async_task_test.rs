@@ -6,13 +6,13 @@
 use ai_os_kernel::api::execution::{AsyncTaskManager, TaskStatus};
 use ai_os_kernel::security::traits::SandboxProvider;
 use ai_os_kernel::security::{Capability, SandboxConfig, SandboxManager};
-use ai_os_kernel::syscalls::{Syscall, SyscallExecutor, SyscallResult};
+use ai_os_kernel::syscalls::{Syscall, SyscallExecutorWithIpc, SyscallResult};
 use std::time::Duration;
 use tokio::time::sleep;
 
-fn setup_executor() -> (SyscallExecutor, SandboxManager, u32) {
+fn setup_executor() -> (SyscallExecutorWithIpc, SandboxManager, u32) {
     let sandbox_manager = SandboxManager::new();
-    let executor = SyscallExecutor::new(sandbox_manager.clone());
+    let executor = SyscallExecutorWithIpc::new(sandbox_manager.clone());
     let pid = 100;
 
     // Create sandbox with necessary capabilities for tests

@@ -263,7 +263,7 @@ mod tests {
                 path: format!("/file{}", i),
                 offset: i,
             });
-            table.insert(i, handle, 0).unwrap();
+            table.insert(i as usize, handle, 0).unwrap();
         }
 
         let mut handles = vec![];

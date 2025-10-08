@@ -6,14 +6,14 @@
 use ai_os_kernel::api::execution::StreamingManager;
 use ai_os_kernel::security::traits::SandboxProvider;
 use ai_os_kernel::security::{SandboxConfig, SandboxManager};
-use ai_os_kernel::syscalls::SyscallExecutor;
+use ai_os_kernel::syscalls::SyscallExecutorWithIpc;
 use futures::StreamExt;
 use std::fs;
 use tempfile::TempDir;
 
-fn setup_test_env() -> (SyscallExecutor, SandboxManager, TempDir, u32) {
+fn setup_test_env() -> (SyscallExecutorWithIpc, SandboxManager, TempDir, u32) {
     let sandbox_manager = SandboxManager::new();
-    let executor = SyscallExecutor::new(sandbox_manager.clone());
+    let executor = SyscallExecutorWithIpc::new(sandbox_manager.clone());
     let temp_dir = TempDir::new().unwrap();
     let pid = 100;
 

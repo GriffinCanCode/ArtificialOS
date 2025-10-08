@@ -5,13 +5,13 @@
  * NOTE: These tests have been temporarily disabled because they test private
  * implementation details (FD management) that are not exposed through the public API.
  * FD operations should be tested through integration tests using the public
- * SyscallExecutor::execute() API.
+ * SyscallExecutorWithIpc::execute() API.
  */
 
 // Commenting out tests that call private methods
 /*
 use ai_os_kernel::security::SandboxManager;
-use ai_os_kernel::syscalls::SyscallExecutor;
+use ai_os_kernel::syscalls::SyscallExecutorWithIpc;
 use std::fs::File;
 use std::io::Write;
 use tempfile::tempdir;
@@ -19,7 +19,7 @@ use tempfile::tempdir;
 #[test]
 fn test_fd_close() {
     let sandbox = SandboxManager::new();
-    let executor = SyscallExecutor::new(sandbox);
+    let executor = SyscallExecutorWithIpc::new(sandbox);
 
     // Create a temporary file
     let dir = tempdir().unwrap();
@@ -48,7 +48,7 @@ fn test_fd_close() {
 #[test]
 fn test_fd_close_invalid() {
     let sandbox = SandboxManager::new();
-    let executor = SyscallExecutor::new(sandbox);
+    let executor = SyscallExecutorWithIpc::new(sandbox);
 
     // Try to close invalid FD
     let result = executor.close_fd(1, 9999);
@@ -58,7 +58,7 @@ fn test_fd_close_invalid() {
 #[test]
 fn test_fd_fsync() {
     let sandbox = SandboxManager::new();
-    let executor = SyscallExecutor::new(sandbox);
+    let executor = SyscallExecutorWithIpc::new(sandbox);
 
     // Create a temporary file
     let dir = tempdir().unwrap();
@@ -85,7 +85,7 @@ fn test_fd_fsync() {
 #[test]
 fn test_fd_fsync_invalid() {
     let sandbox = SandboxManager::new();
-    let executor = SyscallExecutor::new(sandbox);
+    let executor = SyscallExecutorWithIpc::new(sandbox);
 
     // Try to fsync invalid FD
     let result = executor.fsync_fd(1, 9999);
@@ -95,7 +95,7 @@ fn test_fd_fsync_invalid() {
 #[test]
 fn test_fd_fdatasync() {
     let sandbox = SandboxManager::new();
-    let executor = SyscallExecutor::new(sandbox);
+    let executor = SyscallExecutorWithIpc::new(sandbox);
 
     // Create a temporary file
     let dir = tempdir().unwrap();
@@ -122,7 +122,7 @@ fn test_fd_fdatasync() {
 #[test]
 fn test_open_close_cycle() {
     let sandbox = SandboxManager::new();
-    let executor = SyscallExecutor::new(sandbox);
+    let executor = SyscallExecutorWithIpc::new(sandbox);
 
     // Create a temporary file
     let dir = tempdir().unwrap();

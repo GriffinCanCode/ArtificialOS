@@ -209,7 +209,7 @@ impl SyscallExecutorWithIpc {
                         };
 
                         match bincode::serialize_ipc_message(&response) {
-                            Ok(serialized) => SyscallResult::success_with_data(serialized),
+                            Ok(serialized) => SyscallResult::success_with_data(serialized.to_vec()),
                             Err(e) => {
                                 error!("Failed to serialize message: {}", e);
                                 SyscallResult::error("Serialization failed")

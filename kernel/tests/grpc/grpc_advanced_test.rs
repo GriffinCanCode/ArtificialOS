@@ -13,7 +13,7 @@ use ai_os_kernel::api::grpc_server::{GrpcServer, KernelServiceImpl};
 use ai_os_kernel::process::ProcessManagerImpl;
 use ai_os_kernel::security::traits::SandboxProvider;
 use ai_os_kernel::security::SandboxManager;
-use ai_os_kernel::syscalls::SyscallExecutor;
+use ai_os_kernel::syscalls::SyscallExecutorWithIpc;
 use std::net::SocketAddr;
 use tempfile::TempDir;
 
@@ -22,7 +22,7 @@ use tempfile::TempDir;
 
 fn setup_service() -> (KernelServiceImpl, SandboxManager, TempDir) {
     let sandbox_manager = SandboxManager::new();
-    let executor = SyscallExecutor::new(sandbox_manager.clone());
+    let executor = SyscallExecutorWithIpc::new(sandbox_manager.clone());
     let process_manager = ProcessManagerImpl::new();
     let temp_dir = TempDir::new().unwrap();
 

@@ -6,7 +6,7 @@
 use ai_os_kernel::security::SandboxProvider;
 use ai_os_kernel::{
     Capability, IPCManager, MemoryManager, ProcessManager, SandboxConfig, SandboxManager, Syscall,
-    SyscallExecutor, SyscallResult,
+    SyscallExecutorWithIpc, SyscallResult,
 };
 use pretty_assertions::assert_eq;
 use serial_test::serial;
@@ -44,7 +44,7 @@ fn test_full_process_lifecycle() {
 #[test]
 fn test_sandboxed_file_operations() {
     let sandbox_mgr = SandboxManager::new();
-    let executor = SyscallExecutor::new(sandbox_mgr.clone());
+    let executor = SyscallExecutorWithIpc::new(sandbox_mgr.clone());
     let temp_dir = TempDir::new().unwrap();
     let pid = 100;
 
@@ -87,7 +87,7 @@ fn test_sandboxed_file_operations() {
 #[test]
 fn test_sandbox_permission_enforcement() {
     let sandbox_mgr = SandboxManager::new();
-    let executor = SyscallExecutor::new(sandbox_mgr.clone());
+    let executor = SyscallExecutorWithIpc::new(sandbox_mgr.clone());
     let temp_dir = TempDir::new().unwrap();
     let pid = 100;
 
@@ -198,7 +198,7 @@ fn test_multiple_process_sandbox_isolation() {
 #[test]
 fn test_system_info_access_control() {
     let sandbox_mgr = SandboxManager::new();
-    let executor = SyscallExecutor::new(sandbox_mgr.clone());
+    let executor = SyscallExecutorWithIpc::new(sandbox_mgr.clone());
 
     let privileged_pid = 100;
     let restricted_pid = 200;
@@ -313,7 +313,7 @@ fn test_memory_recovery_after_oom() {
 #[test]
 fn test_file_operations_with_symlink_protection() {
     let sandbox_mgr = SandboxManager::new();
-    let executor = SyscallExecutor::new(sandbox_mgr.clone());
+    let executor = SyscallExecutorWithIpc::new(sandbox_mgr.clone());
     let temp_dir = TempDir::new().unwrap();
     let pid = 100;
 

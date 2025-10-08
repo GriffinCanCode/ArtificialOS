@@ -103,28 +103,57 @@ impl<T> RcuCell<T> {
         self.inner.swap(Arc::new(new_value))
     }
 
-    /// Compare and swap
+    /// Compare and swap (CAS) for lock-free updates
     ///
-    /// Returns Ok with new value if swap succeeded, Err with current value if failed.
+    /// Atomically replaces the value if it matches `current`.
+    /// Returns Ok(new_arc) if successful, Err(actual) if failed.
+    ///
+    /// **Use with caution**: May retry many times under contention.
+    /// Prefer `update()` for most use cases.
     #[inline]
     pub fn compare_and_swap(&self, current: &Arc<T>, new_value: T) -> Result<Arc<T>, Arc<T>>
     where
         T: PartialEq,
     {
         let new_arc = Arc::new(new_value);
-        let result = self.inner.compare_and_swap(current, Arc::clone(&new_arc));
-        if Arc::ptr_eq(&*result, current) {
+        // compare_and_swap returns previous value as a Guard
+        let previous = self.inner.compare_and_swap(current, Arc::clone(&new_arc));
+
+        // Check if CAS succeeded by comparing pointers
+        if Arc::ptr_eq(&previous, current) {
             Ok(new_arc)
         } else {
-            Err(Arc::clone(&*result))
+            // Clone the Arc from the Guard
+            Err(Arc::clone(&*previous))
         }
+    }
+
+    /// Try to update value with CAS loop (retries on failure)
+    ///
+    /// This is a convenience method that retries the update until successful.
+    /// Use when you need guaranteed completion.
+    #[inline]
+    pub fn try_update<F>(&self, mut f: F, max_retries: usize) -> bool
+    where
+        T: Clone + PartialEq,
+        F: FnMut(&T) -> T,
+    {
+        for _ in 0..max_retries {
+            let current = self.load();
+            let new_value = f(&*current);
+            if self.compare_and_swap(&current, new_value).is_ok() {
+                return true;
+            }
+        }
+        false
     }
 }
 
-impl<T: Clone> Clone for RcuCell<T> {
+// RcuCell is cheaply cloneable (just clones the Arc)
+impl<T> Clone for RcuCell<T> {
     fn clone(&self) -> Self {
         Self {
-            inner: Arc::clone(&self.inner),
+            inner: self.inner.clone(),
         }
     }
 }

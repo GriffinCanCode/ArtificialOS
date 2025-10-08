@@ -390,8 +390,9 @@ mod tests {
 
     fn create_test_executor() -> AsyncSyscallExecutor {
         let sandbox = SandboxManager::new();
-        let pipe_manager = crate::ipc::PipeManager::new();
-        let shm_manager = crate::ipc::ShmManager::new();
+        let memory_manager = crate::memory::MemoryManager::new();
+        let pipe_manager = crate::ipc::PipeManager::new(memory_manager.clone());
+        let shm_manager = crate::ipc::ShmManager::new(memory_manager);
 
         let sync_executor = SyscallExecutorWithIpc::with_ipc_direct(
             sandbox,

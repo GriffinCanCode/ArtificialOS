@@ -8,7 +8,7 @@ use ai_os_kernel::memory::MemoryManager;
 use ai_os_kernel::process::ProcessManagerImpl;
 use ai_os_kernel::security::SandboxProvider;
 use ai_os_kernel::syscalls::{
-    IoUringExecutor, IoUringManager, SyscallExecutor, SyscallSubmissionEntry,
+    IoUringExecutor, IoUringManager, SyscallExecutorWithIpc, SyscallSubmissionEntry,
 };
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -31,7 +31,7 @@ fn setup_test_manager() -> (IoUringManager, Pid) {
     let sandbox_config = ai_os_kernel::security::SandboxConfig::privileged(pid);
     sandbox_manager.create_sandbox(sandbox_config);
 
-    let syscall_executor = SyscallExecutor::with_full_features(
+    let syscall_executor = SyscallExecutorWithIpc::with_full_features(
         sandbox_manager,
         pipe_manager,
         shm_manager,

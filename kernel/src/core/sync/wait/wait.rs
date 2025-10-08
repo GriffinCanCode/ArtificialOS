@@ -40,7 +40,6 @@ pub enum WaitError {
 }
 
 /// Wait strategy implementation (enum dispatch for zero overhead)
-#[derive(Clone)]
 enum WaitStrategyImpl<K>
 where
     K: Eq + std::hash::Hash + Copy + Send + Sync + 'static,

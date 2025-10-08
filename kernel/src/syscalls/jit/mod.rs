@@ -156,7 +156,15 @@ mod tests {
 
     #[test]
     fn test_jit_manager_creation() {
-        let executor = Arc::new(SyscallExecutor::new(SandboxManager::new()));
+        let sandbox = SandboxManager::new();
+        let memory_manager = crate::memory::MemoryManager::new();
+        let pipe_manager = crate::ipc::PipeManager::new(memory_manager.clone());
+        let shm_manager = crate::ipc::ShmManager::new(memory_manager);
+        let executor = Arc::new(SyscallExecutorWithIpc::with_ipc_direct(
+            sandbox,
+            pipe_manager,
+            shm_manager,
+        ));
         let jit = JitManager::new(executor);
         let stats = jit.stats();
         assert_eq!(stats.compiled_paths, 0);
@@ -165,7 +173,15 @@ mod tests {
 
     #[tokio::test]
     async fn test_hotpath_detection() {
-        let executor = Arc::new(SyscallExecutor::new(SandboxManager::new()));
+        let sandbox = SandboxManager::new();
+        let memory_manager = crate::memory::MemoryManager::new();
+        let pipe_manager = crate::ipc::PipeManager::new(memory_manager.clone());
+        let shm_manager = crate::ipc::ShmManager::new(memory_manager);
+        let executor = Arc::new(SyscallExecutorWithIpc::with_ipc_direct(
+            sandbox,
+            pipe_manager,
+            shm_manager,
+        ));
         let jit = JitManager::new(executor);
         let syscall = Syscall::GetProcessList;
 

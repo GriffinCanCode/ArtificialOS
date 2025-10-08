@@ -572,7 +572,7 @@ impl SyscallExecutorWithIpc {
                     match json::serialize_vfs_batch(&files) {
                         Ok(json) => {
                             span.record_result(true);
-                            return SyscallResult::success_with_data(json);
+                            return SyscallResult::success_with_data(json.to_vec());
                         }
                         Err(e) => {
                             error!("Failed to serialize VFS directory listing: {}", e);
@@ -636,7 +636,7 @@ impl SyscallExecutorWithIpc {
                 match json::serialize_vfs_batch(&files) {
                     Ok(json) => {
                         span.record_result(true);
-                        SyscallResult::success_with_data(json)
+                        SyscallResult::success_with_data(json.to_vec())
                     }
                     Err(e) => {
                         error!("Failed to serialize directory listing: {}", e);

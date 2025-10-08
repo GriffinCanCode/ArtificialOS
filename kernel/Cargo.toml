@@ -21,6 +21,7 @@ async-stream = "0.3"
 # gRPC
 tonic = { version = "0.11", default-features = false, features = ["transport", "codegen", "prost"] }
 prost = "0.12"
+bytes = "1.5"
 
 # UUID generation - fast rng only
 uuid = { version = "1.6", features = ["v4", "fast-rng"] }

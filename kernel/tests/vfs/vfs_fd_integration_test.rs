@@ -5,7 +5,7 @@
 
 use ai_os_kernel::core::types::Pid;
 use ai_os_kernel::security::{SandboxConfig, SandboxManager, SandboxProvider};
-use ai_os_kernel::syscalls::{Syscall, SyscallExecutor};
+use ai_os_kernel::syscalls::{Syscall, SyscallExecutorWithIpc};
 use ai_os_kernel::vfs::{FileSystem, MemFS, MountManager};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -41,7 +41,7 @@ fn test_vfs_file_registered_in_fd_table() {
         .unwrap();
 
     // Create executor with VFS
-    let executor = SyscallExecutor::new(sandbox).with_vfs(vfs);
+    let executor = SyscallExecutorWithIpc::new(sandbox).with_vfs(vfs);
 
     // Open file - should use VFS and register in FD table
     let result = executor.execute(
@@ -94,7 +94,7 @@ fn test_dup_with_vfs_handles() {
     // Create test file
     vfs.write(&PathBuf::from("/mem/test.txt"), b"test").unwrap();
 
-    let executor = SyscallExecutor::new(sandbox).with_vfs(vfs);
+    let executor = SyscallExecutorWithIpc::new(sandbox).with_vfs(vfs);
 
     // Open file
     let result = executor.execute(
@@ -162,7 +162,7 @@ fn test_multiple_fs_backends() {
     vfs.write(&PathBuf::from("/data2/file2.txt"), b"data2")
         .unwrap();
 
-    let executor = SyscallExecutor::new(sandbox).with_vfs(vfs);
+    let executor = SyscallExecutorWithIpc::new(sandbox).with_vfs(vfs);
 
     // Open file from first mount
     let result1 = executor.execute(
@@ -220,7 +220,7 @@ fn test_process_cleanup_includes_vfs_files() {
         vfs.write(&PathBuf::from(&path), b"data").unwrap();
     }
 
-    let executor = SyscallExecutor::new(sandbox).with_vfs(vfs);
+    let executor = SyscallExecutorWithIpc::new(sandbox).with_vfs(vfs);
 
     // Open multiple files
     for i in 0..3 {
@@ -258,7 +258,7 @@ fn test_lseek_with_vfs() {
     vfs.write(&PathBuf::from("/data/test.txt"), b"0123456789")
         .unwrap();
 
-    let executor = SyscallExecutor::new(sandbox).with_vfs(vfs);
+    let executor = SyscallExecutorWithIpc::new(sandbox).with_vfs(vfs);
 
     // Open file
     let result = executor.execute(
@@ -309,7 +309,7 @@ fn test_fcntl_with_vfs() {
     vfs.write(&PathBuf::from("/data/test.txt"), b"test")
         .unwrap();
 
-    let executor = SyscallExecutor::new(sandbox).with_vfs(vfs);
+    let executor = SyscallExecutorWithIpc::new(sandbox).with_vfs(vfs);
 
     // Open file
     let result = executor.execute(

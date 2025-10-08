@@ -7,7 +7,7 @@ use ai_os_kernel::core::types::Pid;
 use ai_os_kernel::security::{
     ResourceLimitProvider, SandboxConfig, SandboxManager, SandboxProvider,
 };
-use ai_os_kernel::syscalls::{FdManager, Syscall, SyscallExecutor, SyscallResult};
+use ai_os_kernel::syscalls::{FdManager, Syscall, SyscallExecutorWithIpc, SyscallResult};
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;

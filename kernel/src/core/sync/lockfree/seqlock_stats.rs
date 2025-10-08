@@ -1,33 +1,65 @@
 /*!
  * Seqlock-based Statistics Wrapper
- * Zero-cost reads for read-heavy statistics structures
+ *
+ * Zero-cost reads for read-heavy statistics structures using sequence locks.
+ *
+ * # Design: Seqlock for Read-Heavy Workloads
+ *
+ * Seqlocks are optimal when reads vastly outnumber writes (100:1+ ratio).
+ * Unlike RwLock, readers never block writers and vice versa:
+ *
+ * **Read path** (lock-free, wait-free):
+ * 1. Read sequence number (odd = writer active)
+ * 2. Read data
+ * 3. Re-read sequence number (retry if changed)
+ *
+ * **Write path** (locks, increments sequence):
+ * 1. Acquire write lock
+ * 2. Increment sequence (odd value signals "writing")
+ * 3. Update data
+ * 4. Increment sequence again (even value signals "complete")
+ *
+ * Result: **Reads complete in ~1-2ns** regardless of writer activity.
+ *
+ * # When to Use
+ *
+ * ✅ **Use when**:
+ * - Read:Write ratio > 100:1
+ * - Data fits in a few cache lines (<256 bytes)
+ * - Occasional stale reads are acceptable
+ *
+ * ❌ **Don't use when**:
+ * - Frequent writes
+ * - Large data structures (>1KB)
+ * - Readers need precise consistency
+ *
+ * # Example
+ *
+ * ```ignore
+ * #[derive(Clone, Copy)]
+ * struct JitStats {
+ *     hits: u64,
+ *     misses: u64,
+ * }
+ *
+ * let stats = SeqlockStats::new(JitStats { hits: 0, misses: 0 });
+ *
+ * // Read (lock-free, ~1-2ns)
+ * let current = stats.read();
+ * println!("Hits: {}", current.hits);
+ *
+ * // Write (locks briefly, ~10-20ns)
+ * stats.write(|s| s.hits += 1);
+ * ```
  */
 
-use seqlock::{SeqLock as InnerSeqLock};
+use seqlock::SeqLock as InnerSeqLock;
 use std::sync::Arc;
 
 /// Seqlock wrapper for statistics structures
 ///
-/// # Performance
-///
-/// - **Reads**: Lock-free, wait-free (just sequence number check)
-/// - **Writes**: Mutex-based, increments sequence number
-/// - **Best for**: Structures read 100x more than written
-///
-/// # Example
-///
-/// ```ignore
-/// let stats = SeqlockStats::new(JitStats::default());
-///
-/// // Read (lock-free, ~1-2ns)
-/// let current = stats.read();
-///
-/// // Write (locks briefly, ~10-20ns)
-/// stats.write(|s| {
-///     s.jit_hits += 1;
-/// });
-/// ```
-pub struct SeqlockStats<T> {
+/// Generic over any `Copy` type (required for seqlock semantics).
+pub struct SeqlockStats<T: Copy> {
     inner: Arc<InnerSeqLock<T>>,
 }
 
@@ -87,9 +119,9 @@ impl<T: Clone + Copy> Clone for SeqlockStats<T> {
     }
 }
 
-// Safety: SeqLock is Sync and Send when T is
-unsafe impl<T: Send> Send for SeqlockStats<T> {}
-unsafe impl<T: Sync> Sync for SeqlockStats<T> {}
+// Safety: SeqLock is Sync and Send when T is (T must be Copy for SeqlockStats)
+unsafe impl<T: Copy + Send> Send for SeqlockStats<T> {}
+unsafe impl<T: Copy + Sync> Sync for SeqlockStats<T> {}
 
 #[cfg(test)]
 mod tests {
@@ -97,17 +129,17 @@ mod tests {
     use std::thread;
     use std::sync::Arc;
 
-    #[derive(Debug, Clone, PartialEq)]
+    #[derive(Debug, Clone, Copy, PartialEq)]
     struct TestStats {
         counter: u64,
-        name: String,
+        id: u64,
     }
 
     #[test]
     fn test_basic_read_write() {
         let stats = SeqlockStats::new(TestStats {
             counter: 0,
-            name: "test".to_string(),
+            id: 1,
         });
 
         stats.write(|s| s.counter = 42);
@@ -119,7 +151,7 @@ mod tests {
     fn test_concurrent_reads() {
         let stats = Arc::new(SeqlockStats::new(TestStats {
             counter: 100,
-            name: "concurrent".to_string(),
+            id: 2,
         }));
 
         let mut handles = vec![];
@@ -155,7 +187,7 @@ mod tests {
     fn test_batched_updates() {
         let stats = SeqlockStats::new(TestStats {
             counter: 0,
-            name: "batch".to_string(),
+            id: 3,
         });
 
         stats.write_batch(|s| {

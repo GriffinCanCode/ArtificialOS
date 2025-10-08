@@ -5,7 +5,7 @@
 
 use ai_os_kernel::security::traits::SandboxProvider;
 use ai_os_kernel::security::{Capability, SandboxConfig, SandboxManager};
-use ai_os_kernel::syscalls::{Syscall, SyscallExecutor, SyscallResult};
+use ai_os_kernel::syscalls::{Syscall, SyscallExecutorWithIpc, SyscallResult};
 use pretty_assertions::assert_eq;
 use std::fs;
 use std::path::PathBuf;
