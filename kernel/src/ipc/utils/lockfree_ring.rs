@@ -3,7 +3,7 @@
  * SPSC (Single Producer Single Consumer) lock-free ring buffer for IPC hot paths
  */
 
-use crate::memory::simd_memcpy;
+use crate::core::simd_memcpy;
 use crossbeam_queue::ArrayQueue;
 use std::sync::Arc;
 

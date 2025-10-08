@@ -4,7 +4,7 @@
  */
 
 use super::IoUringError;
-use crate::ipc::lockfree_ring::LockFreeRing;
+use crate::ipc::utils::lockfree_ring::LockFreeRing;
 use crate::syscalls::types::SyscallResult;
 
 /// Completion queue for syscall operations (lock-free)

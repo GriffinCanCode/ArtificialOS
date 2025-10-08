@@ -5,7 +5,7 @@
 
 use super::IoUringError;
 use crate::core::types::{Fd, Pid, Size, SockFd};
-use crate::ipc::lockfree_ring::LockFreeRing;
+use crate::ipc::utils::lockfree_ring::LockFreeRing;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 

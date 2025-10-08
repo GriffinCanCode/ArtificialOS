@@ -12,7 +12,8 @@
  * - **memory**: Memory utilities (arena, CoW, pooling)
  * - **serialization**: Bincode and JSON with SIMD optimization
  * - **data_structures**: Specialized data structures (inline strings, epoch FD table)
- * - **optimization**: Low-level performance hints (prefetch, branch prediction, SIMD)
+ * - **optimization**: Low-level performance hints (prefetch, branch prediction)
+ * - **simd**: SIMD-accelerated operations (memory, search, math, text)
  */
 
 // Core abstractions
@@ -27,6 +28,7 @@ pub mod data_structures;
 pub mod memory;
 pub mod optimization;
 pub mod serialization;
+pub mod simd;
 pub mod sync;
 
 // Re-export core abstractions
@@ -69,6 +71,14 @@ pub use data_structures::{EpochFdTable, InlineString};
 pub use optimization::{
     find_hash_simd, likely, path_starts_with_any, prefetch_read, prefetch_write, unlikely,
     PrefetchExt,
+};
+
+// Re-export SIMD operations
+pub use simd::{
+    ascii_to_lower, ascii_to_upper, avg_u64, capabilities as simd_capabilities, contains_byte,
+    count_byte, detect_simd_support, find_byte, init_simd, is_ascii, max_u64, min_u64, rfind_byte,
+    simd_memcmp, simd_memcpy, simd_memmove, simd_memset, sum_u32, sum_u64, trim, trim_end,
+    trim_start, SimdCapabilities,
 };
 
 // Re-export CPU hints wildcard (barrier, spin_loop, etc.)

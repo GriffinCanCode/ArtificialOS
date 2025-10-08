@@ -3,8 +3,8 @@
  * Core pipe data structure with ringbuf-based circular buffer
  */
 
-use super::super::lockfree_ring::LockFreeByteRing;
-use super::super::types::PipeId;
+use super::super::utils::lockfree_ring::LockFreeByteRing;
+use super::super::core::types::PipeId;
 use super::types::PipeError;
 use crate::core::types::{Address, Pid, Size};
 use crate::memory::MemoryManager;

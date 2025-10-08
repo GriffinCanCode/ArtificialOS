@@ -9,7 +9,7 @@ use std::time::SystemTime;
 use super::super::types::*;
 use super::node::Node;
 use super::MemFS;
-use crate::memory::simd_memcpy;
+use crate::core::simd_memcpy;
 
 impl MemFS {
     pub(super) fn read_impl(&self, path: &Path) -> VfsResult<Vec<u8>> {
