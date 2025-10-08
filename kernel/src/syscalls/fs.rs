@@ -6,8 +6,9 @@
 
 use crate::core::json;
 use crate::core::types::Pid;
-use crate::core::{SyscallGuard, TransactionGuard, Operation};
+use crate::core::{TransactionGuard, Operation};
 use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
+use crate::syscalls::TimeoutError;
 
 use log::{error, info, trace};
 use std::fs;
@@ -45,20 +46,11 @@ impl SyscallExecutor {
     }
 
     pub(super) fn file_stat(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
-        let mut guard = match &self.collector {
-            Some(collector) => Some(SyscallGuard::new("file_stat", pid, collector.clone())),
-            None => None,
-        };
-
         let request = PermissionRequest::file_read(pid, path.clone());
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
-            let err = SyscallResult::permission_denied(response.reason());
-            if let Some(ref mut g) = guard {
-                g.record_result::<()>(&Err(response.reason()));
-            }
-            return err;
+            return SyscallResult::permission_denied(response.reason());
         }
 
         // Use timeout executor - metadata operations can block on slow/remote storage
@@ -69,7 +61,7 @@ impl SyscallExecutor {
             "file_stat",
         );
 
-        let result = match result {
+        match result {
             Ok(metadata) => {
                 #[cfg(unix)]
                 let mode = format!("{:o}", metadata.permissions().mode());
@@ -97,29 +89,22 @@ impl SyscallExecutor {
 
                 info!("PID {} stat file: {:?}", pid, path);
                 match json::to_vec(&file_info) {
-                    Ok(json) => Ok(SyscallResult::success_with_data(json)),
+                    Ok(json) => SyscallResult::success_with_data(json),
                     Err(e) => {
                         error!("Failed to serialize file stat: {}", e);
-                        Err("Serialization failed".to_string())
+                        SyscallResult::error("Serialization failed")
                     }
                 }
             }
             Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
                 error!("File stat timed out for {:?} after {}ms (slow storage?)", path, elapsed_ms);
-                Err(format!("Timeout after {}ms", elapsed_ms))
+                SyscallResult::error(format!("Timeout after {}ms", elapsed_ms))
             }
             Err(super::TimeoutError::Operation(e)) => {
                 error!("Failed to stat file {:?}: {}", path, e);
-                Err(format!("Stat failed: {}", e))
+                SyscallResult::error(format!("Stat failed: {}", e))
             }
-        };
-
-        // Record result in guard
-        if let Some(ref mut g) = guard {
-            g.record_result(&result);
         }
-
-        result.unwrap_or_else(|e| SyscallResult::error(e))
     }
 
     pub(super) fn move_file(
@@ -128,21 +113,12 @@ impl SyscallExecutor {
         source: &PathBuf,
         destination: &PathBuf,
     ) -> SyscallResult {
-        let mut guard = match &self.collector {
-            Some(collector) => Some(SyscallGuard::new("file_move", pid, collector.clone())),
-            None => None,
-        };
-
         // Check permission for source (read/delete)
         let req_src = PermissionRequest::file_delete(pid, source.clone());
         let resp_src = self.permission_manager.check_and_audit(&req_src);
 
         if !resp_src.is_allowed() {
-            let err = SyscallResult::permission_denied(resp_src.reason());
-            if let Some(ref mut g) = guard {
-                g.record_result::<()>(&Err(format!("Source permission denied: {}", resp_src.reason())));
-            }
-            return err;
+            return SyscallResult::permission_denied(resp_src.reason());
         }
 
         // Check permission for destination (write/create)
@@ -150,15 +126,12 @@ impl SyscallExecutor {
         let resp_dst = self.permission_manager.check_and_audit(&req_dst);
 
         if !resp_dst.is_allowed() {
-            let err = SyscallResult::permission_denied(resp_dst.reason());
-            if let Some(ref mut g) = guard {
-                g.record_result::<()>(&Err(format!("Destination permission denied: {}", resp_dst.reason())));
-            }
-            return err;
+            return SyscallResult::permission_denied(resp_dst.reason());
         }
 
         // Create transaction guard for atomic move operation
         // If the move fails, we ensure proper cleanup
+        // NOTE: TransactionGuard is appropriate here - manages multi-step operation with rollback
         let src_backup = source.clone();
         let dst_backup = destination.clone();
 
@@ -189,28 +162,21 @@ impl SyscallExecutor {
             "file_move",
         );
 
-        let result = match result {
+        match result {
             Ok(_) => {
                 info!("PID {} moved file: {:?} -> {:?}", pid, source, destination);
                 transaction.commit().ok();
-                Ok(SyscallResult::success())
+                SyscallResult::success()
             }
             Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
                 error!("Move timed out for {:?} -> {:?} after {}ms (slow storage?)", source, destination, elapsed_ms);
-                Err(format!("Timeout after {}ms", elapsed_ms))
+                SyscallResult::error(format!("Timeout after {}ms", elapsed_ms))
             }
             Err(super::TimeoutError::Operation(e)) => {
                 error!("Failed to move file {:?} -> {:?}: {}", source, destination, e);
-                Err(format!("Move failed: {}", e))
+                SyscallResult::error(format!("Move failed: {}", e))
             }
-        };
-
-        // Record result in guard
-        if let Some(ref mut g) = guard {
-            g.record_result(&result);
         }
-
-        result.unwrap_or_else(|e| SyscallResult::error(e))
     }
 
     pub(super) fn copy_file(
@@ -219,21 +185,12 @@ impl SyscallExecutor {
         source: &PathBuf,
         destination: &PathBuf,
     ) -> SyscallResult {
-        let mut guard = match &self.collector {
-            Some(collector) => Some(SyscallGuard::new("file_copy", pid, collector.clone())),
-            None => None,
-        };
-
         // Check permission for source (read)
         let req_src = PermissionRequest::file_read(pid, source.clone());
         let resp_src = self.permission_manager.check(&req_src);
 
         if !resp_src.is_allowed() {
-            let err = SyscallResult::permission_denied(resp_src.reason());
-            if let Some(ref mut g) = guard {
-                g.record_result::<()>(&Err(format!("Source permission denied: {}", resp_src.reason())));
-            }
-            return err;
+            return SyscallResult::permission_denied(resp_src.reason());
         }
 
         // Check permission for destination (write/create)
@@ -241,15 +198,12 @@ impl SyscallExecutor {
         let resp_dst = self.permission_manager.check_and_audit(&req_dst);
 
         if !resp_dst.is_allowed() {
-            let err = SyscallResult::permission_denied(resp_dst.reason());
-            if let Some(ref mut g) = guard {
-                g.record_result::<()>(&Err(format!("Destination permission denied: {}", resp_dst.reason())));
-            }
-            return err;
+            return SyscallResult::permission_denied(resp_dst.reason());
         }
 
         // Create transaction guard for atomic copy with rollback
         // If copy fails partially, clean up the destination
+        // NOTE: TransactionGuard is appropriate here - manages cleanup on failure
         let dst_backup = destination.clone();
 
         let mut transaction = TransactionGuard::new(
@@ -278,28 +232,21 @@ impl SyscallExecutor {
             "file_copy",
         );
 
-        let result = match result {
+        match result {
             Ok(bytes) => {
                 info!("PID {} copied file: {:?} -> {:?} ({} bytes)", pid, source, destination, bytes);
                 transaction.commit().ok();
-                Ok(SyscallResult::success())
+                SyscallResult::success()
             }
             Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
                 error!("Copy timed out for {:?} -> {:?} after {}ms (slow storage or large file?)", source, destination, elapsed_ms);
-                Err(format!("Timeout after {}ms", elapsed_ms))
+                SyscallResult::error(format!("Timeout after {}ms", elapsed_ms))
             }
             Err(super::TimeoutError::Operation(e)) => {
                 error!("Failed to copy file {:?} -> {:?}: {}", source, destination, e);
-                Err(format!("Copy failed: {}", e))
+                SyscallResult::error(format!("Copy failed: {}", e))
             }
-        };
-
-        // Record result in guard
-        if let Some(ref mut g) = guard {
-            g.record_result(&result);
         }
-
-        result.unwrap_or_else(|e| SyscallResult::error(e))
     }
 
     pub(super) fn create_directory(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
@@ -311,11 +258,6 @@ impl SyscallExecutor {
     }
 
     pub(super) fn get_working_directory(&self, pid: Pid) -> SyscallResult {
-        let mut guard = match &self.collector {
-            Some(collector) => Some(SyscallGuard::new("get_cwd", pid, collector.clone())),
-            None => None,
-        };
-
         let request = PermissionRequest::new(
             pid,
             Resource::System {
@@ -326,90 +268,55 @@ impl SyscallExecutor {
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
-            let err = SyscallResult::permission_denied(response.reason());
-            if let Some(ref mut g) = guard {
-                g.record_result::<()>(&Err(response.reason()));
-            }
-            return err;
+            return SyscallResult::permission_denied(response.reason());
         }
 
-        let result = match std::env::current_dir() {
+        match std::env::current_dir() {
             Ok(path) => {
                 info!("PID {} retrieved working directory: {:?}", pid, path);
                 match path.to_str() {
-                    Some(s) => Ok(SyscallResult::success_with_data(s.as_bytes().to_vec())),
-                    None => Err("Invalid UTF-8 in path".to_string()),
+                    Some(s) => SyscallResult::success_with_data(s.as_bytes().to_vec()),
+                    None => SyscallResult::error("Invalid UTF-8 in path"),
                 }
             }
             Err(e) => {
                 error!("Failed to get working directory: {}", e);
-                Err(format!("Get working directory failed: {}", e))
+                SyscallResult::error(format!("Get working directory failed: {}", e))
             }
-        };
-
-        // Record result in guard
-        if let Some(ref mut g) = guard {
-            g.record_result(&result);
         }
-
-        result.unwrap_or_else(|e| SyscallResult::error(e))
     }
 
     pub(super) fn set_working_directory(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
-        let mut guard = match &self.collector {
-            Some(collector) => Some(SyscallGuard::new("set_cwd", pid, collector.clone())),
-            None => None,
-        };
-
         let request = PermissionRequest::file_read(pid, path.clone());
         let response = self.permission_manager.check_and_audit(&request);
 
         if !response.is_allowed() {
-            let err = SyscallResult::permission_denied(response.reason());
-            if let Some(ref mut g) = guard {
-                g.record_result::<()>(&Err(response.reason()));
-            }
-            return err;
+            return SyscallResult::permission_denied(response.reason());
         }
 
-        let result = match std::env::set_current_dir(path) {
+        match std::env::set_current_dir(path) {
             Ok(_) => {
                 info!("PID {} set working directory: {:?}", pid, path);
-                Ok(SyscallResult::success())
+                SyscallResult::success()
             }
             Err(e) => {
                 error!("Failed to set working directory {:?}: {}", path, e);
-                Err(format!("Set working directory failed: {}", e))
+                SyscallResult::error(format!("Set working directory failed: {}", e))
             }
-        };
-
-        // Record result in guard
-        if let Some(ref mut g) = guard {
-            g.record_result(&result);
         }
-
-        result.unwrap_or_else(|e| SyscallResult::error(e))
     }
 
     pub(super) fn truncate_file(&self, pid: Pid, path: &PathBuf, size: u64) -> SyscallResult {
-        let mut guard = match &self.collector {
-            Some(collector) => Some(SyscallGuard::new("file_truncate", pid, collector.clone())),
-            None => None,
-        };
-
         let request = PermissionRequest::file_write(pid, path.clone());
         let response = self.permission_manager.check_and_audit(&request);
 
         if !response.is_allowed() {
-            let err = SyscallResult::permission_denied(response.reason());
-            if let Some(ref mut g) = guard {
-                g.record_result::<()>(&Err(response.reason()));
-            }
-            return err;
+            return SyscallResult::permission_denied(response.reason());
         }
 
         // Create transaction guard with rollback capability
         // Store original size to restore on failure
+        // NOTE: TransactionGuard is appropriate here - manages rollback if truncate fails
         let path_backup = path.clone();
         let original_size = path.metadata().ok().map(|m| m.len());
 
@@ -434,7 +341,7 @@ impl SyscallExecutor {
 
         // Use timeout executor - truncate can block on slow storage
         let path_clone = path.clone();
-        let result: Result<(), super::TimeoutError<std::io::Error>> = self.timeout_executor.execute_with_deadline(
+        let result: Result<(), TimeoutError<std::io::Error>> = self.timeout_executor.execute_with_deadline(
             || {
                 let file = fs::OpenOptions::new().write(true).open(&path_clone)?;
                 file.set_len(size)?;
@@ -444,27 +351,20 @@ impl SyscallExecutor {
             "file_truncate",
         );
 
-        let result = match result {
+        match result {
             Ok(()) => {
                 info!("PID {} truncated file {:?} to {} bytes", pid, path, size);
                 transaction.commit().ok();
-                Ok(SyscallResult::success())
+                SyscallResult::success()
             }
-            Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+            Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
                 error!("Truncate timed out for {:?} after {}ms (slow storage?)", path, elapsed_ms);
-                Err(format!("Timeout after {}ms", elapsed_ms))
+                SyscallResult::error(format!("Timeout after {}ms", elapsed_ms))
             }
-            Err(super::TimeoutError::Operation(e)) => {
+            Err(TimeoutError::Operation(e)) => {
                 error!("Failed to truncate file {:?}: {}", path, e);
-                Err(format!("Truncate failed: {}", e))
+                SyscallResult::error(format!("Truncate failed: {}", e))
             }
-        };
-
-        // Record result in guard
-        if let Some(ref mut g) = guard {
-            g.record_result(&result);
         }
-
-        result.unwrap_or_else(|e| SyscallResult::error(e))
     }
 }
