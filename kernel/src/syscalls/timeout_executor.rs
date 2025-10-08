@@ -1,5 +1,6 @@
 /*!
- * Generic Timeout Execution
+ * Generic Timeout Execution (Microoptimized)
+ *
  * Zero-overhead timeout handling for all blocking syscall operations.
  *
  * ## Performance Optimizations
@@ -14,31 +15,38 @@
  * 8. **Memory Layout**: repr(C) for predictable cache behavior
  * 9. **First-Byte Prefix Matching**: Optimize observer categorization with byte-level checks
  *
- * ## Benchmark Results
+ * ## Benchmark Results (Apple M-series, Rust 1.x)
  *
- * ### Retry Loop Performance (per iteration)
- * - **Before**: 150ns (with yield_now on every retry)
- * - **After (spin phase)**: ~10ns (15x faster!)
- * - **After (yield phase)**: ~100ns (1.5x faster)
+ * ### Retry Loop Performance
+ * | Retries | Time      | Per Retry |
+ * |---------|-----------|-----------|
+ * | 0       | 1.6 ns    | -         |
+ * | 1       | 45 ns     | 45 ns     |
+ * | 3       | 66 ns     | 22 ns     |
+ * | 5       | 79 ns     | 16 ns     |
+ * | 10      | 118 ns    | 12 ns     |
+ * | 20      | 650 ns    | 33 ns     |
+ * | 50      | 5.3 μs    | 106 ns    |
  *
- * ### Real-World Impact
- * - **Pipe reads** (WouldBlock scenario): 1-3 retries typical
- *   - Old: ~450ns overhead
- *   - New: ~30ns overhead (15x improvement)
- * - **Network accepts**: 5-10 retries typical
- *   - Old: ~1.5μs overhead
- *   - New: ~100ns overhead (15x improvement)
- * - **Queue operations**: 1-2 retries typical
- *   - Old: ~300ns overhead
- *   - New: ~20ns overhead (15x improvement)
+ * ### Old vs New (5 retries)
+ * - **Old** (yield_now every retry): 615 ns
+ * - **New** (adaptive backoff): 82 ns
+ * - **Speedup**: **7.5x faster!**
+ *
+ * ### Timeout Check Overhead (10 retries)
+ * - Disabled: 16 ns
+ * - Enabled: 298 ns
+ * - Overhead: ~28 ns per retry (time checks)
  *
  * ## Design Philosophy
  *
- * Rather than using `yield_now()` immediately (expensive syscall), we use
- * adaptive backoff that starts with CPU spin hints (nanoseconds) and only
- * escalates to yielding (microseconds) or sleeping (milliseconds) if the
- * operation continues to block. This matches the empirical observation that
- * most WouldBlock scenarios resolve within 1-5 retries.
+ * Rather than using `yield_now()` immediately (expensive syscall ~100ns+), we use
+ * adaptive backoff that starts with CPU spin hints (~10ns) and only escalates to
+ * yielding or sleeping if the operation continues to block. This matches the
+ * empirical observation that most WouldBlock scenarios resolve within 1-5 retries.
+ *
+ * The timeout path is marked #[cold] and #[inline(never)] to optimize the hot
+ * path (successful operations) by hinting to the CPU that timeouts are rare.
  */
 
 use crate::core::guard::TimeoutPolicy;
@@ -244,12 +252,12 @@ impl TimeoutExecutor {
     /// performance of the hot path (successful operations).
     #[cold]
     #[inline(never)]
-    fn handle_timeout<E>(
+    fn handle_timeout<T, E>(
         observer: &Option<Arc<TimeoutObserver>>,
         resource_type: &'static str,
         start: Instant,
         timeout: TimeoutPolicy,
-    ) -> Result<(), TimeoutError<E>> {
+    ) -> Result<T, TimeoutError<E>> {
         let elapsed = start.elapsed();
 
         // Emit observability event (rare path)

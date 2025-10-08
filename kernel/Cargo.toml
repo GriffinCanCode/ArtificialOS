@@ -100,6 +100,10 @@ harness = false
 name = "sync_benchmark"
 harness = false
 
+[[bench]]
+name = "timeout_benchmark"
+harness = false
+
 # Development profile - optimized for build speed
 [profile.dev]
 # Optimize dependencies in dev builds (faster runtime, still fast incremental builds)
