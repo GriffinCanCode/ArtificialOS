@@ -65,8 +65,19 @@ pub use memory::{
     SimdCapabilities,
 };
 
-// Monitoring
-pub use monitoring::{init_tracing, MetricsCollector, MetricsSnapshot};
+// Monitoring - Dual-layer observability system
+pub use monitoring::{
+    // Distributed tracing (Layer 1)
+    init_tracing, span_syscall, span_operation, span_grpc,
+    // Metrics (for gRPC endpoints)
+    MetricsCollector, MetricsSnapshot,
+    // Event streaming (Layer 2 - new primary API)
+    Collector, Event, EventFilter, Category, Severity, Payload,
+    Query, QueryResult, CommonQueries,
+    Anomaly, Detector, Sampler,
+    // Bridge for integration
+    init_collector, global_collector,
+};
 
 // Process
 pub use process::{

@@ -289,9 +289,9 @@ mod tests {
     fn test_anomaly_detection() {
         let mut stats = Stats::new();
 
-        // Build baseline with normal values (mean ~100, stddev small)
-        for _ in 0..MIN_SAMPLES {
-            stats.update(100.0);
+        // Build baseline with normal values (mean ~100, stddev ~5)
+        for i in 0..MIN_SAMPLES {
+            stats.update(100.0 + (i % 10) as f64);
         }
 
         // Normal value should not be anomaly
