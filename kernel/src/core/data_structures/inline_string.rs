@@ -4,7 +4,6 @@
  */
 
 use serde::{Deserialize, Serialize};
-use smartstring::alias::String as SmartString;
 use std::fmt;
 
 /// Inline-optimized string that stores short strings (≤23 bytes) without heap allocation
@@ -29,7 +28,7 @@ use std::fmt;
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(transparent)]
 pub struct InlineString {
-    inner: SmartString,
+    inner: String,
 }
 
 impl InlineString {
@@ -37,15 +36,15 @@ impl InlineString {
     #[inline]
     pub fn new() -> Self {
         Self {
-            inner: SmartString::new(),
+            inner: String::new(),
         }
     }
 
     /// Create from static string (always inline)
     #[inline]
-    pub const fn from_static(s: &'static str) -> Self {
+    pub fn from_static(s: &'static str) -> Self {
         Self {
-            inner: SmartString::from_static(s),
+            inner: s.to_string(),
         }
     }
 
@@ -58,7 +57,9 @@ impl InlineString {
     /// Check if string is stored inline (no heap allocation)
     #[inline]
     pub fn is_inline(&self) -> bool {
-        self.inner.is_inline()
+        // Note: Standard String doesn't support inline storage
+        // This would return true for SmartString with inline storage
+        false
     }
 
     /// Get capacity (inline capacity is 23 bytes on 64-bit)
@@ -109,7 +110,7 @@ impl From<&str> for InlineString {
     #[inline]
     fn from(s: &str) -> Self {
         Self {
-            inner: SmartString::from(s),
+            inner: String::from(s),
         }
     }
 }
@@ -118,7 +119,7 @@ impl From<String> for InlineString {
     #[inline]
     fn from(s: String) -> Self {
         Self {
-            inner: SmartString::from(s),
+            inner: s,
         }
     }
 }

@@ -26,14 +26,14 @@ impl SyscallExecutorWithIpc {
         // Check file read permission using centralized manager
         let path_buf = PathBuf::from(path);
         let request = PermissionRequest::file_read(pid, path_buf.clone());
-        let response = self.permission_manager.check_and_audit(&request);
+        let response = self.permission_manager().check_and_audit(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
         }
 
         // Mmap manager is legitimately optional (feature flag)
-        let mmap_manager = match &self.ipc.mmap_manager {
+        let mmap_manager = match &self.ipc().mmap_manager {
             Some(mm) => mm,
             None => return SyscallResult::error("Mmap manager not available"),
         };
@@ -48,7 +48,7 @@ impl SyscallExecutorWithIpc {
         // Check write permission if write requested
         if prot_flags.write {
             let write_request = PermissionRequest::file_write(pid, path_buf);
-            let write_response = self.permission_manager.check_and_audit(&write_request);
+            let write_response = self.permission_manager().check_and_audit(&write_request);
 
             if !write_response.is_allowed() {
                 return SyscallResult::permission_denied(write_response.reason());
@@ -90,7 +90,7 @@ impl SyscallExecutorWithIpc {
         length: usize,
     ) -> SyscallResult {
         // Mmap manager is legitimately optional (feature flag)
-        let mmap_manager = match &self.ipc.mmap_manager {
+        let mmap_manager = match &self.ipc().mmap_manager {
             Some(mm) => mm,
             None => return SyscallResult::error("Mmap manager not available"),
         };
@@ -123,7 +123,7 @@ impl SyscallExecutorWithIpc {
         data: &[u8],
     ) -> SyscallResult {
         // Mmap manager is legitimately optional (feature flag)
-        let mmap_manager = match &self.ipc.mmap_manager {
+        let mmap_manager = match &self.ipc().mmap_manager {
             Some(mm) => mm,
             None => return SyscallResult::error("Mmap manager not available"),
         };
@@ -142,7 +142,7 @@ impl SyscallExecutorWithIpc {
 
     pub(in crate::syscalls) fn msync(&self, pid: Pid, mmap_id: u32) -> SyscallResult {
         // Mmap manager is legitimately optional (feature flag)
-        let mmap_manager = match &self.ipc.mmap_manager {
+        let mmap_manager = match &self.ipc().mmap_manager {
             Some(mm) => mm,
             None => return SyscallResult::error("Mmap manager not available"),
         };
@@ -161,7 +161,7 @@ impl SyscallExecutorWithIpc {
 
     pub(in crate::syscalls) fn munmap(&self, pid: Pid, mmap_id: u32) -> SyscallResult {
         // Mmap manager is legitimately optional (feature flag)
-        let mmap_manager = match &self.ipc.mmap_manager {
+        let mmap_manager = match &self.ipc().mmap_manager {
             Some(mm) => mm,
             None => return SyscallResult::error("Mmap manager not available"),
         };
@@ -188,14 +188,14 @@ impl SyscallExecutorWithIpc {
             },
             Action::Inspect,
         );
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
         }
 
         // Mmap manager is legitimately optional (feature flag)
-        let mmap_manager = match &self.ipc.mmap_manager {
+        let mmap_manager = match &self.ipc().mmap_manager {
             Some(mm) => mm,
             None => return SyscallResult::error("Mmap manager not available"),
         };

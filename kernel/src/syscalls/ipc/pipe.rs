@@ -25,14 +25,14 @@ impl SyscallExecutorWithIpc {
         // Check permission using centralized manager
         let request =
             PermissionRequest::new(pid, Resource::IpcChannel { channel_id: 0 }, Action::Create);
-        let response = self.permission_manager.check_and_audit(&request);
+        let response = self.permission_manager().check_and_audit(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
         }
 
         // Direct access - no Option check! Guaranteed by typestate
-        let pipe_manager = &self.ipc.pipe_manager;
+        let pipe_manager = &self.ipc().pipe_manager();
 
         match pipe_manager.create(reader_pid, writer_pid, capacity) {
             Ok(pipe_id) => {
@@ -61,21 +61,21 @@ impl SyscallExecutorWithIpc {
             },
             Action::Send,
         );
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
         }
 
         // Direct access - no Option check!
-        let pipe_manager = &self.ipc.pipe_manager;
+        let pipe_manager = &self.ipc().pipe_manager();
 
         // Use generic timeout executor for all blocking operations
         use crate::ipc::pipe::PipeError;
-        let result = self.timeout_executor.execute_with_retry(
+        let result = self.timeout_executor().execute_with_retry(
             || pipe_manager.write(pipe_id, pid, data),
             |e| matches!(e, PipeError::WouldBlock(_)),
-            self.timeout_config.pipe_write,
+            self.timeout_config().pipe_write,
             "pipe_write",
         );
 
@@ -112,21 +112,21 @@ impl SyscallExecutorWithIpc {
             },
             Action::Receive,
         );
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
         }
 
         // Direct access - no Option check!
-        let pipe_manager = &self.ipc.pipe_manager;
+        let pipe_manager = &self.ipc().pipe_manager();
 
         // Use generic timeout executor for all blocking operations
         use crate::ipc::pipe::PipeError;
-        let result = self.timeout_executor.execute_with_retry(
+        let result = self.timeout_executor().execute_with_retry(
             || pipe_manager.read(pipe_id, pid, size),
             |e| matches!(e, PipeError::WouldBlock(_)),
-            self.timeout_config.pipe_read,
+            self.timeout_config().pipe_read,
             "pipe_read",
         );
 
@@ -156,7 +156,7 @@ impl SyscallExecutorWithIpc {
 
     pub(in crate::syscalls) fn close_pipe(&self, pid: Pid, pipe_id: u32) -> SyscallResult {
         // Direct access - no Option check!
-        let pipe_manager = &self.ipc.pipe_manager;
+        let pipe_manager = &self.ipc().pipe_manager();
 
         match pipe_manager.close(pipe_id, pid) {
             Ok(_) => {
@@ -172,7 +172,7 @@ impl SyscallExecutorWithIpc {
 
     pub(in crate::syscalls) fn destroy_pipe(&self, pid: Pid, pipe_id: u32) -> SyscallResult {
         // Direct access - no Option check!
-        let pipe_manager = &self.ipc.pipe_manager;
+        let pipe_manager = &self.ipc().pipe_manager();
 
         match pipe_manager.destroy(pipe_id) {
             Ok(_) => {
@@ -188,7 +188,7 @@ impl SyscallExecutorWithIpc {
 
     pub(in crate::syscalls) fn pipe_stats(&self, pid: Pid, pipe_id: u32) -> SyscallResult {
         // Direct access - no Option check!
-        let pipe_manager = &self.ipc.pipe_manager;
+        let pipe_manager = &self.ipc().pipe_manager();
 
         match pipe_manager.stats(pipe_id) {
             Ok(stats) => match bincode::to_vec(&stats) {

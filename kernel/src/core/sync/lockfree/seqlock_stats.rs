@@ -31,7 +31,7 @@ pub struct SeqlockStats<T> {
     inner: Arc<InnerSeqLock<T>>,
 }
 
-impl<T: Clone> SeqlockStats<T> {
+impl<T: Clone + Copy> SeqlockStats<T> {
     /// Create new seqlock-protected stats
     #[inline]
     pub fn new(initial: T) -> Self {
@@ -79,7 +79,7 @@ impl<T: Clone> SeqlockStats<T> {
     }
 }
 
-impl<T: Clone> Clone for SeqlockStats<T> {
+impl<T: Clone + Copy> Clone for SeqlockStats<T> {
     fn clone(&self) -> Self {
         Self {
             inner: Arc::clone(&self.inner),

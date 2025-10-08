@@ -50,7 +50,6 @@
 use crossbeam_queue::ArrayQueue;
 use parking_lot::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::Duration;
 
 /// Maximum pending operations before forcing a combine
 const MAX_PENDING: usize = 1024;
@@ -168,14 +167,17 @@ impl FlatCombiningCounter {
         self.value.store(val, order);
     }
 
-    /// Combiner implementation: Batch all pending operations
+    /// Unified combiner implementation: Batch all pending operations
     ///
     /// This is where the magic happens - we apply many operations
     /// with a single atomic operation, reducing cache line transfers.
+    ///
+    /// **Design**: Single unified function eliminates code duplication
+    /// and enables better compiler optimization.
     #[inline(never)] // Keep cold to not pollute hot path
-    fn combine_and_add(&self, initial_delta: u64) -> u64 {
-        let mut total_add = initial_delta;
-        let mut total_sub = 0u64;
+    fn combine(&self, initial_add: u64, initial_sub: u64) -> u64 {
+        let mut total_add = initial_add;
+        let mut total_sub = initial_sub;
 
         // Drain all pending operations (lock-free queue)
         while let Some(op) = self.pending.pop() {
@@ -186,38 +188,29 @@ impl FlatCombiningCounter {
         }
 
         // Apply net change with a single atomic operation
-        let net_change = total_add.saturating_sub(total_sub);
-        if net_change > 0 {
-            self.value.fetch_add(net_change, Ordering::SeqCst)
+        // This branch structure minimizes atomic ops: only one per batch
+        if total_add > total_sub {
+            let net = total_add - total_sub;
+            self.value.fetch_add(net, Ordering::SeqCst)
         } else if total_sub > total_add {
-            self.value
-                .fetch_sub(total_sub - total_add, Ordering::SeqCst)
+            let net = total_sub - total_add;
+            self.value.fetch_sub(net, Ordering::SeqCst)
         } else {
+            // Balanced: no net change needed
             self.value.load(Ordering::SeqCst)
         }
     }
 
-    #[inline(never)]
-    fn combine_and_sub(&self, initial_delta: u64) -> u64 {
-        let mut total_add = 0u64;
-        let mut total_sub = initial_delta;
+    /// Helper: combine starting with an add operation
+    #[inline(always)]
+    fn combine_and_add(&self, delta: u64) -> u64 {
+        self.combine(delta, 0)
+    }
 
-        while let Some(op) = self.pending.pop() {
-            match op {
-                Operation::Add(delta) => total_add += delta,
-                Operation::Sub(delta) => total_sub += delta,
-            }
-        }
-
-        let net_change = total_sub.saturating_sub(total_add);
-        if net_change > 0 {
-            self.value.fetch_sub(net_change, Ordering::SeqCst)
-        } else if total_add > total_sub {
-            self.value
-                .fetch_add(total_add - total_sub, Ordering::SeqCst)
-        } else {
-            self.value.load(Ordering::SeqCst)
-        }
+    /// Helper: combine starting with a sub operation
+    #[inline(always)]
+    fn combine_and_sub(&self, delta: u64) -> u64 {
+        self.combine(0, delta)
     }
 
     /// Get statistics about combining efficiency

@@ -29,7 +29,7 @@ impl SyscallExecutorWithIpc {
             },
             Action::Inspect,
         );
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             span.record_error(response.reason());
@@ -68,7 +68,7 @@ impl SyscallExecutorWithIpc {
             },
             Action::Inspect,
         );
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             span.record_error(response.reason());
@@ -105,7 +105,7 @@ impl SyscallExecutorWithIpc {
             },
             Action::Read,
         );
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             span.record_error(response.reason());
@@ -138,7 +138,7 @@ impl SyscallExecutorWithIpc {
             },
             Action::Write,
         );
-        let response = self.permission_manager.check_and_audit(&request);
+        let response = self.permission_manager().check_and_audit(&request);
 
         if !response.is_allowed() {
             span.record_error(response.reason());
@@ -170,7 +170,7 @@ impl SyscallExecutorWithIpc {
         trace!("Extracted host from URL: {}", host);
 
         let request = PermissionRequest::net_connect(pid, host.clone(), None);
-        let response = self.permission_manager.check_and_audit(&request);
+        let response = self.permission_manager().check_and_audit(&request);
 
         if !response.is_allowed() {
             span.record_error(response.reason());
@@ -183,7 +183,7 @@ impl SyscallExecutorWithIpc {
         // HTTP requests can hang on slow networks, DNS resolution, or unresponsive servers
         let url_clone = url.to_string();
         let result: Result<(reqwest::StatusCode, bytes::Bytes), TimeoutError<reqwest::Error>> =
-            self.timeout_executor.execute_with_deadline(
+            self.timeout_executor().execute_with_deadline(
                 || {
                     // Create client without timeout (we handle timeout at executor level)
                     let client = reqwest::blocking::Client::builder()
@@ -196,7 +196,7 @@ impl SyscallExecutorWithIpc {
 
                     Ok((status, body))
                 },
-                self.timeout_config.network,
+                self.timeout_config().network,
                 "http_request",
             );
 

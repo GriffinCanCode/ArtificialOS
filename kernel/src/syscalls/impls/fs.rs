@@ -47,7 +47,7 @@ impl SyscallExecutorWithIpc {
 
     pub(in crate::syscalls) fn file_stat(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
         let request = PermissionRequest::file_read(pid, path.clone());
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
@@ -55,9 +55,9 @@ impl SyscallExecutorWithIpc {
 
         // Use timeout executor - metadata operations can block on slow/remote storage
         let path_clone = path.clone();
-        let result = self.timeout_executor.execute_with_deadline(
+        let result = self.timeout_executor().execute_with_deadline(
             || fs::metadata(&path_clone),
-            self.timeout_config.file_io,
+            self.timeout_config().file_io,
             "file_stat",
         );
 
@@ -123,7 +123,7 @@ impl SyscallExecutorWithIpc {
     ) -> SyscallResult {
         // Check permission for source (read/delete)
         let req_src = PermissionRequest::file_delete(pid, source.clone());
-        let resp_src = self.permission_manager.check_and_audit(&req_src);
+        let resp_src = self.permission_manager().check_and_audit(&req_src);
 
         if !resp_src.is_allowed() {
             return SyscallResult::permission_denied(resp_src.reason());
@@ -131,7 +131,7 @@ impl SyscallExecutorWithIpc {
 
         // Check permission for destination (write/create)
         let req_dst = PermissionRequest::file_create(pid, destination.clone());
-        let resp_dst = self.permission_manager.check_and_audit(&req_dst);
+        let resp_dst = self.permission_manager().check_and_audit(&req_dst);
 
         if !resp_dst.is_allowed() {
             return SyscallResult::permission_denied(resp_dst.reason());
@@ -166,9 +166,9 @@ impl SyscallExecutorWithIpc {
         // Use timeout executor - rename can block on slow/cross-filesystem operations
         let src_clone = source.clone();
         let dst_clone = destination.clone();
-        let result = self.timeout_executor.execute_with_deadline(
+        let result = self.timeout_executor().execute_with_deadline(
             || fs::rename(&src_clone, &dst_clone),
-            self.timeout_config.file_io,
+            self.timeout_config().file_io,
             "file_move",
         );
 
@@ -203,7 +203,7 @@ impl SyscallExecutorWithIpc {
     ) -> SyscallResult {
         // Check permission for source (read)
         let req_src = PermissionRequest::file_read(pid, source.clone());
-        let resp_src = self.permission_manager.check(&req_src);
+        let resp_src = self.permission_manager().check(&req_src);
 
         if !resp_src.is_allowed() {
             return SyscallResult::permission_denied(resp_src.reason());
@@ -211,7 +211,7 @@ impl SyscallExecutorWithIpc {
 
         // Check permission for destination (write/create)
         let req_dst = PermissionRequest::file_create(pid, destination.clone());
-        let resp_dst = self.permission_manager.check_and_audit(&req_dst);
+        let resp_dst = self.permission_manager().check_and_audit(&req_dst);
 
         if !resp_dst.is_allowed() {
             return SyscallResult::permission_denied(resp_dst.reason());
@@ -244,9 +244,9 @@ impl SyscallExecutorWithIpc {
         // Use timeout executor - copy can block on slow storage, especially for large files
         let src_clone = source.clone();
         let dst_clone = destination.clone();
-        let result = self.timeout_executor.execute_with_deadline(
+        let result = self.timeout_executor().execute_with_deadline(
             || fs::copy(&src_clone, &dst_clone),
-            self.timeout_config.file_io,
+            self.timeout_config().file_io,
             "file_copy",
         );
 
@@ -292,7 +292,7 @@ impl SyscallExecutorWithIpc {
             },
             Action::Inspect,
         );
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
@@ -315,7 +315,7 @@ impl SyscallExecutorWithIpc {
 
     pub(in crate::syscalls) fn set_working_directory(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
         let request = PermissionRequest::file_read(pid, path.clone());
-        let response = self.permission_manager.check_and_audit(&request);
+        let response = self.permission_manager().check_and_audit(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
@@ -335,7 +335,7 @@ impl SyscallExecutorWithIpc {
 
     pub(in crate::syscalls) fn truncate_file(&self, pid: Pid, path: &PathBuf, size: u64) -> SyscallResult {
         let request = PermissionRequest::file_write(pid, path.clone());
-        let response = self.permission_manager.check_and_audit(&request);
+        let response = self.permission_manager().check_and_audit(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
@@ -371,13 +371,13 @@ impl SyscallExecutorWithIpc {
         // Use timeout executor - truncate can block on slow storage
         let path_clone = path.clone();
         let result: Result<(), TimeoutError<std::io::Error>> =
-            self.timeout_executor.execute_with_deadline(
+            self.timeout_executor().execute_with_deadline(
                 || {
                     let file = fs::OpenOptions::new().write(true).open(&path_clone)?;
                     file.set_len(size)?;
                     Ok(())
                 },
-                self.timeout_config.file_io,
+                self.timeout_config().file_io,
                 "file_truncate",
             );
 

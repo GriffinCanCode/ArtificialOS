@@ -248,8 +248,8 @@ impl SyscallExecutorWithIpc {
 
         // Check per-process socket limit BEFORE doing expensive operations
         use crate::security::ResourceLimitProvider;
-        if let Some(limits) = self.sandbox_manager.get_limits(pid) {
-            let current_socket_count = self.socket_manager.get_socket_count(pid);
+        if let Some(limits) = self.sandbox_manager().get_limits(pid) {
+            let current_socket_count = self.socket_manager().get_socket_count(pid);
             trace!(
                 "PID {} has {}/{} sockets open",
                 pid,
@@ -281,7 +281,7 @@ impl SyscallExecutorWithIpc {
             },
             Action::Create,
         );
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             span.record_error(response.reason());
@@ -289,10 +289,10 @@ impl SyscallExecutorWithIpc {
         }
 
         // AF_INET = 2, SOCK_STREAM = 1, SOCK_DGRAM = 2
-        let sockfd = self.socket_manager.allocate_fd();
+        let sockfd = self.socket_manager().allocate_fd();
 
         // Track socket for this process (socket will be created on bind/connect)
-        self.socket_manager.track_socket(pid, sockfd);
+        self.socket_manager().track_socket(pid, sockfd);
 
         info!(
             "PID {} allocated socket FD {} (domain={}, type={}, protocol={})",
@@ -330,7 +330,7 @@ impl SyscallExecutorWithIpc {
         let port = parts.get(1).and_then(|p| p.parse::<u16>().ok());
 
         let request = PermissionRequest::new(pid, Resource::Network { host, port }, Action::Bind);
-        let response = self.permission_manager.check_and_audit(&request);
+        let response = self.permission_manager().check_and_audit(&request);
 
         if !response.is_allowed() {
             span.record_error(response.reason());
@@ -340,7 +340,7 @@ impl SyscallExecutorWithIpc {
         // Try to bind a TCP listener
         match TcpListener::bind(address) {
             Ok(listener) => {
-                self.socket_manager
+                self.socket_manager()
                     .sockets
                     .insert(sockfd, Socket::TcpListener(listener));
                 info!("PID {} bound TCP socket {} to {}", pid, sockfd, address);
@@ -353,7 +353,7 @@ impl SyscallExecutorWithIpc {
                 // Try UDP if TCP failed
                 match UdpSocket::bind(address) {
                     Ok(socket) => {
-                        self.socket_manager
+                        self.socket_manager()
                             .sockets
                             .insert(sockfd, Socket::UdpSocket(socket));
                         info!("PID {} bound UDP socket {} to {}", pid, sockfd, address);
@@ -390,7 +390,7 @@ impl SyscallExecutorWithIpc {
             },
             Action::Bind,
         );
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             span.record_error(response.reason());
@@ -398,7 +398,7 @@ impl SyscallExecutorWithIpc {
         }
 
         // Verify socket exists and is a TCP listener
-        if let Some(socket) = self.socket_manager.sockets.get(&sockfd) {
+        if let Some(socket) = self.socket_manager().sockets.get(&sockfd) {
             match socket.value() {
                 Socket::TcpListener(_) => {
                     info!(
@@ -434,7 +434,7 @@ impl SyscallExecutorWithIpc {
             },
             Action::Receive,
         );
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             span.record_error(response.reason());
@@ -450,9 +450,9 @@ impl SyscallExecutorWithIpc {
             Other(String),
         }
 
-        let result = self.timeout_executor.execute_with_retry(
+        let result = self.timeout_executor().execute_with_retry(
             || {
-                if let Some(socket) = self.socket_manager.sockets.get(&sockfd) {
+                if let Some(socket) = self.socket_manager().sockets.get(&sockfd) {
                     match socket.value() {
                         Socket::TcpListener(listener) => {
                             match listener.accept() {
@@ -473,20 +473,20 @@ impl SyscallExecutorWithIpc {
                 }
             },
             |e| matches!(e, AcceptError::NoPendingConnections),
-            self.timeout_config.network,
+            self.timeout_config().network,
             "socket_accept",
         );
 
         match result {
             Ok((stream, addr)) => {
                 // Allocate new FD for the accepted connection
-                let client_fd = self.socket_manager.allocate_fd();
-                self.socket_manager
+                let client_fd = self.socket_manager().allocate_fd();
+                self.socket_manager()
                     .sockets
                     .insert(client_fd, Socket::TcpStream(stream));
 
                 // Track the new client socket for this process
-                self.socket_manager.track_socket(pid, client_fd);
+                self.socket_manager().track_socket(pid, client_fd);
 
                 info!(
                     "PID {} accepted connection on socket {}, client FD {} from {}",
@@ -548,7 +548,7 @@ impl SyscallExecutorWithIpc {
         let port = parts.get(1).and_then(|p| p.parse::<u16>().ok());
 
         let request = PermissionRequest::net_connect(pid, host, port);
-        let response = self.permission_manager.check_and_audit(&request);
+        let response = self.permission_manager().check_and_audit(&request);
 
         if !response.is_allowed() {
             span.record_error(response.reason());
@@ -557,15 +557,15 @@ impl SyscallExecutorWithIpc {
 
         // Use timeout executor for blocking connect
         let address_owned = address.to_string();
-        let result = self.timeout_executor.execute_with_deadline(
+        let result = self.timeout_executor().execute_with_deadline(
             || TcpStream::connect(&address_owned),
-            self.timeout_config.network,
+            self.timeout_config().network,
             "socket_connect",
         );
 
         match result {
             Ok(stream) => {
-                self.socket_manager
+                self.socket_manager()
                     .sockets
                     .insert(sockfd, Socket::TcpStream(stream));
                 info!("PID {} connected socket {} to {}", pid, sockfd, address);
@@ -608,9 +608,9 @@ impl SyscallExecutorWithIpc {
         }
 
         let data_to_send = data.to_vec();
-        let result = self.timeout_executor.execute_with_retry(
+        let result = self.timeout_executor().execute_with_retry(
             || {
-                if let Some(mut socket) = self.socket_manager.sockets.get_mut(&sockfd) {
+                if let Some(mut socket) = self.socket_manager().sockets.get_mut(&sockfd) {
                     match socket.value_mut() {
                         Socket::TcpStream(stream) => match stream.write(&data_to_send) {
                             Ok(bytes_sent) => Ok(bytes_sent),
@@ -626,7 +626,7 @@ impl SyscallExecutorWithIpc {
                 }
             },
             |e| matches!(e, SendError::WouldBlock),
-            self.timeout_config.network,
+            self.timeout_config().network,
             "socket_send",
         );
 
@@ -694,9 +694,9 @@ impl SyscallExecutorWithIpc {
             Other(String),
         }
 
-        let result = self.timeout_executor.execute_with_retry(
+        let result = self.timeout_executor().execute_with_retry(
             || {
-                if let Some(mut socket) = self.socket_manager.sockets.get_mut(&sockfd) {
+                if let Some(mut socket) = self.socket_manager().sockets.get_mut(&sockfd) {
                     match socket.value_mut() {
                         Socket::TcpStream(stream) => {
                             let mut buffer = vec![0u8; size];
@@ -718,7 +718,7 @@ impl SyscallExecutorWithIpc {
                 }
             },
             |e| matches!(e, RecvError::WouldBlock),
-            self.timeout_config.network,
+            self.timeout_config().network,
             "socket_recv",
         );
 
@@ -783,7 +783,7 @@ impl SyscallExecutorWithIpc {
         let port = parts.get(1).and_then(|p| p.parse::<u16>().ok());
 
         let request = PermissionRequest::net_connect(pid, host, port);
-        let response = self.permission_manager.check_and_audit(&request);
+        let response = self.permission_manager().check_and_audit(&request);
 
         if !response.is_allowed() {
             span.record_error(response.reason());
@@ -791,7 +791,7 @@ impl SyscallExecutorWithIpc {
         }
 
         // Try to send via UDP socket
-        if let Some(socket) = self.socket_manager.sockets.get(&sockfd) {
+        if let Some(socket) = self.socket_manager().sockets.get(&sockfd) {
             match socket.value() {
                 Socket::UdpSocket(udp) => match udp.send_to(data, address) {
                     Ok(bytes_sent) => {
@@ -846,7 +846,7 @@ impl SyscallExecutorWithIpc {
         // Could add additional check here if needed
 
         // Try to receive from UDP socket
-        if let Some(socket) = self.socket_manager.sockets.get(&sockfd) {
+        if let Some(socket) = self.socket_manager().sockets.get(&sockfd) {
             match socket.value() {
                 Socket::UdpSocket(udp) => {
                     let mut buffer = vec![0u8; size];
@@ -900,11 +900,11 @@ impl SyscallExecutorWithIpc {
         // Close doesn't require permission check - closing is always allowed
 
         // Single lookup in unified collection
-        if let Some((_, socket)) = self.socket_manager.sockets.remove(&sockfd) {
+        if let Some((_, socket)) = self.socket_manager().sockets.remove(&sockfd) {
             // Untrack socket from process (O(1) with HashSet)
-            self.socket_manager.untrack_socket(pid, sockfd);
+            self.socket_manager().untrack_socket(pid, sockfd);
             // Recycle FD for reuse (lock-free)
-            self.socket_manager.free_fds.push(sockfd);
+            self.socket_manager().recycle_fd(sockfd);
 
             let type_name = socket.type_name();
             info!(

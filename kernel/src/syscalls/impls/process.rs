@@ -27,7 +27,7 @@ impl SyscallExecutorWithIpc {
         span.record("args_count", &format!("{}", args.len()));
 
         let request = PermissionRequest::new(pid, Resource::Process { pid: 0 }, Action::Create);
-        let response = self.permission_manager.check_and_audit(&request);
+        let response = self.permission_manager().check_and_audit(&request);
 
         if !response.is_allowed() {
             span.record_error(response.reason());
@@ -48,9 +48,9 @@ impl SyscallExecutorWithIpc {
             }
         }
 
-        if let Some(limits) = self.sandbox_manager.get_limits(pid) {
-            if !self.sandbox_manager.can_spawn_process(pid) {
-                let current = self.sandbox_manager.get_spawn_count(pid);
+        if let Some(limits) = self.sandbox_manager().get_limits(pid) {
+            if !self.sandbox_manager().can_spawn_process(pid) {
+                let current = self.sandbox_manager().get_spawn_count(pid);
                 error!(
                     "PID {} exceeded process limit: {}/{} processes",
                     pid, current, limits.max_processes
@@ -64,7 +64,7 @@ impl SyscallExecutorWithIpc {
 
         match Command::new(command).args(args).output() {
             Ok(output) => {
-                self.sandbox_manager.record_spawn(pid);
+                self.sandbox_manager().record_spawn(pid);
 
                 info!("PID {} spawned process: {} {:?}", pid, command, args);
                 let process_output = ProcessOutput {
@@ -73,7 +73,7 @@ impl SyscallExecutorWithIpc {
                     exit_code: output.status.code().unwrap_or(-1),
                 };
 
-                self.sandbox_manager.record_termination(pid);
+                self.sandbox_manager().record_termination(pid);
                 span.record("exit_code", &format!("{}", process_output.exit_code));
                 span.record_result(true);
 
@@ -101,14 +101,14 @@ impl SyscallExecutorWithIpc {
         span.record("target_pid", &format!("{}", target_pid));
 
         let request = PermissionRequest::proc_kill(pid, target_pid);
-        let response = self.permission_manager.check_and_audit(&request);
+        let response = self.permission_manager().check_and_audit(&request);
 
         if !response.is_allowed() {
             span.record_error(response.reason());
             return SyscallResult::permission_denied(response.reason());
         }
 
-        self.sandbox_manager.remove_sandbox(target_pid);
+        self.sandbox_manager().remove_sandbox(target_pid);
 
         info!(
             "PID {} terminated PID {} and cleaned up sandbox",
@@ -126,14 +126,14 @@ impl SyscallExecutorWithIpc {
 
         let request =
             PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Inspect);
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             span.record_error(response.reason());
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let process_manager = match &self.optional.process_manager {
+        let process_manager = match &self.optional().process_manager {
             Some(pm) => pm,
             None => {
                 span.record_error("Process manager not available");
@@ -173,14 +173,14 @@ impl SyscallExecutorWithIpc {
             },
             Action::List,
         );
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             span.record_error(response.reason());
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let process_manager = match &self.optional.process_manager {
+        let process_manager = match &self.optional().process_manager {
             Some(pm) => pm,
             None => {
                 span.record_error("Process manager not available");
@@ -212,13 +212,13 @@ impl SyscallExecutorWithIpc {
     ) -> SyscallResult {
         let request =
             PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Write);
-        let response = self.permission_manager.check_and_audit(&request);
+        let response = self.permission_manager().check_and_audit(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let process_manager = match &self.optional.process_manager {
+        let process_manager = match &self.optional().process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };
@@ -238,13 +238,13 @@ impl SyscallExecutorWithIpc {
     pub(in crate::syscalls) fn get_process_state(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
         let request =
             PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Inspect);
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let process_manager = match &self.optional.process_manager {
+        let process_manager = match &self.optional().process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };
@@ -267,13 +267,13 @@ impl SyscallExecutorWithIpc {
     pub(in crate::syscalls) fn get_process_stats_call(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
         let request =
             PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Inspect);
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let process_manager = match &self.optional.process_manager {
+        let process_manager = match &self.optional().process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };
@@ -306,14 +306,14 @@ impl SyscallExecutorWithIpc {
 
         let request =
             PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Inspect);
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             span.record_error(response.reason());
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let process_manager = match &self.optional.process_manager {
+        let process_manager = match &self.optional().process_manager {
             Some(pm) => pm,
             None => {
                 span.record_error("Process manager not available");
@@ -327,7 +327,7 @@ impl SyscallExecutorWithIpc {
         let timeout = if let Some(ms) = timeout_ms {
             TimeoutPolicy::Io(Duration::from_millis(ms))
         } else {
-            self.timeout_config.process_wait
+            self.timeout_config().process_wait
         };
 
         span.record(
@@ -343,7 +343,7 @@ impl SyscallExecutorWithIpc {
         }
 
         // Use timeout executor to wait for process completion
-        let result = self.timeout_executor.execute_with_retry(
+        let result = self.timeout_executor().execute_with_retry(
             || {
                 // Check if process still exists and is running
                 match process_manager.get_process(target_pid) {

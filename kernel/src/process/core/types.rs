@@ -375,7 +375,7 @@ impl ProcessResources {
     #[must_use]
     pub const fn is_high_usage(&self) -> bool {
         self.memory_bytes > crate::core::limits::HIGH_MEMORY_THRESHOLD
-            || self.open_files > crate::core::limits::HIGH_FD_THRESHOLD
+            || self.open_files > crate::core::limits::HIGH_FD_THRESHOLD as u32
             || self.child_processes > 10
     }
 }

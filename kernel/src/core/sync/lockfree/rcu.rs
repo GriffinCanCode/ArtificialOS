@@ -3,7 +3,7 @@
  * Zero-contention reads for read-heavy data structures
  */
 
-use arc_swap::{ArcSwap, Cache};
+use arc_swap::ArcSwap;
 use std::sync::Arc;
 
 /// RCU-protected data structure with zero-contention reads
@@ -49,8 +49,6 @@ use std::sync::Arc;
 /// - Need precise write ordering
 pub struct RcuCell<T> {
     inner: Arc<ArcSwap<T>>,
-    /// Thread-local cache for even faster reads
-    cache: Cache<Arc<T>>,
 }
 
 impl<T> RcuCell<T> {
@@ -59,17 +57,15 @@ impl<T> RcuCell<T> {
     pub fn new(value: T) -> Self {
         Self {
             inner: Arc::new(ArcSwap::from_pointee(value)),
-            cache: Cache::new(),
         }
     }
 
     /// Load current value (zero-contention)
     ///
-    /// This uses a thread-local cache for even faster access.
-    /// The cache is automatically invalidated when the value changes.
+    /// Uses ArcSwap's load for fast atomic access.
     #[inline(always)]
     pub fn load(&self) -> Arc<T> {
-        self.cache.load(&self.inner)
+        Arc::clone(&*self.inner.load())
     }
 
     /// Load current value without cache (still lock-free)
@@ -85,11 +81,12 @@ impl<T> RcuCell<T> {
     ///
     /// The function receives the current value and should return a new value.
     /// This performs clone-modify-swap internally.
+    /// Note: The function may be called multiple times if there's contention.
     #[inline]
-    pub fn update<F>(&self, f: F)
+    pub fn update<F>(&self, mut f: F)
     where
         T: Clone,
-        F: FnOnce(&T) -> T,
+        F: FnMut(&T) -> T,
     {
         self.inner.rcu(|old| f(&*old));
     }
@@ -114,9 +111,13 @@ impl<T> RcuCell<T> {
     where
         T: PartialEq,
     {
-        self.inner.compare_and_swap(current, Arc::new(new_value))
-            .map(|_| self.load_full())
-            .map_err(|_| self.load_full())
+        let new_arc = Arc::new(new_value);
+        let result = self.inner.compare_and_swap(current, Arc::clone(&new_arc));
+        if Arc::ptr_eq(&*result, current) {
+            Ok(new_arc)
+        } else {
+            Err(Arc::clone(&*result))
+        }
     }
 }
 
@@ -124,7 +125,6 @@ impl<T: Clone> Clone for RcuCell<T> {
     fn clone(&self) -> Self {
         Self {
             inner: Arc::clone(&self.inner),
-            cache: Cache::new(), // Each clone gets its own cache
         }
     }
 }

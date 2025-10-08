@@ -36,7 +36,7 @@ impl SyscallExecutorWithIpc {
         };
 
         let request = PermissionRequest::file_read(pid, canonical_path.clone());
-        let response = self.permission_manager.check_and_audit(&request);
+        let response = self.permission_manager().check_and_audit(&request);
 
         if !response.is_allowed() {
             span.record_error(response.reason());
@@ -44,13 +44,13 @@ impl SyscallExecutorWithIpc {
         }
 
         // Try VFS first with timeout
-        if let Some(ref vfs) = self.optional.vfs {
+        if let Some(vfs) = &self.optional().vfs {
             let vfs_clone = vfs.clone();
             let path_clone = path.to_path_buf();
 
-            let result = self.timeout_executor.execute_with_deadline(
+            let result = self.timeout_executor().execute_with_deadline(
                 || vfs_clone.read(&path_clone),
-                self.timeout_config.file_io,
+                self.timeout_config().file_io,
                 "vfs_read",
             );
 
@@ -87,9 +87,9 @@ impl SyscallExecutorWithIpc {
         // Fallback to std::fs with timeout
         trace!("Falling back to std::fs for read");
         let canonical_clone = canonical_path.clone();
-        let result = self.timeout_executor.execute_with_deadline(
+        let result = self.timeout_executor().execute_with_deadline(
             || fs::read(&canonical_clone),
-            self.timeout_config.file_io,
+            self.timeout_config().file_io,
             "fs_read",
         );
 
@@ -147,7 +147,7 @@ impl SyscallExecutorWithIpc {
         } else {
             PermissionRequest::file_create(pid, check_path.clone())
         };
-        let response = self.permission_manager.check_and_audit(&request);
+        let response = self.permission_manager().check_and_audit(&request);
 
         if !response.is_allowed() {
             span.record_error(response.reason());
@@ -157,14 +157,14 @@ impl SyscallExecutorWithIpc {
         let data_len = data.len();
 
         // Try VFS first with timeout
-        if let Some(ref vfs) = self.optional.vfs {
+        if let Some(vfs) = &self.optional().vfs {
             let vfs_clone = vfs.clone();
             let path_clone = path.to_path_buf();
             let data_clone = data.to_vec();
 
-            let result = self.timeout_executor.execute_with_deadline(
+            let result = self.timeout_executor().execute_with_deadline(
                 || vfs_clone.write(&path_clone, &data_clone),
-                self.timeout_config.file_io,
+                self.timeout_config().file_io,
                 "vfs_write",
             );
 
@@ -199,9 +199,9 @@ impl SyscallExecutorWithIpc {
         trace!("Falling back to std::fs for write");
         let path_clone = path.to_path_buf();
         let data_clone = data.to_vec();
-        let result = self.timeout_executor.execute_with_deadline(
+        let result = self.timeout_executor().execute_with_deadline(
             || fs::write(&path_clone, &data_clone),
-            self.timeout_config.file_io,
+            self.timeout_config().file_io,
             "fs_write",
         );
 
@@ -238,7 +238,7 @@ impl SyscallExecutorWithIpc {
 
         // Check permission using centralized manager
         let request = PermissionRequest::file_delete(pid, path.to_path_buf());
-        let response = self.permission_manager.check_and_audit(&request);
+        let response = self.permission_manager().check_and_audit(&request);
 
         if !response.is_allowed() {
             span.record_error(response.reason());
@@ -246,13 +246,13 @@ impl SyscallExecutorWithIpc {
         }
 
         // Try VFS first with timeout
-        if let Some(ref vfs) = self.optional.vfs {
+        if let Some(vfs) = &self.optional().vfs {
             let vfs_clone = vfs.clone();
             let path_clone = path.to_path_buf();
 
-            let result = self.timeout_executor.execute_with_deadline(
+            let result = self.timeout_executor().execute_with_deadline(
                 || vfs_clone.delete(&path_clone),
-                self.timeout_config.file_io,
+                self.timeout_config().file_io,
                 "vfs_delete",
             );
 
@@ -283,9 +283,9 @@ impl SyscallExecutorWithIpc {
         // Fallback to std::fs with timeout
         trace!("Falling back to std::fs for delete");
         let path_clone = path.to_path_buf();
-        let result = self.timeout_executor.execute_with_deadline(
+        let result = self.timeout_executor().execute_with_deadline(
             || fs::remove_file(&path_clone),
-            self.timeout_config.file_io,
+            self.timeout_config().file_io,
             "fs_delete",
         );
 
@@ -321,14 +321,14 @@ impl SyscallExecutorWithIpc {
 
         // Check permission using centralized manager
         let request = PermissionRequest::file_read(pid, path.to_path_buf());
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             span.record_error(response.reason());
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let (exists, method) = if let Some(ref vfs) = self.optional.vfs {
+        let (exists, method) = if let Some(vfs) = &self.optional().vfs {
             (vfs.exists(path), "vfs")
         } else {
             (path.exists(), "std::fs")
@@ -352,7 +352,7 @@ impl SyscallExecutorWithIpc {
 
         // Check permission using centralized manager
         let request = PermissionRequest::file_create(pid, path.to_path_buf());
-        let response = self.permission_manager.check_and_audit(&request);
+        let response = self.permission_manager().check_and_audit(&request);
 
         if !response.is_allowed() {
             span.record_error(response.reason());
@@ -360,13 +360,13 @@ impl SyscallExecutorWithIpc {
         }
 
         // Try VFS first with timeout
-        if let Some(ref vfs) = self.optional.vfs {
+        if let Some(vfs) = &self.optional().vfs {
             let vfs_clone = vfs.clone();
             let path_clone = path.to_path_buf();
 
-            let result = self.timeout_executor.execute_with_deadline(
+            let result = self.timeout_executor().execute_with_deadline(
                 || vfs_clone.create_dir(&path_clone),
-                self.timeout_config.file_io,
+                self.timeout_config().file_io,
                 "vfs_create_dir",
             );
 
@@ -397,9 +397,9 @@ impl SyscallExecutorWithIpc {
         // Fallback to std::fs with timeout
         trace!("Falling back to std::fs for create_dir");
         let path_clone = path.to_path_buf();
-        let result = self.timeout_executor.execute_with_deadline(
+        let result = self.timeout_executor().execute_with_deadline(
             || fs::create_dir_all(&path_clone),
-            self.timeout_config.file_io,
+            self.timeout_config().file_io,
             "fs_create_dir",
         );
 
@@ -439,7 +439,7 @@ impl SyscallExecutorWithIpc {
 
         // Check permission using centralized manager
         let request = PermissionRequest::file_delete(pid, path.to_path_buf());
-        let response = self.permission_manager.check_and_audit(&request);
+        let response = self.permission_manager().check_and_audit(&request);
 
         if !response.is_allowed() {
             span.record_error(response.reason());
@@ -447,13 +447,13 @@ impl SyscallExecutorWithIpc {
         }
 
         // Try VFS first with timeout
-        if let Some(ref vfs) = self.optional.vfs {
+        if let Some(vfs) = &self.optional().vfs {
             let vfs_clone = vfs.clone();
             let path_clone = path.to_path_buf();
 
-            let result = self.timeout_executor.execute_with_deadline(
+            let result = self.timeout_executor().execute_with_deadline(
                 || vfs_clone.remove_dir_all(&path_clone),
-                self.timeout_config.file_io,
+                self.timeout_config().file_io,
                 "vfs_remove_dir",
             );
 
@@ -484,9 +484,9 @@ impl SyscallExecutorWithIpc {
         // Fallback to std::fs with timeout
         trace!("Falling back to std::fs for remove_dir");
         let path_clone = path.to_path_buf();
-        let result = self.timeout_executor.execute_with_deadline(
+        let result = self.timeout_executor().execute_with_deadline(
             || fs::remove_dir_all(&path_clone),
-            self.timeout_config.file_io,
+            self.timeout_config().file_io,
             "fs_remove_dir",
         );
 
@@ -526,7 +526,7 @@ impl SyscallExecutorWithIpc {
 
         // Check permission using centralized manager
         let request = PermissionRequest::dir_list(pid, path.to_path_buf());
-        let response = self.permission_manager.check_and_audit(&request);
+        let response = self.permission_manager().check_and_audit(&request);
 
         if !response.is_allowed() {
             span.record_error(response.reason());
@@ -534,13 +534,13 @@ impl SyscallExecutorWithIpc {
         }
 
         // Try VFS first with timeout
-        if let Some(ref vfs) = self.optional.vfs {
+        if let Some(vfs) = &self.optional().vfs {
             let vfs_clone = vfs.clone();
             let path_clone = path.to_path_buf();
 
-            let result = self.timeout_executor.execute_with_deadline(
+            let result = self.timeout_executor().execute_with_deadline(
                 || vfs_clone.list_dir(&path_clone),
-                self.timeout_config.file_io,
+                self.timeout_config().file_io,
                 "vfs_list_dir",
             );
 
@@ -604,9 +604,9 @@ impl SyscallExecutorWithIpc {
         // Fallback to std::fs with timeout
         trace!("Falling back to std::fs for list_dir");
         let path_clone = path.to_path_buf();
-        let result = self.timeout_executor.execute_with_deadline(
+        let result = self.timeout_executor().execute_with_deadline(
             || fs::read_dir(&path_clone),
-            self.timeout_config.file_io,
+            self.timeout_config().file_io,
             "fs_list_dir",
         );
 

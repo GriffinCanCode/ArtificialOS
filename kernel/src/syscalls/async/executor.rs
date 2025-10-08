@@ -77,7 +77,7 @@ impl AsyncSyscallExecutor {
     /// Create new async executor wrapping a sync executor
     pub fn new(sync_executor: SyscallExecutorWithIpc) -> Self {
         Self {
-            collector: sync_executor.optional.collector.clone(),
+            collector: sync_executor.optional().collector.clone(),
             sync_executor,
         }
     }

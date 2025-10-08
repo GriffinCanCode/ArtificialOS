@@ -115,7 +115,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     if let Err(e) = vfs.mount(
         "/tmp",
         Arc::new(MemFS::with_capacity(
-            crate::core::limits::TMP_FILESYSTEM_CAPACITY,
+            ai_os_kernel::core::limits::TMP_FILESYSTEM_CAPACITY,
         )),
     ) {
         tracing::error!(error = %e, "Failed to mount /tmp");
@@ -127,7 +127,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     if let Err(e) = vfs.mount(
         "/cache",
         Arc::new(MemFS::with_capacity(
-            crate::core::limits::CACHE_FILESYSTEM_CAPACITY,
+            ai_os_kernel::core::limits::CACHE_FILESYSTEM_CAPACITY,
         )),
     ) {
         tracing::error!(error = %e, "Failed to mount /cache");

@@ -22,7 +22,7 @@ impl SyscallExecutorWithIpc {
             },
             Action::Inspect,
         );
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
@@ -30,7 +30,7 @@ impl SyscallExecutorWithIpc {
 
         info!("Schedule next syscall requested by PID {}", pid);
 
-        let process_manager = match &self.optional.process_manager {
+        let process_manager = match &self.optional().process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };
@@ -52,7 +52,7 @@ impl SyscallExecutorWithIpc {
     pub(in crate::syscalls) fn yield_process(&self, pid: Pid) -> SyscallResult {
         info!("Process {} yielding CPU", pid);
 
-        let process_manager = match &self.optional.process_manager {
+        let process_manager = match &self.optional().process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };
@@ -79,7 +79,7 @@ impl SyscallExecutorWithIpc {
             },
             Action::Inspect,
         );
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
@@ -87,7 +87,7 @@ impl SyscallExecutorWithIpc {
 
         info!("Get current scheduled process requested by PID {}", pid);
 
-        let process_manager = match &self.optional.process_manager {
+        let process_manager = match &self.optional().process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };
@@ -110,7 +110,7 @@ impl SyscallExecutorWithIpc {
             },
             Action::Write,
         );
-        let response = self.permission_manager.check_and_audit(&request);
+        let response = self.permission_manager().check_and_audit(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
@@ -134,7 +134,7 @@ impl SyscallExecutorWithIpc {
 
         info!("PID {} changing scheduling policy to {:?}", pid, policy);
 
-        let process_manager = match &self.optional.process_manager {
+        let process_manager = match &self.optional().process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };
@@ -157,13 +157,13 @@ impl SyscallExecutorWithIpc {
             },
             Action::Inspect,
         );
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let process_manager = match &self.optional.process_manager {
+        let process_manager = match &self.optional().process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };
@@ -200,7 +200,7 @@ impl SyscallExecutorWithIpc {
             },
             Action::Write,
         );
-        let response = self.permission_manager.check_and_audit(&request);
+        let response = self.permission_manager().check_and_audit(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
@@ -211,7 +211,7 @@ impl SyscallExecutorWithIpc {
             pid, quantum_micros
         );
 
-        let process_manager = match &self.optional.process_manager {
+        let process_manager = match &self.optional().process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };
@@ -237,13 +237,13 @@ impl SyscallExecutorWithIpc {
             },
             Action::Inspect,
         );
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let process_manager = match &self.optional.process_manager {
+        let process_manager = match &self.optional().process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };
@@ -270,7 +270,7 @@ impl SyscallExecutorWithIpc {
             },
             Action::Inspect,
         );
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
@@ -278,7 +278,7 @@ impl SyscallExecutorWithIpc {
 
         info!("PID {} requested scheduler statistics", pid);
 
-        let process_manager = match &self.optional.process_manager {
+        let process_manager = match &self.optional().process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };
@@ -299,13 +299,13 @@ impl SyscallExecutorWithIpc {
     pub(in crate::syscalls) fn get_process_scheduler_stats(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
         let request =
             PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Inspect);
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let process_manager = match &self.optional.process_manager {
+        let process_manager = match &self.optional().process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };
@@ -340,13 +340,13 @@ impl SyscallExecutorWithIpc {
             },
             Action::Inspect,
         );
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let process_manager = match &self.optional.process_manager {
+        let process_manager = match &self.optional().process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };
@@ -372,13 +372,13 @@ impl SyscallExecutorWithIpc {
     pub(in crate::syscalls) fn boost_priority(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
         let request =
             PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Write);
-        let response = self.permission_manager.check_and_audit(&request);
+        let response = self.permission_manager().check_and_audit(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let process_manager = match &self.optional.process_manager {
+        let process_manager = match &self.optional().process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };
@@ -406,13 +406,13 @@ impl SyscallExecutorWithIpc {
     pub(in crate::syscalls) fn lower_priority(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
         let request =
             PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Write);
-        let response = self.permission_manager.check_and_audit(&request);
+        let response = self.permission_manager().check_and_audit(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let process_manager = match &self.optional.process_manager {
+        let process_manager = match &self.optional().process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };

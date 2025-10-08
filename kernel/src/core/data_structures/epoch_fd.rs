@@ -104,7 +104,7 @@ impl<T> EpochFdTable<T> {
 
         let guard = epoch::pin();
 
-        let old = self.entries[fd].swap(Owned::null(), Ordering::AcqRel, &guard);
+        let old = self.entries[fd].swap(Shared::null(), Ordering::AcqRel, &guard);
 
         if old.is_null() {
             return None;
@@ -206,7 +206,7 @@ impl<T> EpochFdTable<T> {
         let guard = epoch::pin();
 
         for entry in &self.entries {
-            let old = entry.swap(Owned::null(), Ordering::AcqRel, &guard);
+            let old = entry.swap(Shared::null(), Ordering::AcqRel, &guard);
             if !old.is_null() {
                 unsafe {
                     guard.defer_destroy(old);

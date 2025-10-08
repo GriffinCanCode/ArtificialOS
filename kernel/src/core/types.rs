@@ -103,7 +103,7 @@ impl Default for ResourceLimits {
         Self {
             max_memory_bytes: crate::core::limits::HIGH_MEMORY_THRESHOLD,
             max_cpu_time_ms: 60_000, // 1 minute
-            max_file_descriptors: crate::core::limits::STANDARD_MAX_FILE_DESCRIPTORS,
+            max_file_descriptors: crate::core::limits::STANDARD_MAX_FILE_DESCRIPTORS as u32,
             max_processes: 10,
             max_network_connections: crate::core::limits::MAX_NETWORK_CONNECTIONS,
         }

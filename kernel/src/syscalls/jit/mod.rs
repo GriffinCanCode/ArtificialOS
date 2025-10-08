@@ -152,7 +152,7 @@ impl JitManager {
 mod tests {
     use super::*;
     use crate::security::SandboxManager;
-    use crate::syscalls::executor::SyscallExecutor;
+    use crate::syscalls::core::SyscallExecutorWithIpc;
 
     #[test]
     fn test_jit_manager_creation() {

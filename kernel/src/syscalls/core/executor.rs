@@ -32,21 +32,43 @@ pub static SYSTEM_START: OnceLock<Instant> = OnceLock::new();
 /// IPC managers bundled together (always present when IPC is enabled)
 #[derive(Clone)]
 pub struct IpcManagers {
-    pub(super) pipe_manager: crate::ipc::PipeManager,
-    pub(super) shm_manager: crate::ipc::ShmManager,
-    pub(super) queue_manager: Option<crate::ipc::QueueManager>, // Truly optional feature
-    pub(super) mmap_manager: Option<crate::ipc::MmapManager>,   // Truly optional feature
+    pub pipe_manager: crate::ipc::PipeManager,
+    pub shm_manager: crate::ipc::ShmManager,
+    pub queue_manager: Option<crate::ipc::QueueManager>, // Truly optional feature
+    pub mmap_manager: Option<crate::ipc::MmapManager>,   // Truly optional feature
+}
+
+impl IpcManagers {
+    /// Get reference to pipe manager
+    pub fn pipe_manager(&self) -> &crate::ipc::PipeManager {
+        &self.pipe_manager
+    }
+
+    /// Get reference to shared memory manager
+    pub fn shm_manager(&self) -> &crate::ipc::ShmManager {
+        &self.shm_manager
+    }
+
+    /// Get reference to queue manager (if enabled)
+    pub fn queue_manager(&self) -> &Option<crate::ipc::QueueManager> {
+        &self.queue_manager
+    }
+
+    /// Get reference to mmap manager (if enabled)
+    pub fn mmap_manager(&self) -> &Option<crate::ipc::MmapManager> {
+        &self.mmap_manager
+    }
 }
 
 /// Optional feature managers (legitimately optional)
 #[derive(Clone)]
 pub struct OptionalManagers {
-    pub(super) process_manager: Option<crate::process::ProcessManagerImpl>,
-    pub(super) memory_manager: Option<crate::memory::MemoryManager>,
-    pub(super) signal_manager: Option<crate::signals::SignalManagerImpl>,
-    pub(super) vfs: Option<crate::vfs::MountManager>,
-    pub(super) metrics: Option<Arc<MetricsCollector>>,
-    pub(super) collector: Option<Arc<Collector>>,
+    pub process_manager: Option<crate::process::ProcessManagerImpl>,
+    pub memory_manager: Option<crate::memory::MemoryManager>,
+    pub signal_manager: Option<crate::signals::SignalManagerImpl>,
+    pub vfs: Option<crate::vfs::MountManager>,
+    pub metrics: Option<Arc<MetricsCollector>>,
+    pub collector: Option<Arc<Collector>>,
 }
 
 impl Default for OptionalManagers {

@@ -28,13 +28,13 @@ impl SyscallExecutorWithIpc {
             },
             Action::Inspect,
         );
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let memory_manager = match &self.optional.memory_manager {
+        let memory_manager = match &self.optional().memory_manager {
             Some(mm) => mm,
             None => return SyscallResult::error("Memory manager not available"),
         };
@@ -56,13 +56,13 @@ impl SyscallExecutorWithIpc {
         // Check permission using centralized manager
         let request =
             PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Inspect);
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let memory_manager = match &self.optional.memory_manager {
+        let memory_manager = match &self.optional().memory_manager {
             Some(mm) => mm,
             None => return SyscallResult::error("Memory manager not available"),
         };
@@ -98,13 +98,13 @@ impl SyscallExecutorWithIpc {
             },
             Action::Execute,
         );
-        let response = self.permission_manager.check_and_audit(&request);
+        let response = self.permission_manager().check_and_audit(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let memory_manager = match &self.optional.memory_manager {
+        let memory_manager = match &self.optional().memory_manager {
             Some(mm) => mm,
             None => return SyscallResult::error("Memory manager not available"),
         };

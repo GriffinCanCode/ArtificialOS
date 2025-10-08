@@ -193,8 +193,8 @@ impl SyscallExecutorWithIpc {
 
         // Check per-process FD limit BEFORE doing expensive operations
         use crate::security::ResourceLimitProvider;
-        if let Some(limits) = self.sandbox_manager.get_limits(pid) {
-            let current_fd_count = self.fd_manager.get_fd_count(pid);
+        if let Some(limits) = self.sandbox_manager().get_limits(pid) {
+            let current_fd_count = self.fd_manager().get_fd_count(pid);
             if current_fd_count >= limits.max_file_descriptors {
                 error!(
                     "PID {} exceeded FD limit: {}/{} file descriptors",
@@ -218,26 +218,26 @@ impl SyscallExecutorWithIpc {
         // Check permissions using centralized manager based on operation
         if create_flag != 0 {
             let request = PermissionRequest::file_create(pid, check_path.clone());
-            let response = self.permission_manager.check_and_audit(&request);
+            let response = self.permission_manager().check_and_audit(&request);
             if !response.is_allowed() {
                 return SyscallResult::permission_denied(response.reason());
             }
         } else if write_flag != 0 {
             let request = PermissionRequest::file_write(pid, check_path.clone());
-            let response = self.permission_manager.check_and_audit(&request);
+            let response = self.permission_manager().check_and_audit(&request);
             if !response.is_allowed() {
                 return SyscallResult::permission_denied(response.reason());
             }
         } else if read_flag != 0 {
             let request = PermissionRequest::file_read(pid, check_path.clone());
-            let response = self.permission_manager.check_and_audit(&request);
+            let response = self.permission_manager().check_and_audit(&request);
             if !response.is_allowed() {
                 return SyscallResult::permission_denied(response.reason());
             }
         }
 
         // Try VFS first for unified file handle
-        if let Some(ref vfs) = self.optional.vfs {
+        if let Some(ref vfs) = self.optional().vfs {
             let vfs_flags = OpenFlags::from_posix(flags);
             let vfs_mode = OpenMode::new(mode);
 
@@ -247,7 +247,7 @@ impl SyscallExecutorWithIpc {
                     let handle = Arc::new(FileHandle::from_vfs(vfs_file));
                     let path_str = path.to_string_lossy().to_string();
                     let fd_guard = self
-                        .fd_manager
+                        .fd_manager()
                         .allocate_fd_guard(pid, handle, Some(path_str));
                     let fd = fd_guard.fd();
 
@@ -326,7 +326,7 @@ impl SyscallExecutorWithIpc {
                 let handle = Arc::new(FileHandle::from_std(file));
                 let path_str = path.to_string_lossy().to_string();
                 let fd_guard = self
-                    .fd_manager
+                    .fd_manager()
                     .allocate_fd_guard(pid, handle, Some(path_str));
                 let fd = fd_guard.fd();
 
@@ -369,9 +369,9 @@ impl SyscallExecutorWithIpc {
         // No capability check - closing is always allowed
 
         // Remove file from fd_manager
-        if self.fd_manager.open_files.remove(&fd).is_some() {
+        if self.fd_manager().open_files.remove(&fd).is_some() {
             // Untrack FD from process
-            self.fd_manager.untrack_fd(pid, fd);
+            self.fd_manager().untrack_fd(pid, fd);
             info!("PID {} closed FD {}", pid, fd);
             span.record_result(true);
             SyscallResult::success()
@@ -393,8 +393,8 @@ impl SyscallExecutorWithIpc {
 
         // Check per-process FD limit BEFORE duplication
         use crate::security::ResourceLimitProvider;
-        if let Some(limits) = self.sandbox_manager.get_limits(pid) {
-            let current_fd_count = self.fd_manager.get_fd_count(pid);
+        if let Some(limits) = self.sandbox_manager().get_limits(pid) {
+            let current_fd_count = self.fd_manager().get_fd_count(pid);
             if current_fd_count >= limits.max_file_descriptors {
                 error!(
                     "PID {} exceeded FD limit during dup: {}/{} file descriptors",
@@ -412,16 +412,16 @@ impl SyscallExecutorWithIpc {
         }
 
         // Check if the FD exists and clone the Arc<FileHandle> reference
-        if let Some(handle_ref) = self.fd_manager.open_files.get(&fd) {
+        if let Some(handle_ref) = self.fd_manager().open_files.get(&fd) {
             // Clone the Arc to increment reference count
             let cloned_handle = Arc::clone(handle_ref.value());
 
             // Allocate new FD pointing to same handle via Arc
-            let new_fd = self.fd_manager.allocate_fd();
-            self.fd_manager.open_files.insert(new_fd, cloned_handle);
+            let new_fd = self.fd_manager().allocate_fd();
+            self.fd_manager().open_files.insert(new_fd, cloned_handle);
 
             // Track the new FD for this process
-            self.fd_manager.track_fd(pid, new_fd);
+            self.fd_manager().track_fd(pid, new_fd);
 
             info!(
                 "PID {} duplicated FD {} to {} (Arc reference count incremented)",
@@ -458,9 +458,9 @@ impl SyscallExecutorWithIpc {
 
         // Check per-process FD limit BEFORE dup2 (only if newfd is not already open)
         use crate::security::ResourceLimitProvider;
-        if !self.fd_manager.open_files.contains_key(&newfd) {
-            if let Some(limits) = self.sandbox_manager.get_limits(pid) {
-                let current_fd_count = self.fd_manager.get_fd_count(pid);
+        if !self.fd_manager().open_files.contains_key(&newfd) {
+            if let Some(limits) = self.sandbox_manager().get_limits(pid) {
+                let current_fd_count = self.fd_manager().get_fd_count(pid);
                 if current_fd_count >= limits.max_file_descriptors {
                     error!(
                         "PID {} exceeded FD limit during dup2: {}/{} file descriptors",
@@ -476,7 +476,7 @@ impl SyscallExecutorWithIpc {
 
         // Check if the old FD exists and clone the Arc<FileHandle> reference
         // Important: Clone the Arc and drop the guard immediately to avoid deadlock
-        let cloned_handle = if let Some(handle_ref) = self.fd_manager.open_files.get(&oldfd) {
+        let cloned_handle = if let Some(handle_ref) = self.fd_manager().open_files.get(&oldfd) {
             Arc::clone(handle_ref.value())
         } else {
             return SyscallResult::error("Invalid file descriptor");
@@ -484,17 +484,17 @@ impl SyscallExecutorWithIpc {
         // Guard is now dropped, safe to perform other DashMap operations
 
         // If newfd is already open, close it first (Arc will auto-drop)
-        if self.fd_manager.open_files.contains_key(&newfd) {
-            self.fd_manager.open_files.remove(&newfd);
-            self.fd_manager.untrack_fd(pid, newfd);
+        if self.fd_manager().open_files.contains_key(&newfd) {
+            self.fd_manager().open_files.remove(&newfd);
+            self.fd_manager().untrack_fd(pid, newfd);
             info!("PID {} closed existing FD {} before dup2", pid, newfd);
         }
 
         // Insert the cloned Arc reference at newfd
-        self.fd_manager.open_files.insert(newfd, cloned_handle);
+        self.fd_manager().open_files.insert(newfd, cloned_handle);
 
         // Track the new FD for this process
-        self.fd_manager.track_fd(pid, newfd);
+        self.fd_manager().track_fd(pid, newfd);
 
         info!(
             "PID {} duplicated FD {} to {} (Arc reference count incremented)",
@@ -506,7 +506,7 @@ impl SyscallExecutorWithIpc {
     pub(in crate::syscalls) fn lseek(&self, pid: Pid, fd: u32, offset: i64, whence: u32) -> SyscallResult {
         // Note: lseek operates on already-open fds with validated permissions
 
-        if let Some(handle_arc) = self.fd_manager.open_files.get(&fd) {
+        if let Some(handle_arc) = self.fd_manager().open_files.get(&fd) {
             let seek_pos = match whence {
                 0 => SeekFrom::Start(offset as u64), // SEEK_SET
                 1 => SeekFrom::Current(offset),      // SEEK_CUR
@@ -554,7 +554,7 @@ impl SyscallExecutorWithIpc {
         // Note: fcntl operates on already-open fds with validated permissions
 
         // Verify FD exists
-        if !self.fd_manager.open_files.contains_key(&fd) {
+        if !self.fd_manager().open_files.contains_key(&fd) {
             return SyscallResult::error("Invalid file descriptor");
         }
 
@@ -580,14 +580,14 @@ impl SyscallExecutorWithIpc {
         // Fsync synchronizes file data and metadata to disk
         // Can block for extended periods on slow storage (NFS, USB, etc.)
 
-        if let Some(handle_arc) = self.fd_manager.open_files.get(&fd) {
+        if let Some(handle_arc) = self.fd_manager().open_files.get(&fd) {
             // Clone Arc for use in closure
             let handle = Arc::clone(&handle_arc);
 
             // Use timeout executor - fsync can block on slow storage
-            let result = self.timeout_executor.execute_with_deadline(
+            let result = self.timeout_executor().execute_with_deadline(
                 || handle.sync(),
-                self.timeout_config.file_sync,
+                self.timeout_config().file_sync,
                 "fsync",
             );
 
@@ -618,14 +618,14 @@ impl SyscallExecutorWithIpc {
         // Fdatasync synchronizes file data (not metadata) to disk
         // Can block for extended periods on slow storage
 
-        if let Some(handle_arc) = self.fd_manager.open_files.get(&fd) {
+        if let Some(handle_arc) = self.fd_manager().open_files.get(&fd) {
             // Clone Arc for use in closure
             let handle = Arc::clone(&handle_arc);
 
             // Use timeout executor - fdatasync can block on slow storage
-            let result = self.timeout_executor.execute_with_deadline(
+            let result = self.timeout_executor().execute_with_deadline(
                 || handle.sync_data(),
-                self.timeout_config.file_sync,
+                self.timeout_config().file_sync,
                 "fdatasync",
             );
 

@@ -131,11 +131,13 @@ impl CowMemoryManager {
     pub fn fork(&self, parent_pid: u32, child_pid: u32) -> Result<(), &'static str> {
         let mut regions = self.regions.lock().unwrap();
 
-        let parent = regions.get(&parent_pid)
-            .ok_or("Parent process not found")?;
+        // Clone the parent region with CoW semantics
+        let child_region = regions.get(&parent_pid)
+            .ok_or("Parent process not found")?
+            .clone_cow();
 
-        // Clone with CoW semantics
-        regions.insert(child_pid, parent.clone_cow());
+        // Insert the child region
+        regions.insert(child_pid, child_region);
 
         Ok(())
     }

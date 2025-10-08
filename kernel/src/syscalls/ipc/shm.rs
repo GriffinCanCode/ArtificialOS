@@ -14,14 +14,14 @@ impl SyscallExecutorWithIpc {
     pub(in crate::syscalls) fn create_shm(&self, pid: Pid, size: usize) -> SyscallResult {
         let request =
             PermissionRequest::new(pid, Resource::IpcChannel { channel_id: 0 }, Action::Create);
-        let response = self.permission_manager.check_and_audit(&request);
+        let response = self.permission_manager().check_and_audit(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
         }
 
         // Direct access - no Option check!
-        let shm_manager = &self.ipc.shm_manager;
+        let shm_manager = &self.ipc().shm_manager();
 
         match shm_manager.create(size, pid) {
             Ok(segment_id) => {
@@ -52,14 +52,14 @@ impl SyscallExecutorWithIpc {
             },
             Action::Read,
         );
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
         }
 
         // Direct access - no Option check!
-        let shm_manager = &self.ipc.shm_manager;
+        let shm_manager = &self.ipc().shm_manager();
 
         match shm_manager.attach(segment_id, pid, read_only) {
             Ok(_) => {
@@ -78,7 +78,7 @@ impl SyscallExecutorWithIpc {
 
     pub(in crate::syscalls) fn detach_shm(&self, pid: Pid, segment_id: u32) -> SyscallResult {
         // Direct access - no Option check!
-        let shm_manager = &self.ipc.shm_manager;
+        let shm_manager = &self.ipc().shm_manager();
 
         match shm_manager.detach(segment_id, pid) {
             Ok(_) => {
@@ -106,14 +106,14 @@ impl SyscallExecutorWithIpc {
             },
             Action::Write,
         );
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
         }
 
         // Direct access - no Option check!
-        let shm_manager = &self.ipc.shm_manager;
+        let shm_manager = &self.ipc().shm_manager();
 
         match shm_manager.write(segment_id, pid, offset, data) {
             Ok(_) => {
@@ -147,14 +147,14 @@ impl SyscallExecutorWithIpc {
             },
             Action::Read,
         );
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
         }
 
         // Direct access - no Option check!
-        let shm_manager = &self.ipc.shm_manager;
+        let shm_manager = &self.ipc().shm_manager();
 
         match shm_manager.read(segment_id, pid, offset, size) {
             Ok(data) => {
@@ -176,7 +176,7 @@ impl SyscallExecutorWithIpc {
 
     pub(in crate::syscalls) fn destroy_shm(&self, pid: Pid, segment_id: u32) -> SyscallResult {
         // Direct access - no Option check!
-        let shm_manager = &self.ipc.shm_manager;
+        let shm_manager = &self.ipc().shm_manager();
 
         match shm_manager.destroy(segment_id, pid) {
             Ok(_) => {
@@ -192,7 +192,7 @@ impl SyscallExecutorWithIpc {
 
     pub(in crate::syscalls) fn shm_stats(&self, pid: Pid, segment_id: u32) -> SyscallResult {
         // Direct access - no Option check!
-        let shm_manager = &self.ipc.shm_manager;
+        let shm_manager = &self.ipc().shm_manager();
 
         match shm_manager.stats(segment_id) {
             Ok(stats) => match bincode::to_vec(&stats) {

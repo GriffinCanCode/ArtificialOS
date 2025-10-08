@@ -23,7 +23,7 @@ impl SyscallExecutorWithIpc {
             },
             Action::Read,
         );
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());
@@ -52,7 +52,7 @@ impl SyscallExecutorWithIpc {
             },
             Action::Read,
         );
-        let response = self.permission_manager.check(&request);
+        let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
             return SyscallResult::permission_denied(response.reason());

@@ -3,13 +3,18 @@
  *
  * High-performance synchronization primitives optimized for different use cases:
  * - Wait/notify primitives (futex, condvar, spinwait)
- * - Lock-free data structures (RCU, seqlock, striped maps)
- * - Adaptive synchronization (adaptive locks, flat combining)
+ * - Lock-free data structures (RCU, seqlock, flat combining)
+ * - Lock-based primitives (adaptive locks, striped maps)
+ * - Configuration management (shard manager, workload profiling)
  *
  * # Architecture
  *
- * This module provides a unified `WaitQueue` abstraction that can wait on
- * arbitrary keys (like sequence numbers) with multiple waiting strategies.
+ * This module is organized by domain:
+ *
+ * - `wait/`: Wait/notify primitives for blocking synchronization
+ * - `lockfree/`: Lock-free data structures for read-heavy workloads
+ * - `locks/`: Advanced lock-based primitives with contention reduction
+ * - `management/`: Configuration and management utilities
  *
  * # Performance
  *
@@ -20,43 +25,32 @@
  *
  * # Use Cases
  *
- * - **Ring buffers**: Wait for specific sequence numbers
- * - **Completion queues**: Block until operation completes
- * - **IPC synchronization**: Coordinate between processes
- * - **High-contention counters**: Flat combining for reduced cache line transfers
- * - **Read-heavy workloads**: RCU for lock-free reads
+ * - Ring buffers: Wait for specific sequence numbers
+ * - Completion queues: Block until operation completes
+ * - IPC synchronization: Coordinate between processes
+ * - High-contention counters: Flat combining for reduced cache line transfers
+ * - Read-heavy workloads: RCU for lock-free reads
  */
 
+// Domain modules
+pub mod lockfree;
+pub mod locks;
+pub mod management;
+pub mod wait;
+
+// Re-export commonly used items at top level for convenience
+
 // Wait/notify primitives
-mod condvar;
-mod config;
-mod futex;
-mod spinwait;
-mod traits;
-mod wait;
+pub use wait::{
+    CondvarWait, FutexWait, SpinWait, StrategyType, SyncConfig, WaitError, WaitQueue, WaitResult,
+    WaitStrategy, WakeResult,
+};
 
-// Advanced synchronization primitives
-mod adaptive;
-mod flat_combining;
-mod rcu;
-mod seqlock_stats;
-mod shard_manager;
-mod striped;
+// Lock-free primitives
+pub use lockfree::{FlatCombiningCounter, RcuCell, SeqlockStats};
 
-// Wait/notify exports
-pub use config::{StrategyType, SyncConfig};
-pub use traits::{WaitStrategy, WakeResult};
-pub use wait::{WaitError, WaitQueue, WaitResult};
+// Lock-based primitives
+pub use locks::{AdaptiveLock, StripedMap};
 
-// Re-export specific strategies for advanced users
-pub use condvar::CondvarWait;
-pub use futex::FutexWait;
-pub use spinwait::SpinWait;
-
-// Advanced synchronization exports
-pub use adaptive::AdaptiveLock;
-pub use flat_combining::FlatCombiningCounter;
-pub use rcu::RcuCell;
-pub use seqlock_stats::SeqlockStats;
-pub use shard_manager::{ShardManager, WorkloadProfile};
-pub use striped::StripedMap;
+// Configuration management
+pub use management::{ShardManager, WorkloadProfile};
