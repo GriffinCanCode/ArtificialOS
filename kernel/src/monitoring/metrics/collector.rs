@@ -154,13 +154,13 @@ impl MetricsCollector {
         let counters: HashMap<String, f64> = self
             .counters
             .iter()
-            .map(|entry| (entry.key().clone(), *entry.value().into()))
+            .map(|entry| (entry.key().clone(), *entry.value()))
             .collect();
 
         let gauges: HashMap<String, f64> = self
             .gauges
             .iter()
-            .map(|entry| (entry.key().clone(), *entry.value().into()))
+            .map(|entry| (entry.key().clone(), *entry.value()))
             .collect();
 
         let histogram_stats: HashMap<String, HistogramStats> = self

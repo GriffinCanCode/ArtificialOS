@@ -142,7 +142,7 @@ impl MemoryManager {
             .blocks
             .iter()
             .filter(|e| e.value().allocated && e.value().owner_pid == Some(parent_pid))
-            .map(|e| (e.key().clone(), e.value().clone().into()))
+            .map(|e| (e.key().clone(), e.value().clone()))
             .collect();
 
         for (addr, mut block) in parent_blocks {

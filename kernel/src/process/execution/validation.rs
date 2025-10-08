@@ -11,14 +11,14 @@ pub(super) fn validate_command(command: &str) -> ProcessResult<()> {
     // Empty command
     if command.is_empty() {
         return Err(ProcessError::PermissionDenied(
-            "Command cannot be empty".to_string(),
+            "Command cannot be empty".to_string().into(),
         ));
     }
 
     // Path traversal in command itself
     if command.contains("..") {
         return Err(ProcessError::PermissionDenied(
-            "Command contains path traversal".to_string(),
+            "Command contains path traversal".to_string().into(),
         ));
     }
 
@@ -29,7 +29,7 @@ pub(super) fn validate_command(command: &str) -> ProcessResult<()> {
     let dangerous_chars = [';', '|', '&', '\n', '\r', '\0', '`', '$', '(', ')'];
     if dangerous_chars.iter().any(|&c| command.contains(c)) {
         return Err(ProcessError::PermissionDenied(
-            "Command contains shell injection characters".to_string(),
+            "Command contains shell injection characters".to_string().into(),
         ));
     }
 
@@ -39,7 +39,7 @@ pub(super) fn validate_command(command: &str) -> ProcessResult<()> {
     for pattern in &encoded_dangerous {
         if command_lower.contains(pattern) {
             return Err(ProcessError::PermissionDenied(
-                "Command contains encoded shell metacharacters".to_string(),
+                "Command contains encoded shell metacharacters".to_string().into(),
             ));
         }
     }
@@ -56,7 +56,7 @@ pub(super) fn validate_command(command: &str) -> ProcessResult<()> {
 fn validate_absolute_command_path(command: &str) -> ProcessResult<()> {
     if contains_path_traversal(command) {
         return Err(ProcessError::PermissionDenied(
-            "Command path contains traversal".to_string(),
+            "Command path contains traversal".to_string().into(),
         ));
     }
 
@@ -88,7 +88,7 @@ pub(super) fn validate_argument(arg: &str) -> ProcessResult<()> {
     // Check for direct .. usage
     if arg.contains("..") {
         return Err(ProcessError::PermissionDenied(
-            "Argument contains path traversal".to_string(),
+            "Argument contains path traversal".to_string().into(),
         ));
     }
 
@@ -117,7 +117,7 @@ fn check_encoded_traversal(arg: &str) -> ProcessResult<()> {
     for pattern in &bypass_patterns {
         if arg_lower.contains(&pattern.to_lowercase()) {
             return Err(ProcessError::PermissionDenied(
-                "Argument contains path traversal attempt".to_string(),
+                "Argument contains path traversal attempt".to_string().into(),
             ));
         }
     }
@@ -130,7 +130,7 @@ fn check_shell_injection(arg: &str) -> ProcessResult<()> {
     let dangerous_chars = [';', '|', '&', '\n', '\r', '\0', '`', '$'];
     if dangerous_chars.iter().any(|&c| arg.contains(c)) {
         return Err(ProcessError::PermissionDenied(
-            "Argument contains shell injection characters".to_string(),
+            "Argument contains shell injection characters".to_string().into(),
         ));
     }
     Ok(())
@@ -150,7 +150,7 @@ fn check_encoded_metacharacters(arg: &str) -> ProcessResult<()> {
     for pattern in &encoded_dangerous {
         if arg_lower.contains(pattern) {
             return Err(ProcessError::PermissionDenied(
-                "Argument contains encoded shell metacharacters".to_string(),
+                "Argument contains encoded shell metacharacters".to_string().into(),
             ));
         }
     }

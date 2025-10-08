@@ -149,7 +149,7 @@ impl MemFS {
         path.file_name()
             .and_then(|n| n.to_str())
             .map(|s| s.to_string())
-            .ok_or_else(|| VfsError::InvalidPath(format!("invalid path: {}", path.display().into())))
+            .ok_or_else(|| VfsError::InvalidPath(format!("invalid path: {}", path.display()).into()))
     }
 
     /// Ensure parent directory exists
@@ -157,7 +157,7 @@ impl MemFS {
         if let Some(parent) = self.parent_path(path) {
             // Check and validate parent in one atomic operation to avoid TOCTOU
             let node = self.nodes.get(&parent).ok_or_else(|| {
-                VfsError::NotFound(format!("parent directory not found: {}", parent.display().into()))
+                VfsError::NotFound(format!("parent directory not found: {}", parent.display()).into())
             })?;
 
             if !node.is_dir() {

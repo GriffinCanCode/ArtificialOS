@@ -115,7 +115,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     if let Err(e) = std::fs::create_dir_all(&storage_path) {
         tracing::warn!(error = %e, "Could not create storage directory");
     }
-    if let Err(e) = vfs.mount("/storage", Arc::new(LocalFS::new(&storage_path).into())) {
+    if let Err(e) = vfs.mount("/storage", Arc::new(LocalFS::new(&storage_path))) {
         tracing::error!(error = %e, "Failed to mount /storage");
         return Err("Failed to mount /storage filesystem".into());
     }
@@ -126,7 +126,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         "/tmp",
         Arc::new(MemFS::with_capacity(
             ai_os_kernel::core::limits::TMP_FILESYSTEM_CAPACITY,
-        ).into()),
+        )),
     ) {
         tracing::error!(error = %e, "Failed to mount /tmp");
         return Err("Failed to mount /tmp filesystem".into());
@@ -138,7 +138,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         "/cache",
         Arc::new(MemFS::with_capacity(
             ai_os_kernel::core::limits::CACHE_FILESYSTEM_CAPACITY,
-        ).into()),
+        )),
     ) {
         tracing::error!(error = %e, "Failed to mount /cache");
         return Err("Failed to mount /cache filesystem".into());

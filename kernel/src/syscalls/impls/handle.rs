@@ -30,7 +30,7 @@ impl FileHandle {
     #[inline]
     pub fn from_std(file: File) -> Self {
         Self {
-            inner: RwLock::new(Box::new(StdFileHandle { file }).into()),
+            inner: RwLock::new(Box::new(StdFileHandle { file })),
         }
     }
 
@@ -58,7 +58,7 @@ impl FileHandle {
     pub fn sync_data(&self) -> std::io::Result<()> {
         // VFS sync() syncs all, map to same operation
         self.sync()
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string().into()))
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))
     }
 
     /// Set file length

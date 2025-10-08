@@ -78,7 +78,7 @@ impl SyscallExecutorWithIpc {
 
         let signal_enum = match Signal::from_number(signal) {
             Ok(sig) => sig,
-            Err(e) => return SyscallResult::error(format!("Invalid signal: {}", e).into()),
+            Err(e) => return SyscallResult::error(format!("Invalid signal: {}", e)),
         };
 
         match signal_manager.register_handler(pid, signal_enum, SignalAction::Handler(handler_id)) {
@@ -89,7 +89,7 @@ impl SyscallExecutorWithIpc {
                 );
                 SyscallResult::success()
             }
-            Err(e) => SyscallResult::error(format!("Failed to register handler: {}", e).into()),
+            Err(e) => SyscallResult::error(format!("Failed to register handler: {}", e)),
         }
     }
 
@@ -102,7 +102,7 @@ impl SyscallExecutorWithIpc {
 
         let signal_enum = match Signal::from_number(signal) {
             Ok(sig) => sig,
-            Err(e) => return SyscallResult::error(format!("Invalid signal: {}", e).into()),
+            Err(e) => return SyscallResult::error(format!("Invalid signal: {}", e)),
         };
 
         match signal_manager.block_signal(pid, signal_enum) {
@@ -110,7 +110,7 @@ impl SyscallExecutorWithIpc {
                 info!("PID {} blocked signal {:?}", pid, signal_enum);
                 SyscallResult::success()
             }
-            Err(e) => SyscallResult::error(format!("Failed to block signal: {}", e).into()),
+            Err(e) => SyscallResult::error(format!("Failed to block signal: {}", e)),
         }
     }
 
@@ -123,7 +123,7 @@ impl SyscallExecutorWithIpc {
 
         let signal_enum = match Signal::from_number(signal) {
             Ok(sig) => sig,
-            Err(e) => return SyscallResult::error(format!("Invalid signal: {}", e).into()),
+            Err(e) => return SyscallResult::error(format!("Invalid signal: {}", e)),
         };
 
         match signal_manager.unblock_signal(pid, signal_enum) {
@@ -131,7 +131,7 @@ impl SyscallExecutorWithIpc {
                 info!("PID {} unblocked signal {:?}", pid, signal_enum);
                 SyscallResult::success()
             }
-            Err(e) => SyscallResult::error(format!("Failed to unblock signal: {}", e).into()),
+            Err(e) => SyscallResult::error(format!("Failed to unblock signal: {}", e)),
         }
     }
 

@@ -14,6 +14,7 @@ use super::MemFS;
 impl MemFS {
     pub(super) fn list_dir_impl(&self, path: &Path) -> VfsResult<Vec<Entry>> {
         use crate::core::memory::arena::with_arena;
+        use crate::core::optimization::prefetch_read;
 
         with_arena(|arena| {
             let path = self.normalize(path);
@@ -21,8 +22,14 @@ impl MemFS {
             match self.nodes.get(&path).map(|n| n.clone()) {
                 Some(Node::Directory { children, .. }) => {
                     let mut entries = bumpalo::collections::Vec::with_capacity_in(children.len(), arena);
-                    for (name, child_path) in children {
-                        if let Some(node) = self.nodes.get(&child_path) {
+                    let children_vec: Vec<_> = children.iter().collect();
+
+                    for (i, (name, child_path)) in children_vec.iter().enumerate() {
+                        if i + 2 < children_vec.len() {
+                            prefetch_read(*children_vec[i + 2].1 as *const PathBuf);
+                        }
+
+                        if let Some(node) = self.nodes.get(child_path) {
                             entries.push(Entry::new_unchecked(name.clone(), node.file_type().into()));
                         }
                     }

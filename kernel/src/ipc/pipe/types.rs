@@ -57,9 +57,9 @@ impl From<PipeError> for IpcError {
     fn from(err: PipeError) -> Self {
         match err {
             PipeError::NotFound(id) => IpcError::NotFound(format!("Pipe {}", id).into()),
-            PipeError::PermissionDenied(msg) => IpcError::PermissionDenied(msg),
+            PipeError::PermissionDenied(msg) => IpcError::PermissionDenied(msg.into()),
             PipeError::Closed => IpcError::Closed("Pipe closed".into()),
-            PipeError::WouldBlock(msg) => IpcError::WouldBlock(msg),
+            PipeError::WouldBlock(msg) => IpcError::WouldBlock(msg.into()),
             PipeError::CapacityExceeded {
                 requested,
                 capacity,
@@ -84,7 +84,7 @@ impl From<PipeError> for IpcError {
                 elapsed_ms,
                 timeout_ms,
             },
-            PipeError::InvalidOperation(msg) => IpcError::InvalidOperation(msg),
+            PipeError::InvalidOperation(msg) => IpcError::InvalidOperation(msg.into()),
         }
     }
 }

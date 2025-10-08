@@ -6,6 +6,7 @@ use crate::api::execution::StreamingManager;
 use crate::api::server::grpc_server::kernel_proto::*;
 use crate::process::ProcessManagerImpl as ProcessManager;
 use crate::security::SandboxManager;
+use std::collections::HashSet;
 use tonic::{Request, Response, Status};
 use tracing::info;
 
@@ -15,7 +16,7 @@ pub async fn handle_stream_events(
     request: Request<EventStreamRequest>,
 ) -> Result<Response<tokio_stream::wrappers::ReceiverStream<Result<KernelEvent, Status>>>, Status> {
     let req = request.into_inner();
-    let event_types = req.event_types;
+    let event_types: HashSet<String> = req.event_types.into_iter().collect();
 
     info!(
         "gRPC: Event streaming requested for types: {:?}",
@@ -26,21 +27,18 @@ pub async fn handle_stream_events(
     let process_manager = process_manager.clone();
     let sandbox_manager = sandbox_manager.clone();
 
-    // Spawn background task to emit events
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(5));
 
         loop {
             interval.tick().await;
 
-            // Generate system events based on current state
             let timestamp = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map(|d| d.as_secs())
-                .unwrap_or(0); // Fallback to 0 if system time is before Unix epoch
+                .unwrap_or(0);
 
-            // Emit process list events if requested
-            if event_types.is_empty() || event_types.contains(&"process_created".to_string()) {
+            if event_types.is_empty() || event_types.contains("process_created") {
                 // Get current processes
                 let processes = process_manager.list_processes();
                 for proc in processes.iter().take(5) {
@@ -49,7 +47,7 @@ pub async fn handle_stream_events(
                         timestamp,
                         event: Some(kernel_event::Event::ProcessCreated(ProcessCreatedEvent {
                             pid: proc.pid,
-                            name: proc.name.clone(),
+                            name: proc.name.to_string(),
                         }).into()),
                     };
 
@@ -60,8 +58,7 @@ pub async fn handle_stream_events(
                 }
             }
 
-            // Emit syscall execution events (based on scheduler activity)
-            if event_types.is_empty() || event_types.contains(&"syscall_executed".to_string()) {
+            if event_types.is_empty() || event_types.contains("syscall_executed") {
                 if let Some(_stats) = process_manager.get_scheduler_stats() {
                     let event = KernelEvent {
                         timestamp,
@@ -79,8 +76,7 @@ pub async fn handle_stream_events(
                 }
             }
 
-            // Emit permission denied events (based on sandbox stats)
-            if event_types.is_empty() || event_types.contains(&"permission_denied".to_string()) {
+            if event_types.is_empty() || event_types.contains("permission_denied") {
                 use crate::security::traits::SandboxProvider;
                 let sandbox_stats = sandbox_manager.stats();
                 if sandbox_stats.permission_denials > 0 {

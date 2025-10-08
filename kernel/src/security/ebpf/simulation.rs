@@ -203,19 +203,19 @@ impl SyscallFilterProvider for SimulationEbpfProvider {
 impl EventMonitor for SimulationEbpfProvider {
     fn subscribe_syscall(&self, _callback: EventCallback) -> EbpfResult<String> {
         // Note: In simulation mode, callbacks are not actually invoked
-        Ok(format!("sim_syscall_{}", Self::current_timestamp().into()))
+        Ok(format!("sim_syscall_{}", Self::current_timestamp()))
     }
 
     fn subscribe_network(&self, _callback: EventCallback) -> EbpfResult<String> {
-        Ok(format!("sim_network_{}", Self::current_timestamp().into()))
+        Ok(format!("sim_network_{}", Self::current_timestamp()))
     }
 
     fn subscribe_file(&self, _callback: EventCallback) -> EbpfResult<String> {
-        Ok(format!("sim_file_{}", Self::current_timestamp().into()))
+        Ok(format!("sim_file_{}", Self::current_timestamp()))
     }
 
     fn subscribe_all(&self, _callback: EventCallback) -> EbpfResult<String> {
-        Ok(format!("sim_all_{}", Self::current_timestamp().into()))
+        Ok(format!("sim_all_{}", Self::current_timestamp()))
     }
 
     fn unsubscribe(&self, _subscription_id: &str) -> EbpfResult<()> {

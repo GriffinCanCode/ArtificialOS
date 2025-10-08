@@ -248,7 +248,7 @@ where
             return Err(serde::de::Error::custom(format!(
                 "value {} exceeds maximum {}",
                 value, max
-            ).into()));
+            )));
         }
         Ok(value)
     }
@@ -265,7 +265,7 @@ where
             return Err(serde::de::Error::custom(format!(
                 "value {} exceeds maximum {}",
                 value, max
-            ).into()));
+            )));
         }
         Ok(value)
     }
@@ -282,7 +282,7 @@ where
             return Err(serde::de::Error::custom(format!(
                 "value {} is outside range [{}, {}]",
                 value, min, max
-            ).into()));
+            )));
         }
         Ok(value)
     }
@@ -299,7 +299,7 @@ where
             return Err(serde::de::Error::custom(format!(
                 "value {} is outside range [{}, {}]",
                 value, min, max
-            ).into()));
+            )));
         }
         Ok(value)
     }
@@ -366,7 +366,7 @@ pub mod optional_system_time_micros {
         D: Deserializer<'de>,
     {
         let opt = Option::<u64>::deserialize(deserializer)?;
-        Ok(opt.map(|micros| UNIX_EPOCH + std::time::Duration::from_micros(micros).into()))
+        Ok(opt.map(|micros| UNIX_EPOCH + std::time::Duration::from_micros(micros)))
     }
 }
 

@@ -178,8 +178,8 @@ impl SandboxManager {
                             Severity::Warn,
                             Category::Security,
                             Payload::PermissionDenied {
-                                operation: format!("path_access:{}", path.display().into()),
-                                required: format!("path:{}", path.display().into()),
+                                operation: format!("path_access:{}", path.display()),
+                                required: format!("path:{}", path.display()),
                             },
                         )
                         .with_pid(pid),

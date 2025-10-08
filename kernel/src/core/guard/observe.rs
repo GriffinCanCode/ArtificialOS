@@ -83,7 +83,7 @@ impl<G: Guard> Observable for ObservableGuard<G> {
             Severity::Debug,
             self.category,
             Payload::MetricUpdate {
-                name: format!("{}_created", self.inner.resource_type().into()),
+                name: format!("{}_created", self.inner.resource_type()),
                 value: 1.0,
                 labels: vec![
                     (
@@ -105,7 +105,7 @@ impl<G: Guard> Observable for ObservableGuard<G> {
             Severity::Debug,
             self.category,
             Payload::MetricUpdate {
-                name: format!("{}_used", self.inner.resource_type().into()),
+                name: format!("{}_used", self.inner.resource_type()),
                 value: 1.0,
                 labels: vec![
                     (
@@ -125,7 +125,7 @@ impl<G: Guard> Observable for ObservableGuard<G> {
             Severity::Debug,
             self.category,
             Payload::MetricUpdate {
-                name: format!("{}_dropped", self.inner.resource_type().into()),
+                name: format!("{}_dropped", self.inner.resource_type()),
                 value: lifetime as f64,
                 labels: vec![
                     (
@@ -144,7 +144,7 @@ impl<G: Guard> Observable for ObservableGuard<G> {
             Severity::Error,
             self.category,
             Payload::MetricUpdate {
-                name: format!("{}_error", self.inner.resource_type().into()),
+                name: format!("{}_error", self.inner.resource_type()),
                 value: 1.0,
                 labels: vec![
                     (

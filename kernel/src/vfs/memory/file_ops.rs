@@ -30,10 +30,10 @@ impl MemFS {
                     Ok(content)
                 }
                 Some(Node::Directory { .. }) => {
-                    Err(VfsError::IsADirectory(format!("{}", path.display().into())))
+                    Err(VfsError::IsADirectory(format!("{}", path.display()).into()))
                 }
                 None => {
-                    Err(VfsError::NotFound(format!("{}", path.display().into())))
+                    Err(VfsError::NotFound(format!("{}", path.display()).into()))
                 }
             }
         })

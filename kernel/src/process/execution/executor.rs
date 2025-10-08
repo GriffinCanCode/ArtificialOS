@@ -110,7 +110,7 @@ impl ProcessExecutor {
             pid,
             os_pid,
             name: name.clone(),
-            command: config.command.clone(),
+            command: config.command.to_string(),
             child,
         };
 
@@ -229,9 +229,8 @@ impl ProcessExecutor {
         Ok(())
     }
 
-    /// Cleanup zombie processes
     pub fn cleanup(&self) {
-        let mut to_remove = Vec::new();
+        let mut to_remove = Vec::with_capacity(8);
 
         for mut entry in self.processes.iter_mut() {
             let pid = *entry.key();

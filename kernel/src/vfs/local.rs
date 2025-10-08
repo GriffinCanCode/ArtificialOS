@@ -238,14 +238,24 @@ impl FileSystem for LocalFS {
     }
 
     fn list_dir(&self, path: &Path) -> VfsResult<Vec<Entry>> {
+        use crate::core::optimization::prefetch_read;
+
         let full_path = self.resolve(path);
         let entries = fs::read_dir(&full_path)
             .map_err(|e| Self::io_error(e, format!("list_dir {}", path.display())))?;
 
-        let mut result = Vec::new();
-        for entry in entries {
-            let entry = entry
-                .map_err(|e| Self::io_error(e, format!("read dir entry in {}", path.display())))?;
+        let entries_vec: Vec<_> = entries.collect();
+        let mut result = Vec::with_capacity(entries_vec.len().max(32));
+
+        for (i, entry_result) in entries_vec.iter().enumerate() {
+            if i + 2 < entries_vec.len() {
+                if let Ok(next_entry) = &entries_vec[i + 2] {
+                    prefetch_read(next_entry as *const _);
+                }
+            }
+
+            let entry = entry_result.as_ref()
+                .map_err(|e| Self::io_error(e.clone(), format!("read dir entry in {}", path.display())))?;
             let name = entry
                 .file_name()
                 .into_string()

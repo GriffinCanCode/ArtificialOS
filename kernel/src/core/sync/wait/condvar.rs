@@ -41,7 +41,7 @@ impl CondvarSlot {
     const fn new() -> Self {
         Self {
             condvar: Condvar::new(),
-            mutex: Mutex::new(().into()),
+            mutex: Mutex::new(()),
             waiters: AtomicUsize::new(0),
         }
     }

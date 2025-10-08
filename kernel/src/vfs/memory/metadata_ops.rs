@@ -113,13 +113,13 @@ impl FileSystem for MemFS {
 
     fn symlink(&self, _src: &Path, _dst: &Path) -> VfsResult<()> {
         Err(VfsError::NotSupported(
-            "symlinks not supported in MemFS".to_string(),
+            "symlinks not supported in MemFS".to_string().into(),
         ))
     }
 
     fn read_link(&self, _path: &Path) -> VfsResult<PathBuf> {
         Err(VfsError::NotSupported(
-            "symlinks not supported in MemFS".to_string(),
+            "symlinks not supported in MemFS".to_string().into(),
         ))
     }
 

@@ -238,12 +238,12 @@ impl SyscallExecutorWithIpc {
                 }
                 Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
                     error!("HTTP request timed out for {} after {}ms (slow network or unresponsive server?)", url, elapsed_ms);
-                    span.record_error(arena.alloc(format!("Timeout after {}ms", elapsed_ms).into()));
+                    span.record_error(arena.alloc(format!("Timeout after {}ms", elapsed_ms)));
                     SyscallResult::error(format!("Network request timed out after {}ms", elapsed_ms))
                 }
                 Err(TimeoutError::Operation(e)) => {
                     error!("Failed to fetch {}: {}", url, e);
-                    span.record_error(arena.alloc(format!("Network request failed: {}", e).into()));
+                    span.record_error(arena.alloc(format!("Network request failed: {}", e)));
                     SyscallResult::error(format!("Network request failed: {}", e))
                 }
             }

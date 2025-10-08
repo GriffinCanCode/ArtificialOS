@@ -70,10 +70,10 @@ impl PooledBuffer {
             };
         };
 
-        let mut vec = match pool_category {
-            PoolCategory::Small => SMALL_POOL.with(|pool| pool.borrow_mut().pop().into()),
-            PoolCategory::Medium => MEDIUM_POOL.with(|pool| pool.borrow_mut().pop().into()),
-            PoolCategory::Large => LARGE_POOL.with(|pool| pool.borrow_mut().pop().into()),
+        let mut vec: Option<Vec<u8>> = match pool_category {
+            PoolCategory::Small => SMALL_POOL.with(|pool| pool.borrow_mut().pop()),
+            PoolCategory::Medium => MEDIUM_POOL.with(|pool| pool.borrow_mut().pop()),
+            PoolCategory::Large => LARGE_POOL.with(|pool| pool.borrow_mut().pop()),
             PoolCategory::None => unreachable!(),
         };
 

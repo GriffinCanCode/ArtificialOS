@@ -143,7 +143,7 @@ impl AuditLogger {
     pub fn pids_with_denials(&self) -> Vec<(Pid, u64)> {
         self.denial_counts
             .iter()
-            .map(|entry| (*entry.key(), *entry.value().into()))
+            .map(|entry| (*entry.key(), *entry.value()))
             .collect()
     }
 

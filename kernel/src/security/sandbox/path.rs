@@ -32,7 +32,7 @@ impl PathHandle {
             let file_name = path.file_name().ok_or_else(|| {
                 std::io::Error::new(
                     std::io::ErrorKind::InvalidInput,
-                    format!("path has no file name component: {}", path.display().into()),
+                    format!("path has no file name component: {}", path.display()),
                 )
             })?;
             let canonical = parent.canonicalize()?.join(file_name);

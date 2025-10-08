@@ -17,49 +17,49 @@ use std::path::PathBuf;
 pub fn proto_to_syscall_full(req: &SyscallRequest) -> Result<Syscall, String> {
     match &req.syscall {
         Some(syscall_request::Syscall::ReadFile(call)) => Ok(Syscall::ReadFile {
-            path: PathBuf::from(call.path.clone().into()),
+            path: PathBuf::from(call.path.clone()),
         }),
         Some(syscall_request::Syscall::WriteFile(call)) => Ok(Syscall::WriteFile {
-            path: PathBuf::from(call.path.clone().into()),
+            path: PathBuf::from(call.path.clone()),
             data: call.data.clone(),
         }),
         Some(syscall_request::Syscall::CreateFile(call)) => Ok(Syscall::CreateFile {
-            path: PathBuf::from(call.path.clone().into()),
+            path: PathBuf::from(call.path.clone()),
         }),
         Some(syscall_request::Syscall::DeleteFile(call)) => Ok(Syscall::DeleteFile {
-            path: PathBuf::from(call.path.clone().into()),
+            path: PathBuf::from(call.path.clone()),
         }),
         Some(syscall_request::Syscall::ListDirectory(call)) => Ok(Syscall::ListDirectory {
-            path: PathBuf::from(call.path.clone().into()),
+            path: PathBuf::from(call.path.clone()),
         }),
         Some(syscall_request::Syscall::FileExists(call)) => Ok(Syscall::FileExists {
-            path: PathBuf::from(call.path.clone().into()),
+            path: PathBuf::from(call.path.clone()),
         }),
         Some(syscall_request::Syscall::FileStat(call)) => Ok(Syscall::FileStat {
-            path: PathBuf::from(call.path.clone().into()),
+            path: PathBuf::from(call.path.clone()),
         }),
         Some(syscall_request::Syscall::MoveFile(call)) => Ok(Syscall::MoveFile {
-            source: PathBuf::from(call.source.clone().into()),
-            destination: PathBuf::from(call.destination.clone().into()),
+            source: PathBuf::from(call.source.clone()),
+            destination: PathBuf::from(call.destination.clone()),
         }),
         Some(syscall_request::Syscall::CopyFile(call)) => Ok(Syscall::CopyFile {
-            source: PathBuf::from(call.source.clone().into()),
-            destination: PathBuf::from(call.destination.clone().into()),
+            source: PathBuf::from(call.source.clone()),
+            destination: PathBuf::from(call.destination.clone()),
         }),
         Some(syscall_request::Syscall::CreateDirectory(call)) => Ok(Syscall::CreateDirectory {
-            path: PathBuf::from(call.path.clone().into()),
+            path: PathBuf::from(call.path.clone()),
         }),
         Some(syscall_request::Syscall::RemoveDirectory(call)) => Ok(Syscall::RemoveDirectory {
-            path: PathBuf::from(call.path.clone().into()),
+            path: PathBuf::from(call.path.clone()),
         }),
         Some(syscall_request::Syscall::GetWorkingDirectory(_)) => Ok(Syscall::GetWorkingDirectory),
         Some(syscall_request::Syscall::SetWorkingDirectory(call)) => {
             Ok(Syscall::SetWorkingDirectory {
-                path: PathBuf::from(call.path.clone().into()),
+                path: PathBuf::from(call.path.clone()),
             })
         }
         Some(syscall_request::Syscall::TruncateFile(call)) => Ok(Syscall::TruncateFile {
-            path: PathBuf::from(call.path.clone().into()),
+            path: PathBuf::from(call.path.clone()),
             size: call.size,
         }),
         Some(syscall_request::Syscall::SpawnProcess(call)) => Ok(Syscall::SpawnProcess {
@@ -195,7 +195,7 @@ pub fn proto_to_syscall_full(req: &SyscallRequest) -> Result<Syscall, String> {
             optname: call.optname,
         }),
         Some(syscall_request::Syscall::Open(call)) => Ok(Syscall::Open {
-            path: PathBuf::from(call.path.clone().into()),
+            path: PathBuf::from(call.path.clone()),
             flags: call.flags,
             mode: call.mode,
         }),
@@ -357,17 +357,17 @@ pub fn proto_to_syscall_full(req: &SyscallRequest) -> Result<Syscall, String> {
 pub fn proto_to_syscall_simple(req: &SyscallRequest) -> Result<Syscall, String> {
     match &req.syscall {
         Some(syscall_request::Syscall::ReadFile(call)) => Ok(Syscall::ReadFile {
-            path: PathBuf::from(call.path.clone().into()),
+            path: PathBuf::from(call.path.clone()),
         }),
         Some(syscall_request::Syscall::WriteFile(call)) => Ok(Syscall::WriteFile {
-            path: PathBuf::from(call.path.clone().into()),
+            path: PathBuf::from(call.path.clone()),
             data: call.data.clone(),
         }),
         Some(syscall_request::Syscall::CreateFile(call)) => Ok(Syscall::CreateFile {
-            path: PathBuf::from(call.path.clone().into()),
+            path: PathBuf::from(call.path.clone()),
         }),
         Some(syscall_request::Syscall::DeleteFile(call)) => Ok(Syscall::DeleteFile {
-            path: PathBuf::from(call.path.clone().into()),
+            path: PathBuf::from(call.path.clone()),
         }),
         Some(syscall_request::Syscall::SpawnProcess(call)) => Ok(Syscall::SpawnProcess {
             command: call.command.clone(),

@@ -281,7 +281,7 @@ impl SyscallExecutorWithIpc {
                             "VFS open failed for {:?}: {}, falling back to std::fs",
                             path, e
                         );
-                        span.record("vfs_error", arena.alloc(format!("{}", e).into()));
+                        span.record("vfs_error", &format!("{}", e));
                     }
                 }
             }
@@ -352,7 +352,7 @@ impl SyscallExecutorWithIpc {
                 }
                 Err(e) => {
                     error!("Failed to open file {:?}: {}", path, e);
-                    span.record_error(arena.alloc(format!("Open failed: {}", e).into()));
+                    span.record_error(&format!("Open failed: {}", e));
                     SyscallResult::error(format!("Open failed: {}", e))
                 }
             }

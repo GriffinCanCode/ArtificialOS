@@ -416,14 +416,14 @@ impl MmapManager {
     pub fn get_info(&self, mmap_id: MmapId) -> Option<MmapInfo> {
         self.mappings
             .get(&mmap_id)
-            .map(|e| MmapInfo::from(e.value().into()))
+            .map(|e| MmapInfo::from(&*e.value()))
     }
 
     pub fn list_mappings(&self, pid: Pid) -> Vec<MmapInfo> {
         self.mappings
             .iter()
             .filter(|entry| entry.value().owner_pid == pid)
-            .map(|entry| MmapInfo::from(entry.value().into()))
+            .map(|entry| MmapInfo::from(&*entry.value()))
             .collect()
     }
 }

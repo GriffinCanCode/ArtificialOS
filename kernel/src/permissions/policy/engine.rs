@@ -206,14 +206,14 @@ impl PolicyEngine {
                     debug!("Policy '{}' allowed request", policy.name());
                     return PermissionResponse::allow(
                         request.clone(),
-                        format!("Allowed by policy '{}'", policy.name().into()),
+                        format!("Allowed by policy '{}'", policy.name()),
                     );
                 }
                 PolicyDecision::Deny => {
                     debug!("Policy '{}' denied request", policy.name());
                     return PermissionResponse::deny(
                         request.clone(),
-                        format!("Denied by policy '{}'", policy.name().into()),
+                        format!("Denied by policy '{}'", policy.name()),
                     );
                 }
                 PolicyDecision::Abstain => {

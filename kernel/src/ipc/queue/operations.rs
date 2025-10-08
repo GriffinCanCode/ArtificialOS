@@ -59,7 +59,7 @@ impl QueueManager {
                 .write_bytes(data_address, data)
                 .map_err(|e| {
                     let _ = self.memory_manager.deallocate(data_address);
-                    IpcError::InvalidOperation(format!("Memory write failed: {}", e))
+                    IpcError::InvalidOperation(format!("Memory write failed: {}", e).into())
                 })?;
         }
 

@@ -53,9 +53,16 @@ impl SyscallSubmissionQueue {
 
     /// Pop multiple entries (for batch processing, lock-free)
     pub fn pop_batch(&self, max: usize) -> Vec<SyscallSubmissionEntry> {
+        use crate::core::optimization::prefetch_read;
+
         let mut batch = Vec::with_capacity(max);
-        for _ in 0..max {
+        for i in 0..max {
             if let Some(entry) = self.ring.pop() {
+                if i + 2 < max {
+                    if let Some(next_entry) = self.ring.dequeue() {
+                        prefetch_read(next_entry as *const SyscallSubmissionEntry);
+                    }
+                }
                 batch.push(entry);
             } else {
                 break;

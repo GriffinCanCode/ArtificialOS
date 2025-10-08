@@ -122,7 +122,7 @@ impl SyscallResult {
 impl From<SyscallError> for SyscallResult {
     fn from(err: SyscallError) -> Self {
         match err {
-            SyscallError::PermissionDenied(msg) => Self::PermissionDenied { reason: msg },
+            SyscallError::PermissionDenied(msg) => Self::PermissionDenied { reason: msg.to_string() },
             other => Self::Error {
                 message: other.to_string(),
             },

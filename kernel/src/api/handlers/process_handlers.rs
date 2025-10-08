@@ -35,23 +35,17 @@ pub async fn handle_create_process(
     // Build execution config if command provided
     let exec_config = if let Some(command) = req.command {
         if !command.is_empty() {
-            let mut config = crate::process::ExecutionConfig::new(command);
+            let mut config = crate::process::ExecutionConfig::new(command.into());
             if !req.args.is_empty() {
                 config = config.with_args(req.args);
             }
             if !req.env_vars.is_empty() {
-                let env: Vec<(String, String)> = req
-                    .env_vars
-                    .iter()
-                    .filter_map(|e| {
-                        let parts: Vec<&str> = e.splitn(2, '=').collect();
-                        if parts.len() == 2 {
-                            Some((parts[0].to_string(), parts[1].to_string().into()))
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
+                let mut env = Vec::with_capacity(req.env_vars.len());
+                for e in &req.env_vars {
+                    if let Some((key, val)) = e.split_once('=') {
+                        env.push((key.to_string(), val.to_string()));
+                    }
+                }
                 config = config.with_env(env);
             }
             Some(config)

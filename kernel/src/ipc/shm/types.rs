@@ -59,8 +59,8 @@ impl From<ShmError> for IpcError {
     fn from(err: ShmError) -> Self {
         match err {
             ShmError::NotFound(id) => IpcError::NotFound(format!("Shared memory segment {}", id).into()),
-            ShmError::PermissionDenied(msg) => IpcError::PermissionDenied(msg),
-            ShmError::InvalidSize(msg) => IpcError::InvalidOperation(msg),
+            ShmError::PermissionDenied(msg) => IpcError::PermissionDenied(msg.into()),
+            ShmError::InvalidSize(msg) => IpcError::InvalidOperation(msg.into()),
             ShmError::InvalidRange {
                 offset,
                 size,
@@ -82,7 +82,7 @@ impl From<ShmError> for IpcError {
                 current, max
             ).into()),
             ShmError::AllocationFailed(msg) => {
-                IpcError::InvalidOperation(format!("Memory allocation failed: {}", msg))
+                IpcError::InvalidOperation(format!("Memory allocation failed: {}", msg).into())
             }
         }
     }

@@ -244,7 +244,7 @@ impl InterfaceManager for NamespaceManager {
         config: &InterfaceConfig,
     ) -> NamespaceResult<()> {
         // Get namespace info to validate it exists
-        let info = self
+        let _info = self
             .get_info(ns_id)
             .ok_or_else(|| NamespaceError::NotFound(format!("Namespace {} not found", ns_id)))?;
 

@@ -106,7 +106,7 @@ impl ProcessManager {
         // Create process in Creating state (not yet initialized)
         let mut process = ProcessInfo {
             pid,
-            name: name.clone(),
+            name: name.clone().into(),
             state: ProcessState::Creating, // Start in Creating state
             priority,
             os_pid: None,
@@ -264,7 +264,19 @@ impl ProcessManager {
 
     /// List all processes
     pub fn list_processes(&self) -> Vec<ProcessInfo> {
-        self.processes.iter().map(|r| r.value().clone()).collect()
+        use crate::core::optimization::prefetch_read;
+
+        let mut result = Vec::with_capacity(self.processes.len());
+        let items: Vec<_> = self.processes.iter().collect();
+
+        for (i, entry) in items.iter().enumerate() {
+            if i + 4 < items.len() {
+                prefetch_read(items[i + 4].value() as *const ProcessInfo);
+            }
+            result.push(entry.value().clone());
+        }
+
+        result
     }
 
     /// Get memory manager reference

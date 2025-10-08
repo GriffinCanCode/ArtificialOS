@@ -135,7 +135,7 @@ pub async fn handle_execute_syscall_batch(
         "gRPC: Executing batch syscalls"
     );
 
-    let mut syscalls = Vec::new();
+    let mut syscalls = Vec::with_capacity(batch_size);
     for syscall_req in req.requests {
         let pid = syscall_req.pid;
         match proto_to_syscall_simple(&syscall_req) {
@@ -156,16 +156,14 @@ pub async fn handle_execute_syscall_batch(
 
     let mut success_count = 0;
     let mut failure_count = 0;
-    let responses: Vec<_> = results
-        .into_iter()
-        .map(|r| {
-            match &r {
-                SyscallResult::Success { .. } => success_count += 1,
-                _ => failure_count += 1,
-            }
-            syscall_result_to_proto(r)
-        })
-        .collect();
+    let mut responses = Vec::with_capacity(results.len());
+    for r in results {
+        match &r {
+            SyscallResult::Success { .. } => success_count += 1,
+            _ => failure_count += 1,
+        }
+        responses.push(syscall_result_to_proto(r));
+    }
 
     Ok(Response::new(BatchSyscallResponse {
         responses,
@@ -319,17 +317,15 @@ pub async fn handle_reap_iouring_completions(
 
     match iouring_manager.reap_completions(pid, max) {
         Ok(completions) => {
-            let responses: Vec<_> = completions
-                .into_iter()
-                .map(|c| {
-                    let result = syscall_result_to_proto(c.result);
-                    IoUringCompletion {
-                        seq: c.seq,
-                        user_data: c.user_data,
-                        result: Some(result),
-                    }
-                })
-                .collect();
+            let mut responses = Vec::with_capacity(completions.len());
+            for c in completions {
+                let result = syscall_result_to_proto(c.result);
+                responses.push(IoUringCompletion {
+                    seq: c.seq,
+                    user_data: c.user_data,
+                    result: Some(result),
+                });
+            }
 
             let count = responses.len() as u32;
 
@@ -341,7 +337,7 @@ pub async fn handle_reap_iouring_completions(
         Err(e) => Err(Status::internal(format!(
             "Failed to reap completions: {}",
             e
-        ).into())),
+        ))),
     }
 }
 
@@ -363,7 +359,7 @@ pub async fn handle_submit_iouring_batch(
         "gRPC: Submitting io_uring batch"
     );
 
-    let mut entries = Vec::new();
+    let mut entries = Vec::with_capacity(batch_size);
     let mut first_pid = None;
 
     for syscall_req in req.requests {
@@ -375,7 +371,7 @@ pub async fn handle_submit_iouring_batch(
         let syscall = match proto_to_syscall_simple(&syscall_req) {
             Ok(s) => s,
             Err(e) => {
-                return Err(Status::invalid_argument(format!("Invalid syscall: {}", e).into()));
+                return Err(Status::invalid_argument(format!("Invalid syscall: {}", e)));
             }
         };
 
