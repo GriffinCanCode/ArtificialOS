@@ -466,31 +466,32 @@ impl SyscallExecutor {
         }
 
         // Check if the old FD exists and clone the Arc<FileHandle> reference
-        if let Some(handle_ref) = self.fd_manager.open_files.get(&oldfd) {
-            // Clone the Arc to increment reference count
-            let cloned_handle = Arc::clone(handle_ref.value());
-
-            // If newfd is already open, close it first (Arc will auto-drop)
-            if self.fd_manager.open_files.contains_key(&newfd) {
-                self.fd_manager.open_files.remove(&newfd);
-                self.fd_manager.untrack_fd(pid, newfd);
-                info!("PID {} closed existing FD {} before dup2", pid, newfd);
-            }
-
-            // Insert the cloned Arc reference at newfd
-            self.fd_manager.open_files.insert(newfd, cloned_handle);
-
-            // Track the new FD for this process
-            self.fd_manager.track_fd(pid, newfd);
-
-            info!(
-                "PID {} duplicated FD {} to {} (Arc reference count incremented)",
-                pid, oldfd, newfd
-            );
-            SyscallResult::success()
+        // Important: Clone the Arc and drop the guard immediately to avoid deadlock
+        let cloned_handle = if let Some(handle_ref) = self.fd_manager.open_files.get(&oldfd) {
+            Arc::clone(handle_ref.value())
         } else {
-            SyscallResult::error("Invalid file descriptor")
+            return SyscallResult::error("Invalid file descriptor");
+        };
+        // Guard is now dropped, safe to perform other DashMap operations
+
+        // If newfd is already open, close it first (Arc will auto-drop)
+        if self.fd_manager.open_files.contains_key(&newfd) {
+            self.fd_manager.open_files.remove(&newfd);
+            self.fd_manager.untrack_fd(pid, newfd);
+            info!("PID {} closed existing FD {} before dup2", pid, newfd);
         }
+
+        // Insert the cloned Arc reference at newfd
+        self.fd_manager.open_files.insert(newfd, cloned_handle);
+
+        // Track the new FD for this process
+        self.fd_manager.track_fd(pid, newfd);
+
+        info!(
+            "PID {} duplicated FD {} to {} (Arc reference count incremented)",
+            pid, oldfd, newfd
+        );
+        SyscallResult::success()
     }
 
     pub(super) fn lseek(&self, pid: Pid, fd: u32, offset: i64, whence: u32) -> SyscallResult {
