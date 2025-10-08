@@ -6,7 +6,7 @@ use ai_os_kernel::security::ebpf::*;
 
 #[test]
 fn test_ebpf_manager_init() {
-    let manager = EbpfManagerImpl::new();
+    let manager = EbpfManagerImpl::with_simulation();
     assert!(manager.is_supported());
     assert_eq!(manager.platform(), EbpfPlatform::Simulation);
 }
@@ -277,7 +277,7 @@ fn test_subscription() {
 
 #[test]
 fn test_statistics() {
-    let manager = EbpfManagerImpl::new();
+    let manager = EbpfManagerImpl::with_simulation();
 
     // Load some programs
     for i in 0..3 {

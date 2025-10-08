@@ -40,7 +40,7 @@ where
         // Track outcomes for state determination
         let should_terminate = false;
         let should_stop = false;
-        let mut should_continue = false;
+        let should_continue = false;
         let mut delivered = 0;
 
         // Deliver signals one by one to collect outcomes
@@ -60,10 +60,7 @@ where
                     // 2. Set should_terminate, should_stop, should_continue based on outcomes
                     // 3. Use SignalOutcome from the handler to determine process state
 
-                    // Currently we just mark that signals were delivered
-                    if !self.signal_manager.has_pending(pid) {
-                        should_continue = true;
-                    }
+                    // Currently we just mark that signals were delivered without changing process state
                 }
                 Ok(_) => break,
                 Err(e) => {

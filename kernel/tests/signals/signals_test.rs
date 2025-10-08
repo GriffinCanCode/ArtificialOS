@@ -448,7 +448,7 @@ fn test_signal_outcome_properties() {
 #[test]
 fn test_signal_handler_executor() {
     let callbacks = Arc::new(CallbackRegistry::new());
-    let handler = SignalHandler::new(callbacks);
+    let handler = SignalHandler::new(callbacks.clone());
     let pid: Pid = 1;
 
     // Test default action execution
@@ -463,11 +463,12 @@ fn test_signal_handler_executor() {
         .unwrap();
     assert_eq!(outcome, SignalOutcome::Ignored);
 
-    // Test handler invocation
+    // Test handler invocation - first register the handler
+    let handler_id = callbacks.register(|_pid, _signal| Ok(()));
     let outcome = handler
-        .execute(pid, Signal::SIGUSR1, SignalAction::Handler(42))
+        .execute(pid, Signal::SIGUSR1, SignalAction::Handler(handler_id))
         .unwrap();
-    assert_eq!(outcome, SignalOutcome::HandlerInvoked(42));
+    assert_eq!(outcome, SignalOutcome::HandlerInvoked(handler_id));
 
     // Test terminate action
     let outcome = handler

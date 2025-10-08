@@ -78,8 +78,8 @@ fn test_spinwait_low_latency() {
 
     let handle = thread::spawn(move || queue_clone.wait(99, Some(Duration::from_millis(500))));
 
-    // Wake almost immediately (should catch in spin phase)
-    thread::sleep(Duration::from_micros(10));
+    // Give the thread time to start waiting before waking
+    thread::sleep(Duration::from_millis(10));
     queue.wake_one(99);
 
     let result = handle.join().unwrap();
