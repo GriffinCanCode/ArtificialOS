@@ -4,7 +4,7 @@
  */
 
 use super::context::EvaluationContext;
-use super::types::{Action, PermissionRequest, PermissionResponse, Resource};
+use crate::permissions::types::{Action, PermissionRequest, PermissionResponse, Resource};
 use crate::security::sandbox::capability::{can_access_file, FileOperation};
 use crate::security::sandbox::network::check_network_access;
 use log::debug;
@@ -237,6 +237,7 @@ impl Default for PolicyEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::permissions::types::PermissionRequest;
     use crate::security::types::{Capability, SandboxConfig};
     use std::path::PathBuf;
 
@@ -277,3 +278,4 @@ mod tests {
         assert!(response.is_allowed());
     }
 }
+

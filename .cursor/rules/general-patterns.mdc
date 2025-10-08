@@ -1,0 +1,1532 @@
+---
+alwaysApply: true
+description: General coding patterns, standards, and architectural principles for the AI-OS project (Rust, Go, Python, TypeScript/React)
+---
+
+# AI-OS General Patterns & Standards
+
+This document captures the core patterns, standards, and architectural principles that make this codebase production-grade across all languages. These are guidelines, not hard constraints—use judgment and creativity while maintaining quality.
+
+## Core Philosophy
+
+**Observability-First**: Observability isn't bolted on, it's woven into the fabric. Every major subsystem emits events.
+
+**Fail-Safe**: Prefer patterns that prevent resource leaks and provide clear feedback (e.g., graceful-with-fallback).
+
+**Production-Grade**: Think about what breaks in production. Design for failure modes before they happen.
+
+**Type-Safe**: Use the type system to make invalid states unrepresentable. Prefer compile-time guarantees over runtime checks.
+
+**Multi-Language Consistency**: Maintain consistent patterns across Rust (kernel), Go (backend), Python (AI service), and TypeScript (frontend).
+
+## Code Standards (2025)
+
+### File & Function Size Limits
+
+**Strict limits for maintainability:**
+
+- **Maximum file length**: 500 lines
+- **Maximum function length**: 50 lines
+- **Cognitive complexity**: 15 max (Clippy enforced)
+
+**When approaching limits:**
+
+```rust
+// DON'T: Keep adding to a 600-line file
+// DO: Extract related functionality into separate modules
+
+// Example structure for large files:
+original_file.rs      // < 500 lines, public API
+├── operations.rs     // Helper operations
+├── lifecycle.rs      // Creation/cleanup logic
+├── validation.rs     // Validation helpers
+└── types.rs          // Internal types
+```
+
+**Rationale**: Smaller files are easier to understand, test, review, and maintain. This is enforced by [clippy.toml](mdc:kernel/clippy.toml).
+
+### Formatting Standards
+
+**Rustfmt configuration in [kernel/rustfmt.toml](mdc:kernel/rustfmt.toml):**
+
+- Line width: 100 characters
+- Comment width: 80 characters
+- Imports: Group by `StdExternalCrate`, reorder enabled
+- Use field init shorthand
+- Normalize comments and doc attributes
+
+**Always run** `cargo fmt` before committing.
+
+## Rust Patterns & Best Practices
+
+### 1. Advanced Serde Usage
+
+**Use specialized serialization modules for performance:**
+
+```rust
+// For internal IPC (5-10x faster than JSON, smaller payloads)
+use crate::core::bincode::{to_vec, from_slice};
+let bytes = to_vec(&data)?;
+
+// For external APIs (human-readable, with SIMD optimization for >1KB)
+use crate::core::json::{to_vec, from_slice};
+let json = to_vec(&data)?;  // Auto-switches to SIMD for large payloads
+
+// Custom serialization helpers in core/serde.rs
+use crate::core::serde::{system_time_micros, skip_serializing_none};
+
+#[derive(Serialize, Deserialize)]
+struct Event {
+    #[serde(with = "system_time_micros")]
+    timestamp: SystemTime,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    optional_field: Option<String>,
+}
+```
+
+**Key principle**: Use bincode for performance-critical internal communication, JSON for external APIs and debugging.
+
+### 2. Error Handling with thiserror + miette
+
+**All errors use thiserror for Display + miette for diagnostics:**
+
+```rust
+use thiserror::Error;
+use miette::Diagnostic;
+use serde::{Serialize, Deserialize};
+
+#[derive(Error, Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Diagnostic)]
+#[serde(tag = "error_type", content = "details", rename_all = "snake_case")]
+pub enum MyError {
+    #[error("Resource {0} not found")]
+    #[diagnostic(
+        code(my_module::not_found),
+        help("The resource may have been deleted. Check resource ID.")
+    )]
+    NotFound(String),
+
+    #[error("Operation failed: {0}")]
+    #[diagnostic(
+        code(my_module::operation_failed),
+        help("Check system logs for details.")
+    )]
+    OperationFailed(String),
+}
+
+// Result type alias for convenience
+pub type MyResult<T> = Result<T, MyError>;
+```
+
+**Key patterns:**
+
+- Always use `#[non_exhaustive]` for public error enums (allows adding variants without breaking changes)
+- Provide helpful diagnostic messages via `#[diagnostic(help = "...")]`
+- Make errors serializable for sending across boundaries (kernel ↔ backend)
+- Use tagged enum serialization for type safety: `#[serde(tag = "error_type", content = "details")]`
+
+### 3. Type-State Pattern (Making Invalid States Unrepresentable)
+
+**Use Rust's type system to enforce state machines:**
+
+```rust
+// Process states encoded in types
+pub enum ProcessState {
+    Creating,      // Not schedulable yet
+    Initializing,  // Resources being allocated
+    Ready,         // Can be scheduled
+    Running,
+    Blocked,
+    Terminated,
+}
+
+// Only Ready/Running processes can be scheduled
+impl Scheduler {
+    fn schedule(&self, pid: Pid) -> Result<()> {
+        let process = self.get_process(pid)?;
+        match process.state {
+            ProcessState::Ready | ProcessState::Running => { /* schedule */ },
+            _ => return Err(Error::InvalidState("Process not ready")),
+        }
+    }
+}
+```
+
+**Advanced**: Use type parameters for compile-time state enforcement (see [kernel/src/core/guard/](mdc:kernel/src/core/guard/)).
+
+### 4. Graceful-with-Fallback Pattern (Async Shutdown)
+
+**For long-lived background tasks, implement two shutdown paths:**
+
+See [docs/GRACEFUL_WITH_FALLBACK_PATTERN.md](mdc:docs/GRACEFUL_WITH_FALLBACK_PATTERN.md) for full details.
+
+**Quick reference:**
+
+```rust
+pub struct Manager {
+    task_handle: Arc<Mutex<BackgroundTaskHandle>>,
+}
+
+impl Manager {
+    // Preferred: Graceful shutdown
+    pub async fn shutdown(&self) {
+        // 1. Set atomic flag
+        // 2. Send shutdown signal via channel
+        // 3. Await task completion
+        // 4. Log success
+    }
+}
+
+impl Drop for BackgroundTaskHandle {
+    fn drop(&mut self) {
+        // Fallback: Check flag, abort if not shut down gracefully
+        if !self.shutdown_initiated.load(Ordering::SeqCst) {
+            log::warn!("Task dropped without shutdown() - aborting");
+            self.handle.abort();
+        }
+    }
+}
+```
+
+**When to use**: Long-lived background tasks in reusable components (SchedulerTask, AsyncTaskManager).
+
+**When NOT to use**: Self-terminating tasks, short-lived operations, tasks with explicit lifecycle coordination.
+
+### 5. Sharded Slot Pattern (Lock-Free Synchronization)
+
+**For pure synchronization primitives where spurious wakes are acceptable:**
+
+See [docs/SHARDED_SLOT_PATTERN.md](mdc:docs/SHARDED_SLOT_PATTERN.md) for details.
+
+```rust
+const SLOTS: usize = 512;  // Power of 2 for fast modulo via bitmask
+
+#[repr(C, align(64))]  // Cache-line aligned
+struct Slot {
+    waiters: AtomicUsize,
+}
+
+pub struct ShardedWait {
+    slots: Box<[Slot; SLOTS]>,  // Fixed, stable addresses
+}
+```
+
+**✅ Use for:** Futexes, semaphores, event counters (pure wait/notify, no unique state)
+
+**❌ Don't use for:** Managers with per-key state, pipes with buffers, anything needing precise cleanup
+
+### 6. Resource Cleanup & Orchestration
+
+**Use trait-based cleanup for extensibility:**
+
+```rust
+pub trait ResourceCleanup: Send + Sync {
+    fn cleanup(&self, pid: Pid) -> CleanupStats;
+    fn has_resources(&self, pid: Pid) -> bool;
+    fn resource_type(&self) -> &'static str;
+}
+
+// Resource orchestrator handles LIFO cleanup order
+pub struct ResourceOrchestrator {
+    resources: Vec<Box<dyn ResourceCleanup>>,
+}
+
+impl ResourceOrchestrator {
+    pub fn cleanup_process(&self, pid: Pid) -> CleanupResult {
+        // Cleanup in reverse order (LIFO)
+        for resource in self.resources.iter().rev() {
+            resource.cleanup(pid);
+        }
+    }
+}
+```
+
+**Key insight**: Unified cleanup is better than scattered cleanup logic. Ensures dependencies are respected (sockets before memory, files before processes).
+
+### 7. Observability Patterns
+
+**Every major operation should emit observable events:**
+
+```rust
+use crate::monitoring::Collector;
+
+// Emit simple event
+collector.emit(Event::syscall_executed("read_file", duration_ns));
+
+// Emit with causality tracking
+let causality_id = collector.emit_causal(Event::request_started);
+collector.emit_in_chain(Event::step_completed, causality_id);
+collector.emit_in_chain(Event::request_finished, causality_id);
+```
+
+**Categories with automatic sampling:**
+
+- Process lifecycle (create, terminate)
+- Syscall execution (enter, exit, duration)
+- IPC operations (send, receive, throughput)
+- Memory operations (allocate, deallocate, GC triggers)
+- Security checks (permission granted/denied)
+
+**Adaptive sampling maintains <2% CPU overhead** - no need to manually control sampling rates.
+
+## Testing Patterns
+
+### Test Organization
+
+**Structure tests by domain in `tests/` directory:**
+
+```
+tests/
+├── memory/           # Memory manager tests
+├── process/          # Process manager tests
+├── syscalls/         # Syscall execution tests
+├── security/         # Sandbox & security tests
+├── ipc/              # IPC tests (pipes, shm, queues)
+├── performance/      # Benchmarks & stress tests
+└── integration/      # End-to-end integration tests
+```
+
+### Test Structure (Arrange-Act-Assert)
+
+```rust
+#[test]
+fn test_descriptive_name() {
+    // Arrange: Setup test environment
+    let manager = MemoryManager::new();
+    let pid = 100;
+
+    // Act: Perform the operation
+    let result = manager.allocate(1024, pid);
+
+    // Assert: Verify the result
+    assert!(result.is_ok());
+    assert_eq!(manager.get_process_memory(pid), 1024);
+}
+```
+
+### Test Naming
+
+**Use descriptive, behavior-focused names:**
+
+```rust
+// ✅ Good: Describes behavior and context
+#[test]
+fn test_allocation_fails_when_out_of_memory() { }
+
+#[test]
+fn test_process_cleanup_releases_all_ipc_resources() { }
+
+// ❌ Bad: Too generic
+#[test]
+fn test_allocate() { }
+
+#[test]
+fn test_cleanup() { }
+```
+
+### Testing Utilities
+
+```rust
+// For async tests
+#[tokio::test]
+async fn test_async_operation() {
+    let result = some_async_function().await;
+    assert!(result.is_ok());
+}
+
+// For tests that can't run in parallel
+use serial_test::serial;
+
+#[test]
+#[serial]
+fn test_with_global_state() { }
+
+// For property-based testing
+use proptest::prelude::*;
+
+proptest! {
+    #[test]
+    fn test_with_random_inputs(size in 1024usize..10_000_000usize) {
+        // Verify properties that should hold for any input
+    }
+}
+
+// For filesystem tests (always use TempDir for cleanup)
+use tempfile::TempDir;
+
+#[test]
+fn test_filesystem_operation() {
+    let temp_dir = TempDir::new().unwrap();
+    let path = temp_dir.path().join("test.txt");
+    // ... test operations ...
+    // temp_dir automatically cleaned up on drop
+}
+```
+
+See [kernel/tests/README.md](mdc:kernel/tests/README.md) for comprehensive testing guidelines.
+
+---
+
+## Go Backend Patterns & Best Practices
+
+### 1. Package Organization & Import Style
+
+**Standard import grouping (enforced):**
+
+```go
+package example
+
+import (
+    // 1. Standard library (sorted alphabetically)
+    "context"
+    "fmt"
+    "time"
+
+    // 2. Third-party packages (sorted alphabetically)
+    "github.com/gin-gonic/gin"
+    "go.uber.org/zap"
+
+    // 3. Internal packages (sorted alphabetically)
+    "github.com/GriffinCanCode/AgentOS/backend/internal/app"
+    "github.com/GriffinCanCode/AgentOS/backend/internal/types"
+)
+```
+
+**Package structure:**
+
+```
+internal/
+├── api/            # HTTP handlers, middleware, WebSocket
+├── domain/         # Business logic (app, service, registry, session)
+├── grpc/           # gRPC clients (kernel, AI)
+├── infrastructure/ # Config, logging, monitoring, tracing, resilience
+├── providers/      # Service providers (filesystem, storage, auth, etc.)
+└── shared/         # Shared types and utilities
+```
+
+**Key principles:**
+
+- One-word package names when possible (`app`, `service`, `config`)
+- Focused files (<250 lines ideal, <500 max)
+- `doc.go` in every package with comprehensive documentation
+- Co-locate tests with code (`config_test.go` next to `config.go`)
+
+### 2. Error Handling
+
+**Go error patterns (idiomatic):**
+
+```go
+// Return errors, don't panic
+func DoSomething() error {
+    if err := validate(); err != nil {
+        return fmt.Errorf("validation failed: %w", err)  // Wrap errors
+    }
+    return nil
+}
+
+// Use fmt.Errorf with %w for error wrapping
+func ProcessData(data []byte) (*Result, error) {
+    parsed, err := parseData(data)
+    if err != nil {
+        return nil, fmt.Errorf("failed to parse data: %w", err)
+    }
+    return parsed, nil
+}
+
+// Early returns for error handling
+func ValidateUser(user *User) error {
+    if user == nil {
+        return errors.New("user cannot be nil")
+    }
+    if user.Name == "" {
+        return errors.New("user name is required")
+    }
+    return nil
+}
+```
+
+**HTTP error responses:**
+
+```go
+// Consistent error response format
+func (h *Handlers) HandleRequest(c *gin.Context) {
+    result, err := h.service.Execute(ctx, params)
+    if err != nil {
+        span.SetError(err)  // Set error in tracing span
+        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return
+    }
+    c.JSON(http.StatusOK, result)
+}
+```
+
+### 3. Dependency Injection via Interfaces
+
+**Provider interface pattern:**
+
+```go
+// Define interface for dependency injection
+type Provider interface {
+    Definition() types.Service
+    Execute(ctx context.Context, toolID string, params map[string]interface{}, appCtx *types.Context) (*types.Result, error)
+}
+
+// Concrete implementation
+type FilesystemProvider struct {
+    kernel *kernel.KernelClient
+    pid    uint32
+}
+
+func (p *FilesystemProvider) Definition() types.Service {
+    return types.Service{
+        ID:       "filesystem",
+        Name:     "Filesystem",
+        Category: types.CategoryFilesystem,
+        Tools:    p.getTools(),
+    }
+}
+```
+
+**Service registry pattern:**
+
+```go
+// Registry uses sync.Map for concurrent access
+type Registry struct {
+    services sync.Map
+}
+
+func (r *Registry) Register(provider Provider) error {
+    def := provider.Definition()
+    if def.ID == "" {
+        return fmt.Errorf("service ID cannot be empty")
+    }
+    r.services.Store(def.ID, provider)
+    return nil
+}
+```
+
+### 4. Structured Logging with Zap
+
+**Production-grade logging:**
+
+```go
+// Initialize logger based on environment
+var logger *logging.Logger
+if cfg.Logging.Development {
+    logger = logging.NewDevelopment()  // Colored console
+} else {
+    logger = logging.NewDefault()      // JSON output
+}
+
+// Structured logging with fields
+logger.Info("Initializing server",
+    zap.String("port", cfg.Server.Port),
+    zap.String("kernel_addr", cfg.Kernel.Address),
+    zap.Bool("rate_limit_enabled", cfg.RateLimit.Enabled),
+)
+
+// Error logging with error field
+if err != nil {
+    logger.Error("Failed to connect", zap.Error(err))
+}
+
+// Debug logging (only in development)
+logger.Debug("Processing request",
+    zap.String("app_id", appID),
+    zap.Int("component_count", len(components)),
+)
+```
+
+### 5. Middleware Patterns
+
+**Standard middleware stack:**
+
+```go
+router := gin.New()
+
+// Recovery middleware (always first)
+router.Use(gin.Recovery())
+
+// Distributed tracing middleware
+router.Use(tracing.HTTPMiddleware(tracer))
+
+// Metrics middleware
+router.Use(monitoring.Middleware(metrics))
+
+// CORS middleware
+router.Use(middleware.CORS(middleware.DefaultCORSConfig()))
+
+// Rate limiting middleware (optional)
+if cfg.RateLimit.Enabled {
+    router.Use(middleware.RateLimit(middleware.RateLimitConfig{
+        RequestsPerSecond: cfg.RateLimit.RequestsPerSecond,
+        Burst:             cfg.RateLimit.Burst,
+    }))
+}
+```
+
+**Custom middleware pattern:**
+
+```go
+func CustomMiddleware() gin.HandlerFunc {
+    return func(c *gin.Context) {
+        // Before request
+        start := time.Now()
+
+        // Process request
+        c.Next()
+
+        // After request
+        duration := time.Since(start)
+        logger.Info("Request completed",
+            zap.Duration("duration", duration),
+            zap.Int("status", c.Writer.Status()),
+        )
+    }
+}
+```
+
+### 6. Configuration Management
+
+**12-Factor configuration pattern:**
+
+```go
+// Config struct with envconfig tags
+type Config struct {
+    Server struct {
+        Port string `envconfig:"PORT" default:"8000"`
+        Host string `envconfig:"HOST" default:"0.0.0.0"`
+    }
+
+    Kernel struct {
+        Address string `envconfig:"KERNEL_ADDR" default:"localhost:50051"`
+        Enabled bool   `envconfig:"KERNEL_ENABLED" default:"true"`
+    }
+
+    RateLimit struct {
+        Enabled           bool `envconfig:"RATE_LIMIT_ENABLED" default:"true"`
+        RequestsPerSecond int  `envconfig:"RATE_LIMIT_RPS" default:"100"`
+        Burst             int  `envconfig:"RATE_LIMIT_BURST" default:"200"`
+    }
+}
+
+// Load config from environment
+func Load() (*Config, error) {
+    var cfg Config
+    if err := envconfig.Process("", &cfg); err != nil {
+        return nil, fmt.Errorf("failed to load config: %w", err)
+    }
+    return &cfg, nil
+}
+```
+
+### 7. Testing Patterns
+
+**Co-located unit tests:**
+
+```go
+// internal/config/config_test.go
+package config
+
+import (
+    "testing"
+    "github.com/stretchr/testify/assert"
+)
+
+func TestLoadConfig(t *testing.T) {
+    // Arrange
+    t.Setenv("PORT", "9000")
+
+    // Act
+    cfg, err := Load()
+
+    // Assert
+    assert.NoError(t, err)
+    assert.Equal(t, "9000", cfg.Server.Port)
+}
+```
+
+**Integration tests (centralized):**
+
+```go
+// tests/integration/api_test.go
+//go:build integration
+// +build integration
+
+package integration
+
+import (
+    "testing"
+    "github.com/stretchr/testify/require"
+)
+
+func TestFullAPIWorkflow(t *testing.T) {
+    if testing.Short() {
+        t.Skip("Skipping integration test")
+    }
+
+    // Full stack integration test
+}
+```
+
+**Table-driven tests:**
+
+```go
+func TestValidation(t *testing.T) {
+    tests := []struct {
+        name    string
+        input   string
+        wantErr bool
+    }{
+        {"valid input", "test", false},
+        {"empty input", "", true},
+        {"too long", strings.Repeat("x", 1000), true},
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            err := Validate(tt.input)
+            if tt.wantErr {
+                assert.Error(t, err)
+            } else {
+                assert.NoError(t, err)
+            }
+        })
+    }
+}
+```
+
+---
+
+## Python AI Service Patterns & Best Practices
+
+### 1. Async/Await Patterns
+
+**Async generators for streaming:**
+
+```python
+async def stream(self, request: ai_pb2.ChatRequest) -> AsyncGenerator[ai_pb2.ChatToken, None]:
+    """Stream chat response token-by-token."""
+    try:
+        async for chunk in self.chat_agent.stream_response(request.message):
+            yield ai_pb2.ChatToken(
+                type=ai_pb2.ChatToken.TEXT,
+                content=chunk,
+                timestamp=int(time.time())
+            )
+    except Exception as e:
+        logger.error("chat_failed", error=str(e), exc_info=True)
+        yield ai_pb2.ChatToken(
+            type=ai_pb2.ChatToken.ERROR,
+            content=str(e),
+            timestamp=int(time.time())
+        )
+```
+
+**Context managers for cleanup:**
+
+```python
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def trace_operation(operation: str, **kwargs):
+    """Trace an async operation with automatic cleanup."""
+    span = tracer.start_span(operation, **kwargs)
+    try:
+        yield span
+    except Exception as e:
+        span.set_error(e)
+        raise
+    finally:
+        span.finish()
+        tracer.submit(span)
+```
+
+### 2. Error Handling with Custom Exceptions
+
+**Pydantic validation errors:**
+
+```python
+from pydantic import BaseModel, ValidationError
+
+class UIGenerationRequest(BaseModel):
+    message: str
+    context: dict[str, Any] = {}
+
+    @validator('message')
+    def message_not_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError('message cannot be empty')
+        return v.strip()
+
+# Usage
+try:
+    validated = UIGenerationRequest(message=request.message)
+except ValidationError as e:
+    logger.error("validation_failed", error=str(e))
+    raise
+```
+
+**Custom exception hierarchy:**
+
+```python
+class JSONParseError(Exception):
+    """Raised when JSON parsing fails."""
+    def __init__(self, message: str, original_error: Exception | None = None):
+        super().__init__(message)
+        self.original_error = original_error
+```
+
+### 3. Structured Logging with Structlog
+
+**Production-grade logging:**
+
+```python
+import structlog
+
+# Configure logging
+structlog.configure(
+    processors=[
+        structlog.stdlib.filter_by_level,
+        structlog.stdlib.add_logger_name,
+        structlog.stdlib.add_log_level,
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.JSONRenderer() if json_logs else structlog.dev.ConsoleRenderer(),
+    ],
+    logger_factory=structlog.stdlib.LoggerFactory(),
+)
+
+# Get logger
+logger = structlog.get_logger(__name__)
+
+# Structured logging
+logger.info("ui_generation", message=validated.message[:50], model=config.model_name)
+logger.error("generation_failed", error=str(e), exc_info=True)
+```
+
+### 4. JSON Parsing with Multiple Fallbacks
+
+**Resilient JSON extraction:**
+
+```python
+def extract_json(text: str, repair: bool = True) -> dict[str, Any]:
+    """
+    Extract and parse JSON with multiple fallback strategies.
+
+    Tries in order:
+    1. msgspec (fastest)
+    2. json.loads (standard library)
+    3. json_repair (last resort)
+    """
+    # Extract JSON boundaries
+    boundaries = extract_json_boundaries(text)
+    if boundaries is None:
+        raise JSONParseError("No JSON object found in text")
+
+    extracted_text, start, end = boundaries
+    json_str = extracted_text[start:end]
+
+    # Try msgspec first (fastest - 2-3x faster than json)
+    try:
+        decoder = msgspec.json.Decoder()
+        result = decoder.decode(json_str.encode("utf-8"))
+        return result
+    except msgspec.DecodeError:
+        pass
+
+    # Try standard library
+    try:
+        return json.loads(json_str)
+    except json.JSONDecodeError:
+        if not repair:
+            raise
+
+    # Last resort: json_repair
+    try:
+        repaired = repair_json(json_str)
+        return json.loads(repaired)
+    except Exception as e:
+        raise JSONParseError(f"JSON repair failed: {e}", e)
+```
+
+### 5. Testing Patterns
+
+**Pytest with async support:**
+
+```python
+import pytest
+
+@pytest.mark.unit
+def test_chat_message_creation():
+    """Test basic functionality in isolation."""
+    msg = ChatMessage(role="user", content="Hello", timestamp=123)
+    assert msg.role == "user"
+    assert msg.content == "Hello"
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_async_function(chat_agent):
+    """Test async functions with pytest-asyncio."""
+    response = await chat_agent.get_response("Hello")
+    assert isinstance(response, str)
+```
+
+**Property-based testing with Hypothesis:**
+
+```python
+from hypothesis import given, strategies as st
+
+@pytest.mark.property
+@given(st.text(min_size=1, max_size=1000))
+def test_hash_deterministic(text):
+    """Test with automatically generated inputs."""
+    hash1 = hash_string(text)
+    hash2 = hash_string(text)
+    assert hash1 == hash2
+```
+
+**Fixtures for reusable test setup:**
+
+```python
+@pytest.fixture
+def sample_user():
+    """Create test user with automatic cleanup."""
+    user = User(name="Test")
+    yield user
+    user.delete()  # Cleanup after test
+
+def test_user_operations(sample_user):
+    assert sample_user.name == "Test"
+```
+
+### 6. Type Hints (Python 3.10+ syntax)
+
+**Modern type hints:**
+
+```python
+from typing import Any
+
+# Use | for union types (Python 3.10+)
+def parse_value(value: str | int | None) -> dict[str, Any]:
+    """Parse value with modern union syntax."""
+    return {"value": value}
+
+# Use dict[K, V] instead of Dict[K, V]
+def process_data(data: dict[str, list[int]]) -> tuple[int, int]:
+    """Process data with modern generic syntax."""
+    return (len(data), sum(len(v) for v in data.values()))
+```
+
+---
+
+## TypeScript/React Frontend Patterns & Best Practices
+
+### 1. State Management with Zustand
+
+**Store definition:**
+
+```typescript
+// Zustand store with TypeScript
+interface WindowStore {
+  windows: Map<string, WindowState>;
+  focusedWindow: string | null;
+
+  // Actions
+  open: (id: string, config: WindowConfig) => void;
+  close: (id: string) => void;
+  focus: (id: string) => void;
+  update: (id: string, updates: Partial<WindowState>) => void;
+}
+
+export const useWindowStore = create<WindowStore>((set, get) => ({
+  windows: new Map(),
+  focusedWindow: null,
+
+  open: (id, config) => set((state) => {
+    const newWindows = new Map(state.windows);
+    newWindows.set(id, { id, ...config, zIndex: Date.now() });
+    return { windows: newWindows, focusedWindow: id };
+  }),
+
+  close: (id) => set((state) => {
+    const newWindows = new Map(state.windows);
+    newWindows.delete(id);
+    return { windows: newWindows };
+  }),
+}));
+```
+
+**Selective subscriptions (prevent unnecessary re-renders):**
+
+```typescript
+// Only subscribe to specific state
+const focusedWindow = useWindowStore((state) => state.focusedWindow);
+
+// Multiple subscriptions with shallow comparison
+const { open, close } = useWindowStore(
+  (state) => ({ open: state.open, close: state.close }),
+  shallow
+);
+```
+
+### 2. React 18 Patterns
+
+**useSyncExternalStore for external state:**
+
+```typescript
+/**
+ * High-performance external state subscription
+ * Eliminates forceUpdate anti-pattern
+ */
+export function useSyncState<T = any>(
+  state: ComponentState,
+  key: string,
+  defaultValue?: T
+): T {
+  const subscribe = useCallback(
+    (callback: () => void) => {
+      return state.subscribe(key, () => callback());
+    },
+    [state, key]
+  );
+
+  const getSnapshot = () => state.get(key, defaultValue);
+  const getServerSnapshot = () => defaultValue as T;
+
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+}
+```
+
+**Concurrent rendering safe patterns:**
+
+```typescript
+// Use transitions for non-urgent updates
+const [isPending, startTransition] = useTransition();
+
+function handleClick() {
+  startTransition(() => {
+    setTab('comments'); // Non-urgent UI update
+  });
+}
+```
+
+### 3. Component Organization
+
+**Feature-based structure:**
+
+```
+features/
+├── dynamics/          # Dynamic UI rendering
+│   ├── core/         # Core renderer logic
+│   ├── hooks/        # Custom hooks (useSyncState, useComponent)
+│   ├── state/        # ComponentState manager
+│   ├── execution/    # ToolExecutor
+│   └── README.md     # Feature documentation
+├── windows/          # Window management
+│   ├── components/   # Window, TitleBar, etc.
+│   ├── hooks/        # useWindowActions
+│   ├── store/        # Window store
+│   └── README.md
+└── registry/         # App registry
+    ├── components/
+    ├── hooks/
+    └── README.md
+```
+
+### 4. Custom Hooks Patterns
+
+**Hook composition:**
+
+```typescript
+/**
+ * Composite hook for component state and events
+ */
+export function useComponent(
+  component: BlueprintComponent,
+  state: ComponentState,
+  executor: ToolExecutor
+): UseComponentReturn {
+  // Use efficient external store subscription
+  const localState = useSyncState(state, component.id, component.props?.value);
+
+  const handleEvent = useCallback((eventType: string, params?: any) => {
+    const toolId = component.on_event?.[eventType];
+    if (toolId) {
+      executor.execute(toolId, params);
+    }
+  }, [component, executor]);
+
+  return { localState, handleEvent };
+}
+```
+
+**Input-specific optimization:**
+
+```typescript
+/**
+ * High-performance input handling with smart debouncing
+ * - Instant visual feedback (synchronous state updates)
+ * - Debounced backend calls only
+ * - Auto-flush on blur
+ */
+export function useInputState(
+  component: BlueprintComponent,
+  state: ComponentState,
+  executor: ToolExecutor,
+  options: { eventDebounce?: number } = {}
+) {
+  const value = useSyncState(state, component.id, "");
+
+  const onChange = useCallback((newValue: string) => {
+    // Synchronous update for instant feedback
+    state.set(component.id, newValue);
+
+    // Debounce backend event calls
+    debouncedExecute(newValue);
+  }, [component, state, executor]);
+
+  return { value, onChange, onBlur };
+}
+```
+
+### 5. Performance Optimization
+
+**Memoization patterns:**
+
+```typescript
+// Memoize expensive computations
+const sortedItems = useMemo(() => {
+  return items.sort((a, b) => a.priority - b.priority);
+}, [items]);
+
+// Memoize callback references
+const handleClick = useCallback(() => {
+  onItemClick(item.id);
+}, [item.id, onItemClick]);
+
+// Memoize components with React.memo
+export const ExpensiveComponent = React.memo(
+  ({ data }: Props) => {
+    return <div>{/* Expensive rendering */}</div>;
+  },
+  (prevProps, nextProps) => {
+    // Custom comparison
+    return prevProps.data.id === nextProps.data.id;
+  }
+);
+```
+
+**Virtual scrolling for large lists:**
+
+```typescript
+import { useVirtualizer } from '@tanstack/react-virtual';
+
+const virtualizer = useVirtualizer({
+  count: items.length,
+  getScrollElement: () => parentRef.current,
+  estimateSize: () => 35,
+  overscan: 5,
+});
+```
+
+### 6. TypeScript Patterns
+
+**Discriminated unions for type safety:**
+
+```typescript
+// Safe event type handling
+type WSMessage =
+  | { type: 'token'; content: string }
+  | { type: 'thought'; content: string }
+  | { type: 'ui_complete'; ui_spec: UISpec; app_id: string }
+  | { type: 'error'; error: string };
+
+function handleMessage(msg: WSMessage) {
+  switch (msg.type) {
+    case 'token':
+      // TypeScript knows msg.content exists
+      appendToken(msg.content);
+      break;
+    case 'ui_complete':
+      // TypeScript knows msg.ui_spec and msg.app_id exist
+      setBlueprint(msg.ui_spec);
+      break;
+  }
+}
+```
+
+**Utility types:**
+
+```typescript
+// Extract types from existing structures
+type WindowState = ReturnType<typeof useWindowStore.getState>['windows'] extends Map<string, infer T> ? T : never;
+
+// Partial updates
+interface UpdateWindowParams extends Partial<WindowState> {
+  id: string;
+}
+
+// Required fields from optional
+type RequiredConfig = Required<Pick<Config, 'apiKey' | 'endpoint'>>;
+```
+
+### 7. Testing Patterns
+
+**Component testing with Testing Library:**
+
+```typescript
+import { render, screen, fireEvent } from '@testing-library/react';
+
+test('button click triggers tool execution', () => {
+  const mockExecutor = { execute: jest.fn() };
+
+  render(<Button component={buttonConfig} executor={mockExecutor} />);
+
+  fireEvent.click(screen.getByText('Click Me'));
+
+  expect(mockExecutor.execute).toHaveBeenCalledWith('my.tool', {});
+});
+```
+
+**Hook testing:**
+
+```typescript
+import { renderHook, act } from '@testing-library/react';
+
+test('useSyncState subscribes to state changes', () => {
+  const state = new ComponentState();
+  state.set('test', 'initial');
+
+  const { result } = renderHook(() => useSyncState(state, 'test'));
+
+  expect(result.current).toBe('initial');
+
+  act(() => {
+    state.set('test', 'updated');
+  });
+
+  expect(result.current).toBe('updated');
+});
+```
+
+---
+
+## Performance Patterns
+
+### 1. Cache-Line Alignment for Hot Structures
+
+```rust
+#[repr(C, align(64))]  // 64-byte cache line
+pub struct HotStruct {
+    // Frequently accessed fields
+    counter: AtomicU64,
+    // Prevents false sharing with other cache lines
+}
+```
+
+**Use for**: Structures with high contention (atomic counters, frequently accessed managers).
+
+### 2. Shard Configuration
+
+**DashMap shard counts based on contention:**
+
+```rust
+// High contention (frequent concurrent access)
+DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 128)
+
+// Medium contention
+DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 64)
+
+// Low contention
+DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 32)
+```
+
+**Recommendation**: Use 64 shards as default, increase to 128 for very hot paths, decrease to 32 for rarely accessed maps.
+
+### 3. Inline Annotations
+
+```rust
+// Force inlining for trivial functions
+#[inline(always)]
+pub fn get_pid(&self) -> Pid {
+    self.pid
+}
+
+// Standard inline hint for small hot functions
+#[inline]
+pub fn is_active(&self) -> bool {
+    self.state == State::Active
+}
+
+// Mark cold paths to optimize hot paths
+#[cold]
+fn handle_error(&self, error: Error) {
+    log::error!("Error: {}", error);
+}
+```
+
+### 4. Lock-Free Structures
+
+**Prefer lock-free alternatives for hot paths:**
+
+- Use `Arc<AtomicU64>` instead of `Arc<Mutex<u64>>` for counters
+- Use `DashMap` instead of `Mutex<HashMap>` for concurrent maps
+- Use `crossbeam::queue::ArrayQueue` for bounded SPSC/MPMC queues
+- Use `parking_lot` mutexes when locks are unavoidable (2-5x faster than std)
+
+## Module Organization Patterns
+
+### Standard Module Structure
+
+```
+my_module/
+├── mod.rs            # Public API, re-exports
+├── types.rs          # Data structures
+├── errors.rs         # Error types with thiserror
+├── traits.rs         # Traits and interfaces
+├── operations.rs     # Core operations
+├── lifecycle.rs      # Creation/cleanup (if complex)
+└── README.md         # Module documentation
+```
+
+### Re-exports in mod.rs
+
+```rust
+// mod.rs - Clean public API
+pub mod types;
+pub mod errors;
+mod operations;  // Private implementation
+
+// Re-export public items
+pub use types::{MyType, Config};
+pub use errors::{MyError, MyResult};
+pub use operations::{create, update, delete};
+```
+
+## What NOT to Do
+
+### ❌ Don't Keep Dead Code
+
+**Remove it, don't comment it out**. Git history preserves it.
+
+```rust
+// ❌ Bad
+// fn old_implementation() {
+//     // ... 50 lines of commented code ...
+// }
+
+// ✅ Good - just delete it
+// (If needed later, git history has it)
+```
+
+### ❌ Don't Use .unwrap() in Production Code
+
+**Use .expect() with context, or return Result:**
+
+```rust
+// ❌ Bad - panic with no context
+let value = map.get(&key).unwrap();
+
+// ✅ Good - expect with context
+let value = map.get(&key)
+    .expect("key should exist after initialization");
+
+// ✅ Best - return Result
+let value = map.get(&key)
+    .ok_or(Error::NotFound("key missing"))?;
+```
+
+**See [docs/UNWRAP_AUDIT.md](mdc:docs/UNWRAP_AUDIT.md) for comprehensive audit of unwrap usage.**
+
+### ❌ Don't Mix Serialization Formats Without Reason
+
+```rust
+// ❌ Bad - inconsistent serialization
+let json = serde_json::to_vec(&data)?;  // Sometimes JSON
+let bincode = bincode::serialize(&data)?;  // Sometimes bincode
+
+// ✅ Good - consistent within a subsystem
+// Use bincode for internal IPC
+use crate::core::bincode::{to_vec, from_slice};
+
+// Use JSON for external APIs
+use crate::core::json::{to_vec, from_slice};
+```
+
+### ❌ Don't Create Helper Scripts for Core Functionality
+
+**Use proper tools and abstractions.** If the task needs a script, the abstraction might be wrong.
+
+### ❌ Don't Ignore Clippy Warnings
+
+**Fix them or explicitly allow with justification:**
+
+```rust
+// If you must allow, document why
+#[allow(clippy::too_many_arguments)]
+fn complex_function(/* 8 args - legacy API, refactor tracked in #123 */) {
+    // ...
+}
+```
+
+## Platform-Specific Code
+
+**Use feature gates and graceful fallbacks:**
+
+```rust
+#[cfg(target_os = "linux")]
+fn platform_specific_impl() {
+    // Linux-specific implementation
+}
+
+#[cfg(target_os = "macos")]
+fn platform_specific_impl() {
+    // macOS-specific implementation
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+fn platform_specific_impl() {
+    // Fallback or simulation mode
+    log::warn!("Platform-specific feature using fallback implementation");
+}
+```
+
+**Example**: Network namespace isolation has different implementations for Linux (true namespaces), macOS (packet filters), and simulation mode.
+
+## Documentation Standards
+
+### Module-Level Documentation
+
+```rust
+/*!
+ * Module Title
+ * Brief description of what this module does
+ */
+
+// Example usage:
+/*!
+ * Memory Manager
+ * Provides process-level memory tracking with segregated free lists,
+ * garbage collection, and ID recycling to prevent exhaustion.
+ */
+```
+
+### Public API Documentation
+
+```rust
+/// Brief one-line summary
+///
+/// More detailed explanation of what this function does,
+/// including any important caveats or performance characteristics.
+///
+/// # Arguments
+/// * `pid` - Process ID to allocate memory for
+/// * `size` - Size in bytes to allocate
+///
+/// # Returns
+/// * `Ok(Address)` - Base address of allocated memory
+/// * `Err(MemoryError)` - If allocation fails
+///
+/// # Example
+/// ```
+/// let addr = manager.allocate(1024, pid)?;
+/// ```
+pub fn allocate(&self, size: usize, pid: Pid) -> MemoryResult<Address> {
+    // ...
+}
+```
+
+### Complex Algorithm Documentation
+
+**Document the "why" and reference sources:**
+
+```rust
+/// Segregated free list allocator using power-of-2 buckets
+///
+/// Inspired by jemalloc's approach but simplified for userspace.
+/// - Power-of-2 buckets for sizes up to 4KB (O(1) lookup)
+/// - Linear buckets for larger sizes (O(n) but infrequent)
+///
+/// Performance characteristics:
+/// - Small allocations (<4KB): O(1)
+/// - Large allocations: O(n) where n is number of buckets
+/// - Coalescing: O(n) where n is number of free blocks
+```
+
+## Git Commit Standards
+
+**Use conventional commits format:**
+
+```
+type(scope): brief description
+
+Detailed explanation (optional)
+
+Fixes #issue-number (if applicable)
+```
+
+**Types**: `feat`, `fix`, `refactor`, `test`, `docs`, `perf`, `chore`
+
+**Examples:**
+
+```
+feat(kernel): add async task cancellation support
+
+Implements task cancellation via AsyncTaskManager with proper cleanup
+and state tracking.
+
+Fixes #234
+```
+
+```
+perf(ipc): optimize pipe throughput with SIMD batching
+
+Reduces atomic operations by 64x through SIMD-batched writes.
+Benchmark shows 3.2x improvement in throughput.
+```
+
+## When to Break These Rules
+
+**These are guidelines, not laws.** Break them when:
+
+1. **Performance critical code** requires different trade-offs
+2. **External API compatibility** demands specific patterns
+3. **Legacy integration** requires matching existing styles
+4. **Prototyping** where speed matters more than polish
+
+**But document why:**
+
+```rust
+// EXCEPTION: Using unwrap here because this is called after explicit
+// validation in parent function. Converting to Result would require
+// massive refactor of 15 callsites. Tracked in issue #456.
+let value = map.get(&key).unwrap();
+```
+
+## Architecture Principles (Not Rules)
+
+These shape how we think about the system:
+
+- **Separate concerns**: Generation (LLM) ≠ Execution (Tools)
+- **Security**: No arbitrary code execution, only structured data
+- **Performance**: Generate once, execute many times
+- **Composability**: Apps can spawn apps, tools can call tools
+- **Debuggability**: All state changes are traceable via observability
+- **Scalability**: Multi-app support from day one
+
+See [docs/ARCHITECTURE.md](mdc:docs/ARCHITECTURE.md) for comprehensive architecture documentation.
+
+## References
+
+- [Code Standards 2025](mdc:docs/CODE_STANDARDS_2025.md) - Detailed standards and refactoring patterns
+- [Architecture](mdc:docs/ARCHITECTURE.md) - System architecture and data flow
+- [Graceful-with-Fallback Pattern](mdc:docs/GRACEFUL_WITH_FALLBACK_PATTERN.md) - Async shutdown pattern
+- [Sharded Slot Pattern](mdc:docs/SHARDED_SLOT_PATTERN.md) - Lock-free synchronization pattern
+- [Unwrap Audit](mdc:docs/UNWRAP_AUDIT.md) - Production unwrap audit and recommendations
+- [Testing README](mdc:kernel/tests/README.md) - Comprehensive testing guidelines
+- [Clippy Config](mdc:kernel/clippy.toml) - Clippy configuration with thresholds
+- [Rustfmt Config](mdc:kernel/rustfmt.toml) - Formatting standards
+
+---
+
+**Remember**: These patterns emerged from building production-grade software. Use them as a starting point, adapt as needed, and always prioritize clarity and maintainability over cleverness.

@@ -3,7 +3,7 @@
  * Tracks permission checks and denials for security monitoring
  */
 
-use super::types::{PermissionRequest, PermissionResponse};
+use crate::permissions::types::{PermissionRequest, PermissionResponse, Resource};
 use crate::core::types::Pid;
 use ahash::RandomState;
 use dashmap::DashMap;
@@ -44,8 +44,8 @@ impl AuditEvent {
         } else {
             // Denied requests are more severe
             match &request.resource {
-                super::types::Resource::System { .. } => AuditSeverity::Critical,
-                super::types::Resource::Process { .. } => AuditSeverity::Critical,
+                Resource::System { .. } => AuditSeverity::Critical,
+                Resource::Process { .. } => AuditSeverity::Critical,
                 _ => AuditSeverity::Warning,
             }
         };
@@ -191,6 +191,7 @@ pub struct AuditStats {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::permissions::types::{PermissionRequest, PermissionResponse};
     use std::path::PathBuf;
 
     #[test]
@@ -245,3 +246,4 @@ mod tests {
         assert_eq!(stats.total_events, MAX_AUDIT_EVENTS);
     }
 }
+

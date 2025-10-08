@@ -3,7 +3,7 @@
  * Simple LRU cache for permission check results
  */
 
-use super::types::{PermissionRequest, PermissionResponse, Resource};
+use crate::permissions::types::{Action, PermissionRequest, PermissionResponse, Resource};
 use crate::core::types::Pid;
 use ahash::RandomState;
 use dashmap::DashMap;
@@ -16,11 +16,11 @@ use std::time::{Duration, SystemTime};
 struct CacheKey {
     pid: Pid,
     resource_hash: u64,
-    action: super::types::Action,
+    action: Action,
 }
 
 impl CacheKey {
-    fn new(pid: Pid, resource: &Resource, action: super::types::Action) -> Self {
+    fn new(pid: Pid, resource: &Resource, action: Action) -> Self {
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
         match resource {
             Resource::File { path } => path.hash(&mut hasher),
@@ -167,6 +167,7 @@ pub struct CacheStats {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::permissions::types::{PermissionRequest, PermissionResponse};
     use std::path::PathBuf;
 
     #[test]

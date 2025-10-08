@@ -8,7 +8,7 @@ use super::pipe::{PipeError, PipeManager};
 use super::queue::{QueueManager, QueueMessage};
 use super::types::{IpcError, IpcResult, PipeId, QueueId};
 use crate::core::guard::{TimeoutPolicy, TimeoutPolicyExt};
-use crate::core::sync::{WaitQueue, WaitError};
+use crate::core::sync::{WaitError, WaitQueue};
 use crate::core::types::{Pid, Priority, Size};
 use std::sync::Arc;
 use std::time::Instant;
@@ -68,9 +68,7 @@ impl TimeoutPipeOps {
                             });
                         }
                         Err(_) => {
-                            return Err(PipeError::InvalidOperation(
-                                "Wait cancelled".to_string(),
-                            ))
+                            return Err(PipeError::InvalidOperation("Wait cancelled".to_string()))
                         }
                     }
                 }
@@ -119,9 +117,7 @@ impl TimeoutPipeOps {
                             });
                         }
                         Err(_) => {
-                            return Err(PipeError::InvalidOperation(
-                                "Wait cancelled".to_string(),
-                            ))
+                            return Err(PipeError::InvalidOperation("Wait cancelled".to_string()))
                         }
                     }
                 }
@@ -190,9 +186,7 @@ impl TimeoutQueueOps {
                             });
                         }
                         Err(_) => {
-                            return Err(IpcError::InvalidOperation(
-                                "Wait cancelled".to_string(),
-                            ))
+                            return Err(IpcError::InvalidOperation("Wait cancelled".to_string()))
                         }
                     }
                 }

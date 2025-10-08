@@ -3,7 +3,7 @@
  * Interfaces for permission checking and management
  */
 
-use super::types::{PermissionRequest, PermissionResponse};
+use super::core::{PermissionRequest, PermissionResponse};
 use crate::core::types::Pid;
 
 /// Core permission checking interface
@@ -32,3 +32,4 @@ pub trait PermissionProvider: Send + Sync {
 /// Combined interface
 #[allow(dead_code)]
 pub trait PermissionSystem: PermissionChecker + PermissionProvider + Clone + Send + Sync {}
+

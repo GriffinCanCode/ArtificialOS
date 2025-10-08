@@ -9,14 +9,24 @@ The permissions module provides an interface for checking and managing permissio
 ```
 permissions/
 ├── mod.rs          - Public API exports
-├── types.rs        - Core types (Request, Response, Resource, Action)
-├── manager.rs      - PermissionManager (main entry point)
-├── policy.rs       - Policy engine and evaluation logic
-├── context.rs      - Evaluation context
-├── cache.rs        - LRU cache for performance
-├── audit.rs        - Audit trail for security monitoring
-├── traits.rs       - Trait interfaces
-└── README.md       - This file
+├── README.md       - This file
+├── types/          - Core types and traits
+│   ├── mod.rs
+│   ├── core.rs     - Request, Response, Resource, Action
+│   └── traits.rs   - PermissionChecker, PermissionProvider
+├── policy/         - Policy evaluation
+│   ├── mod.rs
+│   ├── engine.rs   - Policy engine and evaluation logic
+│   └── context.rs  - Evaluation context
+├── cache/          - Performance optimization
+│   ├── mod.rs
+│   └── cache.rs    - LRU cache for permission checks
+├── audit/          - Security monitoring
+│   ├── mod.rs
+│   └── logger.rs   - Audit trail for permission checks
+└── manager/        - Orchestration
+    ├── mod.rs
+    └── manager.rs  - PermissionManager (main entry point)
 ```
 
 ## Key Components

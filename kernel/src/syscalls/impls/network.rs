@@ -97,6 +97,12 @@ impl SocketManager {
         }
     }
 
+    /// Recycle a file descriptor for reuse (lock-free)
+    fn recycle_fd(&self, fd: u32) {
+        self.free_fds.push(fd);
+        trace!("Recycled FD {} for reuse", fd);
+    }
+
     /// Get current socket count for a process (O(1) via HashSet::len)
     pub fn get_socket_count(&self, pid: Pid) -> u32 {
         self.process_sockets

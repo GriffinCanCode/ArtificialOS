@@ -32,20 +32,18 @@
  * ```
  */
 
-mod audit;
-mod cache;
-mod context;
-mod manager;
-mod policy;
-mod traits;
-mod types;
+pub mod audit;
+pub mod cache;
+pub mod manager;
+pub mod policy;
+pub mod types;
 
-pub use audit::{AuditEvent, AuditLogger, AuditSeverity};
-pub use cache::PermissionCache;
-pub use context::{EvaluationContext, RequestContext};
+// Re-export commonly used items
+pub use audit::{AuditEvent, AuditLogger, AuditSeverity, AuditStats};
+pub use cache::{CacheStats, PermissionCache};
 pub use manager::PermissionManager;
-pub use policy::{Policy, PolicyDecision, PolicyEngine};
-pub use traits::{PermissionChecker, PermissionProvider};
+pub use policy::{DefaultPolicy, EvaluationContext, Policy, PolicyDecision, PolicyEngine, RequestContext};
 pub use types::{
-    Action, PermissionRequest, PermissionResponse, PermissionResult, Resource, ResourceType,
+    Action, PermissionChecker, PermissionProvider, PermissionRequest, PermissionResponse,
+    PermissionResult, PermissionSystem, Resource, ResourceType,
 };

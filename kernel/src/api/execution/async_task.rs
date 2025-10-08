@@ -400,7 +400,11 @@ impl AsyncTaskManager {
     /// let guard = manager.submit_with_guard(pid, syscall);
     /// // Task automatically cancelled if guard drops before completion
     /// ```
-    pub fn submit_with_guard(&self, pid: Pid, syscall: Syscall) -> (String, AsyncTaskGuard<SyscallResult>) {
+    pub fn submit_with_guard(
+        &self,
+        pid: Pid,
+        syscall: Syscall,
+    ) -> (String, AsyncTaskGuard<SyscallResult>) {
         let task_id = Uuid::new_v4().to_string();
         let (cancel_tx, cancel_rx) = oneshot::channel();
 

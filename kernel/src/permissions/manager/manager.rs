@@ -3,12 +3,12 @@
  * Central manager for all permission checks across the kernel
  */
 
-use super::audit::{AuditEvent, AuditLogger};
-use super::cache::PermissionCache;
-use super::context::EvaluationContext;
-use super::policy::PolicyEngine;
-use super::traits::{PermissionChecker, PermissionProvider};
-use super::types::{PermissionRequest, PermissionResponse};
+use crate::permissions::audit::{AuditEvent, AuditLogger, AuditStats};
+use crate::permissions::cache::{CacheStats, PermissionCache};
+use crate::permissions::policy::{EvaluationContext, PolicyEngine};
+use crate::permissions::types::{
+    PermissionChecker, PermissionProvider, PermissionRequest, PermissionResponse, PermissionSystem,
+};
 use crate::core::types::Pid;
 use crate::monitoring::Collector;
 use crate::security::traits::SandboxProvider;
@@ -88,12 +88,12 @@ impl PermissionManager {
     }
 
     /// Get cache statistics
-    pub fn cache_stats(&self) -> super::cache::CacheStats {
+    pub fn cache_stats(&self) -> CacheStats {
         self.cache.stats()
     }
 
     /// Get audit statistics
-    pub fn audit_stats(&self) -> super::audit::AuditStats {
+    pub fn audit_stats(&self) -> AuditStats {
         self.audit.stats()
     }
 
@@ -177,11 +177,12 @@ impl PermissionProvider for PermissionManager {
     }
 }
 
-impl super::traits::PermissionSystem for PermissionManager {}
+impl PermissionSystem for PermissionManager {}
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::permissions::types::PermissionRequest;
     use crate::security::types::{Capability, SandboxConfig};
     use std::path::PathBuf;
 
@@ -278,3 +279,4 @@ mod tests {
         assert!(!responses[2].is_allowed());
     }
 }
+

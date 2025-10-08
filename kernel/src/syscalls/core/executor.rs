@@ -272,14 +272,44 @@ impl SyscallExecutorWithIpc {
         &self.socket_manager
     }
 
+    /// Get mutable reference to socket manager
+    pub fn socket_manager_mut(&mut self) -> &mut crate::syscalls::impls::network::SocketManager {
+        &mut self.socket_manager
+    }
+
     /// Get reference to file descriptor manager
     pub fn fd_manager(&self) -> &crate::syscalls::impls::fd::FdManager {
         &self.fd_manager
     }
 
+    /// Get reference to permission manager
+    pub fn permission_manager(&self) -> &PermissionManager {
+        &self.permission_manager
+    }
+
+    /// Get reference to sandbox manager
+    pub fn sandbox_manager(&self) -> &SandboxManager {
+        &self.sandbox_manager
+    }
+
+    /// Get reference to timeout executor
+    pub fn timeout_executor(&self) -> &crate::syscalls::timeout::executor::TimeoutExecutor {
+        &self.timeout_executor
+    }
+
     /// Get timeout configuration
     pub fn timeout_config(&self) -> &crate::syscalls::timeout::config::SyscallTimeoutConfig {
         &self.timeout_config
+    }
+
+    /// Get reference to IPC managers
+    pub fn ipc(&self) -> &IpcManagers {
+        &self.ipc
+    }
+
+    /// Get reference to optional managers
+    pub fn optional(&self) -> &OptionalManagers {
+        &self.optional
     }
 
     /// Execute a system call with sandboxing

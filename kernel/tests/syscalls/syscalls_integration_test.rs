@@ -35,7 +35,8 @@ fn create_test_executor() -> (SyscallExecutor, SandboxManager, TempDir) {
         shm_manager,
         process_manager,
         memory_manager,
-    ).with_signals(signal_manager);
+    )
+    .with_signals(signal_manager);
     (executor, sandbox_mgr, temp_dir)
 }
 

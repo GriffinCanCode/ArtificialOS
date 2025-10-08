@@ -2,13 +2,11 @@
 
 ## Overview
 
-This document outlines the modernized code standards for the OS kernel project, updated to meet 2025 best practices.
+This document outlines the modernized code standards for the OS kernel project, updated to meet best practices.
 
 ## Standards
 
 ### Clippy Configuration
-
-Updated `kernel/clippy.toml` with the following modern standards:
 
 ```toml
 # Cognitive complexity threshold (max 15-20)
@@ -23,40 +21,6 @@ too-many-lines-threshold = 50
 - **Maximum file length**: 500 lines
 - **Function length**: 50 lines max
 - **Cognitive complexity**: 15-20 max
-
-## Refactoring Summary
-
-The following files have been successfully refactored to meet the new standards:
-
-### ✅ Completed Refactorings
-
-1. **ipc/queue/manager.rs** (637 → 198 lines)
-   - Extracted `operations.rs` - Send/receive message operations
-   - Extracted `subscription.rs` - PubSub subscribe/unsubscribe logic
-   - Extracted `lifecycle.rs` - Create/close/destroy operations
-
-2. **signals/manager.rs** (528 → 465 lines)
-   - Extracted `internal_types.rs` - PrioritySignal and ProcessSignals types
-
-3. **process/executor.rs** (578 → 430 lines)
-   - Extracted `validation.rs` - Command and argument validation
-
-4. **process/manager.rs** (578 → 525 lines)
-   - Extracted `priority.rs` - Priority management functions
-   - Extracted `cleanup.rs` - Process cleanup logic
-
-### 📋 Remaining Files to Refactor
-
-Files still exceeding 500 lines (in order of priority):
-
-1. **api/grpc_server.rs** (1169 lines) - CRITICAL
-2. **syscalls/types.rs** (1008 lines) - CRITICAL
-3. **vfs/memory.rs** (968 lines) - HIGH
-4. **memory/manager.rs** (901 lines) - HIGH
-5. **process/scheduler.rs** (834 lines) - MEDIUM
-6. **vfs/types.rs** (816 lines) - MEDIUM
-7. **security/namespace/bridge.rs** (643 lines) - MEDIUM
-8. **syscalls/ipc.rs** (626 lines) - MEDIUM
 
 ## Refactoring Patterns
 
