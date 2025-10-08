@@ -7,7 +7,7 @@
 
 use super::traits::{WaitStrategy, WakeResult};
 use dashmap::DashMap;
-use parking_lot_core::{park, unpark_all, unpark_one, ParkResult, SpinWait as ParkingLotSpinWait};
+use parking_lot_core::{park, unpark_all, unpark_one, ParkResult, ParkToken, UnparkToken};
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
@@ -89,6 +89,7 @@ where
 
         let addr = self.parking_address(key);
         let start = Instant::now();
+        let deadline = timeout.map(|d| Instant::now() + d);
 
         // Use parking_lot's efficient park
         let result = unsafe {
@@ -105,8 +106,8 @@ where
                 |_timed_out, _result| {
                     // After unpark callback: nothing needed
                 },
-                timeout.unwrap_or(Duration::from_secs(300)),
-                Duration::from_secs(300),
+                ParkToken(0),
+                deadline,
             )
         };
 
@@ -117,8 +118,7 @@ where
             ParkResult::Unparked(_) => true,
             ParkResult::TimedOut => {
                 // Double-check: parking_lot may spuriously wake
-                start.elapsed() >= timeout.unwrap_or(Duration::from_secs(300))
-                    && timeout.is_some()
+                timeout.map_or(false, |t| start.elapsed() >= t)
             }
             ParkResult::Invalid => false,
         }
@@ -139,9 +139,9 @@ where
         }
 
         // Unpark one thread
-        let woken = unpark_one(addr, |_| {});
+        let result = unsafe { unpark_one(addr, |_| UnparkToken(0)) };
 
-        WakeResult::Woken(if woken { 1 } else { 0 })
+        WakeResult::Woken(result.unparked_threads)
     }
 
     fn wake_all(&self, key: K) -> WakeResult {
@@ -159,9 +159,9 @@ where
         }
 
         // Unpark all threads
-        let woken = unpark_all(addr, |_| {});
+        let count = unsafe { unpark_all(addr, UnparkToken(0)) };
 
-        WakeResult::Woken(woken)
+        WakeResult::Woken(count)
     }
 
     fn waiter_count(&self, key: K) -> usize {
