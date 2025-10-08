@@ -717,7 +717,7 @@ fn test_callback_count() {
     let id1 = registry.register(|_, _| Ok(()));
     assert_eq!(registry.count(), 1);
 
-    let id2 = registry.register(|_, _| Ok(()));
+    let _id2 = registry.register(|_, _| Ok(()));
     assert_eq!(registry.count(), 2);
 
     registry.unregister(id1);
@@ -890,7 +890,7 @@ fn test_handler_with_executable_callback() {
     let executed_clone = executed.clone();
 
     let callbacks = manager.callbacks();
-    let handler_id = callbacks.register(move |pid, signal| {
+    let handler_id = callbacks.register(move |_pid, signal| {
         *executed_clone.lock().unwrap() = true;
         assert_eq!(signal, Signal::SIGUSR1);
         Ok(())

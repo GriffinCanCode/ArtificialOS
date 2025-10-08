@@ -170,7 +170,7 @@ fn test_isolation_modes() {
 
 #[test]
 fn test_sandbox_with_namespace_capability() {
-    let mut sandbox = SandboxManager::with_namespaces();
+    let sandbox = SandboxManager::with_namespaces();
     let pid = 600;
 
     let mut config = SandboxConfig::privileged(pid);

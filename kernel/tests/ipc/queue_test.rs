@@ -6,7 +6,6 @@
 use ai_os_kernel::ipc::{QueueManager, QueueType};
 use ai_os_kernel::MemoryManager;
 use pretty_assertions::assert_eq;
-use serial_test::serial;
 
 #[test]
 fn test_create_fifo_queue() {

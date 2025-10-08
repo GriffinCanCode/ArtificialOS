@@ -3,7 +3,7 @@
  * Comprehensive tests for memory allocation, deallocation, and OOM handling
  */
 
-use ai_os_kernel::memory::{Allocator, GarbageCollector, MemoryError, MemoryInfo, MemoryManager};
+use ai_os_kernel::memory::{MemoryError, MemoryManager};
 use pretty_assertions::assert_eq;
 use serial_test::serial;
 

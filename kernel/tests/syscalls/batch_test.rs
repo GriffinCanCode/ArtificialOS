@@ -5,7 +5,7 @@
 
 use ai_os_kernel::api::execution::BatchExecutor;
 use ai_os_kernel::security::traits::SandboxProvider;
-use ai_os_kernel::security::{Capability, SandboxConfig, SandboxManager};
+use ai_os_kernel::security::{SandboxConfig, SandboxManager};
 use ai_os_kernel::syscalls::{Syscall, SyscallExecutor, SyscallResult};
 use std::fs;
 use tempfile::TempDir;

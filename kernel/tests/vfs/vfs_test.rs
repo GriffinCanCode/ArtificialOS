@@ -764,7 +764,7 @@ fn test_directory_permissions_enforcement() {
     fs.create_dir(Path::new("/testdir")).unwrap();
 
     // Set directory to readonly
-    let mut perms = Permissions::new(0o555); // r-xr-xr-x (no write)
+    let perms = Permissions::new(0o555); // r-xr-xr-x (no write)
     fs.set_permissions(Path::new("/testdir"), perms).unwrap();
 
     // Verify permissions are set
@@ -947,7 +947,7 @@ fn test_nested_directory_operations_with_permissions() {
 
 #[test]
 fn test_create_file_with_explicit_readonly_permissions() {
-    use ai_os_kernel::vfs::{OpenFlags, OpenMode, Permissions, VfsError};
+    use ai_os_kernel::vfs::{OpenFlags, OpenMode, VfsError};
 
     let fs = MemFS::new();
 

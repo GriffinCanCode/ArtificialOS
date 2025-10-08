@@ -70,7 +70,7 @@ fn benchmark_deserialization(c: &mut Criterion) {
 }
 
 fn benchmark_size(c: &mut Criterion) {
-    let mut group = c.benchmark_group("payload_size");
+    let group = c.benchmark_group("payload_size");
 
     for size in [100, 1000, 10000, 100000].iter() {
         let msg = create_message(*size);

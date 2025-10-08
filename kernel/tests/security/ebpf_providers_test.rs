@@ -48,10 +48,10 @@ fn test_linux_provider_filters() {
         };
 
         let _ = provider.add_filter(filter);
-        let filters = provider.get_filters();
+        let _filters = provider.get_filters();
 
         // Should have at least the filter we added (if supported)
-        assert!(filters.len() >= 0);
+        // filters.len() is always >= 0 for Vec, so no assertion needed
     }
 }
 
@@ -110,9 +110,9 @@ fn test_macos_provider_filters() {
         };
 
         let _ = provider.add_filter(filter);
-        let filters = provider.get_filters();
+        let _filters = provider.get_filters();
 
-        assert!(filters.len() >= 0);
+        // filters.len() is always >= 0 for Vec, so no assertion needed
     }
 }
 
@@ -122,7 +122,7 @@ fn test_macos_provider_stats() {
 
     let stats = provider.stats();
     assert_eq!(stats.platform, EbpfPlatform::MacOS);
-    assert!(stats.programs_loaded >= 0);
+    // programs_loaded is unsigned, so >= 0 is always true
     assert!(stats.events_per_sec >= 0.0);
 }
 

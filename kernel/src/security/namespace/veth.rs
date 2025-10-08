@@ -466,10 +466,10 @@ mod tests {
 
     #[test]
     fn test_veth_manager_creation() {
-        let manager = VethManager::new();
+        let _manager = VethManager::new();
         // Manager should be created successfully
         #[cfg(target_os = "linux")]
-        assert!(manager.handle.is_none()); // Not initialized yet
+        assert!(_manager.handle.is_none()); // Not initialized yet
     }
 
     #[cfg(target_os = "linux")]

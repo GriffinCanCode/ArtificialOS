@@ -157,7 +157,7 @@ impl Clone for PreemptionController {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::process::types::{ExecutionConfig, SchedulingPolicy};
+    use crate::process::types::SchedulingPolicy;
 
     #[test]
     fn test_preemption_controller_creation() {

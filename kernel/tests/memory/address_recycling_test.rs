@@ -137,7 +137,7 @@ fn test_address_exhaustion_prevented() {
     // Verify that recycled addresses match original addresses
     // They should be from the same address space (free list)
     let original_max = *addresses.iter().max().unwrap();
-    let recycled_max = *recycled_addresses.iter().max().unwrap();
+    let _recycled_max = *recycled_addresses.iter().max().unwrap();
 
     // At least some addresses should be recycled (within original range)
     let recycled_count = recycled_addresses

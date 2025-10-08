@@ -7,8 +7,7 @@ use ai_os_kernel::core::types::Pid;
 use ai_os_kernel::memory::MemoryManager;
 use ai_os_kernel::process::ProcessManagerImpl;
 use ai_os_kernel::syscalls::{
-    IoUringExecutor, IoUringManager, SyscallCompletionStatus, SyscallExecutor,
-    SyscallSubmissionEntry,
+    IoUringExecutor, IoUringManager, SyscallExecutor, SyscallSubmissionEntry,
 };
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -275,7 +274,7 @@ async fn test_iouring_fsync() {
 
     // Submit fsync operation (will likely fail without valid FD, but tests the path)
     let fsync_entry = SyscallSubmissionEntry::fsync(pid, 3, 2000);
-    let seq = manager.submit(pid, fsync_entry).unwrap();
+    let _seq = manager.submit(pid, fsync_entry).unwrap();
 
     // Wait for completion
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;

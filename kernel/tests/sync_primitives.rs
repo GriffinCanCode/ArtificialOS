@@ -77,7 +77,6 @@ fn test_spinwait_low_latency() {
     let queue_clone = queue.clone();
 
     let handle = thread::spawn(move || {
-        let start = Instant::now();
         queue_clone.wait(99, Some(Duration::from_millis(500)))
     });
 

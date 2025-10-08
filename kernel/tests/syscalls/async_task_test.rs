@@ -148,7 +148,7 @@ async fn test_async_task_cleanup_respects_ttl() {
 
 #[tokio::test]
 async fn test_async_task_error_handling() {
-    let (executor, sandbox_manager, _) = setup_executor();
+    let (executor, _sandbox_manager, _) = setup_executor();
     let pid = 999; // No sandbox configured
     let manager = AsyncTaskManager::new(executor);
 

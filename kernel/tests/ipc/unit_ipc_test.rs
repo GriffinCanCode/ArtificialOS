@@ -10,7 +10,7 @@ use serial_test::serial;
 
 #[test]
 fn test_basic_message_send_receive() {
-    let mut ipc = IPCManager::new(MemoryManager::new());
+    let ipc = IPCManager::new(MemoryManager::new());
 
     let from_pid = 100;
     let to_pid = 200;
@@ -29,7 +29,7 @@ fn test_basic_message_send_receive() {
 
 #[test]
 fn test_message_ordering() {
-    let mut ipc = IPCManager::new(MemoryManager::new());
+    let ipc = IPCManager::new(MemoryManager::new());
 
     let from_pid = 100;
     let to_pid = 200;
@@ -55,7 +55,7 @@ fn test_message_ordering() {
 
 #[test]
 fn test_receive_from_empty_queue() {
-    let mut ipc = IPCManager::new(MemoryManager::new());
+    let ipc = IPCManager::new(MemoryManager::new());
     let pid = 100;
 
     let message = ipc.receive_message(pid);
@@ -64,7 +64,7 @@ fn test_receive_from_empty_queue() {
 
 #[test]
 fn test_has_messages() {
-    let mut ipc = IPCManager::new(MemoryManager::new());
+    let ipc = IPCManager::new(MemoryManager::new());
 
     let from_pid = 100;
     let to_pid = 200;
@@ -83,7 +83,7 @@ fn test_has_messages() {
 
 #[test]
 fn test_multiple_recipients() {
-    let mut ipc = IPCManager::new(MemoryManager::new());
+    let ipc = IPCManager::new(MemoryManager::new());
 
     let sender = 100;
     let receiver1 = 200;
@@ -106,7 +106,7 @@ fn test_multiple_recipients() {
 
 #[test]
 fn test_message_size_limit() {
-    let mut ipc = IPCManager::new(MemoryManager::new());
+    let ipc = IPCManager::new(MemoryManager::new());
 
     let from_pid = 100;
     let to_pid = 200;
@@ -121,7 +121,7 @@ fn test_message_size_limit() {
 
 #[test]
 fn test_queue_size_limit() {
-    let mut ipc = IPCManager::new(MemoryManager::new());
+    let ipc = IPCManager::new(MemoryManager::new());
 
     let from_pid = 100;
     let to_pid = 200;
@@ -141,7 +141,7 @@ fn test_queue_size_limit() {
 
 #[test]
 fn test_clear_process_queue() {
-    let mut ipc = IPCManager::new(MemoryManager::new());
+    let ipc = IPCManager::new(MemoryManager::new());
 
     let from_pid = 100;
     let to_pid = 200;
@@ -163,7 +163,7 @@ fn test_clear_process_queue() {
 
 #[test]
 fn test_clear_empty_queue() {
-    let mut ipc = IPCManager::new(MemoryManager::new());
+    let ipc = IPCManager::new(MemoryManager::new());
     let pid = 100;
 
     let cleared_count = ipc.clear_process_queue(pid);
@@ -172,7 +172,7 @@ fn test_clear_empty_queue() {
 
 #[test]
 fn test_message_timestamp() {
-    let mut ipc = IPCManager::new(MemoryManager::new());
+    let ipc = IPCManager::new(MemoryManager::new());
 
     let from_pid = 100;
     let to_pid = 200;
@@ -186,7 +186,7 @@ fn test_message_timestamp() {
 
 #[test]
 fn test_bidirectional_communication() {
-    let mut ipc = IPCManager::new(MemoryManager::new());
+    let ipc = IPCManager::new(MemoryManager::new());
 
     let pid1 = 100;
     let pid2 = 200;
@@ -212,7 +212,7 @@ fn test_bidirectional_communication() {
 #[test]
 #[serial]
 fn test_global_memory_tracking() {
-    let mut ipc = IPCManager::new(MemoryManager::new());
+    let ipc = IPCManager::new(MemoryManager::new());
 
     let initial_usage = ipc.get_global_memory_usage();
 
@@ -233,7 +233,7 @@ fn test_global_memory_tracking() {
 #[test]
 #[serial]
 fn test_global_memory_limit() {
-    let mut ipc = IPCManager::new(MemoryManager::new());
+    let ipc = IPCManager::new(MemoryManager::new());
 
     // Try to fill up global IPC memory (100MB limit)
     // Message size limit is 1MB, so use messages within that limit
@@ -278,7 +278,7 @@ fn test_global_memory_limit() {
 #[test]
 #[serial]
 fn test_memory_cleanup_on_clear() {
-    let mut ipc = IPCManager::new(MemoryManager::new());
+    let ipc = IPCManager::new(MemoryManager::new());
 
     let initial_usage = ipc.get_global_memory_usage();
 
@@ -318,7 +318,7 @@ fn test_concurrent_message_sending() {
     for i in 0..10 {
         let ipc_clone = Arc::clone(&ipc);
         let handle = thread::spawn(move || {
-            let mut ipc = ipc_clone.lock().unwrap();
+            let ipc = ipc_clone.lock().unwrap();
             ipc.send_message(100 + i, 999, format!("Message {}", i).into_bytes())
                 .unwrap();
         });
@@ -329,7 +329,7 @@ fn test_concurrent_message_sending() {
         handle.join().unwrap();
     }
 
-    let mut ipc = ipc.lock().unwrap();
+    let ipc = ipc.lock().unwrap();
 
     // Should have received all 10 messages
     let mut received_count = 0;
@@ -343,7 +343,7 @@ fn test_concurrent_message_sending() {
 
 #[test]
 fn test_queue_isolation() {
-    let mut ipc = IPCManager::new(MemoryManager::new());
+    let ipc = IPCManager::new(MemoryManager::new());
 
     let pid1 = 100;
     let pid2 = 200;

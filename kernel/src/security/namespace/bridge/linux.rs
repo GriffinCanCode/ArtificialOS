@@ -392,10 +392,10 @@ mod tests {
 
     #[test]
     fn test_bridge_manager_creation() {
-        let manager = LinuxBridgeManager::new();
+        let _manager = LinuxBridgeManager::new();
         // Manager should be created successfully
         #[cfg(target_os = "linux")]
-        assert!(manager.handle.is_none()); // Not initialized yet
+        assert!(_manager.handle.is_none()); // Not initialized yet
     }
 
     #[cfg(target_os = "linux")]

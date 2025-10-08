@@ -99,7 +99,6 @@ where
 
         // Get stable parking address (same as in wake methods)
         let addr = &slot.waiters as *const AtomicUsize as usize;
-        let start = Instant::now();
         let deadline = timeout.map(|d| Instant::now() + d);
 
         // Park the thread using parking_lot_core
