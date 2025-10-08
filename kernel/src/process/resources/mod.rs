@@ -120,12 +120,16 @@ impl ResourceOrchestrator {
     /// Resources are cleaned up in reverse registration order to handle
     /// dependencies (e.g., close sockets before freeing memory).
     pub fn cleanup_process(&self, pid: Pid) -> CleanupResult {
+        use crate::core::memory::arena::with_arena;
+
         let overall_start = Instant::now();
         let mut total_stats = CleanupStats::default();
-        let mut errors = Vec::new();
 
-        // Cleanup in reverse order (LIFO)
-        for resource in self.resources.iter().rev() {
+        let errors = with_arena(|arena| {
+            let mut error_msgs = bumpalo::collections::Vec::new_in(arena);
+
+            // Cleanup in reverse order (LIFO)
+            for resource in self.resources.iter().rev() {
             if resource.has_resources(pid) {
                 let start = Instant::now();
                 let mut stats = resource.cleanup(pid);
@@ -143,7 +147,7 @@ impl ResourceOrchestrator {
                 let duration_micros = stats.cleanup_duration_micros;
 
                 if errors_encountered > 0 {
-                    errors.push(format!(
+                    error_msgs.push(format!(
                         "{}: {} errors during cleanup",
                         resource_type, errors_encountered
                     ));
@@ -159,7 +163,10 @@ impl ResourceOrchestrator {
                     duration_micros
                 );
             }
-        }
+            }
+
+            error_msgs.into_iter().collect::<Vec<_>>()
+        });
 
         total_stats.cleanup_duration_micros = overall_start.elapsed().as_micros() as u64;
 

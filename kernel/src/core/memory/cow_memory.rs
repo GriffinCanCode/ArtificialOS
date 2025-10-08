@@ -29,10 +29,9 @@ use std::sync::{Arc, Mutex};
 /// child_memory.write(|data| data[0] = 99);
 /// assert!(!Arc::ptr_eq(&parent_memory.data, &child_memory.data));
 /// ```
+#[derive(Debug)]
 pub struct CowMemory {
-    /// Shared data (Arc allows cheap cloning)
     data: Arc<Mutex<Vec<u8>>>,
-    /// Track if this instance has written (for optimization)
     has_written: bool,
 }
 

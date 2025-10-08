@@ -3,6 +3,7 @@
  * File-backed shared memory support
  */
 
+use crate::core::memory::CowMemory;
 use crate::core::types::Pid;
 use crate::core::{ShardManager, WorkloadProfile};
 use crate::vfs::{FileSystem, MountManager};
@@ -83,7 +84,7 @@ pub enum MapFlags {
 impl crate::core::traits::BincodeSerializable for MapFlags {}
 
 /// Memory-mapped file entry
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct MmapEntry {
     pub id: MmapId,
     pub path: String,
@@ -92,7 +93,32 @@ pub struct MmapEntry {
     pub prot: ProtFlags,
     pub flags: MapFlags,
     pub owner_pid: Pid,
-    pub data: Arc<Vec<u8>>, // In-memory representation
+    pub data: Arc<parking_lot::Mutex<CowMemory>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MmapInfo {
+    pub id: MmapId,
+    pub path: String,
+    pub offset: usize,
+    pub length: usize,
+    pub prot: ProtFlags,
+    pub flags: MapFlags,
+    pub owner_pid: Pid,
+}
+
+impl From<&MmapEntry> for MmapInfo {
+    fn from(entry: &MmapEntry) -> Self {
+        Self {
+            id: entry.id,
+            path: entry.path.clone(),
+            offset: entry.offset,
+            length: entry.length,
+            prot: entry.prot,
+            flags: entry.flags,
+            owner_pid: entry.owner_pid,
+        }
+    }
 }
 
 /// Memory-mapped file manager
@@ -167,10 +193,7 @@ impl MmapManager {
         let end = offset.saturating_add(length).min(file_data.len());
         let actual_length = end - offset;
 
-        // Extract the mapped region
         let mapped_data = file_data[offset..end].to_vec();
-
-        // Allocate mapping ID
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
 
         let entry = MmapEntry {
@@ -181,7 +204,7 @@ impl MmapManager {
             prot,
             flags,
             owner_pid: pid,
-            data: Arc::new(mapped_data),
+            data: Arc::new(parking_lot::Mutex::new(CowMemory::new(mapped_data))),
         };
 
         self.mappings.insert(id, entry);
@@ -194,7 +217,6 @@ impl MmapManager {
         Ok(id)
     }
 
-    /// Read from a memory mapping
     pub fn read(
         &self,
         pid: Pid,
@@ -207,22 +229,22 @@ impl MmapManager {
             .get(&mmap_id)
             .ok_or_else(|| format!("Mmap {} not found", mmap_id))?;
 
-        // Check read permission
         if !entry.prot.read {
             return Err("No read permission on this mapping".to_string());
         }
 
-        // Validate access
-        if offset >= entry.data.len() {
+        let cow_guard = entry.data.lock();
+        let data_len = cow_guard.len();
+
+        if offset >= data_len {
             return Err(format!(
                 "Offset {} exceeds mapping size {}",
-                offset,
-                entry.data.len()
+                offset, data_len
             ));
         }
 
-        let end = offset.saturating_add(length).min(entry.data.len());
-        let data = entry.data[offset..end].to_vec();
+        let end = offset.saturating_add(length).min(data_len);
+        let data = cow_guard.read(|buf| buf[offset..end].to_vec());
 
         debug!(
             "PID {} read {} bytes from mmap {}",
@@ -233,7 +255,6 @@ impl MmapManager {
         Ok(data)
     }
 
-    /// Write to a memory mapping (for shared mappings)
     pub fn write(
         &self,
         pid: Pid,
@@ -241,42 +262,36 @@ impl MmapManager {
         offset: usize,
         data: &[u8],
     ) -> Result<(), String> {
-        let mut entry = self
+        let entry = self
             .mappings
-            .get_mut(&mmap_id)
+            .get(&mmap_id)
             .ok_or_else(|| format!("Mmap {} not found", mmap_id))?;
 
-        // Check write permission
         if !entry.prot.write {
             return Err("No write permission on this mapping".to_string());
         }
 
-        // For private mappings, implement copy-on-write
-        if entry.flags == MapFlags::Private {
-            // Clone the data (copy-on-write)
-            let mut new_data = (*entry.data).clone();
+        let mut cow_guard = entry.data.lock();
 
-            // Validate access
-            if offset.saturating_add(data.len()) > new_data.len() {
-                return Err("Write exceeds mapping bounds".to_string());
-            }
-
-            // Write to the copy
-            new_data[offset..offset + data.len()].copy_from_slice(data);
-            entry.data = Arc::new(new_data);
-
-            debug!(
-                "PID {} wrote {} bytes to private mmap {} (CoW)",
-                pid,
-                data.len(),
-                mmap_id
-            );
-        } else {
-            // Shared mapping - need to make data mutable
-            // In a real implementation, this would need Arc::make_mut or similar
-            warn!("Shared mmap writes not fully implemented - data is read-only after initial mapping");
-            return Err("Shared mmap writes not yet supported".to_string());
+        if offset.saturating_add(data.len()) > cow_guard.len() {
+            return Err("Write exceeds mapping bounds".to_string());
         }
+
+        cow_guard.write(|buf| {
+            buf[offset..offset + data.len()].copy_from_slice(data);
+        });
+
+        debug!(
+            "PID {} wrote {} bytes to mmap {} ({})",
+            pid,
+            data.len(),
+            mmap_id,
+            if entry.flags == MapFlags::Private {
+                "CoW"
+            } else {
+                "shared"
+            }
+        );
 
         Ok(())
     }
@@ -294,24 +309,22 @@ impl MmapManager {
             return Ok(());
         }
 
-        // Write back to VFS
         if let Some(ref vfs) = self.vfs {
-            // Read current file
             let mut file_data = vfs
                 .read(Path::new(&entry.path))
                 .map_err(|e| format!("Failed to read file for sync: {}", e))?;
 
-            // Update the mapped region
+            let cow_guard = entry.data.lock();
+            let mapped_bytes = cow_guard.read(|buf| buf.to_vec());
+
             let end = entry.offset + entry.length;
             if end <= file_data.len() {
-                file_data[entry.offset..end].copy_from_slice(&entry.data);
+                file_data[entry.offset..end].copy_from_slice(&mapped_bytes);
             } else {
-                // Extend file if needed
                 file_data.resize(end, 0);
-                file_data[entry.offset..end].copy_from_slice(&entry.data);
+                file_data[entry.offset..end].copy_from_slice(&mapped_bytes);
             }
 
-            // Write back
             vfs.write(Path::new(&entry.path), &file_data)
                 .map_err(|e| format!("Failed to write file for sync: {}", e))?;
 
@@ -400,17 +413,15 @@ impl MmapManager {
             .any(|entry| entry.value().owner_pid == pid)
     }
 
-    /// Get mapping information
-    pub fn get_info(&self, mmap_id: MmapId) -> Option<MmapEntry> {
-        self.mappings.get(&mmap_id).map(|e| e.value().clone())
+    pub fn get_info(&self, mmap_id: MmapId) -> Option<MmapInfo> {
+        self.mappings.get(&mmap_id).map(|e| MmapInfo::from(e.value()))
     }
 
-    /// List all mappings for a process
-    pub fn list_mappings(&self, pid: Pid) -> Vec<MmapEntry> {
+    pub fn list_mappings(&self, pid: Pid) -> Vec<MmapInfo> {
         self.mappings
             .iter()
             .filter(|entry| entry.value().owner_pid == pid)
-            .map(|entry| entry.value().clone())
+            .map(|entry| MmapInfo::from(entry.value()))
             .collect()
     }
 }

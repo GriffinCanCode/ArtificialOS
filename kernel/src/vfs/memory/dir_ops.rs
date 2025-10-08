@@ -152,7 +152,7 @@ impl MemFS {
         for path_to_remove in to_remove {
             if let Some(entry) = self.nodes.get(&path_to_remove) {
                 if let Node::File { data, .. } = entry.value() {
-                    total_size += data.len();
+                    total_size += data.lock().len();
                 }
             }
             self.nodes.remove(&path_to_remove);

@@ -3,17 +3,18 @@
  * Internal representation of files and directories
  */
 
+use crate::core::memory::CowMemory;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::SystemTime;
 
 use super::super::types::{FileType, Permissions};
 
-/// In-memory filesystem node
 #[derive(Debug, Clone)]
 pub(in crate::vfs) enum Node {
     File {
-        data: Vec<u8>,
+        data: Arc<parking_lot::Mutex<CowMemory>>,
         permissions: Permissions,
         modified: SystemTime,
         created: SystemTime,

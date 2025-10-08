@@ -46,7 +46,7 @@ impl FileSystem for MemFS {
             Some(node) => {
                 let now = SystemTime::now();
                 let size = match &node {
-                    Node::File { data, .. } => data.len() as u64,
+                    Node::File { data, .. } => data.lock().len() as u64,
                     Node::Directory { .. } => 0,
                 };
 
@@ -173,17 +173,20 @@ impl FileSystem for MemFS {
             // Create new file with specified permissions
             self.ensure_parent(&path)?;
             let now = SystemTime::now();
+
+            use crate::core::memory::CowMemory;
+            use std::sync::Arc;
+
             self.nodes.insert(
                 path.clone(),
                 Node::File {
-                    data: Vec::new(),
+                    data: Arc::new(parking_lot::Mutex::new(CowMemory::new(Vec::new()))),
                     permissions: mode.permissions,
                     modified: now,
                     created: now,
                 },
             );
 
-            // Add to parent directory
             if let Some(parent) = self.parent_path(&path) {
                 let file_name = self.file_name(&path)?;
                 self.add_child(&parent, &file_name, &path)?;

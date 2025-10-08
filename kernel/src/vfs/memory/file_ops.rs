@@ -17,10 +17,14 @@ impl MemFS {
 
         match self.nodes.get(&path).map(|n| n.clone()) {
             Some(Node::File { data, .. }) => {
-                let mut result = PooledBuffer::get(data.len());
-                result.resize(data.len(), 0);
-                simd_memcpy(&mut result, &data);
-                Ok(result.into_vec())
+                let cow_guard = data.lock();
+                let content = cow_guard.read(|buf| {
+                    let mut result = PooledBuffer::get(buf.len());
+                    result.resize(buf.len(), 0);
+                    simd_memcpy(&mut result, buf);
+                    result.into_vec()
+                });
+                Ok(content)
             }
             Some(Node::Directory { .. }) => Err(VfsError::IsADirectory(path.display().to_string())),
             None => Err(VfsError::NotFound(path.display().to_string())),
@@ -62,12 +66,11 @@ impl MemFS {
             }
         }
 
-        // Calculate space needed
         let space_needed = if let Some(node) = self.nodes.get(&path) {
-            // Replacing existing file - only need additional space
             if let Node::File { data: old_data, .. } = node.value() {
-                if data.len() > old_data.len() {
-                    data.len() - old_data.len()
+                let old_len = old_data.lock().len();
+                if data.len() > old_len {
+                    data.len() - old_len
                 } else {
                     0
                 }
@@ -75,19 +78,16 @@ impl MemFS {
                 data.len()
             }
         } else {
-            // New file - need full space
             data.len()
         };
 
-        // Check and reserve space atomically
         self.check_and_reserve_space(space_needed)?;
 
         let now = SystemTime::now();
 
-        // Get old size for accurate tracking
         let old_size = if let Some(node) = self.nodes.get(&path) {
             if let Node::File { data: old_data, .. } = node.value() {
-                old_data.len()
+                old_data.lock().len()
             } else {
                 0
             }
@@ -112,10 +112,13 @@ impl MemFS {
         file_data.resize(data.len(), 0);
         simd_memcpy(&mut file_data, data);
 
+        use crate::core::memory::CowMemory;
+        use std::sync::Arc;
+
         self.nodes.insert(
             path,
             Node::File {
-                data: file_data.into_vec(),
+                data: Arc::new(parking_lot::Mutex::new(CowMemory::new(file_data.into_vec()))),
                 permissions: Permissions::readwrite(),
                 modified: now,
                 created: now,
@@ -149,27 +152,33 @@ impl MemFS {
         // Reserve space atomically
         self.check_and_reserve_space(data.len())?;
 
-        match self.nodes.get_mut(&path) {
-            Some(mut entry) => {
-                match entry.value_mut() {
+        match self.nodes.get(&path) {
+            Some(entry) => {
+                match entry.value() {
                     Node::File {
-                        data: file_data,
-                        modified,
+                        data: cow_data,
                         ..
                     } => {
-                        file_data.extend_from_slice(data);
-                        *modified = SystemTime::now();
+                        let mut cow_guard = cow_data.lock();
+                        cow_guard.write(|buf| {
+                            buf.extend_from_slice(data);
+                        });
+                        drop(cow_guard);
+
+                        if let Some(mut entry_mut) = self.nodes.get_mut(&path) {
+                            if let Node::File { modified, .. } = entry_mut.value_mut() {
+                                *modified = SystemTime::now();
+                            }
+                        }
                         Ok(())
                     }
                     Node::Directory { .. } => {
-                        // Release reserved space on error
                         self.release_space(data.len());
                         Err(VfsError::IsADirectory(path.display().to_string()))
                     }
                 }
             }
             None => {
-                // Release our reservation and let write handle it
                 self.release_space(data.len());
                 self.write_impl(&path, data)
             }
@@ -199,10 +208,9 @@ impl MemFS {
 
         match self.nodes.get(&path).map(|n| n.clone()) {
             Some(Node::File { data, .. }) => {
-                let size = data.len();
+                let size = data.lock().len();
                 self.nodes.remove(&path);
 
-                // Remove from parent
                 if let Some(parent) = self.parent_path(&path) {
                     let file_name = self.file_name(&path)?;
                     self.remove_child(&parent, &file_name)?;
@@ -222,7 +230,6 @@ impl MemFS {
         let path = self.normalize(path);
         let new_size = size as usize;
 
-        // Check node type, get current size, and check permissions
         let old_size = match self.nodes.get(&path).map(|n| n.clone()) {
             Some(Node::Directory { .. }) => {
                 return Err(VfsError::IsADirectory(path.display().to_string()))
@@ -231,31 +238,35 @@ impl MemFS {
             Some(Node::File {
                 data, permissions, ..
             }) => {
-                // Check if file is readonly
                 if permissions.is_readonly() {
                     return Err(VfsError::PermissionDenied(format!(
                         "file is readonly: {}",
                         path.display()
                     )));
                 }
-                data.len()
+                data.lock().len()
             }
         };
 
-        // Reserve space if growing
         if new_size > old_size {
             let additional = new_size - old_size;
             self.check_and_reserve_space(additional)?;
         }
 
-        // Perform the truncate
-        if let Some(mut entry) = self.nodes.get_mut(&path) {
-            if let Node::File { data, modified, .. } = entry.value_mut() {
-                data.resize(new_size, 0);
-                *modified = SystemTime::now();
+        if let Some(entry) = self.nodes.get(&path) {
+            if let Node::File { data, .. } = entry.value() {
+                let mut cow_guard = data.lock();
+                cow_guard.write(|buf| {
+                    buf.resize(new_size, 0);
+                });
+                drop(cow_guard);
 
-                // Update size tracking
-                drop(entry);
+                if let Some(mut entry_mut) = self.nodes.get_mut(&path) {
+                    if let Node::File { modified, .. } = entry_mut.value_mut() {
+                        *modified = SystemTime::now();
+                    }
+                }
+
                 self.update_size_atomic(old_size, new_size);
                 Ok(())
             } else {
@@ -265,9 +276,7 @@ impl MemFS {
                 Err(VfsError::NotFound(path.display().to_string()))
             }
         } else {
-            // File was removed between checks
             if new_size > old_size {
-                // Release reserved space
                 self.release_space(new_size - old_size);
             }
             Err(VfsError::NotFound(path.display().to_string()))

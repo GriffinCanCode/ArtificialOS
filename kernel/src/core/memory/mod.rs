@@ -19,7 +19,7 @@
  * - **Pool**: Frequently allocated/deallocated objects (buffers, connections)
  */
 
-mod arena;
+pub mod arena;
 mod cow_memory;
 mod pool;
 

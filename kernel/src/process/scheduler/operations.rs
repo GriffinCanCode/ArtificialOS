@@ -365,28 +365,31 @@ impl Scheduler {
 
     /// Get all process statistics
     pub fn all_process_stats(&self) -> Vec<ProcessStats> {
-        let mut stats = Vec::new();
+        use crate::core::memory::arena::with_arena;
 
-        // Get current process
-        let current = self.current.read();
-        if let Some(ref entry) = *current {
-            stats.push(ProcessStats {
-                pid: entry.pid,
-                priority: entry.priority,
-                cpu_time_micros: entry.cpu_time_micros,
-                vruntime: entry.vruntime,
-                is_current: true,
-            });
-        }
-        drop(current);
+        with_arena(|arena| {
+            let mut stats = bumpalo::collections::Vec::new_in(arena);
 
-        // Get queued processes
-        let policy = *self.policy.read();
-        match policy {
-            SchedulingPolicy::RoundRobin => {
-                let queue = self.rr_queue.read();
-                stats.extend(queue.iter().map(|entry| ProcessStats {
+            // Get current process
+            let current = self.current.read();
+            if let Some(ref entry) = *current {
+                stats.push(ProcessStats {
                     pid: entry.pid,
+                    priority: entry.priority,
+                    cpu_time_micros: entry.cpu_time_micros,
+                    vruntime: entry.vruntime,
+                    is_current: true,
+                });
+            }
+            drop(current);
+
+            // Get queued processes
+            let policy = *self.policy.read();
+            match policy {
+                SchedulingPolicy::RoundRobin => {
+                    let queue = self.rr_queue.read();
+                    stats.extend(queue.iter().map(|entry| ProcessStats {
+                        pid: entry.pid,
                     priority: entry.priority,
                     cpu_time_micros: entry.cpu_time_micros,
                     vruntime: entry.vruntime,
@@ -403,18 +406,19 @@ impl Scheduler {
                     is_current: false,
                 }));
             }
-            SchedulingPolicy::Fair => {
-                let queue = self.fair_queue.read();
-                stats.extend(queue.iter().map(|entry| ProcessStats {
-                    pid: entry.0.pid,
-                    priority: entry.0.priority,
-                    cpu_time_micros: entry.0.cpu_time_micros,
-                    vruntime: entry.0.vruntime,
-                    is_current: false,
-                }));
+                SchedulingPolicy::Fair => {
+                    let queue = self.fair_queue.read();
+                    stats.extend(queue.iter().map(|entry| ProcessStats {
+                        pid: entry.0.pid,
+                        priority: entry.0.priority,
+                        cpu_time_micros: entry.0.cpu_time_micros,
+                        vruntime: entry.0.vruntime,
+                        is_current: false,
+                    }));
+                }
             }
-        }
 
-        stats
+            stats.into_iter().collect()
+        })
     }
 }
