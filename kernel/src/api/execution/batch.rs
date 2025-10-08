@@ -30,6 +30,7 @@ impl BatchExecutor {
     }
 
     async fn execute_parallel(&self, requests: Vec<(Pid, Syscall)>) -> Vec<SyscallResult> {
+        let count = requests.len();
         let futures: Vec<_> = requests
             .into_iter()
             .map(|(pid, syscall)| {
@@ -39,14 +40,13 @@ impl BatchExecutor {
             .collect();
 
         let results = join_all(futures).await;
-        results
-            .into_iter()
-            .map(|r| {
-                r.unwrap_or_else(|e| SyscallResult::Error {
-                    message: format!("Task error: {}", e),
-                })
-            })
-            .collect()
+        let mut output = Vec::with_capacity(count);
+        for r in results {
+            output.push(r.unwrap_or_else(|e| SyscallResult::Error {
+                message: format!("Task error: {}", e),
+            }));
+        }
+        output
     }
 
     async fn execute_sequential(&self, requests: Vec<(Pid, Syscall)>) -> Vec<SyscallResult> {

@@ -164,7 +164,7 @@ impl LifecycleRegistry {
     pub fn initialize_process(&self, pid: Pid, config: &ProcessInitConfig) -> LifecycleResult<()> {
         debug!("Initializing process {} with lifecycle hooks", pid);
 
-        let mut initialized_subsystems = Vec::new();
+        let mut initialized_subsystems = Vec::with_capacity(4);
 
         // Hook 1: Zero-copy ring (if enabled and available)
         if config.enable_zerocopy {

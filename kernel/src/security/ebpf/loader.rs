@@ -123,9 +123,8 @@ impl ProgramLoader {
         }
     }
 
-    /// List all programs
     pub fn list(&self) -> Vec<ProgramInfo> {
-        let mut result = Vec::new();
+        let mut result = Vec::with_capacity(16);
         self.programs.iter(|_name, p| {
             result.push(ProgramInfo {
                 name: p.config.name.clone(),

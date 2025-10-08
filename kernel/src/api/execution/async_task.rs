@@ -130,9 +130,8 @@ impl AsyncTaskManager {
                     _ = interval.tick() => {
                         let now = Instant::now();
                         let mut cleaned_count = 0;
-                        let mut task_ids_to_remove = Vec::new();
+                        let mut task_ids_to_remove = Vec::with_capacity(16);
 
-                        // First pass: identify expired tasks
                         for entry in tasks.iter() {
                             let task_id = entry.key();
                             let task = entry.value();
@@ -144,7 +143,6 @@ impl AsyncTaskManager {
                             }
                         }
 
-                        // Second pass: remove expired tasks
                         for (task_id, pid) in task_ids_to_remove {
                             tasks.remove(&task_id);
                             cleaned_count += 1;
@@ -272,9 +270,8 @@ impl AsyncTaskManager {
         let now = Instant::now();
         let ttl = self.task_ttl;
         let mut cleaned_count = 0;
-        let mut task_ids_to_remove = Vec::new();
+        let mut task_ids_to_remove = Vec::with_capacity(16);
 
-        // Collect tasks to remove
         for entry in self.tasks.iter() {
             let task_id = entry.key();
             let task = entry.value();
@@ -286,7 +283,6 @@ impl AsyncTaskManager {
             }
         }
 
-        // Remove expired tasks
         for (task_id, pid) in task_ids_to_remove {
             self.tasks.remove(&task_id);
             cleaned_count += 1;
@@ -311,7 +307,7 @@ impl AsyncTaskManager {
     /// Useful for testing or forced cleanup scenarios
     pub fn cleanup_completed_immediate(&self) -> usize {
         let mut cleaned_count = 0;
-        let mut task_ids_to_remove = Vec::new();
+        let mut task_ids_to_remove = Vec::with_capacity(32);
 
         // Collect all completed tasks
         for entry in self.tasks.iter() {

@@ -140,11 +140,27 @@ impl Subscriber {
 
     pub fn filter(&mut self, filter: &EventFilter) -> Vec<Event> {
         let mut events = Vec::with_capacity(32);
+        let mut buffer = [None, None, None, None];
+        let mut idx = 0;
+
         while let Some(event) = self.next() {
+            buffer[idx % 4] = self.stream.queue.pop();
+            if let Some(next_event) = &buffer[idx % 4] {
+                crate::core::optimization::prefetch_read(next_event as *const Event);
+            }
+
             if event.matches(filter) {
                 events.push(event);
             }
+            idx += 1;
         }
+
+        for buffered in buffer.into_iter().flatten() {
+            if buffered.matches(filter) {
+                events.push(buffered);
+            }
+        }
+
         events
     }
 
@@ -195,8 +211,14 @@ impl BatchPublisher {
 
     /// Flush buffered events to stream
     pub fn flush(&mut self) {
-        for event in self.buffer.drain(..) {
-            // Keep trying if queue is full
+        let events: Vec<_> = self.buffer.drain(..).collect();
+        let len = events.len();
+
+        for (i, event) in events.into_iter().enumerate() {
+            if i + 2 < len {
+                crate::core::optimization::prefetch_write(&event as *const Event);
+            }
+
             while !self.stream.publish(event.clone()) {
                 std::hint::spin_loop();
             }

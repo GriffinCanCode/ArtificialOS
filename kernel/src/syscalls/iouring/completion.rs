@@ -53,8 +53,7 @@ impl SyscallCompletionQueue {
     /// This operation requires scanning the queue and is O(n). For best performance,
     /// prefer popping in order rather than searching for specific completions.
     pub fn find_and_remove(&self, seq: u64) -> Option<SyscallCompletionEntry> {
-        // Collect all entries temporarily
-        let mut temp = Vec::new();
+        let mut temp = Vec::with_capacity(32);
         let mut found = None;
 
         while let Some(entry) = self.ring.pop() {
@@ -65,7 +64,6 @@ impl SyscallCompletionQueue {
             }
         }
 
-        // Put back non-matching entries
         for entry in temp {
             let _ = self.ring.push(entry);
         }

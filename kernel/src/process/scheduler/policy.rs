@@ -23,8 +23,7 @@ impl Scheduler {
             current_policy, new_policy
         );
 
-        // Collect all processes from current queues
-        let mut all_entries = Vec::new();
+        let mut all_entries = Vec::with_capacity(64);
 
         // Collect from round-robin queue
         let mut rr_queue = self.rr_queue.write();

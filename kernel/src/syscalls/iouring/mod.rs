@@ -137,13 +137,19 @@ impl IoUringManager {
         pid: Pid,
         max: Option<usize>,
     ) -> Result<Vec<SyscallCompletionEntry>, IoUringError> {
+        use crate::core::optimization::prefetch_read;
+
         let ring = self.get_ring(pid).ok_or(IoUringError::RingNotFound(pid))?;
 
         let max = max.unwrap_or(usize::MAX);
-        let mut completions = Vec::new();
+        let capacity = if max == usize::MAX { 16 } else { max.min(256) };
+        let mut completions = Vec::with_capacity(capacity);
 
-        for _ in 0..max {
+        for i in 0..max {
             if let Some(entry) = ring.try_complete() {
+                if i + 1 < max {
+                    prefetch_read(&entry as *const SyscallCompletionEntry);
+                }
                 completions.push(entry);
             } else {
                 break;

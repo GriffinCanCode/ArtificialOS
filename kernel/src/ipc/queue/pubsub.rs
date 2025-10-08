@@ -49,7 +49,7 @@ impl PubSubQueue {
         }
 
         let mut sent = 0;
-        let mut to_remove = Vec::new();
+        let mut to_remove = Vec::with_capacity(4);
 
         for (pid, tx) in &self.subscribers {
             match tx.send(message.clone()) {
@@ -61,7 +61,6 @@ impl PubSubQueue {
             }
         }
 
-        // Clean up disconnected subscribers
         for pid in to_remove {
             self.subscribers.remove(&pid);
         }
