@@ -171,3 +171,76 @@ fn test_process_manager_clone() {
     let processes_pm1 = pm1.list_processes();
     assert_eq!(processes_pm1.len(), 2);
 }
+
+#[test]
+fn test_clone_pid_counter_shared() {
+    // Regression test for PID collision bug in Clone implementation
+    // This verifies that clones share the same PID counter to prevent collisions
+    let pm1 = ProcessManager::new();
+    let pid1 = pm1.create_process("app1".to_string(), 5); // Should be PID 1
+    assert_eq!(pid1, 1);
+
+    let pm2 = pm1.clone();
+    let pid2 = pm2.create_process("app2".to_string(), 3); // Should be PID 2, not 1
+    assert_eq!(pid2, 2, "Clone should share PID counter, got collision!");
+
+    // Verify both managers see all processes
+    assert_eq!(pm1.list_processes().len(), 2);
+    assert_eq!(pm2.list_processes().len(), 2);
+
+    // Create another process from pm1 to verify counter is truly shared
+    let pid3 = pm1.create_process("app3".to_string(), 7); // Should be PID 3
+    assert_eq!(pid3, 3);
+
+    // All PIDs should be unique
+    let all_pids: Vec<u32> = pm1.list_processes().iter().map(|p| p.pid).collect();
+    assert_eq!(all_pids.len(), 3);
+    assert!(all_pids.contains(&1));
+    assert!(all_pids.contains(&2));
+    assert!(all_pids.contains(&3));
+}
+
+#[test]
+fn test_concurrent_clone_pid_allocation() {
+    // Stress test for PID allocation across concurrent clones
+    use std::sync::Arc;
+    use std::thread;
+
+    let pm = ProcessManager::new();
+    let pm_arc = Arc::new(pm);
+    let mut handles = vec![];
+
+    // Spawn threads that clone and create processes
+    for i in 0..5 {
+        let pm_clone = Arc::clone(&pm_arc);
+        let handle = thread::spawn(move || {
+            // Clone the ProcessManager
+            let cloned_pm = (*pm_clone).clone();
+            // Create 10 processes from this clone
+            let mut pids = vec![];
+            for j in 0..10 {
+                let pid = cloned_pm.create_process(format!("thread-{}-proc-{}", i, j), 5);
+                pids.push(pid);
+            }
+            pids
+        });
+        handles.push(handle);
+    }
+
+    // Collect all PIDs from all threads
+    let mut all_pids = vec![];
+    for handle in handles {
+        let pids = handle.join().unwrap();
+        all_pids.extend(pids);
+    }
+
+    // Verify all PIDs are unique (no collisions)
+    all_pids.sort();
+    let unique_pids: std::collections::HashSet<_> = all_pids.iter().collect();
+    assert_eq!(
+        all_pids.len(),
+        unique_pids.len(),
+        "PID collision detected! Some PIDs were allocated twice."
+    );
+    assert_eq!(all_pids.len(), 50, "Expected 50 unique PIDs");
+}

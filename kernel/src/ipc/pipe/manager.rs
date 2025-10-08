@@ -23,10 +23,11 @@ use std::sync::Arc;
 /// # Performance
 /// - Cache-line aligned to prevent false sharing of atomic ID counter
 /// - Lock-free queue for ID recycling (hot path optimization)
+/// - next_id wrapped in Arc to ensure ID uniqueness across clones (prevents collision bug)
 #[repr(C, align(64))]
 pub struct PipeManager {
     pipes: Arc<DashMap<PipeId, Pipe, RandomState>>,
-    next_id: AtomicU32,
+    next_id: Arc<AtomicU32>,
     // Track pipe count per process
     process_pipes: Arc<DashMap<Pid, Size, RandomState>>,
     memory_manager: MemoryManager,
@@ -47,7 +48,7 @@ impl PipeManager {
                 RandomState::new(),
                 64,
             )),
-            next_id: AtomicU32::new(1),
+            next_id: Arc::new(AtomicU32::new(1)),
             // Use 32 shards for process pipe tracking
             process_pipes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
                 0,
@@ -310,7 +311,7 @@ impl Clone for PipeManager {
     fn clone(&self) -> Self {
         Self {
             pipes: Arc::clone(&self.pipes),
-            next_id: AtomicU32::new(self.next_id.load(Ordering::SeqCst)),
+            next_id: Arc::clone(&self.next_id), // Share ID counter to prevent collision
             process_pipes: Arc::clone(&self.process_pipes),
             memory_manager: self.memory_manager.clone(),
             free_ids: Arc::clone(&self.free_ids),

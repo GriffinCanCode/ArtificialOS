@@ -160,7 +160,7 @@ impl ProcessManagerBuilder {
                 RandomState::new(),
                 128,
             )),
-            next_pid: AtomicU32::new(1),
+            next_pid: Arc::new(AtomicU32::new(1)),
             memory_manager: self.memory_manager,
             executor,
             limit_manager,

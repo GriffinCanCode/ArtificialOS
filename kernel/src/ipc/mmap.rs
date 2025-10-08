@@ -101,7 +101,7 @@ pub struct MmapEntry {
 #[repr(C, align(64))]
 pub struct MmapManager {
     mappings: Arc<DashMap<MmapId, MmapEntry, RandomState>>,
-    next_id: AtomicU32,
+    next_id: Arc<AtomicU32>, // Wrapped in Arc to ensure ID uniqueness across clones
     vfs: Option<Arc<MountManager>>,
 }
 
@@ -115,7 +115,7 @@ impl MmapManager {
                 RandomState::new(),
                 32,
             )),
-            next_id: AtomicU32::new(1),
+            next_id: Arc::new(AtomicU32::new(1)),
             vfs: None,
         }
     }
@@ -129,7 +129,7 @@ impl MmapManager {
                 RandomState::new(),
                 32,
             )),
-            next_id: AtomicU32::new(1),
+            next_id: Arc::new(AtomicU32::new(1)),
             vfs: Some(vfs),
         }
     }
@@ -416,7 +416,7 @@ impl Clone for MmapManager {
     fn clone(&self) -> Self {
         Self {
             mappings: Arc::clone(&self.mappings),
-            next_id: AtomicU32::new(self.next_id.load(Ordering::SeqCst)),
+            next_id: Arc::clone(&self.next_id), // Share ID counter to prevent collision
             vfs: self.vfs.clone(),
         }
     }

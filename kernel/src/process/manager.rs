@@ -29,10 +29,11 @@ pub type Process = ProcessInfo;
 ///
 /// # Performance
 /// - Cache-line aligned to prevent false sharing of atomic PID counter (extremely hot path)
+/// - next_pid wrapped in Arc to ensure PID uniqueness across clones (prevents collision bug)
 #[repr(C, align(64))]
 pub struct ProcessManager {
     pub(super) processes: Arc<DashMap<Pid, ProcessInfo, RandomState>>,
-    pub(super) next_pid: AtomicU32,
+    pub(super) next_pid: Arc<AtomicU32>,
     pub(super) memory_manager: Option<MemoryManager>,
     pub(super) executor: Option<ProcessExecutor>,
     pub(super) limit_manager: Option<LimitManager>,
@@ -58,7 +59,7 @@ impl ProcessManager {
                 RandomState::new(),
                 128,
             )),
-            next_pid: AtomicU32::new(1),
+            next_pid: Arc::new(AtomicU32::new(1)),
             memory_manager: None,
             executor: None,
             limit_manager: None,
@@ -259,7 +260,7 @@ impl Clone for ProcessManager {
     fn clone(&self) -> Self {
         Self {
             processes: Arc::clone(&self.processes),
-            next_pid: AtomicU32::new(self.next_pid.load(Ordering::SeqCst)),
+            next_pid: Arc::clone(&self.next_pid), // Share PID counter to prevent collision
             memory_manager: self.memory_manager.clone(),
             executor: self.executor.clone(),
             limit_manager: None, // Limit manager is not Clone, create new if needed
