@@ -9,7 +9,7 @@ use std::time::SystemTime;
 use super::super::types::*;
 use super::node::Node;
 use super::MemFS;
-use crate::core::simd_memcpy;
+use crate::core::{simd_memcpy, PooledBuffer};
 
 impl MemFS {
     pub(super) fn read_impl(&self, path: &Path) -> VfsResult<Vec<u8>> {
@@ -17,10 +17,10 @@ impl MemFS {
 
         match self.nodes.get(&path).map(|n| n.clone()) {
             Some(Node::File { data, .. }) => {
-                // Use SIMD-accelerated copy for large files
-                let mut result = vec![0u8; data.len()];
+                let mut result = PooledBuffer::get(data.len());
+                result.resize(data.len(), 0);
                 simd_memcpy(&mut result, &data);
-                Ok(result)
+                Ok(result.into_vec())
             }
             Some(Node::Directory { .. }) => Err(VfsError::IsADirectory(path.display().to_string())),
             None => Err(VfsError::NotFound(path.display().to_string())),
@@ -108,14 +108,14 @@ impl MemFS {
             }
         }
 
-        // Use SIMD-accelerated copy for file data
-        let mut file_data = vec![0u8; data.len()];
+        let mut file_data = PooledBuffer::get(data.len());
+        file_data.resize(data.len(), 0);
         simd_memcpy(&mut file_data, data);
 
         self.nodes.insert(
             path,
             Node::File {
-                data: file_data,
+                data: file_data.into_vec(),
                 permissions: Permissions::readwrite(),
                 modified: now,
                 created: now,

@@ -20,8 +20,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use std::cell::RefCell;
 use std::sync::OnceLock;
 
-// Use core SIMD infrastructure for CPU feature detection
-use crate::core::simd::SimdCapabilities;
+use crate::core::{PooledBuffer, simd::SimdCapabilities};
 
 // ============================================================================
 // Configuration Constants
@@ -225,14 +224,10 @@ pub fn from_bytes<T: DeserializeOwned>(bytes: &Bytes) -> JsonResult<T> {
     from_slice(bytes.as_ref())
 }
 
-/// Deserialize from JSON bytes using SIMD acceleration
-///
-/// 2-4x faster than serde_json for large payloads.
-/// Note: Creates mutable copy for in-place SIMD parsing.
 #[inline]
 pub fn from_slice_simd<T: DeserializeOwned>(bytes: &[u8]) -> JsonResult<T> {
-    // simd-json requires mutable bytes for in-place parsing
-    let mut mutable_bytes = bytes.to_vec();
+    let mut mutable_bytes = PooledBuffer::get(bytes.len());
+    mutable_bytes.extend_from_slice(bytes);
     simd_json::from_slice(&mut mutable_bytes).map_err(|e| JsonError::Deserialization {
         context: "SIMD deserialization",
         source: Box::new(e),

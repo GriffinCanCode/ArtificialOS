@@ -9,10 +9,11 @@
  * - Optional LZ4 compression for large payloads (>16KB)
  */
 
-// bytes is available as a transitive dependency through prost
 use bytes::{Bytes, BytesMut};
 use serde::{de::DeserializeOwned, Serialize};
 use std::cell::RefCell;
+
+use crate::core::PooledBuffer;
 
 // ============================================================================
 // Configuration Constants
@@ -90,18 +91,18 @@ where
 // Core Serialization Functions
 // ============================================================================
 
-/// Serialize to binary bytes using bincode (standard allocation)
-///
-/// This is 5-10x faster than JSON for binary data and produces much smaller payloads.
-/// Use this for internal kernel-to-kernel IPC where human-readability is not required.
-///
-/// For hot paths, consider `to_bytes_pooled()` which reuses thread-local buffers.
 #[inline]
 pub fn to_vec<T: Serialize>(value: &T) -> BincodeResult<Vec<u8>> {
-    bincode::serialize(value).map_err(|source| BincodeError::Serialization {
-        context: "standard serialization",
-        source,
-    })
+    let size_hint = bincode::serialized_size(value).unwrap_or(1024) as usize;
+    let mut buf = PooledBuffer::get(size_hint);
+
+    match bincode::serialize_into(&mut *buf, value) {
+        Ok(_) => Ok(buf.into_vec()),
+        Err(source) => Err(BincodeError::Serialization {
+            context: "pooled serialization",
+            source,
+        })
+    }
 }
 
 /// Serialize to `Bytes` using pooled buffer (zero-copy hot path)
@@ -176,20 +177,16 @@ pub fn deserialize_ipc_message<T: DeserializeOwned>(bytes: &Bytes) -> BincodeRes
     from_bytes(bytes)
 }
 
-/// Serialize with version and size prefix (for streaming scenarios)
-///
-/// Format: [1-byte version][4-byte length][bincode data]
-/// Version enables forward/backward compatibility, length enables streaming.
 pub fn to_vec_with_header<T: Serialize>(value: &T) -> BincodeResult<Vec<u8>> {
     let data = to_vec(value)?;
     let len = data.len() as u32;
 
-    let mut result = Vec::with_capacity(5 + data.len());
+    let mut result = PooledBuffer::get(5 + data.len());
     result.push(BINCODE_FORMAT_VERSION);
     result.extend_from_slice(&len.to_le_bytes());
     result.extend_from_slice(&data);
 
-    Ok(result)
+    Ok(result.into_vec())
 }
 
 /// Deserialize from versioned size-prefixed format

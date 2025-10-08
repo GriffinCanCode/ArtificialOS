@@ -10,6 +10,7 @@ use std::time::SystemTime;
 
 use super::traits::{FileSystem, OpenFile};
 use super::types::*;
+use crate::core::{simd_memcpy, PooledBuffer};
 
 /// Local filesystem implementation using std::fs
 #[derive(Debug, Clone)]
@@ -157,11 +158,11 @@ impl FileSystem for LocalFS {
         let data = fs::read(&full_path)
             .map_err(|e| Self::io_error(e, format!("read {}", path.display())))?;
 
-        // Use SIMD-accelerated copy for large files (> 64 bytes)
         if data.len() >= 64 {
-            let mut result = vec![0u8; data.len()];
-            result.copy_from_slice(&data);
-            Ok(result)
+            let mut result = PooledBuffer::get(data.len());
+            result.resize(data.len(), 0);
+            simd_memcpy(&mut result, &data);
+            Ok(result.into_vec())
         } else {
             Ok(data)
         }
@@ -171,18 +172,17 @@ impl FileSystem for LocalFS {
         self.check_write()?;
         let full_path = self.resolve(path);
 
-        // Create parent directories if needed
         if let Some(parent) = full_path.parent() {
             fs::create_dir_all(parent).map_err(|e| {
                 Self::io_error(e, format!("create parent dirs for {}", path.display()))
             })?;
         }
 
-        // Use SIMD-accelerated copy for large files (> 64 bytes) before writing
         if data.len() >= 64 {
-            let mut write_buf = vec![0u8; data.len()];
-            write_buf.copy_from_slice(data);
-            fs::write(&full_path, write_buf)
+            let mut write_buf = PooledBuffer::get(data.len());
+            write_buf.resize(data.len(), 0);
+            simd_memcpy(&mut write_buf, data);
+            fs::write(&full_path, write_buf.as_slice())
                 .map_err(|e| Self::io_error(e, format!("write {}", path.display())))
         } else {
             fs::write(&full_path, data)

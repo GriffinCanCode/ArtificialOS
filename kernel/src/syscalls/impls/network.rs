@@ -6,8 +6,7 @@
 
 use crate::syscalls::timeout::executor::TimeoutError;
 
-use crate::core::serialization::json;
-use crate::core::types::Pid;
+use crate::core::{PooledBuffer, serialization::json, types::Pid};
 use crate::monitoring::span_operation;
 use crate::permissions::{PermissionChecker, PermissionRequest};
 
@@ -716,11 +715,12 @@ impl SyscallExecutorWithIpc {
                 if let Some(mut socket) = self.socket_manager().sockets.get_mut(&sockfd) {
                     match socket.value_mut() {
                         Socket::TcpStream(stream) => {
-                            let mut buffer = vec![0u8; size];
+                            let mut buffer = PooledBuffer::get(size);
+                            buffer.resize(size, 0);
                             match stream.read(&mut buffer) {
                                 Ok(bytes_read) => {
                                     buffer.truncate(bytes_read);
-                                    Ok(buffer)
+                                    Ok(buffer.into_vec())
                                 }
                                 Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                                     Err(RecvError::WouldBlock)
@@ -866,7 +866,8 @@ impl SyscallExecutorWithIpc {
         if let Some(socket) = self.socket_manager().sockets.get(&sockfd) {
             match socket.value() {
                 Socket::UdpSocket(udp) => {
-                    let mut buffer = vec![0u8; size];
+                    let mut buffer = PooledBuffer::get(size);
+                    buffer.resize(size, 0);
                     match udp.recv_from(&mut buffer) {
                         Ok((bytes_read, addr)) => {
                             buffer.truncate(bytes_read);
@@ -879,7 +880,7 @@ impl SyscallExecutorWithIpc {
                             span.record_result(true);
 
                             match json::to_vec(&serde_json::json!({
-                                "data": buffer,
+                                "data": buffer.as_slice(),
                                 "address": addr.to_string()
                             })) {
                                 Ok(result) => SyscallResult::success_with_data(result),

@@ -3,7 +3,7 @@
  * SPSC (Single Producer Single Consumer) lock-free ring buffer for IPC hot paths
  */
 
-use crate::core::simd_memcpy;
+use crate::core::{simd_memcpy, PooledBuffer};
 use crossbeam_queue::ArrayQueue;
 use std::sync::Arc;
 
@@ -140,13 +140,12 @@ impl LockFreeByteRing {
             let full_batches = can_write / SIMD_BATCH_SIZE;
 
             if full_batches > 0 {
-                // Use SIMD to copy batches into temporary buffer, then push atomically
                 let batch_bytes = full_batches * SIMD_BATCH_SIZE;
-                let mut batch_buf = vec![0u8; batch_bytes];
+                let mut batch_buf = PooledBuffer::get(batch_bytes);
+                batch_buf.resize(batch_bytes, 0);
                 simd_memcpy(&mut batch_buf, &data[..batch_bytes]);
 
-                // Push batched bytes to lock-free queue
-                for &byte in &batch_buf {
+                for &byte in &batch_buf[..] {
                     if self.ring.push(byte).is_err() {
                         return written;
                     }
@@ -176,17 +175,15 @@ impl LockFreeByteRing {
     /// into result buffer. For large reads, this is significantly faster than
     /// byte-by-byte copy.
     pub fn read(&self, size: usize) -> Vec<u8> {
-        let mut data = Vec::with_capacity(size);
         let available = self.ring.len();
         let can_read = available.min(size);
+        let mut result = PooledBuffer::get(size);
 
-        // Fast path: Use SIMD batching for bulk reads >= 64 bytes
         if can_read >= SIMD_BATCH_SIZE {
             let full_batches = can_read / SIMD_BATCH_SIZE;
             let batch_bytes = full_batches * SIMD_BATCH_SIZE;
 
-            // Pop bytes from lock-free queue into temporary buffer
-            let mut batch_buf = Vec::with_capacity(batch_bytes);
+            let mut batch_buf = PooledBuffer::get(batch_bytes);
             for _ in 0..batch_bytes {
                 if let Some(byte) = self.ring.pop() {
                     batch_buf.push(byte);
@@ -195,24 +192,22 @@ impl LockFreeByteRing {
                 }
             }
 
-            // Use SIMD to copy batched data into result
             if !batch_buf.is_empty() {
-                let current_len = data.len();
-                data.resize(current_len + batch_buf.len(), 0);
-                simd_memcpy(&mut data[current_len..], &batch_buf);
+                let current_len = result.len();
+                result.resize(current_len + batch_buf.len(), 0);
+                simd_memcpy(&mut result[current_len..], &batch_buf);
             }
         }
 
-        // Handle remaining bytes (< 64 bytes or remainder after SIMD batches)
-        for _ in data.len()..size {
+        for _ in result.len()..size {
             if let Some(byte) = self.ring.pop() {
-                data.push(byte);
+                result.push(byte);
             } else {
                 break;
             }
         }
 
-        data
+        result.into_vec()
     }
 
     /// Get the number of buffered bytes (approximate)
