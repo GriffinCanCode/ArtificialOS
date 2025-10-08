@@ -38,7 +38,7 @@ export default function TerminalApp({ context }: NativeAppProps) {
 
       if (result?.id) {
         const newTab: TerminalTab = {
-          id: `tab-${Date.now()}`,
+          id: `tab-${crypto.randomUUID()}`,
           sessionId: result.id,
           title: `Terminal ${tabs.length + 1}`,
           active: true,
@@ -113,6 +113,7 @@ export default function TerminalApp({ context }: NativeAppProps) {
   useEffect(() => {
     win.setTitle('💻 Terminal');
     createSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const activeTab = tabs.find((t) => t.id === activeTabId);
