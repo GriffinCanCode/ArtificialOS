@@ -308,6 +308,20 @@ impl AsRef<[u8]> for InlineString {
     }
 }
 
+impl AsRef<std::ffi::OsStr> for InlineString {
+    #[inline(always)]
+    fn as_ref(&self) -> &std::ffi::OsStr {
+        std::ffi::OsStr::new(self.as_str())
+    }
+}
+
+impl AsRef<std::path::Path> for InlineString {
+    #[inline(always)]
+    fn as_ref(&self) -> &std::path::Path {
+        std::path::Path::new(self.as_str())
+    }
+}
+
 impl std::ops::Deref for InlineString {
     type Target = str;
 

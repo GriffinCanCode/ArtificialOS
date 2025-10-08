@@ -3,6 +3,7 @@
  * Structured, type-safe error handling for filesystem operations
  */
 
+use crate::core::data_structures::InlineString;
 use serde::{Deserialize, Deserializer, Serialize};
 use thiserror::Error;
 
@@ -20,34 +21,34 @@ pub type VfsResult<T> = Result<T, VfsError>;
 #[serde(rename_all = "snake_case", tag = "error", content = "details")]
 pub enum VfsError {
     #[error("Not found: {0}")]
-    NotFound(#[serde(deserialize_with = "deserialize_nonempty_string")] String),
+    NotFound(#[serde(deserialize_with = "deserialize_nonempty_inline_string")] InlineString),
 
     #[error("Already exists: {0}")]
-    AlreadyExists(#[serde(deserialize_with = "deserialize_nonempty_string")] String),
+    AlreadyExists(#[serde(deserialize_with = "deserialize_nonempty_inline_string")] InlineString),
 
     #[error("Permission denied: {0}")]
-    PermissionDenied(#[serde(deserialize_with = "deserialize_nonempty_string")] String),
+    PermissionDenied(#[serde(deserialize_with = "deserialize_nonempty_inline_string")] InlineString),
 
     #[error("Not a directory: {0}")]
-    NotADirectory(#[serde(deserialize_with = "deserialize_nonempty_string")] String),
+    NotADirectory(#[serde(deserialize_with = "deserialize_nonempty_inline_string")] InlineString),
 
     #[error("Is a directory: {0}")]
-    IsADirectory(#[serde(deserialize_with = "deserialize_nonempty_string")] String),
+    IsADirectory(#[serde(deserialize_with = "deserialize_nonempty_inline_string")] InlineString),
 
     #[error("Invalid path: {0}")]
-    InvalidPath(#[serde(deserialize_with = "deserialize_nonempty_string")] String),
+    InvalidPath(#[serde(deserialize_with = "deserialize_nonempty_inline_string")] InlineString),
 
     #[error("I/O error: {0}")]
-    IoError(#[serde(deserialize_with = "deserialize_nonempty_string")] String),
+    IoError(#[serde(deserialize_with = "deserialize_nonempty_inline_string")] InlineString),
 
     #[error("Not supported: {0}")]
-    NotSupported(#[serde(deserialize_with = "deserialize_nonempty_string")] String),
+    NotSupported(#[serde(deserialize_with = "deserialize_nonempty_inline_string")] InlineString),
 
     #[error("Out of space")]
     OutOfSpace,
 
     #[error("Invalid argument: {0}")]
-    InvalidArgument(#[serde(deserialize_with = "deserialize_nonempty_string")] String),
+    InvalidArgument(#[serde(deserialize_with = "deserialize_nonempty_inline_string")] InlineString),
 
     #[error("File too large")]
     FileTooLarge,
@@ -59,12 +60,14 @@ pub enum VfsError {
     CrossDevice,
 }
 
-/// Deserialize and validate non-empty string for error messages
-pub(super) fn deserialize_nonempty_string<'de, D>(deserializer: D) -> Result<String, D::Error>
+/// Deserialize and validate non-empty inline string for error messages
+pub(super) fn deserialize_nonempty_inline_string<'de, D>(
+    deserializer: D,
+) -> Result<InlineString, D::Error>
 where
     D: Deserializer<'de>,
 {
-    let s = String::deserialize(deserializer)?;
+    let s = InlineString::deserialize(deserializer)?;
     if s.is_empty() {
         return Err(serde::de::Error::custom("error message must not be empty"));
     }
@@ -78,7 +81,7 @@ mod tests {
     #[test]
     fn test_vfs_error_validation() {
         // Valid error with non-empty message
-        let error = VfsError::NotFound("file.txt".to_string());
+        let error = VfsError::NotFound("file.txt".into());
         let json = serde_json::to_string(&error).unwrap();
         let deserialized: VfsError = serde_json::from_str(&json).unwrap();
         assert_eq!(error, deserialized);

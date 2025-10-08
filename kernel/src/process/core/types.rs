@@ -3,6 +3,7 @@
  * Common types for process management
  */
 
+use crate::core::data_structures::InlineString;
 use crate::core::serialization::serde::{is_false, is_none, is_zero_u64, is_zero_usize};
 use crate::core::types::{Pid, Priority};
 use serde::{Deserialize, Serialize};
@@ -22,13 +23,13 @@ pub enum ProcessError {
     ProcessNotFound(Pid),
 
     #[error("Invalid command: {0}")]
-    InvalidCommand(String),
+    InvalidCommand(InlineString),
 
     #[error("Spawn failed: {0}")]
-    SpawnFailed(String),
+    SpawnFailed(InlineString),
 
     #[error("Permission denied: {0}")]
-    PermissionDenied(String),
+    PermissionDenied(InlineString),
 
     #[error("Process limit exceeded: current {current}, limit {limit}")]
     ProcessLimitExceeded { current: u32, limit: u32 },
@@ -40,7 +41,7 @@ pub enum ProcessError {
     },
 
     #[error("Execution error: {0}")]
-    ExecutionError(String),
+    ExecutionError(InlineString),
 }
 
 /// Process state
@@ -82,7 +83,7 @@ pub enum SchedulingPolicy {
 #[serde(rename_all = "snake_case")]
 pub struct ProcessInfo {
     pub pid: Pid,
-    pub name: String,
+    pub name: InlineString,
     pub state: ProcessState,
     pub priority: Priority,
     #[serde(skip_serializing_if = "is_none")]
@@ -92,11 +93,11 @@ pub struct ProcessInfo {
 impl ProcessInfo {
     #[inline]
     #[must_use]
-    pub fn new(pid: Pid, name: String, priority: Priority) -> Self {
+    pub fn new(pid: Pid, name: InlineString, priority: Priority) -> Self {
         Self {
             pid,
             name,
-            state: ProcessState::Creating, // Start in Creating state
+            state: ProcessState::Creating,
             priority,
             os_pid: None,
         }
@@ -164,7 +165,7 @@ impl ProcessInfo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct ExecutionConfig {
-    pub command: String,
+    pub command: InlineString,
     #[serde(skip_serializing_if = "crate::core::serialization::serde::is_empty_vec")]
     pub args: Vec<String>,
     #[serde(skip_serializing_if = "crate::core::serialization::serde::is_empty_vec")]
@@ -180,7 +181,7 @@ pub struct ExecutionConfig {
 impl ExecutionConfig {
     #[inline]
     #[must_use]
-    pub fn new(command: String) -> Self {
+    pub fn new(command: InlineString) -> Self {
         Self {
             command,
             args: vec![],

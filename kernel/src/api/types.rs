@@ -3,6 +3,7 @@
  * Common types for kernel API layer
  */
 
+use crate::core::data_structures::InlineString;
 use crate::core::serialization::serde::{is_zero_u64, is_zero_usize};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
@@ -15,22 +16,22 @@ pub type ApiResult<T> = Result<T, ApiError>;
 #[serde(rename_all = "snake_case", tag = "error", content = "details")]
 pub enum ApiError {
     /// Invalid request
-    InvalidRequest(String),
+    InvalidRequest(InlineString),
 
     /// Service unavailable
-    Unavailable(String),
+    Unavailable(InlineString),
 
     /// Authentication failed
-    AuthenticationFailed(String),
+    AuthenticationFailed(InlineString),
 
     /// Rate limit exceeded
-    RateLimited(String),
+    RateLimited(InlineString),
 
     /// Internal server error
-    InternalError(String),
+    InternalError(InlineString),
 
     /// Request timeout
-    Timeout(String),
+    Timeout(InlineString),
 }
 
 impl std::fmt::Display for ApiError {
@@ -95,12 +96,12 @@ impl ServerConfig {
 #[derive(Debug, Clone)]
 pub struct RequestMetadata {
     pub client_addr: Option<SocketAddr>,
-    pub request_id: String,
+    pub request_id: InlineString,
     pub timestamp: std::time::SystemTime,
 }
 
 impl RequestMetadata {
-    pub fn new(request_id: String) -> Self {
+    pub fn new(request_id: InlineString) -> Self {
         Self {
             client_addr: None,
             request_id,

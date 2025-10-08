@@ -3,6 +3,7 @@
  * Defines error types for syscall operations
  */
 
+use crate::core::data_structures::InlineString;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -13,69 +14,69 @@ use thiserror::Error;
 pub enum SyscallError {
     /// Permission denied for the requested operation
     #[error("Permission denied: {0}")]
-    PermissionDenied(String),
+    PermissionDenied(InlineString),
 
     /// Operation failed with an error message
     #[error("Operation failed: {0}")]
-    OperationFailed(String),
+    OperationFailed(InlineString),
 
     /// Invalid argument provided to syscall
     #[error("Invalid argument: {0}")]
-    InvalidArgument(String),
+    InvalidArgument(InlineString),
 
     /// Resource not found (file, process, etc.)
     #[error("Resource not found: {0}")]
-    NotFound(String),
+    NotFound(InlineString),
 
     /// Resource temporarily unavailable
     #[error("Resource unavailable: {0}")]
-    Unavailable(String),
+    Unavailable(InlineString),
 
     /// I/O error occurred
     #[error("I/O error: {0}")]
-    IoError(String),
+    IoError(InlineString),
 
     /// Feature not yet implemented
     #[error("Not implemented: {0}")]
-    NotImplemented(String),
+    NotImplemented(InlineString),
 
     /// Required manager/subsystem not available
     #[error("Manager not available: {0}")]
-    ManagerNotAvailable(String),
+    ManagerNotAvailable(InlineString),
 
     /// Serialization/deserialization error
     #[error("Serialization error: {0}")]
-    SerializationError(String),
+    SerializationError(InlineString),
 }
 
 impl SyscallError {
     /// Create a permission denied error
     #[inline]
-    pub fn permission_denied(msg: impl Into<String>) -> Self {
+    pub fn permission_denied(msg: impl Into<InlineString>) -> Self {
         Self::PermissionDenied(msg.into())
     }
 
     /// Create an operation failed error
     #[inline]
-    pub fn operation_failed(msg: impl Into<String>) -> Self {
+    pub fn operation_failed(msg: impl Into<InlineString>) -> Self {
         Self::OperationFailed(msg.into())
     }
 
     /// Create an invalid argument error
     #[inline]
-    pub fn invalid_argument(msg: impl Into<String>) -> Self {
+    pub fn invalid_argument(msg: impl Into<InlineString>) -> Self {
         Self::InvalidArgument(msg.into())
     }
 
     /// Create a not found error
     #[inline]
-    pub fn not_found(msg: impl Into<String>) -> Self {
+    pub fn not_found(msg: impl Into<InlineString>) -> Self {
         Self::NotFound(msg.into())
     }
 
     /// Create a manager not available error
     #[inline]
-    pub fn manager_not_available(subsystem: impl Into<String>) -> Self {
+    pub fn manager_not_available(subsystem: impl Into<InlineString>) -> Self {
         Self::ManagerNotAvailable(subsystem.into())
     }
 }

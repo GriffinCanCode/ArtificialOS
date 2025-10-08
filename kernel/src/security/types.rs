@@ -3,6 +3,7 @@
  * Common types for security and sandboxing
  */
 
+use crate::core::data_structures::InlineString;
 use crate::core::serialization::serde::{is_empty_vec, is_none, is_zero_u64, is_zero_usize};
 use crate::core::types::{Pid, ResourceLimits};
 use serde::{Deserialize, Serialize};
@@ -33,22 +34,22 @@ pub type LimitsResult<T> = Result<T, LimitsError>;
 #[serde(rename_all = "snake_case", tag = "error", content = "details")]
 pub enum SecurityError {
     #[error("Permission denied: {0}")]
-    PermissionDenied(String),
+    PermissionDenied(InlineString),
 
     #[error("Capability missing: {0}")]
-    CapabilityMissing(String),
+    CapabilityMissing(InlineString),
 
     #[error("Sandbox not found for PID {0}")]
     SandboxNotFound(Pid),
 
     #[error("Path access denied: {0}")]
-    PathAccessDenied(String),
+    PathAccessDenied(InlineString),
 
     #[error("Resource limit exceeded: {0}")]
-    LimitExceeded(String),
+    LimitExceeded(InlineString),
 
     #[error("Invalid configuration: {0}")]
-    InvalidConfig(String),
+    InvalidConfig(InlineString),
 
     #[error("Sandbox error: {0}")]
     Sandbox(#[from] SandboxError),
@@ -62,19 +63,19 @@ pub enum SecurityError {
 #[serde(rename_all = "snake_case", tag = "error", content = "details")]
 pub enum SandboxError {
     #[error("Permission denied: {0}")]
-    PermissionDenied(String),
+    PermissionDenied(InlineString),
 
     #[error("Sandbox not found for PID {0}")]
     NotFound(Pid),
 
     #[error("Invalid configuration: {0}")]
-    InvalidConfig(String),
+    InvalidConfig(InlineString),
 
     #[error("Capability {0:?} not granted")]
-    MissingCapability(String),
+    MissingCapability(InlineString),
 
     #[error("Path {0:?} not accessible")]
-    PathBlocked(String),
+    PathBlocked(InlineString),
 }
 
 /// Resource limits errors
@@ -82,22 +83,22 @@ pub enum SandboxError {
 #[serde(rename_all = "snake_case", tag = "error", content = "details")]
 pub enum LimitsError {
     #[error("IO error: {0}")]
-    IoError(String),
+    IoError(InlineString),
 
     #[error("Platform not supported: {0}")]
-    PlatformNotSupported(String),
+    PlatformNotSupported(InlineString),
 
     #[error("Permission denied: {0}")]
-    PermissionDenied(String),
+    PermissionDenied(InlineString),
 
     #[error("Invalid limit: {0}")]
-    InvalidLimit(String),
+    InvalidLimit(InlineString),
 }
 
 // Allow conversion from std::io::Error
 impl From<std::io::Error> for LimitsError {
     fn from(err: std::io::Error) -> Self {
-        LimitsError::IoError(err.to_string())
+        LimitsError::IoError(err.to_string().into())
     }
 }
 
@@ -108,11 +109,11 @@ pub enum NetworkRule {
     /// Allow all network access
     AllowAll,
     /// Allow specific host (with optional port)
-    AllowHost { host: String, port: Option<u16> },
+    AllowHost { host: InlineString, port: Option<u16> },
     /// Allow CIDR block
-    AllowCIDR(String),
+    AllowCIDR(InlineString),
     /// Block specific host
-    BlockHost { host: String, port: Option<u16> },
+    BlockHost { host: InlineString, port: Option<u16> },
 }
 
 /// Capabilities that can be granted to sandboxed processes
@@ -386,30 +387,30 @@ pub struct SandboxStats {
 pub enum SecurityEvent {
     PermissionDenied {
         pid: Pid,
-        capability: String,
-        reason: String,
+        capability: InlineString,
+        reason: InlineString,
     },
     PathAccessDenied {
         pid: Pid,
-        path: String,
-        reason: String,
+        path: InlineString,
+        reason: InlineString,
     },
     LimitExceeded {
         pid: Pid,
-        limit_type: String,
+        limit_type: InlineString,
         value: u64,
     },
     CapabilityGranted {
         pid: Pid,
-        capability: String,
+        capability: InlineString,
     },
     CapabilityRevoked {
         pid: Pid,
-        capability: String,
+        capability: InlineString,
     },
     SandboxCreated {
         pid: Pid,
-        config_type: String,
+        config_type: InlineString,
     },
     SandboxDestroyed {
         pid: Pid,

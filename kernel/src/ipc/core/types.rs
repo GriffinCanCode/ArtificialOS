@@ -3,6 +3,7 @@
  * Common types for inter-process communication
  */
 
+use crate::core::data_structures::InlineString;
 use crate::core::serialization::serde::{is_zero_u64, is_zero_usize};
 use crate::core::types::{Pid, Timestamp};
 use miette::Diagnostic;
@@ -25,7 +26,7 @@ pub enum IpcError {
         code(ipc::not_found),
         help("The requested IPC resource (pipe, queue, or shared memory) does not exist. Verify the resource ID.")
     )]
-    NotFound(String),
+    NotFound(InlineString),
 
     /// Permission denied
     #[error("IPC permission denied: {0}")]
@@ -33,7 +34,7 @@ pub enum IpcError {
         code(ipc::permission_denied),
         help("Insufficient permissions to access this IPC resource. Check process capabilities.")
     )]
-    PermissionDenied(String),
+    PermissionDenied(InlineString),
 
     /// Resource limit exceeded
     #[error("IPC resource limit exceeded: {0}")]
@@ -41,7 +42,7 @@ pub enum IpcError {
         code(ipc::limit_exceeded),
         help("IPC resource limit reached. Close unused resources or increase limits.")
     )]
-    LimitExceeded(String),
+    LimitExceeded(InlineString),
 
     /// Operation would block
     #[error("IPC operation would block: {0}")]
@@ -49,7 +50,7 @@ pub enum IpcError {
         code(ipc::would_block),
         help("Operation cannot complete without blocking. Use non-blocking mode or wait for resource availability.")
     )]
-    WouldBlock(String),
+    WouldBlock(InlineString),
 
     /// Invalid operation or argument
     #[error("Invalid IPC operation: {0}")]
@@ -57,7 +58,7 @@ pub enum IpcError {
         code(ipc::invalid_operation),
         help("The requested operation is invalid for this IPC resource or in its current state.")
     )]
-    InvalidOperation(String),
+    InvalidOperation(InlineString),
 
     /// Resource closed
     #[error("IPC resource closed: {0}")]
@@ -65,7 +66,7 @@ pub enum IpcError {
         code(ipc::closed),
         help("The IPC resource has been closed and can no longer be used.")
     )]
-    Closed(String),
+    Closed(InlineString),
 
     /// Operation timed out
     #[error("IPC operation timed out after {elapsed_ms}ms (timeout: {}ms)", timeout_ms.map(|t| t.to_string()).unwrap_or_else(|| "none".to_string()))]
