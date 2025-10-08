@@ -95,7 +95,9 @@ impl Detector {
         let (metric_name, value) = self.extract_metric(event)?;
 
         let mut metrics = self.metrics.write().unwrap();
-        let stats = metrics.entry(metric_name.clone()).or_insert_with(Stats::new);
+        let stats = metrics
+            .entry(metric_name.clone())
+            .or_insert_with(Stats::new);
 
         // Check if anomalous before updating
         let is_anomaly = stats.is_anomaly(value);
@@ -120,12 +122,12 @@ impl Detector {
     /// Extract numeric metric from event
     fn extract_metric(&self, event: &Event) -> Option<(String, f64)> {
         match &event.payload {
-            Payload::SyscallExit { name, duration_us, .. } => {
-                Some((format!("syscall.{}.duration_us", name), *duration_us as f64))
-            }
-            Payload::SyscallSlow { name, duration_ms, .. } => {
-                Some((format!("syscall.{}.duration_ms", name), *duration_ms as f64))
-            }
+            Payload::SyscallExit {
+                name, duration_us, ..
+            } => Some((format!("syscall.{}.duration_us", name), *duration_us as f64)),
+            Payload::SyscallSlow {
+                name, duration_ms, ..
+            } => Some((format!("syscall.{}.duration_ms", name), *duration_ms as f64)),
             Payload::MemoryAllocated { size, .. } => {
                 Some(("memory.allocation.size".to_string(), *size as f64))
             }
@@ -141,9 +143,7 @@ impl Detector {
             Payload::CpuThrottled { usage_pct, .. } => {
                 Some(("cpu.usage_pct".to_string(), *usage_pct as f64))
             }
-            Payload::MetricUpdate { name, value, .. } => {
-                Some((name.clone(), *value))
-            }
+            Payload::MetricUpdate { name, value, .. } => Some((name.clone(), *value)),
             _ => None,
         }
     }
@@ -205,11 +205,11 @@ impl Detector {
         // Detect per-type leaks
         for (resource_type, count) in by_type {
             let threshold = match resource_type.as_str() {
-                "memory" => 50,           // Memory blocks
+                "memory" => 50,            // Memory blocks
                 "file_descriptors" => 100, // FDs
-                "sockets" => 50,          // Network sockets
-                "ipc" => 100,             // IPC resources
-                _ => 200,                 // Default
+                "sockets" => 50,           // Network sockets
+                "ipc" => 100,              // IPC resources
+                _ => 200,                  // Default
             };
 
             if *count > threshold {

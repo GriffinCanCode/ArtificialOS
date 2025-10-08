@@ -37,10 +37,8 @@ fn test_vfs_file_registered_in_fd_table() {
     vfs.mount("/mem", mem_fs).unwrap();
 
     // Create test file via VFS
-    vfs.write(
-        &PathBuf::from("/mem/test.txt"),
-        b"hello vfs"
-    ).unwrap();
+    vfs.write(&PathBuf::from("/mem/test.txt"), b"hello vfs")
+        .unwrap();
 
     // Create executor with VFS
     let executor = SyscallExecutor::new(sandbox).with_vfs(vfs);
@@ -56,22 +54,28 @@ fn test_vfs_file_registered_in_fd_table() {
     );
 
     assert!(result.is_success(), "Open should succeed: {:?}", result);
-    let fd = serde_json::from_slice::<serde_json::Value>(result.data().unwrap())
-        .unwrap()["fd"]
+    let fd = serde_json::from_slice::<serde_json::Value>(result.data().unwrap()).unwrap()["fd"]
         .as_u64()
         .unwrap() as u32;
 
     println!("Opened FD: {}", fd);
-    println!("FD count for PID {}: {}", pid, executor.fd_manager().get_fd_count(pid));
+    println!(
+        "FD count for PID {}: {}",
+        pid,
+        executor.fd_manager().get_fd_count(pid)
+    );
 
     // Verify FD is tracked
-    assert_eq!(executor.fd_manager().get_fd_count(pid), 1, "FD {} should be tracked for PID {}", fd, pid);
+    assert_eq!(
+        executor.fd_manager().get_fd_count(pid),
+        1,
+        "FD {} should be tracked for PID {}",
+        fd,
+        pid
+    );
 
     // Close FD
-    let close_result = executor.execute(
-        pid,
-        Syscall::Close { fd },
-    );
+    let close_result = executor.execute(pid, Syscall::Close { fd });
     assert!(close_result.is_success());
     assert_eq!(executor.fd_manager().get_fd_count(pid), 0);
 }
@@ -103,20 +107,16 @@ fn test_dup_with_vfs_handles() {
     );
 
     assert!(result.is_success());
-    let fd1 = serde_json::from_slice::<serde_json::Value>(result.data().unwrap())
-        .unwrap()["fd"]
+    let fd1 = serde_json::from_slice::<serde_json::Value>(result.data().unwrap()).unwrap()["fd"]
         .as_u64()
         .unwrap() as u32;
 
     // Duplicate FD
-    let dup_result = executor.execute(
-        pid,
-        Syscall::Dup { fd: fd1 },
-    );
+    let dup_result = executor.execute(pid, Syscall::Dup { fd: fd1 });
 
     assert!(dup_result.is_success());
-    let fd2 = serde_json::from_slice::<serde_json::Value>(dup_result.data().unwrap())
-        .unwrap()["new_fd"]
+    let fd2 = serde_json::from_slice::<serde_json::Value>(dup_result.data().unwrap()).unwrap()
+        ["new_fd"]
         .as_u64()
         .unwrap() as u32;
 
@@ -157,8 +157,10 @@ fn test_multiple_fs_backends() {
     vfs.mount("/data2", mem_fs2).unwrap();
 
     // Create files in both filesystems
-    vfs.write(&PathBuf::from("/data1/file1.txt"), b"data1").unwrap();
-    vfs.write(&PathBuf::from("/data2/file2.txt"), b"data2").unwrap();
+    vfs.write(&PathBuf::from("/data1/file1.txt"), b"data1")
+        .unwrap();
+    vfs.write(&PathBuf::from("/data2/file2.txt"), b"data2")
+        .unwrap();
 
     let executor = SyscallExecutor::new(sandbox).with_vfs(vfs);
 
@@ -188,12 +190,10 @@ fn test_multiple_fs_backends() {
     assert_eq!(executor.fd_manager().get_fd_count(pid), 2);
 
     // Extract FDs
-    let fd1 = serde_json::from_slice::<serde_json::Value>(result1.data().unwrap())
-        .unwrap()["fd"]
+    let fd1 = serde_json::from_slice::<serde_json::Value>(result1.data().unwrap()).unwrap()["fd"]
         .as_u64()
         .unwrap() as u32;
-    let fd2 = serde_json::from_slice::<serde_json::Value>(result2.data().unwrap())
-        .unwrap()["fd"]
+    let fd2 = serde_json::from_slice::<serde_json::Value>(result2.data().unwrap()).unwrap()["fd"]
         .as_u64()
         .unwrap() as u32;
 
@@ -255,7 +255,8 @@ fn test_lseek_with_vfs() {
     let mem_fs = Arc::new(MemFS::new());
     vfs.mount("/data", mem_fs).unwrap();
 
-    vfs.write(&PathBuf::from("/data/test.txt"), b"0123456789").unwrap();
+    vfs.write(&PathBuf::from("/data/test.txt"), b"0123456789")
+        .unwrap();
 
     let executor = SyscallExecutor::new(sandbox).with_vfs(vfs);
 
@@ -270,8 +271,7 @@ fn test_lseek_with_vfs() {
     );
 
     assert!(result.is_success());
-    let fd = serde_json::from_slice::<serde_json::Value>(result.data().unwrap())
-        .unwrap()["fd"]
+    let fd = serde_json::from_slice::<serde_json::Value>(result.data().unwrap()).unwrap()["fd"]
         .as_u64()
         .unwrap() as u32;
 
@@ -286,8 +286,8 @@ fn test_lseek_with_vfs() {
     );
     assert!(lseek_result.is_success());
 
-    let offset = serde_json::from_slice::<serde_json::Value>(lseek_result.data().unwrap())
-        .unwrap()["offset"]
+    let offset = serde_json::from_slice::<serde_json::Value>(lseek_result.data().unwrap()).unwrap()
+        ["offset"]
         .as_u64()
         .unwrap();
     assert_eq!(offset, 5);
@@ -306,7 +306,8 @@ fn test_fcntl_with_vfs() {
     let mem_fs = Arc::new(MemFS::new());
     vfs.mount("/data", mem_fs).unwrap();
 
-    vfs.write(&PathBuf::from("/data/test.txt"), b"test").unwrap();
+    vfs.write(&PathBuf::from("/data/test.txt"), b"test")
+        .unwrap();
 
     let executor = SyscallExecutor::new(sandbox).with_vfs(vfs);
 
@@ -320,8 +321,7 @@ fn test_fcntl_with_vfs() {
         },
     );
 
-    let fd = serde_json::from_slice::<serde_json::Value>(result.data().unwrap())
-        .unwrap()["fd"]
+    let fd = serde_json::from_slice::<serde_json::Value>(result.data().unwrap()).unwrap()["fd"]
         .as_u64()
         .unwrap() as u32;
 

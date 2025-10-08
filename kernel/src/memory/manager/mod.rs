@@ -33,9 +33,12 @@
 mod allocator;
 mod free_list;
 mod gc;
+mod guard_ext;
 mod process_ops;
 mod storage;
 mod tracking;
+
+pub use guard_ext::MemoryGuardExt;
 
 use super::traits::{Allocator, GarbageCollector, MemoryInfo, ProcessMemoryCleanup};
 use super::types::MemoryBlock;
@@ -127,6 +130,11 @@ impl MemoryManager {
     /// Set collector after construction
     pub fn set_collector(&mut self, collector: Arc<Collector>) {
         self.collector = Some(collector);
+    }
+
+    /// Get collector reference
+    pub fn collector(&self) -> Option<Arc<Collector>> {
+        self.collector.clone()
     }
 }
 

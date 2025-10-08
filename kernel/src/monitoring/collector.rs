@@ -134,13 +134,18 @@ impl Collector {
     /// Update legacy metrics from event
     fn update_metrics(&self, event: &Event) {
         match &event.payload {
-            Payload::SyscallExit { name, duration_us, .. } => {
-                self.metrics
-                    .observe_histogram(&format!("syscall.{}", name), *duration_us as f64 / 1_000_000.0);
+            Payload::SyscallExit {
+                name, duration_us, ..
+            } => {
+                self.metrics.observe_histogram(
+                    &format!("syscall.{}", name),
+                    *duration_us as f64 / 1_000_000.0,
+                );
                 self.metrics.inc_counter("syscall.total", 1.0);
             }
             Payload::MemoryAllocated { size, .. } => {
-                self.metrics.inc_counter("memory.allocated_bytes", *size as f64);
+                self.metrics
+                    .inc_counter("memory.allocated_bytes", *size as f64);
             }
             Payload::MemoryFreed { size, .. } => {
                 self.metrics.inc_counter("memory.freed_bytes", *size as f64);
@@ -241,10 +246,8 @@ impl Collector {
 
         // Track per-type cleanup metrics
         for (type_name, count) in &by_type {
-            self.metrics.inc_counter(
-                &format!("resource.{}.freed", type_name),
-                *count as f64,
-            );
+            self.metrics
+                .inc_counter(&format!("resource.{}.freed", type_name), *count as f64);
         }
 
         // Track cleanup timing
@@ -255,12 +258,14 @@ impl Collector {
 
         // Track bytes freed
         if bytes_freed > 0 {
-            self.metrics.inc_counter("resource.bytes_freed", bytes_freed as f64);
+            self.metrics
+                .inc_counter("resource.bytes_freed", bytes_freed as f64);
         }
 
         // Track errors
         if !errors.is_empty() {
-            self.metrics.inc_counter("resource.cleanup_errors", errors.len() as f64);
+            self.metrics
+                .inc_counter("resource.cleanup_errors", errors.len() as f64);
 
             // Emit error events
             for _error in &errors {

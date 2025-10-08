@@ -67,4 +67,6 @@ pub use tracer::{
 pub use metrics::{MetricsCollector, MetricsSnapshot};
 
 // Bridge for integrating tracing with event streaming
-pub use bridge::{collector as global_collector, emit_from_span, emit_from_span_with_pid, init_collector};
+pub use bridge::{
+    collector as global_collector, emit_from_span, emit_from_span_with_pid, init_collector,
+};

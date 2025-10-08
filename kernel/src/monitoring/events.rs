@@ -55,55 +55,148 @@ pub struct Event {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Payload {
     // Process events
-    ProcessCreated { name: String, priority: u8 },
-    ProcessTerminated { exit_code: Option<i32> },
-    ProcessStateChanged { from: String, to: String },
+    ProcessCreated {
+        name: String,
+        priority: u8,
+    },
+    ProcessTerminated {
+        exit_code: Option<i32>,
+    },
+    ProcessStateChanged {
+        from: String,
+        to: String,
+    },
 
     // Syscall events
-    SyscallEnter { name: String, args_hash: u64 },
-    SyscallExit { name: String, duration_us: u64, result: SyscallResult },
-    SyscallSlow { name: String, duration_ms: u64, threshold_ms: u64 },
+    SyscallEnter {
+        name: String,
+        args_hash: u64,
+    },
+    SyscallExit {
+        name: String,
+        duration_us: u64,
+        result: SyscallResult,
+    },
+    SyscallSlow {
+        name: String,
+        duration_ms: u64,
+        threshold_ms: u64,
+    },
 
     // Memory events
-    MemoryAllocated { size: usize, region_id: u64 },
-    MemoryFreed { size: usize, region_id: u64 },
-    MemoryPressure { usage_pct: u8, available_mb: u64 },
+    MemoryAllocated {
+        size: usize,
+        region_id: u64,
+    },
+    MemoryFreed {
+        size: usize,
+        region_id: u64,
+    },
+    MemoryPressure {
+        usage_pct: u8,
+        available_mb: u64,
+    },
 
     // Scheduler events
-    ContextSwitch { from_pid: Pid, to_pid: Pid, reason: String },
-    ProcessPreempted { quantum_remaining_us: u64 },
-    SchedulerLatency { wake_to_run_us: u64 },
+    ContextSwitch {
+        from_pid: Pid,
+        to_pid: Pid,
+        reason: String,
+    },
+    ProcessPreempted {
+        quantum_remaining_us: u64,
+    },
+    SchedulerLatency {
+        wake_to_run_us: u64,
+    },
 
     // Network events
-    ConnectionEstablished { protocol: String, local_port: u16, remote_addr: String },
-    ConnectionClosed { bytes_sent: u64, bytes_received: u64 },
-    NetworkError { error: String, retry_count: u8 },
+    ConnectionEstablished {
+        protocol: String,
+        local_port: u16,
+        remote_addr: String,
+    },
+    ConnectionClosed {
+        bytes_sent: u64,
+        bytes_received: u64,
+    },
+    NetworkError {
+        error: String,
+        retry_count: u8,
+    },
 
     // IPC events
-    MessageSent { queue_id: u64, size: usize },
-    MessageReceived { queue_id: u64, size: usize, wait_time_us: u64 },
-    IpcTimeout { queue_id: u64, timeout_ms: u64 },
+    MessageSent {
+        queue_id: u64,
+        size: usize,
+    },
+    MessageReceived {
+        queue_id: u64,
+        size: usize,
+        wait_time_us: u64,
+    },
+    IpcTimeout {
+        queue_id: u64,
+        timeout_ms: u64,
+    },
 
     // Security events
-    PermissionDenied { operation: String, required: String },
-    RateLimitExceeded { limit: u32, current: u32 },
-    SecurityViolation { description: String },
+    PermissionDenied {
+        operation: String,
+        required: String,
+    },
+    RateLimitExceeded {
+        limit: u32,
+        current: u32,
+    },
+    SecurityViolation {
+        description: String,
+    },
 
     // Performance events
-    OperationSlow { operation: String, duration_ms: u64, p99_ms: u64 },
-    BudgetExceeded { operation: String, budget_ms: u64, actual_ms: u64 },
-    CpuThrottled { usage_pct: u8, duration_ms: u64 },
+    OperationSlow {
+        operation: String,
+        duration_ms: u64,
+        p99_ms: u64,
+    },
+    BudgetExceeded {
+        operation: String,
+        budget_ms: u64,
+        actual_ms: u64,
+    },
+    CpuThrottled {
+        usage_pct: u8,
+        duration_ms: u64,
+    },
 
     // Resource events
-    ResourceExhausted { resource: String, limit: u64 },
-    ResourceLeaked { resource: String, count: u64 },
-    ResourceReclaimed { resource: String, count: u64 },
+    ResourceExhausted {
+        resource: String,
+        limit: u64,
+    },
+    ResourceLeaked {
+        resource: String,
+        count: u64,
+    },
+    ResourceReclaimed {
+        resource: String,
+        count: u64,
+    },
 
     // Anomaly detection
-    AnomalyDetected { metric: String, value: f64, expected: f64, deviation: f64 },
+    AnomalyDetected {
+        metric: String,
+        value: f64,
+        expected: f64,
+        deviation: f64,
+    },
 
     // Custom metric update
-    MetricUpdate { name: String, value: f64, labels: Vec<(String, String)> },
+    MetricUpdate {
+        name: String,
+        value: f64,
+        labels: Vec<(String, String)>,
+    },
 }
 
 /// Syscall result for fast pattern matching

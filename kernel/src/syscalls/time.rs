@@ -10,7 +10,6 @@ use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource}
 use log::info;
 use std::time::Duration;
 
-
 use super::executor::{SyscallExecutor, SYSTEM_START};
 use super::types::SyscallResult;
 

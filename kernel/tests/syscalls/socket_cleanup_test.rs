@@ -63,7 +63,10 @@ fn test_manager_is_cloneable() {
     let manager2 = manager1.clone();
 
     // Both should have same initial state
-    assert_eq!(manager1.get_socket_count(100), manager2.get_socket_count(100));
+    assert_eq!(
+        manager1.get_socket_count(100),
+        manager2.get_socket_count(100)
+    );
 }
 
 #[test]

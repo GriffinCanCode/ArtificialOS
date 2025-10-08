@@ -3,7 +3,8 @@
  */
 
 use ai_os_kernel::monitoring::{
-    AggregationType, CausalityTracer, Category, CommonQueries, Event, Payload, Query, Severity, SyscallResult,
+    AggregationType, Category, CausalityTracer, CommonQueries, Event, Payload, Query, Severity,
+    SyscallResult,
 };
 use std::time::Duration;
 
@@ -241,17 +242,15 @@ fn test_causality_root_cause() {
 
 #[test]
 fn test_causality_timeline() {
-    let mut events = vec![
-        Event::new(
-            Severity::Info,
-            Category::Process,
-            Payload::ProcessCreated {
-                name: "app".to_string(),
-                priority: 5,
-            },
-        )
-        .with_causality(999),
-    ];
+    let mut events = vec![Event::new(
+        Severity::Info,
+        Category::Process,
+        Payload::ProcessCreated {
+            name: "app".to_string(),
+            priority: 5,
+        },
+    )
+    .with_causality(999)];
 
     std::thread::sleep(Duration::from_millis(10));
 

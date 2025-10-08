@@ -375,7 +375,10 @@ fn test_garbage_collection_on_process_cleanup() {
     let removed = mem_mgr.force_collect();
     // At least some blocks should have been deallocated
     // (automatic GC may have already collected most during the loop above)
-    assert!(removed <= 10, "Should not collect more blocks than were created");
+    assert!(
+        removed <= 10,
+        "Should not collect more blocks than were created"
+    );
 
     let stats = mem_mgr.stats();
     assert_eq!(stats.allocated_blocks, 0, "All blocks should be cleaned up");

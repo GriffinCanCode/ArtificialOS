@@ -11,7 +11,7 @@ pub mod types;
 
 // Re-export for convenience
 pub use gc::{GcStats, GcStrategy, GlobalGarbageCollector};
-pub use manager::MemoryManager;
+pub use manager::{MemoryGuardExt, MemoryManager};
 pub use simd::{
     // Text operations
     ascii_to_lower,

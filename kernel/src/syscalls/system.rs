@@ -10,7 +10,6 @@ use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource}
 
 use log::{error, info};
 
-
 use super::executor::SyscallExecutor;
 use super::types::{SyscallResult, SystemInfo};
 

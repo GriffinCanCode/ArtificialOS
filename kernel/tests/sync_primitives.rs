@@ -76,9 +76,7 @@ fn test_spinwait_low_latency() {
     let queue = Arc::new(WaitQueue::<u64>::new(config));
     let queue_clone = queue.clone();
 
-    let handle = thread::spawn(move || {
-        queue_clone.wait(99, Some(Duration::from_millis(500)))
-    });
+    let handle = thread::spawn(move || queue_clone.wait(99, Some(Duration::from_millis(500))));
 
     // Wake almost immediately (should catch in spin phase)
     thread::sleep(Duration::from_micros(10));

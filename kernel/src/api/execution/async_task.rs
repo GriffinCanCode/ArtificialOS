@@ -430,7 +430,9 @@ impl AsyncTaskManager {
         }
 
         // Mark as initiated
-        cleanup_handle.shutdown_initiated.store(true, Ordering::SeqCst);
+        cleanup_handle
+            .shutdown_initiated
+            .store(true, Ordering::SeqCst);
 
         // Send shutdown signal
         if let Some(tx) = cleanup_handle.shutdown_tx.take() {

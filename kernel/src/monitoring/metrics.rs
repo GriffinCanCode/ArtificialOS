@@ -135,9 +135,8 @@ impl MetricsCollector {
             .entry(name.to_string())
             .and_modify(|hist| hist.observe(value))
             .or_insert_with(|| {
-                let mut hist = Histogram::new(vec![
-                    0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0,
-                ]);
+                let mut hist =
+                    Histogram::new(vec![0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0]);
                 hist.observe(value);
                 hist
             });

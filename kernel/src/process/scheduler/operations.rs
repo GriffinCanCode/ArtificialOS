@@ -186,7 +186,9 @@ impl Scheduler {
                         Event::new(
                             Severity::Debug,
                             Category::Scheduler,
-                            Payload::ProcessPreempted { quantum_remaining_us },
+                            Payload::ProcessPreempted {
+                                quantum_remaining_us,
+                            },
                         )
                         .with_pid(preempted_pid),
                     );
@@ -225,17 +227,15 @@ impl Scheduler {
             // Emit context switch event if there was a previous process
             if let Some(ref collector) = self.collector {
                 if let Some(prev_entry) = current.as_ref() {
-                    collector.emit(
-                        Event::new(
-                            Severity::Debug,
-                            Category::Scheduler,
-                            Payload::ContextSwitch {
-                                from_pid: prev_entry.pid,
-                                to_pid: pid,
-                                reason: "quantum_expired".to_string(),
-                            },
-                        )
-                    );
+                    collector.emit(Event::new(
+                        Severity::Debug,
+                        Category::Scheduler,
+                        Payload::ContextSwitch {
+                            from_pid: prev_entry.pid,
+                            to_pid: pid,
+                            reason: "quantum_expired".to_string(),
+                        },
+                    ));
                 }
             }
 

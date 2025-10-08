@@ -67,16 +67,30 @@ pub use memory::{
 
 // Monitoring - Dual-layer observability system
 pub use monitoring::{
-    // Distributed tracing (Layer 1)
-    init_tracing, span_syscall, span_operation, span_grpc,
-    // Metrics (for gRPC endpoints)
-    MetricsCollector, MetricsSnapshot,
-    // Event streaming (Layer 2 - new primary API)
-    Collector, Event, EventFilter, Category, Severity, Payload,
-    Query, QueryResult, CommonQueries,
-    Anomaly, Detector, Sampler,
+    global_collector,
     // Bridge for integration
-    init_collector, global_collector,
+    init_collector,
+    // Distributed tracing (Layer 1)
+    init_tracing,
+    span_grpc,
+    span_operation,
+    span_syscall,
+    Anomaly,
+    Category,
+    // Event streaming (Layer 2 - new primary API)
+    Collector,
+    CommonQueries,
+    Detector,
+    Event,
+    EventFilter,
+    // Metrics (for gRPC endpoints)
+    MetricsCollector,
+    MetricsSnapshot,
+    Payload,
+    Query,
+    QueryResult,
+    Sampler,
+    Severity,
 };
 
 // Process

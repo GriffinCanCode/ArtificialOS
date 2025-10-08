@@ -218,7 +218,10 @@ impl Query {
             let key = match field {
                 "category" => format!("{:?}", event.category),
                 "severity" => format!("{:?}", event.severity),
-                "pid" => event.pid.map(|p| p.to_string()).unwrap_or_else(|| "none".to_string()),
+                "pid" => event
+                    .pid
+                    .map(|p| p.to_string())
+                    .unwrap_or_else(|| "none".to_string()),
                 _ => "unknown".to_string(),
             };
 
@@ -370,9 +373,7 @@ mod tests {
     fn test_query_basic() {
         let events = create_test_events();
 
-        let result = Query::new()
-            .severity(Severity::Warn)
-            .execute(&events);
+        let result = Query::new().severity(Severity::Warn).execute(&events);
 
         assert_eq!(result.count, 2); // Warn and Error
     }
@@ -381,9 +382,7 @@ mod tests {
     fn test_query_with_category() {
         let events = create_test_events();
 
-        let result = Query::new()
-            .category(Category::Memory)
-            .execute(&events);
+        let result = Query::new().category(Category::Memory).execute(&events);
 
         assert_eq!(result.count, 1);
     }
@@ -392,9 +391,7 @@ mod tests {
     fn test_query_with_limit() {
         let events = create_test_events();
 
-        let result = Query::new()
-            .limit(1)
-            .execute(&events);
+        let result = Query::new().limit(1).execute(&events);
 
         assert_eq!(result.count, 1);
     }

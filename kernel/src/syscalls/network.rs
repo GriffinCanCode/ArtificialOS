@@ -20,49 +20,61 @@ use std::sync::Arc;
 use super::executor::SyscallExecutor;
 use super::types::SyscallResult;
 
-/// Socket type for efficient single-lookup cleanup
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum SocketType {
-    TcpListener,
-    TcpStream,
-    UdpSocket,
+/// Unified socket abstraction - eliminates need for separate collections per type
+///
+/// This enum wraps all socket types into a single type, enabling:
+/// - Single DashMap instead of 3 separate collections
+/// - No need for separate type tagging map
+/// - Single lookup during cleanup (enum variant IS the type)
+#[derive(Debug)]
+pub enum Socket {
+    TcpListener(TcpListener),
+    TcpStream(TcpStream),
+    UdpSocket(UdpSocket),
+}
+
+impl Socket {
+    /// Get socket type name for logging
+    fn type_name(&self) -> &'static str {
+        match self {
+            Socket::TcpListener(_) => "TcpListener",
+            Socket::TcpStream(_) => "TcpStream",
+            Socket::UdpSocket(_) => "UdpSocket",
+        }
+    }
 }
 
 /// Socket manager for tracking open sockets
 ///
+/// # Design Philosophy
+/// - **Unified Storage**: Single DashMap for all socket types (via enum wrapper)
+/// - **Cache-line aligned**: Prevents false sharing of atomic FD counter
+/// - **HashSet tracking**: O(1) per-process socket tracking and removal
+/// - **Lock-free FD recycling**: SegQueue prevents FD exhaustion
+/// - **Simplified architecture**: 3 data structures vs. previous 6 (50% reduction)
+///
 /// # Performance
-/// - Cache-line aligned to prevent false sharing of atomic socket FD counter
-/// - HashSet-based per-process tracking for O(1) untrack operations
-/// - Lock-free FD recycling via SegQueue to prevent ID exhaustion
-/// - Socket type tagging for single-lookup cleanup (3x faster)
-/// - Atomic count tracking for O(1) limit checks
+/// - Single lookup for cleanup (no type map needed)
+/// - O(1) count checks via HashSet::len()
+/// - Reduced cache pressure from fewer data structures
 #[repr(C, align(64))]
 pub struct SocketManager {
     next_fd: Arc<AtomicU32>,
-    tcp_listeners: Arc<DashMap<u32, TcpListener, RandomState>>,
-    tcp_streams: Arc<DashMap<u32, TcpStream, RandomState>>,
-    udp_sockets: Arc<DashMap<u32, UdpSocket, RandomState>>,
-    /// Socket type tags for efficient cleanup (avoids triple-lookup)
-    socket_types: Arc<DashMap<u32, SocketType, RandomState>>,
-    /// Track which sockets belong to which process (HashSet for O(1) untrack)
+    /// Unified socket storage - all types in one collection
+    sockets: Arc<DashMap<u32, Socket, RandomState>>,
+    /// Track which sockets belong to which process (HashSet for O(1) operations)
     process_sockets: Arc<DashMap<Pid, HashSet<u32>, RandomState>>,
-    /// Per-process socket counts for O(1) limit checks (lock-free via alter())
-    process_socket_counts: Arc<DashMap<Pid, u32, RandomState>>,
     /// Lock-free queue for FD recycling (prevents FD exhaustion)
     free_fds: Arc<SegQueue<u32>>,
 }
 
 impl SocketManager {
     pub fn new() -> Self {
-        info!("Socket manager initialized with lock-free FD recycling and O(1) tracking");
+        info!("Socket manager initialized with unified storage and lock-free FD recycling");
         Self {
             next_fd: Arc::new(AtomicU32::new(1000)), // Start socket FDs at 1000
-            tcp_listeners: Arc::new(DashMap::with_hasher(RandomState::new())),
-            tcp_streams: Arc::new(DashMap::with_hasher(RandomState::new())),
-            udp_sockets: Arc::new(DashMap::with_hasher(RandomState::new())),
-            socket_types: Arc::new(DashMap::with_hasher(RandomState::new())),
+            sockets: Arc::new(DashMap::with_hasher(RandomState::new())),
             process_sockets: Arc::new(DashMap::with_hasher(RandomState::new())),
-            process_socket_counts: Arc::new(DashMap::with_hasher(RandomState::new())),
             free_fds: Arc::new(SegQueue::new()),
         }
     }
@@ -76,84 +88,88 @@ impl SocketManager {
         }
     }
 
-    /// Get current socket count for a process (O(1) lookup)
+    /// Get current socket count for a process (O(1) via HashSet::len)
     pub fn get_socket_count(&self, pid: Pid) -> u32 {
-        self.process_socket_counts
+        self.process_sockets
             .get(&pid)
-            .map(|r| *r.value())
+            .map(|sockets| sockets.len() as u32)
             .unwrap_or(0)
     }
 
-    /// Track that a process owns a socket (atomic increment)
-    fn track_socket(&self, pid: Pid, sockfd: u32, socket_type: SocketType) {
-        self.socket_types.insert(sockfd, socket_type);
-
+    /// Track that a process owns a socket
+    fn track_socket(&self, pid: Pid, sockfd: u32) {
         self.process_sockets
             .entry(pid)
             .or_insert_with(HashSet::new)
             .insert(sockfd);
-
-        // Atomic increment using entry() for lock-free counting
-        *self.process_socket_counts.entry(pid).or_insert(0) += 1;
     }
 
-    /// Untrack a socket from a process (atomic decrement, O(1) removal)
+    /// Untrack a socket from a process (O(1) removal)
     fn untrack_socket(&self, pid: Pid, sockfd: u32) {
-        self.socket_types.remove(&sockfd);
-
         if let Some(mut sockets) = self.process_sockets.get_mut(&pid) {
             sockets.remove(&sockfd);
-        }
-
-        // Atomic decrement using get_mut() for lock-free counting
-        if let Some(mut count) = self.process_socket_counts.get_mut(&pid) {
-            *count = count.saturating_sub(1);
         }
     }
 
     /// Cleanup all sockets for a terminated process
+    ///
+    /// # Design
+    /// Single-pass cleanup with unified storage:
+    /// 1. Remove process tracking (one atomic operation)
+    /// 2. Close each socket (single lookup per socket)
+    /// 3. Recycle FDs for reuse
     pub fn cleanup_process_sockets(&self, pid: Pid) -> usize {
+        // Remove all socket FDs owned by this process (atomic operation)
         let sockets_to_close = if let Some((_, sockets)) = self.process_sockets.remove(&pid) {
-            sockets.into_iter().collect::<Vec<_>>()
+            sockets
         } else {
             return 0;
         };
 
         let mut closed_count = 0;
         for sockfd in sockets_to_close {
-            // Single lookup using type tag (3x faster than trying all collections)
-            if let Some((_, socket_type)) = self.socket_types.remove(&sockfd) {
-                let removed = match socket_type {
-                    SocketType::TcpListener => self.tcp_listeners.remove(&sockfd).is_some(),
-                    SocketType::TcpStream => self.tcp_streams.remove(&sockfd).is_some(),
-                    SocketType::UdpSocket => self.udp_sockets.remove(&sockfd).is_some(),
-                };
+            // Single lookup in unified collection (no type map needed)
+            if let Some((_, socket)) = self.sockets.remove(&sockfd) {
+                closed_count += 1;
+                // Socket is dropped here, closing OS resource automatically
+                let type_name = socket.type_name();
+                log::debug!("Closed {} socket FD {} for PID {}", type_name, sockfd, pid);
 
-                if removed {
-                    closed_count += 1;
-                    // Recycle FD for reuse (lock-free)
-                    self.free_fds.push(sockfd);
-                }
+                // Recycle FD for reuse (lock-free)
+                self.free_fds.push(sockfd);
             }
         }
-
-        // Remove the count entry
-        self.process_socket_counts.remove(&pid);
 
         closed_count
     }
 
     /// Check if process has any open sockets (O(1) check)
     pub fn has_process_sockets(&self, pid: Pid) -> bool {
-        self.get_socket_count(pid) > 0
+        self.process_sockets
+            .get(&pid)
+            .map(|sockets| !sockets.is_empty())
+            .unwrap_or(false)
     }
 
     /// Get socket statistics
     pub fn stats(&self) -> SocketStats {
+        // Count by iterating and matching variants (happens rarely, during stats collection)
+        let mut tcp_listeners = 0;
+        let mut tcp_streams = 0;
+        let mut udp_sockets = 0;
+
+        for entry in self.sockets.iter() {
+            match entry.value() {
+                Socket::TcpListener(_) => tcp_listeners += 1,
+                Socket::TcpStream(_) => tcp_streams += 1,
+                Socket::UdpSocket(_) => udp_sockets += 1,
+            }
+        }
+
         SocketStats {
-            total_tcp_listeners: self.tcp_listeners.len(),
-            total_tcp_streams: self.tcp_streams.len(),
-            total_udp_sockets: self.udp_sockets.len(),
+            total_tcp_listeners: tcp_listeners,
+            total_tcp_streams: tcp_streams,
+            total_udp_sockets: udp_sockets,
             recycled_fds_available: self.free_fds.len(),
         }
     }
@@ -179,12 +195,8 @@ impl Clone for SocketManager {
     fn clone(&self) -> Self {
         Self {
             next_fd: Arc::clone(&self.next_fd),
-            tcp_listeners: Arc::clone(&self.tcp_listeners),
-            tcp_streams: Arc::clone(&self.tcp_streams),
-            udp_sockets: Arc::clone(&self.udp_sockets),
-            socket_types: Arc::clone(&self.socket_types),
+            sockets: Arc::clone(&self.sockets),
             process_sockets: Arc::clone(&self.process_sockets),
-            process_socket_counts: Arc::clone(&self.process_socket_counts),
             free_fds: Arc::clone(&self.free_fds),
         }
     }
@@ -232,18 +244,11 @@ impl SyscallExecutor {
         // AF_INET = 2, SOCK_STREAM = 1, SOCK_DGRAM = 2
         let sockfd = self.socket_manager.allocate_fd();
 
-        // Determine socket type based on type parameter
-        let sock_type = match socket_type {
-            1 => SocketType::TcpStream, // SOCK_STREAM
-            2 => SocketType::UdpSocket, // SOCK_DGRAM
-            _ => SocketType::TcpStream, // Default to TCP
-        };
-
-        // Track socket for this process with type tag
-        self.socket_manager.track_socket(pid, sockfd, sock_type);
+        // Track socket for this process (socket will be created on bind/connect)
+        self.socket_manager.track_socket(pid, sockfd);
 
         info!(
-            "PID {} created socket FD {} (domain={}, type={}, protocol={})",
+            "PID {} allocated socket FD {} (domain={}, type={}, protocol={})",
             pid, sockfd, domain, socket_type, protocol
         );
 
@@ -278,9 +283,9 @@ impl SyscallExecutor {
         // Try to bind a TCP listener
         match TcpListener::bind(address) {
             Ok(listener) => {
-                self.socket_manager.tcp_listeners.insert(sockfd, listener);
-                // Update socket type to listener
-                self.socket_manager.socket_types.insert(sockfd, SocketType::TcpListener);
+                self.socket_manager
+                    .sockets
+                    .insert(sockfd, Socket::TcpListener(listener));
                 info!("PID {} bound TCP socket {} to {}", pid, sockfd, address);
                 SyscallResult::success()
             }
@@ -288,9 +293,9 @@ impl SyscallExecutor {
                 // Try UDP if TCP failed
                 match UdpSocket::bind(address) {
                     Ok(socket) => {
-                        self.socket_manager.udp_sockets.insert(sockfd, socket);
-                        // Update socket type to UDP
-                        self.socket_manager.socket_types.insert(sockfd, SocketType::UdpSocket);
+                        self.socket_manager
+                            .sockets
+                            .insert(sockfd, Socket::UdpSocket(socket));
                         info!("PID {} bound UDP socket {} to {}", pid, sockfd, address);
                         SyscallResult::success()
                     }
@@ -322,15 +327,20 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        // Verify socket exists as a TCP listener
-        if self.socket_manager.tcp_listeners.contains_key(&sockfd) {
-            info!(
-                "PID {} listening on socket {} with backlog {}",
-                pid, sockfd, backlog
-            );
-            SyscallResult::success()
+        // Verify socket exists and is a TCP listener
+        if let Some(socket) = self.socket_manager.sockets.get(&sockfd) {
+            match socket.value() {
+                Socket::TcpListener(_) => {
+                    info!(
+                        "PID {} listening on socket {} with backlog {}",
+                        pid, sockfd, backlog
+                    );
+                    SyscallResult::success()
+                }
+                _ => SyscallResult::error("Socket not a TCP listener"),
+            }
         } else {
-            SyscallResult::error("Socket not bound or not a TCP socket")
+            SyscallResult::error("Socket not found or not bound")
         }
     }
 
@@ -351,35 +361,41 @@ impl SyscallExecutor {
         }
 
         // Get the listener and try to accept (non-blocking)
-        if let Some(listener) = self.socket_manager.tcp_listeners.get(&sockfd) {
-            // Set non-blocking mode for this operation
-            if let Ok((stream, addr)) = listener.accept() {
-                drop(listener);
+        if let Some(socket) = self.socket_manager.sockets.get(&sockfd) {
+            match socket.value() {
+                Socket::TcpListener(listener) => {
+                    if let Ok((stream, addr)) = listener.accept() {
+                        drop(socket); // Release lock on listener
 
-                // Allocate new FD for the accepted connection becuase why wouldn't we
-                let client_fd = self.socket_manager.allocate_fd();
-                self.socket_manager.tcp_streams.insert(client_fd, stream);
+                        // Allocate new FD for the accepted connection
+                        let client_fd = self.socket_manager.allocate_fd();
+                        self.socket_manager
+                            .sockets
+                            .insert(client_fd, Socket::TcpStream(stream));
 
-                // Track the new client socket for this process with type tag
-                self.socket_manager.track_socket(pid, client_fd, SocketType::TcpStream);
+                        // Track the new client socket for this process
+                        self.socket_manager.track_socket(pid, client_fd);
 
-                info!(
-                    "PID {} accepted connection on socket {}, client FD {} from {}",
-                    pid, sockfd, client_fd, addr
-                );
+                        info!(
+                            "PID {} accepted connection on socket {}, client FD {} from {}",
+                            pid, sockfd, client_fd, addr
+                        );
 
-                match json::to_vec(&serde_json::json!({
-                    "client_fd": client_fd,
-                    "address": addr.to_string()
-                })) {
-                    Ok(data) => SyscallResult::success_with_data(data),
-                    Err(e) => {
-                        warn!("Failed to serialize accept result: {}", e);
-                        SyscallResult::error("Internal serialization error")
+                        match json::to_vec(&serde_json::json!({
+                            "client_fd": client_fd,
+                            "address": addr.to_string()
+                        })) {
+                            Ok(data) => SyscallResult::success_with_data(data),
+                            Err(e) => {
+                                warn!("Failed to serialize accept result: {}", e);
+                                SyscallResult::error("Internal serialization error")
+                            }
+                        }
+                    } else {
+                        SyscallResult::error("No pending connections")
                     }
                 }
-            } else {
-                SyscallResult::error("No pending connections")
+                _ => SyscallResult::error("Socket is not a TCP listener"),
             }
         } else {
             SyscallResult::error("Invalid socket or not listening")
@@ -402,9 +418,9 @@ impl SyscallExecutor {
         // Try to connect to the address
         match TcpStream::connect(address) {
             Ok(stream) => {
-                self.socket_manager.tcp_streams.insert(sockfd, stream);
-                // Update socket type to stream (was allocated generically)
-                self.socket_manager.socket_types.insert(sockfd, SocketType::TcpStream);
+                self.socket_manager
+                    .sockets
+                    .insert(sockfd, Socket::TcpStream(stream));
                 info!("PID {} connected socket {} to {}", pid, sockfd, address);
                 SyscallResult::success()
             }
@@ -422,27 +438,30 @@ impl SyscallExecutor {
         use std::io::Write;
 
         // Try to send on TCP stream
-        if let Some(mut stream) = self.socket_manager.tcp_streams.get_mut(&sockfd) {
-            match stream.write(data) {
-                Ok(bytes_sent) => {
-                    info!(
-                        "PID {} sent {} bytes on TCP socket {}",
-                        pid, bytes_sent, sockfd
-                    );
-                    match json::to_vec(&serde_json::json!({
-                        "bytes_sent": bytes_sent
-                    })) {
-                        Ok(result) => SyscallResult::success_with_data(result),
-                        Err(e) => {
-                            warn!("Failed to serialize send result: {}", e);
-                            SyscallResult::error("Internal serialization error")
+        if let Some(mut socket) = self.socket_manager.sockets.get_mut(&sockfd) {
+            match socket.value_mut() {
+                Socket::TcpStream(stream) => match stream.write(data) {
+                    Ok(bytes_sent) => {
+                        info!(
+                            "PID {} sent {} bytes on TCP socket {}",
+                            pid, bytes_sent, sockfd
+                        );
+                        match json::to_vec(&serde_json::json!({
+                            "bytes_sent": bytes_sent
+                        })) {
+                            Ok(result) => SyscallResult::success_with_data(result),
+                            Err(e) => {
+                                warn!("Failed to serialize send result: {}", e);
+                                SyscallResult::error("Internal serialization error")
+                            }
                         }
                     }
-                }
-                Err(e) => {
-                    warn!("Send failed on socket {}: {}", sockfd, e);
-                    SyscallResult::error(format!("Send failed: {}", e))
-                }
+                    Err(e) => {
+                        warn!("Send failed on socket {}: {}", sockfd, e);
+                        SyscallResult::error(format!("Send failed: {}", e))
+                    }
+                },
+                _ => SyscallResult::error("Socket is not a TCP stream"),
             }
         } else {
             SyscallResult::error("Invalid socket or not connected")
@@ -456,21 +475,26 @@ impl SyscallExecutor {
         use std::io::Read;
 
         // Try to receive from TCP stream
-        if let Some(mut stream) = self.socket_manager.tcp_streams.get_mut(&sockfd) {
-            let mut buffer = vec![0u8; size];
-            match stream.read(&mut buffer) {
-                Ok(bytes_read) => {
-                    buffer.truncate(bytes_read);
-                    info!(
-                        "PID {} received {} bytes on TCP socket {}",
-                        pid, bytes_read, sockfd
-                    );
-                    SyscallResult::success_with_data(buffer)
+        if let Some(mut socket) = self.socket_manager.sockets.get_mut(&sockfd) {
+            match socket.value_mut() {
+                Socket::TcpStream(stream) => {
+                    let mut buffer = vec![0u8; size];
+                    match stream.read(&mut buffer) {
+                        Ok(bytes_read) => {
+                            buffer.truncate(bytes_read);
+                            info!(
+                                "PID {} received {} bytes on TCP socket {}",
+                                pid, bytes_read, sockfd
+                            );
+                            SyscallResult::success_with_data(buffer)
+                        }
+                        Err(e) => {
+                            warn!("Recv failed on socket {}: {}", sockfd, e);
+                            SyscallResult::error(format!("Recv failed: {}", e))
+                        }
+                    }
                 }
-                Err(e) => {
-                    warn!("Recv failed on socket {}: {}", sockfd, e);
-                    SyscallResult::error(format!("Recv failed: {}", e))
-                }
+                _ => SyscallResult::error("Socket is not a TCP stream"),
             }
         } else {
             SyscallResult::error("Invalid socket or not connected")
@@ -498,63 +522,77 @@ impl SyscallExecutor {
         }
 
         // Try to send via UDP socket
-        if let Some(socket) = self.socket_manager.udp_sockets.get(&sockfd) {
-            match socket.send_to(data, address) {
-                Ok(bytes_sent) => {
-                    info!(
-                        "PID {} sent {} bytes to {} on UDP socket {}",
-                        pid, bytes_sent, address, sockfd
-                    );
-                    match json::to_vec(&serde_json::json!({
-                        "bytes_sent": bytes_sent
-                    })) {
-                        Ok(result) => SyscallResult::success_with_data(result),
-                        Err(e) => {
-                            warn!("Failed to serialize sendto result: {}", e);
-                            SyscallResult::error("Internal serialization error")
+        if let Some(socket) = self.socket_manager.sockets.get(&sockfd) {
+            match socket.value() {
+                Socket::UdpSocket(udp) => match udp.send_to(data, address) {
+                    Ok(bytes_sent) => {
+                        info!(
+                            "PID {} sent {} bytes to {} on UDP socket {}",
+                            pid, bytes_sent, address, sockfd
+                        );
+                        match json::to_vec(&serde_json::json!({
+                            "bytes_sent": bytes_sent
+                        })) {
+                            Ok(result) => SyscallResult::success_with_data(result),
+                            Err(e) => {
+                                warn!("Failed to serialize sendto result: {}", e);
+                                SyscallResult::error("Internal serialization error")
+                            }
                         }
                     }
-                }
-                Err(e) => {
-                    warn!("SendTo failed on socket {}: {}", sockfd, e);
-                    SyscallResult::error(format!("SendTo failed: {}", e))
-                }
+                    Err(e) => {
+                        warn!("SendTo failed on socket {}: {}", sockfd, e);
+                        SyscallResult::error(format!("SendTo failed: {}", e))
+                    }
+                },
+                _ => SyscallResult::error("Socket is not a UDP socket"),
             }
         } else {
             SyscallResult::error("Invalid UDP socket")
         }
     }
 
-    pub(super) fn recvfrom(&self, pid: Pid, sockfd: u32, size: usize, _flags: u32) -> SyscallResult {
+    pub(super) fn recvfrom(
+        &self,
+        pid: Pid,
+        sockfd: u32,
+        size: usize,
+        _flags: u32,
+    ) -> SyscallResult {
         // Receive on UDP socket - permissions should be checked at bind time
         // Could add additional check here if needed
 
         // Try to receive from UDP socket
-        if let Some(socket) = self.socket_manager.udp_sockets.get(&sockfd) {
-            let mut buffer = vec![0u8; size];
-            match socket.recv_from(&mut buffer) {
-                Ok((bytes_read, addr)) => {
-                    buffer.truncate(bytes_read);
-                    info!(
-                        "PID {} received {} bytes from {} on UDP socket {}",
-                        pid, bytes_read, addr, sockfd
-                    );
+        if let Some(socket) = self.socket_manager.sockets.get(&sockfd) {
+            match socket.value() {
+                Socket::UdpSocket(udp) => {
+                    let mut buffer = vec![0u8; size];
+                    match udp.recv_from(&mut buffer) {
+                        Ok((bytes_read, addr)) => {
+                            buffer.truncate(bytes_read);
+                            info!(
+                                "PID {} received {} bytes from {} on UDP socket {}",
+                                pid, bytes_read, addr, sockfd
+                            );
 
-                    match json::to_vec(&serde_json::json!({
-                        "data": buffer,
-                        "address": addr.to_string()
-                    })) {
-                        Ok(result) => SyscallResult::success_with_data(result),
+                            match json::to_vec(&serde_json::json!({
+                                "data": buffer,
+                                "address": addr.to_string()
+                            })) {
+                                Ok(result) => SyscallResult::success_with_data(result),
+                                Err(e) => {
+                                    warn!("Failed to serialize recvfrom result: {}", e);
+                                    SyscallResult::error("Internal serialization error")
+                                }
+                            }
+                        }
                         Err(e) => {
-                            warn!("Failed to serialize recvfrom result: {}", e);
-                            SyscallResult::error("Internal serialization error")
+                            warn!("RecvFrom failed on socket {}: {}", sockfd, e);
+                            SyscallResult::error(format!("RecvFrom failed: {}", e))
                         }
                     }
                 }
-                Err(e) => {
-                    warn!("RecvFrom failed on socket {}: {}", sockfd, e);
-                    SyscallResult::error(format!("RecvFrom failed: {}", e))
-                }
+                _ => SyscallResult::error("Socket is not a UDP socket"),
             }
         } else {
             SyscallResult::error("Invalid UDP socket")
@@ -562,27 +600,18 @@ impl SyscallExecutor {
     }
 
     pub(super) fn close_socket(&self, pid: Pid, sockfd: u32) -> SyscallResult {
-        // Close doesn't require permission check - closing is always allowed cuz I said so
+        // Close doesn't require permission check - closing is always allowed
 
-        // Single lookup using type tag (3x faster)
-        if let Some((_, socket_type)) = self.socket_manager.socket_types.remove(&sockfd) {
-            let removed = match socket_type {
-                SocketType::TcpListener => self.socket_manager.tcp_listeners.remove(&sockfd).is_some(),
-                SocketType::TcpStream => self.socket_manager.tcp_streams.remove(&sockfd).is_some(),
-                SocketType::UdpSocket => self.socket_manager.udp_sockets.remove(&sockfd).is_some(),
-            };
+        // Single lookup in unified collection
+        if let Some((_, socket)) = self.socket_manager.sockets.remove(&sockfd) {
+            // Untrack socket from process (O(1) with HashSet)
+            self.socket_manager.untrack_socket(pid, sockfd);
+            // Recycle FD for reuse (lock-free)
+            self.socket_manager.free_fds.push(sockfd);
 
-            if removed {
-                // Untrack socket from process (O(1) with HashSet)
-                self.socket_manager.untrack_socket(pid, sockfd);
-                // Recycle FD for reuse (lock-free)
-                self.socket_manager.free_fds.push(sockfd);
-                info!("PID {} closed socket {} (recycled FD)", pid, sockfd);
-                SyscallResult::success()
-            } else {
-                warn!("Socket {} type found but socket not in collection", sockfd);
-                SyscallResult::error("Socket inconsistency")
-            }
+            let type_name = socket.type_name();
+            info!("PID {} closed {} socket {} (recycled FD)", pid, type_name, sockfd);
+            SyscallResult::success()
         } else {
             warn!(
                 "PID {} attempted to close non-existent socket {}",

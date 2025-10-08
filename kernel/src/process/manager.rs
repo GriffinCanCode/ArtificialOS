@@ -110,7 +110,7 @@ impl ProcessManager {
         let mut process = ProcessInfo {
             pid,
             name: name.clone(),
-            state: ProcessState::Creating,  // Start in Creating state
+            state: ProcessState::Creating, // Start in Creating state
             priority,
             os_pid: None,
         };
@@ -167,7 +167,8 @@ impl ProcessManager {
             if let Err(e) = lifecycle.initialize_process(pid, &init_config) {
                 log::error!(
                     "Failed to initialize process {} resources: {}. Process may be unstable.",
-                    pid, e
+                    pid,
+                    e
                 );
                 // Continue anyway - process will initialize resources lazily (old behavior)
             }
@@ -180,8 +181,14 @@ impl ProcessManager {
 
         info!(
             "Created process: {} (PID: {}, OS PID: {:?}, lifecycle: {})",
-            name, pid, os_pid,
-            if self.lifecycle.is_some() { "initialized" } else { "lazy" }
+            name,
+            pid,
+            os_pid,
+            if self.lifecycle.is_some() {
+                "initialized"
+            } else {
+                "lazy"
+            }
         );
 
         // Emit observability event

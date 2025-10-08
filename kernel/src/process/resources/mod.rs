@@ -115,10 +115,9 @@ impl ResourceOrchestrator {
 
                 // Track per-type counts
                 let resource_type = resource.resource_type();
-                stats.by_type.insert(
-                    resource_type.to_string(),
-                    stats.resources_freed,
-                );
+                stats
+                    .by_type
+                    .insert(resource_type.to_string(), stats.resources_freed);
 
                 // Save values before merging
                 let resources_freed = stats.resources_freed;
@@ -162,11 +161,8 @@ impl ResourceOrchestrator {
     ///
     /// Warns if critical resource types are missing to detect potential leaks
     pub fn validate_coverage(&self, expected_types: &[&str]) {
-        let registered: std::collections::HashSet<_> = self
-            .resources
-            .iter()
-            .map(|r| r.resource_type())
-            .collect();
+        let registered: std::collections::HashSet<_> =
+            self.resources.iter().map(|r| r.resource_type()).collect();
 
         for expected in expected_types {
             if !registered.contains(expected) {
@@ -180,10 +176,7 @@ impl ResourceOrchestrator {
 
     /// Get list of registered resource types
     pub fn registered_types(&self) -> Vec<&'static str> {
-        self.resources
-            .iter()
-            .map(|r| r.resource_type())
-            .collect()
+        self.resources.iter().map(|r| r.resource_type()).collect()
     }
 }
 

@@ -138,7 +138,10 @@ impl IoUringExecutor {
                 } => executor.recvfrom(pid, sockfd, size, flags),
 
                 // IPC operations (using queues)
-                SyscallOpType::IpcSend { target_pid: _, data: _ } => {
+                SyscallOpType::IpcSend {
+                    target_pid: _,
+                    data: _,
+                } => {
                     // IPC via SendQueue - would need a queue_id mapping
                     // For now, return error indicating need for explicit queue usage
                     crate::syscalls::types::SyscallResult::Error {

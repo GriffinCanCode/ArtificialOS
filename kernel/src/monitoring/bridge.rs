@@ -34,12 +34,7 @@ pub fn emit_from_span(severity: Severity, category: Category, payload: Payload) 
 
 /// Emit event with PID from tracing span context
 #[inline]
-pub fn emit_from_span_with_pid(
-    severity: Severity,
-    category: Category,
-    payload: Payload,
-    pid: Pid,
-) {
+pub fn emit_from_span_with_pid(severity: Severity, category: Category, payload: Payload, pid: Pid) {
     if let Some(collector) = collector() {
         collector.emit(Event::new(severity, category, payload).with_pid(pid));
     }

@@ -96,7 +96,7 @@ impl ProcessInfo {
         Self {
             pid,
             name,
-            state: ProcessState::Creating,  // Start in Creating state
+            state: ProcessState::Creating, // Start in Creating state
             priority,
             os_pid: None,
         }
@@ -140,7 +140,10 @@ impl ProcessInfo {
     #[inline(always)]
     #[must_use]
     pub const fn is_initializing(&self) -> bool {
-        matches!(self.state, ProcessState::Creating | ProcessState::Initializing)
+        matches!(
+            self.state,
+            ProcessState::Creating | ProcessState::Initializing
+        )
     }
 
     /// Check if process can be scheduled
@@ -150,7 +153,10 @@ impl ProcessInfo {
     #[inline(always)]
     #[must_use]
     pub const fn can_be_scheduled(&self) -> bool {
-        matches!(self.state, ProcessState::Ready | ProcessState::Running | ProcessState::Waiting)
+        matches!(
+            self.state,
+            ProcessState::Ready | ProcessState::Running | ProcessState::Waiting
+        )
     }
 }
 

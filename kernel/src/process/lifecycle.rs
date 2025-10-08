@@ -38,10 +38,7 @@ use thiserror::Error;
 #[derive(Error, Debug, Clone)]
 pub enum LifecycleError {
     #[error("Initialization failed for {subsystem}: {reason}")]
-    InitializationFailed {
-        subsystem: String,
-        reason: String,
-    },
+    InitializationFailed { subsystem: String, reason: String },
 
     #[error("Process {0} already initialized")]
     AlreadyInitialized(Pid),
@@ -87,7 +84,7 @@ impl ProcessInitConfig {
             enable_zerocopy: false,
             zerocopy_sq_size: 0,
             zerocopy_cq_size: 0,
-            enable_signals: true,  // Signals are lightweight, always enable
+            enable_signals: true, // Signals are lightweight, always enable
             enable_stdio: false,
         }
     }
@@ -172,14 +169,12 @@ impl LifecycleRegistry {
         // Hook 1: Zero-copy ring (if enabled and available)
         if config.enable_zerocopy {
             if let Some(ref zerocopy) = self.zerocopy_ipc {
-                zerocopy.create_ring(
-                    pid,
-                    config.zerocopy_sq_size,
-                    config.zerocopy_cq_size
-                ).map_err(|e| LifecycleError::InitializationFailed {
-                    subsystem: "zerocopy".to_string(),
-                    reason: e.to_string(),
-                })?;
+                zerocopy
+                    .create_ring(pid, config.zerocopy_sq_size, config.zerocopy_cq_size)
+                    .map_err(|e| LifecycleError::InitializationFailed {
+                        subsystem: "zerocopy".to_string(),
+                        reason: e.to_string(),
+                    })?;
                 initialized_subsystems.push("zerocopy-ring");
                 debug!("Initialized zero-copy ring for PID {}", pid);
             }

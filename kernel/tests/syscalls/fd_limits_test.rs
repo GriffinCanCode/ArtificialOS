@@ -4,7 +4,9 @@
  */
 
 use ai_os_kernel::core::types::Pid;
-use ai_os_kernel::security::{ResourceLimitProvider, SandboxConfig, SandboxManager, SandboxProvider};
+use ai_os_kernel::security::{
+    ResourceLimitProvider, SandboxConfig, SandboxManager, SandboxProvider,
+};
 use ai_os_kernel::syscalls::{FdManager, Syscall, SyscallExecutor, SyscallResult};
 use std::fs::File;
 use std::io::Write;
@@ -121,7 +123,10 @@ fn test_fd_limit_with_dup() {
 
     // dup should succeed (still within limit)
     let dup_result = executor.execute(pid, Syscall::Dup { fd: fd1 });
-    assert!(matches!(dup_result, SyscallResult::Success { .. }), "dup should succeed within limit");
+    assert!(
+        matches!(dup_result, SyscallResult::Success { .. }),
+        "dup should succeed within limit"
+    );
 
     // Now at limit (3 FDs), dup should fail
     let dup_result2 = executor.execute(pid, Syscall::Dup { fd: fd1 });
@@ -165,14 +170,26 @@ fn test_fd_limit_with_dup2() {
     ));
 
     // dup2 to an existing FD should succeed (not allocating new FD)
-    let dup2_result = executor.execute(pid, Syscall::Dup2 { oldfd: fd1, newfd: fd2 });
+    let dup2_result = executor.execute(
+        pid,
+        Syscall::Dup2 {
+            oldfd: fd1,
+            newfd: fd2,
+        },
+    );
     assert!(
         matches!(dup2_result, SyscallResult::Success { .. }),
         "dup2 to existing FD should succeed"
     );
 
     // dup2 to a new FD should fail (would exceed limit)
-    let dup2_result2 = executor.execute(pid, Syscall::Dup2 { oldfd: fd1, newfd: 999 });
+    let dup2_result2 = executor.execute(
+        pid,
+        Syscall::Dup2 {
+            oldfd: fd1,
+            newfd: 999,
+        },
+    );
     assert!(
         matches!(dup2_result2, SyscallResult::PermissionDenied { .. }),
         "dup2 to new FD should fail at limit"
@@ -293,7 +310,10 @@ fn test_per_process_isolation() {
             mode: 0,
         },
     );
-    assert!(matches!(result, SyscallResult::PermissionDenied { .. }), "PID1 should be at limit");
+    assert!(
+        matches!(result, SyscallResult::PermissionDenied { .. }),
+        "PID1 should be at limit"
+    );
 
     // PID2 should still be able to open files (different limit)
     let result2 = executor.execute(
@@ -304,7 +324,10 @@ fn test_per_process_isolation() {
             mode: 0,
         },
     );
-    assert!(matches!(result2, SyscallResult::Success { .. }), "PID2 should not be affected by PID1's limit");
+    assert!(
+        matches!(result2, SyscallResult::Success { .. }),
+        "PID2 should not be affected by PID1's limit"
+    );
 
     // Verify counts are separate
     assert_eq!(executor.fd_manager().get_fd_count(pid1), 2);

@@ -208,4 +208,3 @@ mod tests {
         assert!(elapsed >= Duration::from_millis(50));
     }
 }
-

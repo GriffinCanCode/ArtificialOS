@@ -94,7 +94,10 @@ impl ProcessManagerBuilder {
     }
 
     /// Add signal manager for lifecycle initialization
-    pub fn with_signal_manager(mut self, signal_manager: Arc<crate::signals::SignalManagerImpl>) -> Self {
+    pub fn with_signal_manager(
+        mut self,
+        signal_manager: Arc<crate::signals::SignalManagerImpl>,
+    ) -> Self {
         self.signal_manager = Some(signal_manager);
         self
     }
@@ -125,23 +128,17 @@ impl ProcessManagerBuilder {
 
             // Register memory if available
             if let Some(ref mem_mgr) = self.memory_manager {
-                orch = orch.register(
-                    super::resources::MemoryResource::new(mem_mgr.clone())
-                );
+                orch = orch.register(super::resources::MemoryResource::new(mem_mgr.clone()));
             }
 
             // Register IPC if available
             if let Some(ref ipc_mgr) = self.ipc_manager {
-                orch = orch.register(
-                    super::resources::IpcResource::new(ipc_mgr.clone())
-                );
+                orch = orch.register(super::resources::IpcResource::new(ipc_mgr.clone()));
             }
 
             // Register FD if available
             if let Some(ref fd_mgr) = self.fd_manager {
-                orch = orch.register(
-                    super::resources::FdResource::new(fd_mgr.clone())
-                );
+                orch = orch.register(super::resources::FdResource::new(fd_mgr.clone()));
             }
 
             orch
@@ -201,7 +198,10 @@ impl ProcessManagerBuilder {
 
         // Build lifecycle registry if we have relevant managers
         // This coordinates initialization hooks across subsystems
-        let lifecycle = if self.signal_manager.is_some() || self.ipc_manager.is_some() || self.fd_manager.is_some() {
+        let lifecycle = if self.signal_manager.is_some()
+            || self.ipc_manager.is_some()
+            || self.fd_manager.is_some()
+        {
             let mut registry = LifecycleRegistry::new();
 
             // Register signal manager if available

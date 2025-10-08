@@ -267,7 +267,11 @@ fn test_global_memory_limit() {
 
     // Should have sent some but not all, and should have hit the limit
     assert!(sent_count > 0, "Should have sent at least one message");
-    assert!(sent_count < 150, "Should not have sent all 150 messages (sent {})", sent_count);
+    assert!(
+        sent_count < 150,
+        "Should not have sent all 150 messages (sent {})",
+        sent_count
+    );
     assert!(hit_limit, "Should have hit the memory limit");
 
     // Clean up messages

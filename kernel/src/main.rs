@@ -14,8 +14,8 @@ use tokio::sync::broadcast;
 use tracing::info;
 
 use ai_os_kernel::process::resources::{
-    FdResource, IpcResource, MappingResource, MemoryResource, ResourceOrchestrator,
-    RingResource, SignalResource, SocketResource, TaskResource,
+    FdResource, IpcResource, MappingResource, MemoryResource, ResourceOrchestrator, RingResource,
+    SignalResource, SocketResource, TaskResource,
 };
 use ai_os_kernel::{
     init_simd, init_tracing, AsyncTaskManager, IPCManager, IoUringExecutor, IoUringManager,
@@ -167,8 +167,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // Validate comprehensive coverage
     resource_orchestrator.validate_coverage(&[
-        "memory", "ipc", "mappings", "async_tasks", "rings",
-        "signals", "sockets", "file_descriptors"
+        "memory",
+        "ipc",
+        "mappings",
+        "async_tasks",
+        "rings",
+        "signals",
+        "sockets",
+        "file_descriptors",
     ]);
 
     info!(

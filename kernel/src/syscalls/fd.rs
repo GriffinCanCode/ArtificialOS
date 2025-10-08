@@ -15,13 +15,13 @@ use dashmap::DashMap;
 use log::{error, info, warn};
 use std::collections::HashSet;
 use std::fs::OpenOptions;
-use std::io::{SeekFrom};
+use std::io::SeekFrom;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 
-use super::handle::FileHandle;
 use super::executor::SyscallExecutor;
+use super::handle::FileHandle;
 use super::types::SyscallResult;
 
 /// File descriptor manager
@@ -93,7 +93,7 @@ impl FdManager {
     /// Untrack an FD from a process (atomic decrement, O(1) removal)
     pub(super) fn untrack_fd(&self, pid: Pid, fd: u32) {
         if let Some(mut fds) = self.process_fds.get_mut(&pid) {
-            fds.remove(&fd);  // O(1) HashSet removal
+            fds.remove(&fd); // O(1) HashSet removal
         }
 
         // Atomic decrement using get_mut() for lock-free counting
@@ -212,7 +212,10 @@ impl SyscallExecutor {
                     };
                 }
                 Err(e) => {
-                    warn!("VFS open failed for {:?}: {}, falling back to std::fs", path, e);
+                    warn!(
+                        "VFS open failed for {:?}: {}, falling back to std::fs",
+                        path, e
+                    );
                 }
             }
         }

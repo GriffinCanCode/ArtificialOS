@@ -2,7 +2,9 @@
  * Collector Tests
  */
 
-use ai_os_kernel::monitoring::{Category, Collector, CommonQueries, Event, Payload, Query, Severity};
+use ai_os_kernel::monitoring::{
+    Category, Collector, CommonQueries, Event, Payload, Query, Severity,
+};
 
 #[test]
 fn test_collector_basic() {
@@ -187,8 +189,12 @@ fn test_collector_resource_cleanup() {
     // Verify event was emitted and metrics were updated
     let metrics = collector.metrics();
     // The cleanup method updates these specific metrics:
-    assert!(metrics.counters.contains_key("resource.unified.freed") ||
-            metrics.histograms.contains_key("resource.cleanup_duration_ms"));
+    assert!(
+        metrics.counters.contains_key("resource.unified.freed")
+            || metrics
+                .histograms
+                .contains_key("resource.cleanup_duration_ms")
+    );
 }
 
 #[test]
