@@ -364,7 +364,6 @@ mod tests {
     #[test]
     fn test_lock_guard_timeout_expires() {
         use std::time::Duration;
-        use std::sync::Arc;
         use std::thread;
 
         let guard1 = LockGuard::new(100);

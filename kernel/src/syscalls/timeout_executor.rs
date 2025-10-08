@@ -327,7 +327,7 @@ mod tests {
         let counter = Arc::new(AtomicU32::new(0));
         let counter_clone = counter.clone();
 
-        let result = executor.execute_with_retry(
+        let result: Result<(), _> = executor.execute_with_retry(
             || {
                 counter_clone.fetch_add(1, Ordering::SeqCst);
                 Err(TestError::Fatal("boom".to_string()))

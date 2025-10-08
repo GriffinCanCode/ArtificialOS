@@ -166,7 +166,7 @@ mod tests {
 
     #[test]
     fn test_syscall_guard_basic() {
-        let collector = Arc::new(Collector::new(1000));
+        let collector = Arc::new(Collector::new());
 
         {
             let _guard = SyscallGuard::new("test_syscall", 1, collector.clone());
@@ -179,7 +179,7 @@ mod tests {
 
     #[test]
     fn test_syscall_guard_with_result() {
-        let collector = Arc::new(Collector::new(1000));
+        let collector = Arc::new(Collector::new());
 
         {
             let mut guard = SyscallGuard::new("test_syscall", 1, collector.clone());
@@ -191,7 +191,7 @@ mod tests {
 
     #[test]
     fn test_syscall_guard_with_error() {
-        let collector = Arc::new(Collector::new(1000));
+        let collector = Arc::new(Collector::new());
 
         {
             let mut guard = SyscallGuard::new("test_syscall", 1, collector.clone());
@@ -203,7 +203,7 @@ mod tests {
 
     #[test]
     fn test_syscall_guard_timing() {
-        let collector = Arc::new(Collector::new(1000));
+        let collector = Arc::new(Collector::new());
         let guard = SyscallGuard::new("test_syscall", 1, collector);
 
         std::thread::sleep(std::time::Duration::from_micros(100));

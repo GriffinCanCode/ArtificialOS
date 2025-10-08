@@ -57,7 +57,7 @@ impl SyscallExecutor {
                 // Create IPC guard for automatic tracking and cleanup
                 let _ipc_guard = match &self.collector {
                     Some(collector) => Some(IpcGuard::new(
-                        pipe_id,
+                        pipe_id.into(),
                         IpcResourceType::Pipe,
                         pid,
                         |_| Ok(()), // No-op cleanup - pipe lifecycle managed separately

@@ -6,7 +6,6 @@
 
 use crate::core::json;
 use crate::core::types::Pid;
-use crate::core::SyscallGuard;
 use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
 
 use log::{error, info, warn};
@@ -18,10 +17,8 @@ use super::types::SyscallResult;
 
 impl SyscallExecutor {
     pub(super) fn get_memory_stats(&self, pid: Pid) -> SyscallResult {
-        let mut guard = match &self.collector {
-            Some(collector) => Some(SyscallGuard::new("memory_get_stats", pid, collector.clone())),
-            None => None,
-        };
+        // NOTE: SyscallGuard not needed here - executor already provides comprehensive
+        // syscall tracing via span_syscall() and collector.syscall_exit()
 
         // Check permission using centralized manager
         let request = PermissionRequest::new(
@@ -34,72 +31,40 @@ impl SyscallExecutor {
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
-            let err = SyscallResult::permission_denied(response.reason());
-            if let Some(ref mut g) = guard {
-                g.record_result::<()>(&Err(response.reason()));
-            }
-            return err;
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let memory_manager = match &self.memory_manager {
             Some(mm) => mm,
-            None => {
-                let err = SyscallResult::error("Memory manager not available");
-                if let Some(ref mut g) = guard {
-                    g.record_result::<()>(&Err("Memory manager not available"));
-                }
-                return err;
-            }
+            None => return SyscallResult::error("Memory manager not available"),
         };
 
         let stats = memory_manager.stats();
-        let result = match json::to_vec(&stats) {
+        match json::to_vec(&stats) {
             Ok(data) => {
                 info!("PID {} retrieved global memory stats", pid);
-                Ok(SyscallResult::success_with_data(data))
+                SyscallResult::success_with_data(data)
             }
             Err(e) => {
                 error!("Failed to serialize memory stats: {}", e);
-                Err("Serialization failed".to_string())
+                SyscallResult::error("Serialization failed")
             }
-        };
-
-        // Record result in guard
-        if let Some(ref mut g) = guard {
-            g.record_result(&result);
         }
-
-        result.unwrap_or_else(|e| SyscallResult::error(e))
     }
 
     pub(super) fn get_process_memory_stats(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
-        let mut guard = match &self.collector {
-            Some(collector) => Some(SyscallGuard::new("memory_get_process_stats", pid, collector.clone())),
-            None => None,
-        };
-
         // Check permission using centralized manager
         let request =
             PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Inspect);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
-            let err = SyscallResult::permission_denied(response.reason());
-            if let Some(ref mut g) = guard {
-                g.record_result::<()>(&Err(response.reason()));
-            }
-            return err;
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let memory_manager = match &self.memory_manager {
             Some(mm) => mm,
-            None => {
-                let err = SyscallResult::error("Memory manager not available");
-                if let Some(ref mut g) = guard {
-                    g.record_result::<()>(&Err("Memory manager not available"));
-                }
-                return err;
-            }
+            None => return SyscallResult::error("Memory manager not available"),
         };
 
         let (allocated_bytes, peak_bytes, allocation_count) =
@@ -112,31 +77,19 @@ impl SyscallExecutor {
             allocation_count,
         };
 
-        let result = match json::to_vec(&stats) {
+        match json::to_vec(&stats) {
             Ok(data) => {
                 info!("PID {} retrieved memory stats for PID {}", pid, target_pid);
-                Ok(SyscallResult::success_with_data(data))
+                SyscallResult::success_with_data(data)
             }
             Err(e) => {
                 error!("Failed to serialize process memory stats: {}", e);
-                Err("Serialization failed".to_string())
+                SyscallResult::error("Serialization failed")
             }
-        };
-
-        // Record result in guard
-        if let Some(ref mut g) = guard {
-            g.record_result(&result);
         }
-
-        result.unwrap_or_else(|e| SyscallResult::error(e))
     }
 
     pub(super) fn trigger_gc(&self, pid: Pid, target_pid: Option<u32>) -> SyscallResult {
-        let mut guard = match &self.collector {
-            Some(collector) => Some(SyscallGuard::new("memory_trigger_gc", pid, collector.clone())),
-            None => None,
-        };
-
         // Check permission using centralized manager
         let request = PermissionRequest::new(
             pid,
@@ -148,22 +101,12 @@ impl SyscallExecutor {
         let response = self.permission_manager.check_and_audit(&request);
 
         if !response.is_allowed() {
-            let err = SyscallResult::permission_denied(response.reason());
-            if let Some(ref mut g) = guard {
-                g.record_result::<()>(&Err(response.reason()));
-            }
-            return err;
+            return SyscallResult::permission_denied(response.reason());
         }
 
         let memory_manager = match &self.memory_manager {
             Some(mm) => mm,
-            None => {
-                let err = SyscallResult::error("Memory manager not available");
-                if let Some(ref mut g) = guard {
-                    g.record_result::<()>(&Err("Memory manager not available"));
-                }
-                return err;
-            }
+            None => return SyscallResult::error("Memory manager not available"),
         };
 
         let result = match target_pid {
@@ -217,11 +160,6 @@ impl SyscallExecutor {
                 }
             }
         };
-
-        // Record result in guard
-        if let Some(ref mut g) = guard {
-            g.record_result(&result);
-        }
 
         result.unwrap_or_else(|e| SyscallResult::error(e))
     }

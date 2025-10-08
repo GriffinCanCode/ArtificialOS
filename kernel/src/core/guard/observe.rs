@@ -199,7 +199,7 @@ mod tests {
             self.active
         }
 
-        fn release(&mut self) -> super::GuardResult<()> {
+        fn release(&mut self) -> crate::GuardResult<()> {
             self.active = false;
             Ok(())
         }
@@ -207,7 +207,7 @@ mod tests {
 
     #[test]
     fn test_observable_guard_wrapper() {
-        let collector = Arc::new(Collector::new(1000));
+        let collector = Arc::new(Collector::new());
         let guard = TestGuard {
             metadata: GuardMetadata::new("test"),
             active: true,
@@ -222,7 +222,7 @@ mod tests {
 
     #[test]
     fn test_observable_guard_with_operation() {
-        let collector = Arc::new(Collector::new(1000));
+        let collector = Arc::new(Collector::new());
         let guard = TestGuard {
             metadata: GuardMetadata::new("test"),
             active: true,

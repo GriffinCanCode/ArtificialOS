@@ -151,7 +151,6 @@ impl OpenFile for StdFileHandle {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write as _;
     use tempfile::NamedTempFile;
 
     #[test]

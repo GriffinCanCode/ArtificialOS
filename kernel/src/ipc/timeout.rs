@@ -234,7 +234,7 @@ mod tests {
 
     #[test]
     fn test_pipe_read_timeout() {
-        let memory_manager = MemoryManager::new(1024 * 1024);
+        let memory_manager = MemoryManager::new();
         let pipe_manager = Arc::new(PipeManager::new(memory_manager));
         let timeout_ops = Arc::new(TimeoutPipeOps::new(pipe_manager.clone()));
 
@@ -253,7 +253,7 @@ mod tests {
 
     #[test]
     fn test_pipe_read_with_data() {
-        let memory_manager = MemoryManager::new(1024 * 1024);
+        let memory_manager = MemoryManager::new();
         let pipe_manager = Arc::new(PipeManager::new(memory_manager));
         let timeout_ops = Arc::new(TimeoutPipeOps::new(pipe_manager.clone()));
 
