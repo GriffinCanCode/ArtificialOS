@@ -68,8 +68,7 @@ impl Syscall {
             // ================================================================
 
             // Memory management (DashMap lookups, atomic counters)
-            Syscall::GetMemoryStats
-            | Syscall::GetProcessMemoryStats { .. } => SyscallClass::Fast,
+            Syscall::GetMemoryStats | Syscall::GetProcessMemoryStats { .. } => SyscallClass::Fast,
 
             // Process state queries (cached in ProcessManager)
             Syscall::GetProcessInfo { .. }
@@ -78,22 +77,22 @@ impl Syscall {
             | Syscall::GetProcessStats { .. } => SyscallClass::Fast,
 
             // System info (uptime calculation, cached data)
-            Syscall::GetSystemInfo
-            | Syscall::GetCurrentTime
-            | Syscall::GetUptime => SyscallClass::Fast,
+            Syscall::GetSystemInfo | Syscall::GetCurrentTime | Syscall::GetUptime => {
+                SyscallClass::Fast
+            }
 
             // Environment variables (HashMap lookup)
             Syscall::GetEnvironmentVar { .. } => SyscallClass::Fast,
 
             // File descriptor operations (in-memory registry)
-            Syscall::Dup { .. }
-            | Syscall::Dup2 { .. }
-            | Syscall::Fcntl { .. } => SyscallClass::Fast,
+            Syscall::Dup { .. } | Syscall::Dup2 { .. } | Syscall::Fcntl { .. } => {
+                SyscallClass::Fast
+            }
 
             // IPC stats (in-memory counter reads)
-            Syscall::PipeStats { .. }
-            | Syscall::ShmStats { .. }
-            | Syscall::QueueStats { .. } => SyscallClass::Fast,
+            Syscall::PipeStats { .. } | Syscall::ShmStats { .. } | Syscall::QueueStats { .. } => {
+                SyscallClass::Fast
+            }
 
             // Socket stats (in-memory counter reads)
             // GetSocketInfo removed - use network syscalls instead
@@ -253,7 +252,10 @@ mod tests {
     #[test]
     fn test_blocking_syscalls() {
         // File I/O should be blocking
-        assert!(Syscall::ReadFile { path: PathBuf::from("/test") }.is_blocking());
+        assert!(Syscall::ReadFile {
+            path: PathBuf::from("/test")
+        }
+        .is_blocking());
         assert!(Syscall::WriteFile {
             path: PathBuf::from("/test"),
             data: vec![]
@@ -291,7 +293,10 @@ mod tests {
         let elapsed = start.elapsed();
 
         // Should take < 10ms for 1M classifications
-        assert!(elapsed.as_millis() < 10, "Classification too slow: {:?}", elapsed);
+        assert!(
+            elapsed.as_millis() < 10,
+            "Classification too slow: {:?}",
+            elapsed
+        );
     }
 }
-

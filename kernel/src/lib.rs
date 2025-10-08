@@ -36,13 +36,7 @@ pub use ipc::{
 };
 
 // Memory
-pub use memory::{
-    MemoryBlock,
-    MemoryError,
-    MemoryManager,
-    MemoryStats,
-    ProcessMemoryStats,
-};
+pub use memory::{MemoryBlock, MemoryError, MemoryManager, MemoryStats, ProcessMemoryStats};
 
 // Monitoring - Dual-layer observability system
 pub use monitoring::{

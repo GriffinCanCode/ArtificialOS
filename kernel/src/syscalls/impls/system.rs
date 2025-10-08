@@ -13,8 +13,8 @@ use log::{error, info, trace, warn};
 use prost::bytes;
 
 use crate::syscalls::core::executor::SyscallExecutorWithIpc;
-use crate::syscalls::types::{SyscallResult, SystemInfo};
 use crate::syscalls::timeout::executor::TimeoutError;
+use crate::syscalls::types::{SyscallResult, SystemInfo};
 
 impl SyscallExecutorWithIpc {
     pub(in crate::syscalls) fn get_system_info(&self, pid: Pid) -> SyscallResult {
@@ -125,7 +125,12 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(in crate::syscalls) fn set_env_var(&self, pid: Pid, key: &str, value: &str) -> SyscallResult {
+    pub(in crate::syscalls) fn set_env_var(
+        &self,
+        pid: Pid,
+        key: &str,
+        value: &str,
+    ) -> SyscallResult {
         let span = span_operation("env_set");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));

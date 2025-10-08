@@ -365,11 +365,13 @@ mod tests {
         let memory_manager = crate::memory::MemoryManager::new();
         let pipe_manager = crate::ipc::PipeManager::new(memory_manager.clone());
         let shm_manager = crate::ipc::ShmManager::new(memory_manager);
-        let executor = Arc::new(crate::syscalls::core::SyscallExecutorWithIpc::with_ipc_direct(
-            sandbox,
-            pipe_manager,
-            shm_manager,
-        ));
+        let executor = Arc::new(
+            crate::syscalls::core::SyscallExecutorWithIpc::with_ipc_direct(
+                sandbox,
+                pipe_manager,
+                shm_manager,
+            ),
+        );
         let compiler = JitCompiler::new(executor);
         let pattern = SyscallPattern::Simple(SimpleSyscallType::GetProcessList);
         let optimizations = vec![Optimization::FastPath];

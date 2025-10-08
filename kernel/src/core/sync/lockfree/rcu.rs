@@ -191,10 +191,7 @@ mod tests {
 
     #[test]
     fn test_concurrent_reads() {
-        let cell = Arc::new(RcuCell::new(HashMap::from([
-            ("key1", 100),
-            ("key2", 200),
-        ])));
+        let cell = Arc::new(RcuCell::new(HashMap::from([("key1", 100), ("key2", 200)])));
 
         let mut handles = vec![];
 
@@ -273,4 +270,3 @@ mod tests {
         assert!(!Arc::ptr_eq(&val1, &val3));
     }
 }
-

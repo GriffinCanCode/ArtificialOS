@@ -1,18 +1,43 @@
 /*!
  * Synchronization Traits
  *
- * Core abstractions for wait/notify patterns
+ * Core abstractions for wait/notify patterns with zero-cost design.
+ *
+ * # Design: Trait-Based Abstraction for Implementations
+ *
+ * While WaitQueue itself uses enum dispatch for performance, this trait
+ * allows for custom wait strategies and testing. All methods are designed
+ * to inline well and have minimal overhead.
  */
 
 use std::time::Duration;
 
 /// Result of a wake operation
+///
+/// Compact representation (single usize) for efficient returns.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WakeResult {
-    /// Successfully woke one or more waiters
+    /// Successfully woke N waiters (N >= 1)
     Woken(usize),
     /// No waiters were waiting
     NoWaiters,
+}
+
+impl WakeResult {
+    /// Check if any waiters were woken
+    #[inline(always)]
+    pub fn is_woken(&self) -> bool {
+        matches!(self, WakeResult::Woken(_))
+    }
+
+    /// Get number of woken waiters (0 if none)
+    #[inline(always)]
+    pub fn count(&self) -> usize {
+        match self {
+            WakeResult::Woken(n) => *n,
+            WakeResult::NoWaiters => 0,
+        }
+    }
 }
 
 /// Strategy for waiting on a condition
@@ -20,11 +45,16 @@ pub enum WakeResult {
 /// Implementations must be:
 /// - **Thread-safe**: Safe to call from multiple threads
 /// - **Efficient**: Minimize CPU usage while waiting
-/// - **Fair**: Avoid starvation of waiters
+/// - **Fair**: Avoid starvation of waiters (when possible)
 ///
 /// # Type Parameters
 ///
-/// - `K`: Key type for waiting (e.g., u64 for sequence numbers)
+/// - `K`: Key type for waiting (e.g., u64 for sequence numbers, (Pid, Fd) for multi-key)
+///
+/// # Implementation Notes
+///
+/// All methods should be marked `#[inline]` or `#[inline(always)]` where appropriate
+/// to enable cross-crate optimization.
 pub trait WaitStrategy<K>: Send + Sync
 where
     K: Eq + std::hash::Hash + Copy + Send + Sync,

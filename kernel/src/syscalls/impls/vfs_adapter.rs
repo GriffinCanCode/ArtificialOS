@@ -119,7 +119,12 @@ impl SyscallExecutorWithIpc {
 
     /// Write file using VFS if available
     /// Can block on slow storage (NFS, USB, slow disks)
-    pub(in crate::syscalls) fn vfs_write(&self, pid: Pid, path: &Path, data: &[u8]) -> SyscallResult {
+    pub(in crate::syscalls) fn vfs_write(
+        &self,
+        pid: Pid,
+        path: &Path,
+        data: &[u8],
+    ) -> SyscallResult {
         let span = span_operation("vfs_write");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));

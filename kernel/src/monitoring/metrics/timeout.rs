@@ -4,9 +4,9 @@
  * Monitoring and metrics for timeout events across the system.
  */
 
+use crate::core::types::Pid;
 use crate::monitoring::collection::Collector;
 use crate::monitoring::events::{Category, Event, Payload, Severity};
-use crate::core::types::Pid;
 use std::sync::Arc;
 use std::time::Duration;
 

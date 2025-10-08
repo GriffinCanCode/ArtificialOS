@@ -18,11 +18,12 @@ use ahash::RandomState;
 use dashmap::DashMap;
 use log::{info, warn};
 use std::sync::atomic::Ordering;
-use std::sync::{Arc, Mutex};
 use std::sync::LazyLock;
+use std::sync::{Arc, Mutex};
 
 // Global shared memory tracking with flat combining for better throughput
-static GLOBAL_SHM_MEMORY: LazyLock<FlatCombiningCounter> = LazyLock::new(|| FlatCombiningCounter::new(0));
+static GLOBAL_SHM_MEMORY: LazyLock<FlatCombiningCounter> =
+    LazyLock::new(|| FlatCombiningCounter::new(0));
 
 /// Shared memory manager
 ///

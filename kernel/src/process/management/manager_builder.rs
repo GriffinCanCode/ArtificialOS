@@ -127,7 +127,9 @@ impl ProcessManagerBuilder {
 
             // Register memory if available
             if let Some(ref mem_mgr) = self.memory_manager {
-                orch = orch.register(crate::process::resources::MemoryResource::new(mem_mgr.clone()));
+                orch = orch.register(crate::process::resources::MemoryResource::new(
+                    mem_mgr.clone(),
+                ));
             }
 
             // Register IPC if available

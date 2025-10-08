@@ -39,7 +39,7 @@ mod storage;
 
 // Re-export public types, traits, and extensions
 pub use core::{
-    Allocator, AllocationRequest, GarbageCollector, MemoryBlock, MemoryError, MemoryInfo,
+    AllocationRequest, Allocator, GarbageCollector, MemoryBlock, MemoryError, MemoryInfo,
     MemoryPressure, MemoryResult, MemoryStats, ProcessMemoryCleanup, ProcessMemoryStats,
 };
 pub use extensions::MemoryGuardExt;

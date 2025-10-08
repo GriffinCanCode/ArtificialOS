@@ -8,8 +8,8 @@
  * - "Trace causality chain for failed operation"
  */
 
-use crate::monitoring::events::{Category, Event, EventFilter, Payload, Severity};
 use crate::core::types::Pid;
+use crate::monitoring::events::{Category, Event, EventFilter, Payload, Severity};
 use std::collections::HashMap;
 use std::time::Duration;
 

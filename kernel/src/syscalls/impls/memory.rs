@@ -52,7 +52,11 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(in crate::syscalls) fn get_process_memory_stats(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
+    pub(in crate::syscalls) fn get_process_memory_stats(
+        &self,
+        pid: Pid,
+        target_pid: Pid,
+    ) -> SyscallResult {
         // Check permission using centralized manager
         let request =
             PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Inspect);
@@ -89,7 +93,11 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(in crate::syscalls) fn trigger_gc(&self, pid: Pid, target_pid: Option<u32>) -> SyscallResult {
+    pub(in crate::syscalls) fn trigger_gc(
+        &self,
+        pid: Pid,
+        target_pid: Option<u32>,
+    ) -> SyscallResult {
         // Check permission using centralized manager
         let request = PermissionRequest::new(
             pid,

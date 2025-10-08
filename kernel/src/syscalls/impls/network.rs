@@ -535,7 +535,12 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(in crate::syscalls) fn connect(&self, pid: Pid, sockfd: u32, address: &str) -> SyscallResult {
+    pub(in crate::syscalls) fn connect(
+        &self,
+        pid: Pid,
+        sockfd: u32,
+        address: &str,
+    ) -> SyscallResult {
         let span = span_operation("socket_connect");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
@@ -588,7 +593,13 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(in crate::syscalls) fn send(&self, pid: Pid, sockfd: u32, data: &[u8], _flags: u32) -> SyscallResult {
+    pub(in crate::syscalls) fn send(
+        &self,
+        pid: Pid,
+        sockfd: u32,
+        data: &[u8],
+        _flags: u32,
+    ) -> SyscallResult {
         let span = span_operation("socket_send");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
@@ -675,7 +686,13 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(in crate::syscalls) fn recv(&self, pid: Pid, sockfd: u32, size: usize, _flags: u32) -> SyscallResult {
+    pub(in crate::syscalls) fn recv(
+        &self,
+        pid: Pid,
+        sockfd: u32,
+        size: usize,
+        _flags: u32,
+    ) -> SyscallResult {
         let span = span_operation("socket_recv");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));

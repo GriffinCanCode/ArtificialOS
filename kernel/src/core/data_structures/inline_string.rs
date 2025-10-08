@@ -118,9 +118,7 @@ impl From<&str> for InlineString {
 impl From<String> for InlineString {
     #[inline]
     fn from(s: String) -> Self {
-        Self {
-            inner: s,
-        }
+        Self { inner: s }
     }
 }
 
@@ -172,14 +170,17 @@ mod tests {
         assert_eq!(short.as_str(), "Not found");
 
         let medium = InlineString::from("Permission denied error");
-        assert!(medium.is_inline() || medium.len() <= 23, "Medium strings may be inline");
+        assert!(
+            medium.is_inline() || medium.len() <= 23,
+            "Medium strings may be inline"
+        );
         assert_eq!(medium.as_str(), "Permission denied error");
     }
 
     #[test]
     fn test_long_string_heap_allocated() {
         let long = InlineString::from(
-            "This is a very long error message that definitely exceeds the inline threshold"
+            "This is a very long error message that definitely exceeds the inline threshold",
         );
         assert!(!long.is_inline(), "Long strings should use heap");
         assert!(long.as_str().contains("very long error"));
@@ -218,7 +219,12 @@ mod tests {
 
         for error in errors {
             let inline = InlineString::from(error);
-            assert!(inline.is_inline(), "Error '{}' should be inline (len={})", error, error.len());
+            assert!(
+                inline.is_inline(),
+                "Error '{}' should be inline (len={})",
+                error,
+                error.len()
+            );
         }
     }
 
@@ -230,4 +236,3 @@ mod tests {
         assert_eq!(inline_str, deserialized);
     }
 }
-

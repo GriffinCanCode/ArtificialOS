@@ -289,10 +289,7 @@ where
 }
 
 /// Deserialize a u32 within a range [min, max]
-pub fn deserialize_ranged_u32<'de, D>(
-    min: u32,
-    max: u32,
-) -> impl FnOnce(D) -> Result<u32, D::Error>
+pub fn deserialize_ranged_u32<'de, D>(min: u32, max: u32) -> impl FnOnce(D) -> Result<u32, D::Error>
 where
     D: Deserializer<'de>,
 {

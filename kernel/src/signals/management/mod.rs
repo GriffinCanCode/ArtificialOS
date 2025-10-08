@@ -9,4 +9,3 @@ mod manager;
 // Re-export public API
 pub use delivery::SignalDeliveryHook;
 pub use manager::SignalManagerImpl;
-

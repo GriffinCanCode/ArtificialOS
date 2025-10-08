@@ -32,8 +32,8 @@
  * - **Memory**: Futures are stack-allocated when possible
  */
 
-use crate::syscalls::types::*;
 use crate::core::types::Pid;
+use crate::syscalls::types::*;
 use std::path::PathBuf;
 
 // ============================================================================
@@ -67,20 +67,10 @@ pub trait AsyncFileSystemSyscalls: Send + Sync {
     async fn file_stat(&self, pid: Pid, path: &PathBuf) -> SyscallResult;
 
     /// Move/rename file asynchronously
-    async fn move_file(
-        &self,
-        pid: Pid,
-        source: &PathBuf,
-        destination: &PathBuf,
-    ) -> SyscallResult;
+    async fn move_file(&self, pid: Pid, source: &PathBuf, destination: &PathBuf) -> SyscallResult;
 
     /// Copy file asynchronously
-    async fn copy_file(
-        &self,
-        pid: Pid,
-        source: &PathBuf,
-        destination: &PathBuf,
-    ) -> SyscallResult;
+    async fn copy_file(&self, pid: Pid, source: &PathBuf, destination: &PathBuf) -> SyscallResult;
 
     /// Create directory asynchronously
     async fn create_directory(&self, pid: Pid, path: &PathBuf) -> SyscallResult;
@@ -119,8 +109,7 @@ pub trait AsyncProcessSyscalls: Send + Sync {
     async fn get_process_list(&self, pid: Pid) -> SyscallResult;
 
     /// Set process priority (fast, in-memory)
-    async fn set_process_priority(&self, pid: Pid, target_pid: Pid, priority: u8)
-        -> SyscallResult;
+    async fn set_process_priority(&self, pid: Pid, target_pid: Pid, priority: u8) -> SyscallResult;
 
     /// Get process state (fast, in-memory)
     async fn get_process_state(&self, pid: Pid, target_pid: Pid) -> SyscallResult;
@@ -296,13 +285,7 @@ pub trait AsyncNetworkSyscalls: Send + Sync {
     ) -> SyscallResult;
 
     /// Get socket option
-    async fn getsockopt(
-        &self,
-        pid: Pid,
-        sockfd: u32,
-        level: u32,
-        optname: u32,
-    ) -> SyscallResult;
+    async fn getsockopt(&self, pid: Pid, sockfd: u32, level: u32, optname: u32) -> SyscallResult;
 
     /// Make network request (higher-level, blocks on I/O)
     async fn network_request(&self, pid: Pid, url: &str) -> SyscallResult;
@@ -459,4 +442,3 @@ pub trait AsyncSyscallExecutorTrait:
     /// or slow-path (async) execution.
     async fn execute(&self, pid: Pid, syscall: Syscall) -> SyscallResult;
 }
-

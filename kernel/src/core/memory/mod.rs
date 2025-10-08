@@ -26,4 +26,3 @@ mod pool;
 pub use arena::{with_arena, ArenaString, ArenaVec};
 pub use cow_memory::{CowMemory, CowMemoryManager, CowStats};
 pub use pool::{PooledBuffer, SharedPool};
-

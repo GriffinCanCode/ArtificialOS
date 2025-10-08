@@ -22,9 +22,9 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 
+use super::handle::FileHandle;
 use crate::syscalls::core::executor::SyscallExecutorWithIpc;
 use crate::syscalls::timeout::executor::TimeoutError;
-use super::handle::FileHandle;
 use crate::syscalls::types::SyscallResult;
 
 /// File descriptor manager
@@ -187,7 +187,13 @@ impl Clone for FdManager {
 }
 
 impl SyscallExecutorWithIpc {
-    pub(in crate::syscalls) fn open(&self, pid: Pid, path: &PathBuf, flags: u32, mode: u32) -> SyscallResult {
+    pub(in crate::syscalls) fn open(
+        &self,
+        pid: Pid,
+        path: &PathBuf,
+        flags: u32,
+        mode: u32,
+    ) -> SyscallResult {
         let span = span_operation("fd_open");
         let _guard = span.enter();
 
@@ -503,7 +509,13 @@ impl SyscallExecutorWithIpc {
         SyscallResult::success()
     }
 
-    pub(in crate::syscalls) fn lseek(&self, pid: Pid, fd: u32, offset: i64, whence: u32) -> SyscallResult {
+    pub(in crate::syscalls) fn lseek(
+        &self,
+        pid: Pid,
+        fd: u32,
+        offset: i64,
+        whence: u32,
+    ) -> SyscallResult {
         // Note: lseek operates on already-open fds with validated permissions
 
         if let Some(handle_arc) = self.fd_manager().open_files.get(&fd) {
@@ -550,7 +562,13 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(in crate::syscalls) fn fcntl(&self, pid: Pid, fd: u32, cmd: u32, arg: u32) -> SyscallResult {
+    pub(in crate::syscalls) fn fcntl(
+        &self,
+        pid: Pid,
+        fd: u32,
+        cmd: u32,
+        arg: u32,
+    ) -> SyscallResult {
         // Note: fcntl operates on already-open fds with validated permissions
 
         // Verify FD exists

@@ -19,7 +19,12 @@ use crate::syscalls::core::executor::SyscallExecutorWithIpc;
 use crate::syscalls::types::{ProcessOutput, SyscallResult};
 
 impl SyscallExecutorWithIpc {
-    pub(in crate::syscalls) fn spawn_process(&self, pid: Pid, command: &str, args: &[String]) -> SyscallResult {
+    pub(in crate::syscalls) fn spawn_process(
+        &self,
+        pid: Pid,
+        command: &str,
+        args: &[String],
+    ) -> SyscallResult {
         let span = span_operation("process_spawn");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
@@ -235,7 +240,11 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(in crate::syscalls) fn get_process_state(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
+    pub(in crate::syscalls) fn get_process_state(
+        &self,
+        pid: Pid,
+        target_pid: Pid,
+    ) -> SyscallResult {
         let request =
             PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Inspect);
         let response = self.permission_manager().check(&request);
@@ -264,7 +273,11 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(in crate::syscalls) fn get_process_stats_call(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
+    pub(in crate::syscalls) fn get_process_stats_call(
+        &self,
+        pid: Pid,
+        target_pid: Pid,
+    ) -> SyscallResult {
         let request =
             PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Inspect);
         let response = self.permission_manager().check(&request);

@@ -6,4 +6,3 @@
 pub mod collector;
 
 pub use collector::{GcStats, GcStrategy, GlobalGarbageCollector};
-

@@ -78,10 +78,7 @@ pub fn path_starts_with_any(path: &str, prefixes: &[&str]) -> Option<usize> {
     // Hash first N bytes of path and prefixes
     let path_hash = hash_prefix(path.as_bytes());
 
-    let prefix_hashes: Vec<u64> = prefixes
-        .iter()
-        .map(|p| hash_prefix(p.as_bytes()))
-        .collect();
+    let prefix_hashes: Vec<u64> = prefixes.iter().map(|p| hash_prefix(p.as_bytes())).collect();
 
     // SIMD search for matching hash
     if let Some(idx) = find_hash_simd(path_hash, &prefix_hashes) {
@@ -147,8 +144,14 @@ mod tests {
     fn test_path_prefix_match() {
         let prefixes = vec!["/home/", "/var/", "/tmp/", "/opt/"];
 
-        assert_eq!(path_starts_with_any("/home/user/file.txt", &prefixes), Some(0));
-        assert_eq!(path_starts_with_any("/var/log/messages", &prefixes), Some(1));
+        assert_eq!(
+            path_starts_with_any("/home/user/file.txt", &prefixes),
+            Some(0)
+        );
+        assert_eq!(
+            path_starts_with_any("/var/log/messages", &prefixes),
+            Some(1)
+        );
         assert_eq!(path_starts_with_any("/etc/config", &prefixes), None);
     }
 
@@ -182,4 +185,3 @@ mod tests {
         assert_eq!(find_hash_simd(1000, &haystack), None);
     }
 }
-

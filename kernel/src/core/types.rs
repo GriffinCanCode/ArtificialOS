@@ -3,7 +3,9 @@
  * Common types used across the kernel
  */
 
-use crate::core::serialization::serde::{is_zero_u32, is_zero_u64, is_zero_usize, system_time_micros};
+use crate::core::serialization::serde::{
+    is_zero_u32, is_zero_u64, is_zero_usize, system_time_micros,
+};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none};
 use std::time::SystemTime;

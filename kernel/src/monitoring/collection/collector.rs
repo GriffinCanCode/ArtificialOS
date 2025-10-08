@@ -5,11 +5,11 @@
  * Integrates: events, metrics, tracing, sampling, anomaly detection
  */
 
+use crate::core::types::Pid;
 use crate::monitoring::analysis::{Detector, Query, QueryResult, SampleDecision, Sampler};
 use crate::monitoring::events::{Category, Event, Payload, Severity, SyscallResult};
 use crate::monitoring::metrics::{MetricsCollector, MetricsSnapshot};
 use crate::monitoring::streaming::{EventStream, StreamStats, Subscriber};
-use crate::core::types::Pid;
 use std::sync::Arc;
 
 /// Unified observability collector

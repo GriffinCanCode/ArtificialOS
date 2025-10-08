@@ -25,7 +25,12 @@ impl SyscallExecutorWithIpc {
         self.vfs_read(pid, path)
     }
 
-    pub(in crate::syscalls) fn write_file(&self, pid: Pid, path: &PathBuf, data: &[u8]) -> SyscallResult {
+    pub(in crate::syscalls) fn write_file(
+        &self,
+        pid: Pid,
+        path: &PathBuf,
+        data: &[u8],
+    ) -> SyscallResult {
         self.vfs_write(pid, path, data)
     }
 
@@ -313,7 +318,11 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(in crate::syscalls) fn set_working_directory(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
+    pub(in crate::syscalls) fn set_working_directory(
+        &self,
+        pid: Pid,
+        path: &PathBuf,
+    ) -> SyscallResult {
         let request = PermissionRequest::file_read(pid, path.clone());
         let response = self.permission_manager().check_and_audit(&request);
 
@@ -333,7 +342,12 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(in crate::syscalls) fn truncate_file(&self, pid: Pid, path: &PathBuf, size: u64) -> SyscallResult {
+    pub(in crate::syscalls) fn truncate_file(
+        &self,
+        pid: Pid,
+        path: &PathBuf,
+        size: u64,
+    ) -> SyscallResult {
         let request = PermissionRequest::file_write(pid, path.clone());
         let response = self.permission_manager().check_and_audit(&request);
 

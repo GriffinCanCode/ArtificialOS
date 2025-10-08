@@ -47,7 +47,7 @@ pub use streaming::{EventStream, StreamStats, Subscriber};
 
 // Analysis API
 pub use analysis::{
-    Anomaly, AggregationType, CausalityTracer, CommonQueries, Detector, Query, QueryResult,
+    AggregationType, Anomaly, CausalityTracer, CommonQueries, Detector, Query, QueryResult,
     SampleDecision, Sampler,
 };
 
@@ -61,6 +61,4 @@ pub use tracing::{
 };
 
 // Bridge for integrating tracing with event streaming
-pub use collection::{
-    global_collector, emit_from_span, emit_from_span_with_pid, init_collector,
-};
+pub use collection::{emit_from_span, emit_from_span_with_pid, global_collector, init_collector};

@@ -6,8 +6,8 @@
  */
 
 use super::Collector;
-use crate::monitoring::events::{Category, Event, Payload, Severity};
 use crate::core::types::Pid;
+use crate::monitoring::events::{Category, Event, Payload, Severity};
 use std::sync::Arc;
 
 /// Global collector bridge (optional integration point)

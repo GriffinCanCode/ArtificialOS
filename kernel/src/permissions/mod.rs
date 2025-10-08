@@ -42,7 +42,9 @@ pub mod types;
 pub use audit::{AuditEvent, AuditLogger, AuditSeverity, AuditStats};
 pub use cache::{CacheStats, PermissionCache};
 pub use manager::PermissionManager;
-pub use policy::{DefaultPolicy, EvaluationContext, Policy, PolicyDecision, PolicyEngine, RequestContext};
+pub use policy::{
+    DefaultPolicy, EvaluationContext, Policy, PolicyDecision, PolicyEngine, RequestContext,
+};
 pub use types::{
     Action, PermissionChecker, PermissionProvider, PermissionRequest, PermissionResponse,
     PermissionResult, PermissionSystem, Resource, ResourceType,

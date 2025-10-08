@@ -15,4 +15,3 @@ pub use executor::{TimeoutError, TimeoutExecutor};
 
 // Re-export TimeoutPolicy from core
 pub use crate::core::guard::TimeoutPolicy;
-

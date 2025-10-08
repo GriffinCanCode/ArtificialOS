@@ -102,7 +102,11 @@ impl SyscallExecutorWithIpc {
     }
 
     /// Set scheduling policy (internal implementation)
-    pub(in crate::syscalls) fn set_scheduling_policy(&self, pid: Pid, policy_str: &str) -> SyscallResult {
+    pub(in crate::syscalls) fn set_scheduling_policy(
+        &self,
+        pid: Pid,
+        policy_str: &str,
+    ) -> SyscallResult {
         let request = PermissionRequest::new(
             pid,
             Resource::System {
@@ -192,7 +196,11 @@ impl SyscallExecutorWithIpc {
     }
 
     /// Set time quantum (internal implementation)
-    pub(in crate::syscalls) fn set_time_quantum(&self, pid: Pid, quantum_micros: u64) -> SyscallResult {
+    pub(in crate::syscalls) fn set_time_quantum(
+        &self,
+        pid: Pid,
+        quantum_micros: u64,
+    ) -> SyscallResult {
         let request = PermissionRequest::new(
             pid,
             Resource::System {
@@ -296,7 +304,11 @@ impl SyscallExecutorWithIpc {
     }
 
     /// Get process scheduler statistics (internal implementation)
-    pub(in crate::syscalls) fn get_process_scheduler_stats(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
+    pub(in crate::syscalls) fn get_process_scheduler_stats(
+        &self,
+        pid: Pid,
+        target_pid: Pid,
+    ) -> SyscallResult {
         let request =
             PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Inspect);
         let response = self.permission_manager().check(&request);

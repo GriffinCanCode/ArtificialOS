@@ -3,14 +3,14 @@
  * Central manager for all permission checks across the kernel
  */
 
+use crate::core::types::Pid;
+use crate::monitoring::Collector;
 use crate::permissions::audit::{AuditEvent, AuditLogger, AuditStats};
 use crate::permissions::cache::{CacheStats, PermissionCache};
 use crate::permissions::policy::{EvaluationContext, PolicyEngine};
 use crate::permissions::types::{
     PermissionChecker, PermissionProvider, PermissionRequest, PermissionResponse, PermissionSystem,
 };
-use crate::core::types::Pid;
-use crate::monitoring::Collector;
 use crate::security::traits::SandboxProvider;
 use crate::security::SandboxManager;
 use log::{debug, warn};
@@ -279,4 +279,3 @@ mod tests {
         assert!(!responses[2].is_allowed());
     }
 }
-

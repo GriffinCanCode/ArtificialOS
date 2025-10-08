@@ -9,4 +9,3 @@ mod executor;
 // Re-export public API
 pub use callbacks::{CallbackRegistry, HandlerFn};
 pub use executor::{SignalHandler, SignalOutcome};
-

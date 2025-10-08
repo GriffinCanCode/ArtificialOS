@@ -77,7 +77,12 @@ pub trait ProcessSyscalls: Send + Sync {
     async fn get_process_stats(&self, pid: Pid, target_pid: Pid) -> SyscallResult;
 
     /// Wait for process to complete
-    async fn wait_process(&self, pid: Pid, target_pid: Pid, timeout_ms: Option<u64>) -> SyscallResult;
+    async fn wait_process(
+        &self,
+        pid: Pid,
+        target_pid: Pid,
+        timeout_ms: Option<u64>,
+    ) -> SyscallResult;
 }
 
 /// Inter-process communication syscalls (async)
@@ -116,10 +121,22 @@ pub trait IpcSyscalls: Send + Sync {
     async fn detach_shm(&self, pid: Pid, segment_id: u32) -> SyscallResult;
 
     /// Write to shared memory
-    async fn write_shm(&self, pid: Pid, segment_id: u32, offset: usize, data: &[u8]) -> SyscallResult;
+    async fn write_shm(
+        &self,
+        pid: Pid,
+        segment_id: u32,
+        offset: usize,
+        data: &[u8],
+    ) -> SyscallResult;
 
     /// Read from shared memory
-    async fn read_shm(&self, pid: Pid, segment_id: u32, offset: usize, size: usize) -> SyscallResult;
+    async fn read_shm(
+        &self,
+        pid: Pid,
+        segment_id: u32,
+        offset: usize,
+        size: usize,
+    ) -> SyscallResult;
 
     /// Destroy shared memory segment
     async fn destroy_shm(&self, pid: Pid, segment_id: u32) -> SyscallResult;
@@ -128,7 +145,12 @@ pub trait IpcSyscalls: Send + Sync {
     async fn shm_stats(&self, pid: Pid, segment_id: u32) -> SyscallResult;
 
     /// Create async queue
-    async fn create_queue(&self, pid: Pid, queue_type: &str, capacity: Option<usize>) -> SyscallResult;
+    async fn create_queue(
+        &self,
+        pid: Pid,
+        queue_type: &str,
+        capacity: Option<usize>,
+    ) -> SyscallResult;
 
     /// Send message to queue
     async fn send_queue(
@@ -161,7 +183,8 @@ pub trait IpcSyscalls: Send + Sync {
 /// Network syscalls (async)
 pub trait NetworkSyscalls: Send + Sync {
     /// Create a socket
-    async fn socket(&self, pid: Pid, domain: u32, socket_type: u32, protocol: u32) -> SyscallResult;
+    async fn socket(&self, pid: Pid, domain: u32, socket_type: u32, protocol: u32)
+        -> SyscallResult;
 
     /// Bind socket to address
     async fn bind(&self, pid: Pid, sockfd: u32, address: &str) -> SyscallResult;
@@ -258,7 +281,12 @@ pub trait SignalSyscalls: Send + Sync {
     async fn send_signal(&self, pid: Pid, target_pid: Pid, signal: u32) -> SyscallResult;
 
     /// Register signal handler
-    async fn register_signal_handler(&self, pid: Pid, signal: u32, handler_id: u64) -> SyscallResult;
+    async fn register_signal_handler(
+        &self,
+        pid: Pid,
+        signal: u32,
+        handler_id: u64,
+    ) -> SyscallResult;
 
     /// Block signal
     async fn block_signal(&self, pid: Pid, signal: u32) -> SyscallResult;

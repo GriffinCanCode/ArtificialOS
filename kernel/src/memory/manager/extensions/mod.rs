@@ -7,4 +7,3 @@ pub mod flat_counter;
 pub mod guard_ext;
 
 pub use guard_ext::MemoryGuardExt;
-

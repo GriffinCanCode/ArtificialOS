@@ -84,12 +84,6 @@ impl AtomicSchedulerStats {
         self.active_processes.fetch_sub(1, Ordering::Relaxed);
     }
 
-    /// Set active process count (used for initialization)
-    #[inline]
-    pub fn set_active(&self, count: usize) {
-        self.active_processes.store(count, Ordering::Relaxed);
-    }
-
     /// Update policy (infrequent operation)
     #[inline]
     pub fn set_policy(&self, policy: SchedulingPolicy) {

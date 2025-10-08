@@ -15,4 +15,3 @@ mod seqlock_stats;
 pub use flat_combining::FlatCombiningCounter;
 pub use rcu::RcuCell;
 pub use seqlock_stats::SeqlockStats;
-

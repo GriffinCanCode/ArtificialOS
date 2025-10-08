@@ -126,8 +126,8 @@ unsafe impl<T: Copy + Sync> Sync for SeqlockStats<T> {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::thread;
     use std::sync::Arc;
+    use std::thread;
 
     #[derive(Debug, Clone, Copy, PartialEq)]
     struct TestStats {
@@ -137,10 +137,7 @@ mod tests {
 
     #[test]
     fn test_basic_read_write() {
-        let stats = SeqlockStats::new(TestStats {
-            counter: 0,
-            id: 1,
-        });
+        let stats = SeqlockStats::new(TestStats { counter: 0, id: 1 });
 
         stats.write(|s| s.counter = 42);
         let read = stats.read();
@@ -185,10 +182,7 @@ mod tests {
 
     #[test]
     fn test_batched_updates() {
-        let stats = SeqlockStats::new(TestStats {
-            counter: 0,
-            id: 3,
-        });
+        let stats = SeqlockStats::new(TestStats { counter: 0, id: 3 });
 
         stats.write_batch(|s| {
             s.counter += 10;
@@ -199,4 +193,3 @@ mod tests {
         assert_eq!(stats.read().counter, 60);
     }
 }
-

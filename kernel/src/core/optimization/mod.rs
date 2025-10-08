@@ -32,4 +32,3 @@ pub use hints::*;
 pub use likely::{likely, unlikely};
 pub use prefetch::{prefetch_read, prefetch_write, PrefetchExt};
 pub use simd_search::{find_hash_simd, path_starts_with_any};
-

@@ -3,8 +3,8 @@
  * Simple LRU cache for permission check results
  */
 
-use crate::permissions::types::{Action, PermissionRequest, PermissionResponse, Resource};
 use crate::core::types::Pid;
+use crate::permissions::types::{Action, PermissionRequest, PermissionResponse, Resource};
 use ahash::RandomState;
 use dashmap::DashMap;
 use std::hash::{Hash, Hasher};

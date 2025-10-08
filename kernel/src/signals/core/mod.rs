@@ -12,4 +12,3 @@ pub mod types;
 pub use atomic_stats::AtomicSignalStats;
 pub use traits::*;
 pub use types::*;
-

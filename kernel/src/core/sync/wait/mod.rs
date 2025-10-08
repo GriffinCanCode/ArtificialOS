@@ -34,4 +34,3 @@ pub use wait::{WaitError, WaitQueue, WaitResult};
 pub use condvar::CondvarWait;
 pub use futex::FutexWait;
 pub use spinwait::SpinWait;
-

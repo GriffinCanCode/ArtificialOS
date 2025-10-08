@@ -4,9 +4,9 @@
  * Blocking IPC operations with configurable timeouts for pipes and queues.
  */
 
+use super::super::core::types::{IpcError, IpcResult, PipeId, QueueId};
 use super::super::pipe::{PipeError, PipeManager};
 use super::super::queue::{QueueManager, QueueMessage};
-use super::super::core::types::{IpcError, IpcResult, PipeId, QueueId};
 use crate::core::guard::{TimeoutPolicy, TimeoutPolicyExt};
 use crate::core::sync::{WaitError, WaitQueue};
 use crate::core::types::{Pid, Priority, Size};

@@ -3,12 +3,12 @@
  * Handle pipe creation, read, write, and lifecycle
  */
 
-use crate::core::types::Pid;
 use crate::core::serialization::{bincode, json};
+use crate::core::types::Pid;
 use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
 use crate::syscalls::core::executor::SyscallExecutorWithIpc;
-use crate::syscalls::types::SyscallResult;
 use crate::syscalls::timeout::executor::TimeoutError;
+use crate::syscalls::types::SyscallResult;
 use log::{error, info};
 
 impl SyscallExecutorWithIpc {
@@ -53,7 +53,12 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(in crate::syscalls) fn write_pipe(&self, pid: Pid, pipe_id: u32, data: &[u8]) -> SyscallResult {
+    pub(in crate::syscalls) fn write_pipe(
+        &self,
+        pid: Pid,
+        pipe_id: u32,
+        data: &[u8],
+    ) -> SyscallResult {
         let request = PermissionRequest::new(
             pid,
             Resource::IpcChannel {
@@ -104,7 +109,12 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(in crate::syscalls) fn read_pipe(&self, pid: Pid, pipe_id: u32, size: usize) -> SyscallResult {
+    pub(in crate::syscalls) fn read_pipe(
+        &self,
+        pid: Pid,
+        pipe_id: u32,
+        size: usize,
+    ) -> SyscallResult {
         let request = PermissionRequest::new(
             pid,
             Resource::IpcChannel {

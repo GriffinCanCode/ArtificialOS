@@ -3,8 +3,8 @@
  * Handle shared memory creation, attach, detach, and access
  */
 
-use crate::core::types::Pid;
 use crate::core::serialization::{bincode, json};
+use crate::core::types::Pid;
 use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
 use crate::syscalls::core::executor::SyscallExecutorWithIpc;
 use crate::syscalls::types::SyscallResult;
@@ -44,7 +44,12 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(in crate::syscalls) fn attach_shm(&self, pid: Pid, segment_id: u32, read_only: bool) -> SyscallResult {
+    pub(in crate::syscalls) fn attach_shm(
+        &self,
+        pid: Pid,
+        segment_id: u32,
+        read_only: bool,
+    ) -> SyscallResult {
         let request = PermissionRequest::new(
             pid,
             Resource::IpcChannel {

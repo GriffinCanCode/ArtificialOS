@@ -33,10 +33,10 @@ thread_local! {
 }
 
 /// Buffer size categories
-const SMALL_SIZE: usize = 1024;       // 1KB
-const MEDIUM_SIZE: usize = 16384;     // 16KB
-const LARGE_SIZE: usize = 65536;      // 64KB
-const MAX_POOL_SIZE: usize = 16;      // Max buffers per pool
+const SMALL_SIZE: usize = 1024; // 1KB
+const MEDIUM_SIZE: usize = 16384; // 16KB
+const LARGE_SIZE: usize = 65536; // 64KB
+const MAX_POOL_SIZE: usize = 16; // Max buffers per pool
 
 /// Pooled buffer that auto-returns to pool on drop
 pub struct PooledBuffer {
@@ -305,4 +305,3 @@ mod tests {
         });
     }
 }
-

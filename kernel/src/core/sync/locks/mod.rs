@@ -12,4 +12,3 @@ mod striped;
 // Re-export public API
 pub use adaptive::AdaptiveLock;
 pub use striped::StripedMap;
-

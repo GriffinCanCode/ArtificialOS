@@ -3,9 +3,9 @@
  * Uses flat combining counters for better throughput in hot paths
  */
 
+use super::types::SignalStats;
 use crate::core::sync::lockfree::FlatCombiningCounter;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use super::types::SignalStats;
 
 /// Atomic signal statistics for lock-free updates
 ///

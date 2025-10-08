@@ -267,4 +267,3 @@ mod tests {
         assert!(matches!(cap.unwrap(), Capability::ReadFile(_)));
     }
 }
-

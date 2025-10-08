@@ -10,10 +10,10 @@ mod policy;
 mod stats;
 pub mod task;
 
-use atomic_stats::AtomicSchedulerStats;
 use crate::core::types::Pid;
 use crate::monitoring::Collector;
 use crate::process::core::types::SchedulingPolicy;
+use atomic_stats::AtomicSchedulerStats;
 use dashmap::DashMap;
 use log::info;
 use parking_lot::RwLock;

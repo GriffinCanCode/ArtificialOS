@@ -203,4 +203,3 @@ mod tests {
         assert_eq!(result, vec![1, 2]);
     }
 }
-

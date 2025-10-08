@@ -3,8 +3,8 @@
  * Tracks permission checks and denials for security monitoring
  */
 
-use crate::permissions::types::{PermissionRequest, PermissionResponse, Resource};
 use crate::core::types::Pid;
+use crate::permissions::types::{PermissionRequest, PermissionResponse, Resource};
 use ahash::RandomState;
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
@@ -246,4 +246,3 @@ mod tests {
         assert_eq!(stats.total_events, MAX_AUDIT_EVENTS);
     }
 }
-

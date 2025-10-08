@@ -34,8 +34,10 @@ impl<K: Hash + Eq, V> StripedMap<K, V> {
     ///
     /// `stripe_count` should be a power of 2 for optimal performance
     pub fn new(stripe_count: usize) -> Self {
-        assert!(stripe_count > 0 && stripe_count.is_power_of_two(),
-                "Stripe count must be a power of 2");
+        assert!(
+            stripe_count > 0 && stripe_count.is_power_of_two(),
+            "Stripe count must be a power of 2"
+        );
 
         let mut stripes = Vec::with_capacity(stripe_count);
         for _ in 0..stripe_count {
@@ -96,15 +98,12 @@ impl<K: Hash + Eq, V> StripedMap<K, V> {
 
     /// Get total number of entries across all stripes
     pub fn len(&self) -> usize {
-        self.stripes.iter()
-            .map(|stripe| stripe.read().len())
-            .sum()
+        self.stripes.iter().map(|stripe| stripe.read().len()).sum()
     }
 
     /// Check if empty
     pub fn is_empty(&self) -> bool {
-        self.stripes.iter()
-            .all(|stripe| stripe.read().is_empty())
+        self.stripes.iter().all(|stripe| stripe.read().is_empty())
     }
 
     /// Clear all entries
@@ -241,4 +240,3 @@ mod tests {
         assert_eq!(collected, vec![(1, "one"), (2, "two"), (3, "three")]);
     }
 }
-

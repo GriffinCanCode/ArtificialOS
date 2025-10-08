@@ -245,7 +245,8 @@ impl SyscallExecutorWithIpc {
         if self.timeout_config.enabled {
             use crate::monitoring::TimeoutObserver;
             let observer = Arc::new(TimeoutObserver::new(collector));
-            self.timeout_executor = crate::syscalls::timeout::executor::TimeoutExecutor::new(Some(observer));
+            self.timeout_executor =
+                crate::syscalls::timeout::executor::TimeoutExecutor::new(Some(observer));
         }
         self
     }

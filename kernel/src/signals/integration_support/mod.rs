@@ -6,5 +6,6 @@
 mod process;
 
 // Re-export public API
-pub use process::{outcome_to_state, requires_immediate_action, should_interrupt, ProcessSignalIntegration};
-
+pub use process::{
+    outcome_to_state, requires_immediate_action, should_interrupt, ProcessSignalIntegration,
+};

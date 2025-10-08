@@ -129,7 +129,8 @@ impl CowMemoryManager {
     /// Fork process memory (CoW)
     pub fn fork(&self, parent_pid: u32, child_pid: u32) -> Result<(), &'static str> {
         // Clone the parent region with CoW semantics
-        let child_region = self.regions
+        let child_region = self
+            .regions
             .get(&parent_pid, |region| region.clone_cow())
             .ok_or("Parent process not found")?;
 
@@ -223,7 +224,7 @@ mod tests {
         assert!(!mem1.is_shared());
         assert!(!mem2.is_shared());
 
-        assert_eq!(mem1.read(|d| d[0]), 1);  // Original
+        assert_eq!(mem1.read(|d| d[0]), 1); // Original
         assert_eq!(mem2.read(|d| d[0]), 99); // Modified
     }
 
@@ -288,4 +289,3 @@ mod tests {
         assert_eq!(stats.total_regions, 9);
     }
 }
-

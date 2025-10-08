@@ -16,7 +16,12 @@ use crate::syscalls::types::SyscallResult;
 
 impl SyscallExecutorWithIpc {
     /// Send signal to a process
-    pub(in crate::syscalls) fn send_signal(&self, pid: Pid, target_pid: Pid, signal: u32) -> SyscallResult {
+    pub(in crate::syscalls) fn send_signal(
+        &self,
+        pid: Pid,
+        target_pid: Pid,
+        signal: u32,
+    ) -> SyscallResult {
         // Check permission using centralized manager
         let request = PermissionRequest::proc_kill(pid, target_pid);
         let response = self.permission_manager().check_and_audit(&request);
@@ -202,7 +207,11 @@ impl SyscallExecutorWithIpc {
     }
 
     /// Get signal state
-    pub(in crate::syscalls) fn get_signal_state(&self, pid: Pid, target_pid: Option<Pid>) -> SyscallResult {
+    pub(in crate::syscalls) fn get_signal_state(
+        &self,
+        pid: Pid,
+        target_pid: Option<Pid>,
+    ) -> SyscallResult {
         let signal_manager = match &self.optional().signal_manager {
             Some(mgr) => mgr,
             None => return SyscallResult::error("Signal manager not available"),

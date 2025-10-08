@@ -57,4 +57,3 @@ impl Default for MemoryCounter {
 // Safety: FlatCombiningCounter is Sync and Send
 unsafe impl Sync for MemoryCounter {}
 unsafe impl Send for MemoryCounter {}
-

@@ -9,4 +9,3 @@ pub mod types;
 // Re-export everything for convenience
 pub use traits::*;
 pub use types::*;
-

@@ -48,8 +48,8 @@ pub use guard::{
 // Re-export sync primitives
 pub use sync::{
     AdaptiveLock, CondvarWait, FlatCombiningCounter, FutexWait, RcuCell, SeqlockStats,
-    ShardManager, SpinWait, StrategyType, StripedMap, SyncConfig, WaitError, WaitQueue,
-    WaitResult, WaitStrategy, WakeResult, WorkloadProfile,
+    ShardManager, SpinWait, StrategyType, StripedMap, SyncConfig, WaitError, WaitQueue, WaitResult,
+    WaitStrategy, WakeResult, WorkloadProfile,
 };
 
 // Re-export memory utilities

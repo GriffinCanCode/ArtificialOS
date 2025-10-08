@@ -52,10 +52,10 @@
  */
 
 use super::classification::SyscallClass;
-use crate::syscalls::core::executor::SyscallExecutorWithIpc;
-use crate::syscalls::types::{Syscall, SyscallResult};
 use crate::core::types::Pid;
 use crate::monitoring::{span_syscall, Collector};
+use crate::syscalls::core::executor::SyscallExecutorWithIpc;
+use crate::syscalls::types::{Syscall, SyscallResult};
 use std::sync::Arc;
 use std::time::Instant;
 use tracing::{error, info};
@@ -177,10 +177,7 @@ impl AsyncSyscallExecutor {
 
         // Execute in blocking thread pool (for now)
         // TODO: Replace with true async I/O for file/network operations
-        let result = tokio::task::spawn_blocking(move || {
-            executor.execute(pid, syscall)
-        })
-        .await;
+        let result = tokio::task::spawn_blocking(move || executor.execute(pid, syscall)).await;
 
         // Handle spawn error
         let result = match result {
@@ -237,11 +234,7 @@ impl AsyncSyscallExecutor {
     /// - Fast syscalls execute synchronously (no concurrency benefit)
     /// - Blocking syscalls execute concurrently (significant speedup)
     /// - Mixed batches get best of both worlds
-    pub async fn execute_batch(
-        &self,
-        pid: Pid,
-        syscalls: Vec<Syscall>,
-    ) -> Vec<SyscallResult> {
+    pub async fn execute_batch(&self, pid: Pid, syscalls: Vec<Syscall>) -> Vec<SyscallResult> {
         // Execute all syscalls concurrently
         let futures: Vec<_> = syscalls
             .into_iter()
@@ -267,11 +260,7 @@ impl AsyncSyscallExecutor {
     ///     Syscall::WriteFile { path: "output.txt".into(), data: processed },
     /// ]).await;
     /// ```
-    pub async fn execute_pipeline(
-        &self,
-        pid: Pid,
-        syscalls: Vec<Syscall>,
-    ) -> SyscallResult {
+    pub async fn execute_pipeline(&self, pid: Pid, syscalls: Vec<Syscall>) -> SyscallResult {
         let mut last_result = SyscallResult::Success { data: None };
 
         for syscall in syscalls {
@@ -393,11 +382,8 @@ mod tests {
         let pipe_manager = crate::ipc::PipeManager::new(memory_manager.clone());
         let shm_manager = crate::ipc::ShmManager::new(memory_manager);
 
-        let sync_executor = SyscallExecutorWithIpc::with_ipc_direct(
-            sandbox,
-            pipe_manager,
-            shm_manager,
-        );
+        let sync_executor =
+            SyscallExecutorWithIpc::with_ipc_direct(sandbox, pipe_manager, shm_manager);
 
         AsyncSyscallExecutor::new(sync_executor)
     }
@@ -452,4 +438,3 @@ mod tests {
         }
     }
 }
-
