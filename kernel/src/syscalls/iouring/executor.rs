@@ -44,6 +44,8 @@ impl IoUringExecutor {
 
     /// Execute pending operations from a ring (batch)
     pub async fn execute_batch_async(&self, ring: Arc<SyscallCompletionRing>) {
+        use crate::core::optimization::prefetch_read;
+
         const BATCH_SIZE: usize = crate::core::limits::IOURING_BATCH_SIZE;
         let entries = ring.pop_submissions(BATCH_SIZE);
 
@@ -58,9 +60,15 @@ impl IoUringExecutor {
         );
 
         // Execute all operations concurrently
+        let len = entries.len();
         let futures: Vec<_> = entries
             .into_iter()
-            .map(|entry| {
+            .enumerate()
+            .map(|(i, entry)| {
+                if i + 2 < len {
+                    prefetch_read(&entry as *const _);
+                }
+
                 let ring = ring.clone();
                 async move {
                     let result = self.execute_operation(&entry.op, entry.pid).await;

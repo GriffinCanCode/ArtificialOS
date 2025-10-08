@@ -56,12 +56,10 @@ impl SyscallSubmissionQueue {
         use crate::core::optimization::prefetch_read;
 
         let mut batch = Vec::with_capacity(max);
-        for i in 0..max {
+        for _ in 0..max {
             if let Some(entry) = self.ring.pop() {
-                if i + 2 < max {
-                    if let Some(next_entry) = self.ring.dequeue() {
-                        prefetch_read(next_entry as *const SyscallSubmissionEntry);
-                    }
+                if batch.len() + 2 < max {
+                    prefetch_read(&entry as *const _);
                 }
                 batch.push(entry);
             } else {

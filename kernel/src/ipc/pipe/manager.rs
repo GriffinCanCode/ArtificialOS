@@ -355,6 +355,8 @@ impl PipeManager {
     }
 
     pub fn cleanup_process(&self, pid: Pid) -> Size {
+        use crate::core::optimization::prefetch_read;
+
         let pipe_ids: Vec<u32> = self
             .pipes
             .iter()
@@ -364,8 +366,12 @@ impl PipeManager {
 
         let count = pipe_ids.len();
 
-        for pipe_id in pipe_ids {
-            if let Err(e) = self.destroy(pipe_id) {
+        for (i, pipe_id) in pipe_ids.iter().enumerate() {
+            if i + 2 < pipe_ids.len() {
+                prefetch_read(&pipe_ids[i + 2] as *const u32);
+            }
+
+            if let Err(e) = self.destroy(*pipe_id) {
                 warn!("Failed to destroy pipe {} during cleanup: {}", pipe_id, e);
             }
         }

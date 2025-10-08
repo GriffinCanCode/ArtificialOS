@@ -254,8 +254,10 @@ impl FileSystem for LocalFS {
                 }
             }
 
-            let entry = entry_result.as_ref()
-                .map_err(|e| Self::io_error(e.clone(), format!("read dir entry in {}", path.display())))?;
+            let entry = match entry_result {
+                Ok(e) => e,
+                Err(ref e) => return Err(Self::io_error(std::io::Error::from(e.kind()), format!("read dir entry in {}", path.display()))),
+            };
             let name = entry
                 .file_name()
                 .into_string()

@@ -197,7 +197,12 @@ impl ZeroCopyIpc {
         let mut total_submissions = 0;
         let mut total_completions = 0;
 
-        for ring in self.rings.iter() {
+        let rings: Vec<_> = self.rings.iter().collect();
+        for (i, ring) in rings.iter().enumerate() {
+            if i + 2 < rings.len() {
+                crate::core::optimization::prefetch_read(rings[i + 2].value() as *const _);
+            }
+
             let stats = ring.stats();
             total_submissions += stats.submissions;
             total_completions += stats.completions;

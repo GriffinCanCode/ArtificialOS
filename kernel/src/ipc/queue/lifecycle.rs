@@ -262,8 +262,14 @@ impl QueueManager {
 
     /// Destroy all queues for a process
     fn destroy_process_queues(&self, queue_ids: &[QueueId], pid: Pid) -> Size {
+        use crate::core::optimization::prefetch_read;
+
         let mut freed = 0;
-        for queue_id in queue_ids {
+        for (i, queue_id) in queue_ids.iter().enumerate() {
+            if i + 2 < queue_ids.len() {
+                prefetch_read(&queue_ids[i + 2] as *const QueueId);
+            }
+
             if self.destroy(*queue_id, pid).is_ok() {
                 freed += 1;
             }

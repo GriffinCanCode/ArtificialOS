@@ -170,10 +170,17 @@ impl IPCManager {
 
         // Clean up message queues
         if let Some((_, queue)) = self.message_queues.remove(&pid) {
+            use crate::core::optimization::prefetch_read;
+
             let message_count = queue.len();
+            let messages: Vec<_> = queue.into_iter().collect();
 
             // Deallocate memory for each message
-            for message in queue {
+            for (i, message) in messages.iter().enumerate() {
+                if i + 2 < messages.len() {
+                    prefetch_read(&messages[i + 2] as *const _);
+                }
+
                 if let Some(address) = message.mem_address {
                     if let Err(e) = self.memory_manager.deallocate(address) {
                         log::warn!(

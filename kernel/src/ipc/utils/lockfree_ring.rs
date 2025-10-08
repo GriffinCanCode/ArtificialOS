@@ -135,6 +135,8 @@ impl LockFreeByteRing {
 
         // Fast path: Use SIMD batching for bulk transfers >= 64 bytes
         if len >= SIMD_BATCH_SIZE {
+            use crate::core::optimization::prefetch_read;
+
             let available = self.ring.available();
             let can_write = available.min(len);
             let full_batches = can_write / SIMD_BATCH_SIZE;
@@ -145,7 +147,11 @@ impl LockFreeByteRing {
                 batch_buf.resize(batch_bytes, 0);
                 simd_memcpy(&mut batch_buf, &data[..batch_bytes]);
 
-                for &byte in &batch_buf[..] {
+                for (i, &byte) in batch_buf.iter().enumerate() {
+                    if i + 16 < batch_buf.len() {
+                        prefetch_read(&batch_buf[i + 16] as *const u8);
+                    }
+
                     if self.ring.push(byte).is_err() {
                         return written;
                     }
@@ -180,12 +186,17 @@ impl LockFreeByteRing {
         let mut result = PooledBuffer::get(size);
 
         if can_read >= SIMD_BATCH_SIZE {
+            use crate::core::optimization::prefetch_write;
+
             let full_batches = can_read / SIMD_BATCH_SIZE;
             let batch_bytes = full_batches * SIMD_BATCH_SIZE;
 
             let mut batch_buf = PooledBuffer::get(batch_bytes);
-            for _ in 0..batch_bytes {
+            for i in 0..batch_bytes {
                 if let Some(byte) = self.ring.pop() {
+                    if i + 16 < batch_bytes && batch_buf.capacity() > i + 16 {
+                        prefetch_write(batch_buf.as_mut_ptr().wrapping_add(i + 16));
+                    }
                     batch_buf.push(byte);
                 } else {
                     break;

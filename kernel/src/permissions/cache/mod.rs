@@ -110,7 +110,25 @@ impl PermissionCache {
 
     /// Clear all cached decisions for a PID
     pub fn invalidate_pid(&self, pid: Pid) {
-        self.cache.retain(|k, _| k.pid != pid);
+        use crate::core::optimization::prefetch_read;
+
+        let keys: Vec<_> = self.cache
+            .iter()
+            .filter_map(|entry| {
+                if entry.key().pid == pid {
+                    Some(entry.key().clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        for (i, key) in keys.iter().enumerate() {
+            if i + 2 < keys.len() {
+                prefetch_read(&keys[i + 2] as *const CacheKey);
+            }
+            self.cache.remove(key);
+        }
     }
 
     /// Clear entire cache

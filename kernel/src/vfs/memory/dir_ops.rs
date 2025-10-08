@@ -26,11 +26,11 @@ impl MemFS {
 
                     for (i, (name, child_path)) in children_vec.iter().enumerate() {
                         if i + 2 < children_vec.len() {
-                            prefetch_read(*children_vec[i + 2].1 as *const PathBuf);
+                            prefetch_read(children_vec[i + 2].1 as *const PathBuf);
                         }
 
-                        if let Some(node) = self.nodes.get(child_path) {
-                            entries.push(Entry::new_unchecked(name.clone(), node.file_type().into()));
+                        if let Some(node) = self.nodes.get(*child_path) {
+                            entries.push(Entry::new_unchecked((*name).clone(), node.file_type().into()));
                         }
                     }
                     Ok(entries.into_iter().collect())

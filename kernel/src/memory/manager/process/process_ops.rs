@@ -169,18 +169,25 @@ impl MemoryManager {
 
     /// Get detailed memory statistics
     pub fn stats(&self) -> MemoryStats {
-        let used = self.used_memory.load(Ordering::SeqCst) as usize;
+        use crate::core::optimization::prefetch_read;
 
-        let allocated_blocks = self
-            .blocks
-            .iter()
-            .filter(|entry| entry.value().allocated)
-            .count();
-        let fragmented_blocks = self
-            .blocks
-            .iter()
-            .filter(|entry| !entry.value().allocated)
-            .count();
+        let used = self.used_memory.load(Ordering::SeqCst) as usize;
+        let items: Vec<_> = self.blocks.iter().collect();
+
+        let mut allocated_blocks = 0;
+        let mut fragmented_blocks = 0;
+
+        for (i, entry) in items.iter().enumerate() {
+            if i + 4 < items.len() {
+                prefetch_read(items[i + 4].value() as *const MemoryBlock);
+            }
+
+            if entry.value().allocated {
+                allocated_blocks += 1;
+            } else {
+                fragmented_blocks += 1;
+            }
+        }
 
         MemoryStats {
             total_memory: self.total_memory,
@@ -194,13 +201,22 @@ impl MemoryManager {
 
     /// Get all memory blocks allocated to a process
     pub fn process_allocations(&self, pid: Pid) -> Vec<MemoryBlock> {
-        self.blocks
-            .iter()
-            .filter(|entry| {
-                let b = entry.value();
-                b.allocated && b.owner_pid == Some(pid)
-            })
-            .map(|entry| entry.value().clone())
-            .collect()
+        use crate::core::optimization::prefetch_read;
+
+        let items: Vec<_> = self.blocks.iter().collect();
+        let mut result = Vec::new();
+
+        for (i, entry) in items.iter().enumerate() {
+            if i + 3 < items.len() {
+                prefetch_read(items[i + 3].value() as *const MemoryBlock);
+            }
+
+            let b = entry.value();
+            if b.allocated && b.owner_pid == Some(pid) {
+                result.push(b.clone());
+            }
+        }
+
+        result
     }
 }
