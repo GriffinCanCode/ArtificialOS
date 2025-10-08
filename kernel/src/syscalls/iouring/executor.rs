@@ -44,7 +44,7 @@ impl IoUringExecutor {
 
     /// Execute pending operations from a ring (batch)
     pub async fn execute_batch_async(&self, ring: Arc<SyscallCompletionRing>) {
-        const BATCH_SIZE: usize = 32;
+        const BATCH_SIZE: usize = crate::core::limits::IOURING_BATCH_SIZE;
         let entries = ring.pop_submissions(BATCH_SIZE);
 
         if entries.is_empty() {

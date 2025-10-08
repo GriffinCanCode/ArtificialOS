@@ -20,7 +20,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
 /// Number of parking slots (power of 2 for fast modulo via bitwise AND)
-const PARKING_SLOTS: usize = 512;
+use crate::core::limits::FUTEX_PARKING_SLOTS as PARKING_SLOTS;
 const SLOT_MASK: usize = PARKING_SLOTS - 1;
 
 /// A single parking slot with a waiter counter

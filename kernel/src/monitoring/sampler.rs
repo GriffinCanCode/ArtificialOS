@@ -13,7 +13,7 @@ use std::sync::Arc;
 const TARGET_OVERHEAD_PCT: u8 = 2;
 
 /// Sampling adjustment interval (number of events)
-const ADJUSTMENT_INTERVAL: u64 = 10000;
+use crate::core::limits::SAMPLING_ADJUSTMENT_INTERVAL as ADJUSTMENT_INTERVAL;
 
 /// Sampling decision result
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

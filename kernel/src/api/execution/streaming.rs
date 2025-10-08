@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-const DEFAULT_CHUNK_SIZE: usize = 64 * 1024; // 64KB
+use crate::core::limits::DEFAULT_CHUNK_SIZE;
 
 #[derive(Clone)]
 pub struct StreamingManager {

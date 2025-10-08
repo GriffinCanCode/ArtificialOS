@@ -12,7 +12,7 @@ use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
 
 /// Maximum events in ring buffer (power of 2 for performance)
-const RING_SIZE: usize = 65536;
+use crate::core::limits::EVENT_RING_SIZE as RING_SIZE;
 
 /// Event statistics for monitoring the observer
 #[derive(Debug, Clone, Default)]

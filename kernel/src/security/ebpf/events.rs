@@ -11,7 +11,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 /// Maximum events to keep in history
-const MAX_EVENT_HISTORY: usize = 10000;
+use crate::core::limits::MAX_EBPF_EVENT_HISTORY as MAX_EVENT_HISTORY;
 
 /// Event collector and distributor
 pub struct EventCollector {

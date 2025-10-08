@@ -16,43 +16,44 @@ use std::sync::Arc;
 /// Convert priority to resource limits
 pub(super) fn priority_to_limits(priority: Priority) -> Limits {
     // Higher priority = more resources
+    use crate::core::limits::*;
     let (memory_bytes, max_pids, max_open_files, cpu_shares) = match priority {
         p if p >= 90 => (
-            512 * 1024 * 1024, // 512MB
-            1000,              // 1000 pids
-            10000,             // 10000 files
-            1024,              // High CPU share
+            HIGH_PRIORITY_MEMORY,
+            1000,  // 1000 pids
+            10000, // 10000 files
+            HIGH_PRIORITY_CPU_SHARES,
         ),
         p if p >= 70 => (
-            256 * 1024 * 1024, // 256MB
-            500,               // 500 pids
-            5000,              // 5000 files
-            512,               // Medium-high CPU share
+            NORMAL_PRIORITY_MEMORY,
+            500,  // 500 pids
+            5000, // 5000 files
+            NORMAL_PRIORITY_CPU_SHARES,
         ),
         p if p >= 50 => (
-            128 * 1024 * 1024, // 128MB
-            250,               // 250 pids
-            2000,              // 2000 files
-            256,               // Medium CPU share
+            LOW_PRIORITY_MEMORY,
+            250,  // 250 pids
+            2000, // 2000 files
+            LOW_PRIORITY_CPU_SHARES,
         ),
         p if p >= 30 => (
-            64 * 1024 * 1024, // 64MB
-            100,              // 100 pids
-            1000,             // 1000 files
-            128,              // Low-medium CPU share
+            BACKGROUND_PRIORITY_MEMORY,
+            BACKGROUND_PRIORITY_MAX_PIDS as usize,
+            1000, // 1000 files
+            BACKGROUND_PRIORITY_CPU_SHARES,
         ),
         _ => (
-            32 * 1024 * 1024, // 32MB
-            50,               // 50 pids
-            500,              // 500 files
-            64,               // Low CPU share
+            IDLE_PRIORITY_MEMORY,
+            50,  // 50 pids
+            500, // 500 files
+            64,  // Low CPU share
         ),
     };
 
     Limits {
-        memory_bytes: Some(memory_bytes),
-        cpu_shares: Some(cpu_shares),
-        max_pids: Some(max_pids),
+        memory_bytes: Some(memory_bytes as u64),
+        cpu_shares: Some(cpu_shares as u32),
+        max_pids: Some(max_pids as u32),
         max_open_files: Some(max_open_files),
     }
 }

@@ -68,8 +68,8 @@ impl Default for ProcessInitConfig {
     fn default() -> Self {
         Self {
             enable_zerocopy: true,
-            zerocopy_sq_size: 128,
-            zerocopy_cq_size: 256,
+            zerocopy_sq_size: crate::core::limits::PROCESS_ZEROCOPY_SQ_SIZE,
+            zerocopy_cq_size: crate::core::limits::PROCESS_ZEROCOPY_CQ_SIZE,
             enable_signals: true,
             enable_stdio: true,
         }
@@ -293,8 +293,14 @@ mod tests {
         assert!(config.enable_zerocopy);
         assert!(config.enable_signals);
         assert!(config.enable_stdio);
-        assert_eq!(config.zerocopy_sq_size, 128);
-        assert_eq!(config.zerocopy_cq_size, 256);
+        assert_eq!(
+            config.zerocopy_sq_size,
+            crate::core::limits::PROCESS_ZEROCOPY_SQ_SIZE
+        );
+        assert_eq!(
+            config.zerocopy_cq_size,
+            crate::core::limits::PROCESS_ZEROCOPY_CQ_SIZE
+        );
     }
 
     #[test]

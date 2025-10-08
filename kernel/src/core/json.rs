@@ -7,7 +7,7 @@ use serde::{de::DeserializeOwned, Serialize};
 
 /// Threshold for using SIMD-JSON (1KB)
 /// Below this size, use serde_json for simplicity
-const SIMD_THRESHOLD: usize = 1024;
+use crate::core::limits::JSON_SIMD_THRESHOLD as SIMD_THRESHOLD;
 
 /// Result type for JSON operations
 pub type JsonResult<T> = Result<T, JsonError>;

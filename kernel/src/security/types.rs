@@ -283,11 +283,11 @@ impl SandboxConfig {
             pid,
             capabilities,
             resource_limits: ResourceLimits {
-                max_memory_bytes: 2 * 1024 * 1024 * 1024, // 2GB
-                max_cpu_time_ms: 300_000,                 // 5 minutes
+                max_memory_bytes: 2 * crate::core::limits::DEFAULT_MEMORY_POOL, // 2GB
+                max_cpu_time_ms: 300_000,                                       // 5 minutes
                 max_file_descriptors: 500,
                 max_processes: 50,
-                max_network_connections: 100,
+                max_network_connections: crate::core::limits::MAX_NETWORK_CONNECTIONS,
             },
             allowed_paths: vec![PathBuf::from("/")],
             blocked_paths: vec![],
@@ -358,10 +358,10 @@ impl Limits {
 impl Default for Limits {
     fn default() -> Self {
         Self {
-            memory_bytes: Some(512 * 1024 * 1024), // 512 MB
-            cpu_shares: Some(100),                 // Standard priority
+            memory_bytes: Some(crate::core::limits::HIGH_PRIORITY_MEMORY as u64), // 512 MB
+            cpu_shares: Some(crate::core::limits::STANDARD_CPU_SHARES),
             max_pids: Some(10),
-            max_open_files: Some(1024),
+            max_open_files: Some(crate::core::limits::STANDARD_MAX_FILE_DESCRIPTORS as u32),
         }
     }
 }

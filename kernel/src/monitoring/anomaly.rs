@@ -14,7 +14,7 @@ use std::sync::{Arc, RwLock};
 const ANOMALY_THRESHOLD: f64 = 3.0;
 
 /// Minimum samples before detecting anomalies
-const MIN_SAMPLES: u64 = 100;
+use crate::core::limits::MIN_ANOMALY_SAMPLES as MIN_SAMPLES;
 
 /// Running statistics for a metric
 #[derive(Debug, Clone)]
@@ -94,7 +94,9 @@ impl Detector {
     pub fn check(&self, event: &Event) -> Option<Anomaly> {
         let (metric_name, value) = self.extract_metric(event)?;
 
-        let mut metrics = self.metrics.write()
+        let mut metrics = self
+            .metrics
+            .write()
             .expect("anomaly detector metrics lock poisoned - unrecoverable state");
         let stats = metrics
             .entry(metric_name.clone())
@@ -151,7 +153,9 @@ impl Detector {
 
     /// Get statistics for a metric
     pub fn stats(&self, metric: &str) -> Option<MetricStats> {
-        let metrics = self.metrics.read()
+        let metrics = self
+            .metrics
+            .read()
             .expect("anomaly detector metrics lock poisoned - unrecoverable state");
         metrics.get(metric).map(|s| MetricStats {
             count: s.count,
@@ -232,7 +236,8 @@ impl Detector {
 
     /// Reset all statistics
     pub fn reset(&self) {
-        self.metrics.write()
+        self.metrics
+            .write()
             .expect("anomaly detector metrics lock poisoned - unrecoverable state")
             .clear();
     }

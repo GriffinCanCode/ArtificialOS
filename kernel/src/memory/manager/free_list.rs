@@ -3,6 +3,7 @@
  * Efficient memory allocation data structure
  */
 
+use crate::core::limits::{MEDIUM_BLOCK_MAX, SMALL_BLOCK_MAX};
 use crate::core::types::{Address, Size};
 use std::collections::BTreeMap;
 
@@ -12,11 +13,6 @@ pub(in crate::memory) struct FreeBlock {
     pub address: Address,
     pub size: Size,
 }
-
-/// Size classes for segregated free lists
-/// Modern memory allocators use segregated lists for O(1) lookup
-pub(super) const SMALL_BLOCK_MAX: Size = 4 * 1024; // 4KB
-pub(super) const MEDIUM_BLOCK_MAX: Size = 64 * 1024; // 64KB
 
 /// Segregated free list for efficient memory allocation
 /// - Small blocks (<4KB): O(1) best-fit within size class

@@ -110,7 +110,7 @@ pub struct LockFreeByteRing {
 }
 
 /// Optimal batch size for SIMD operations (AVX512 = 64 bytes)
-const SIMD_BATCH_SIZE: usize = 64;
+use crate::core::limits::IPC_SIMD_BATCH_SIZE as SIMD_BATCH_SIZE;
 
 impl LockFreeByteRing {
     /// Create a new lock-free byte ring buffer

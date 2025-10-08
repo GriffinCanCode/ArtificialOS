@@ -112,14 +112,24 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // Mount in-memory filesystem at /tmp (100MB limit)
     info!("Mounting in-memory filesystem at /tmp (100MB limit)");
-    if let Err(e) = vfs.mount("/tmp", Arc::new(MemFS::with_capacity(100 * 1024 * 1024))) {
+    if let Err(e) = vfs.mount(
+        "/tmp",
+        Arc::new(MemFS::with_capacity(
+            crate::core::limits::TMP_FILESYSTEM_CAPACITY,
+        )),
+    ) {
         tracing::error!(error = %e, "Failed to mount /tmp");
         return Err("Failed to mount /tmp filesystem".into());
     }
 
     // Mount in-memory filesystem at /cache (50MB limit)
     info!("Mounting in-memory filesystem at /cache (50MB limit)");
-    if let Err(e) = vfs.mount("/cache", Arc::new(MemFS::with_capacity(50 * 1024 * 1024))) {
+    if let Err(e) = vfs.mount(
+        "/cache",
+        Arc::new(MemFS::with_capacity(
+            crate::core::limits::CACHE_FILESYSTEM_CAPACITY,
+        )),
+    ) {
         tracing::error!(error = %e, "Failed to mount /cache");
         return Err("Failed to mount /cache filesystem".into());
     }

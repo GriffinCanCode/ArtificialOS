@@ -95,7 +95,7 @@ pub struct GlobalGarbageCollector {
 impl GlobalGarbageCollector {
     /// Create a new global garbage collector
     pub fn new(memory_manager: MemoryManager) -> Self {
-        let threshold = 100 * 1024 * 1024; // 100MB default threshold
+        let threshold = crate::core::limits::DEFAULT_GC_THRESHOLD;
         info!(
             "Global garbage collector initialized with threshold: {} bytes",
             threshold

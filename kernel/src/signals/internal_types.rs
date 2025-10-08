@@ -9,9 +9,10 @@ use ahash::HashMap;
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashSet};
 
-// Configuration constants
-pub(super) const MAX_PENDING_SIGNALS: usize = 128;
-pub(super) const MAX_HANDLERS_PER_PROCESS: usize = 32;
+// Configuration constants - centralized in core::limits
+pub(super) use crate::core::limits::{
+    MAX_PENDING_SIGNALS, MAX_SIGNAL_HANDLERS as MAX_HANDLERS_PER_PROCESS,
+};
 
 /// Pending signal with priority (for heap ordering)
 #[derive(Debug, Clone)]

@@ -101,11 +101,11 @@ pub struct ResourceLimits {
 impl Default for ResourceLimits {
     fn default() -> Self {
         Self {
-            max_memory_bytes: 100 * 1024 * 1024, // 100MB
-            max_cpu_time_ms: 60_000,             // 1 minute
-            max_file_descriptors: 1024,
+            max_memory_bytes: crate::core::limits::HIGH_MEMORY_THRESHOLD,
+            max_cpu_time_ms: 60_000, // 1 minute
+            max_file_descriptors: crate::core::limits::STANDARD_MAX_FILE_DESCRIPTORS,
             max_processes: 10,
-            max_network_connections: 100,
+            max_network_connections: crate::core::limits::MAX_NETWORK_CONNECTIONS,
         }
     }
 }
@@ -114,7 +114,7 @@ impl ResourceLimits {
     /// Create minimal resource limits (for untrusted processes)
     pub const fn minimal() -> Self {
         Self {
-            max_memory_bytes: 10 * 1024 * 1024, // 10MB
+            max_memory_bytes: 10 * 1024 * 1024, // 10MB - intentionally minimal
             max_cpu_time_ms: 5_000,             // 5 seconds
             max_file_descriptors: 10,
             max_processes: 1,
@@ -125,7 +125,7 @@ impl ResourceLimits {
     /// Create privileged resource limits (for system processes)
     pub const fn privileged() -> Self {
         Self {
-            max_memory_bytes: 500 * 1024 * 1024, // 500MB
+            max_memory_bytes: 500 * 1024 * 1024, // 500MB - privileged processes
             max_cpu_time_ms: 0,                  // Unlimited
             max_file_descriptors: 10000,
             max_processes: 100,

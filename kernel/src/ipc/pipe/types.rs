@@ -4,16 +4,16 @@
  */
 
 use super::super::types::{IpcError, PipeId};
+use crate::core::limits;
 use crate::core::serde::{is_false, is_zero_usize};
 use crate::core::types::{Pid, Size};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-// Pipe limits to prevent resource exhaustion
-pub const DEFAULT_PIPE_CAPACITY: usize = 65536; // 64KB (Linux default)
-pub const MAX_PIPE_CAPACITY: usize = 1024 * 1024; // 1MB max
-pub const MAX_PIPES_PER_PROCESS: usize = 100;
-pub const GLOBAL_PIPE_MEMORY_LIMIT: usize = 50 * 1024 * 1024; // 50MB total
+// Pipe limits - centralized in core::limits
+pub use limits::{
+    DEFAULT_PIPE_CAPACITY, GLOBAL_PIPE_MEMORY_LIMIT, MAX_PIPES_PER_PROCESS, MAX_PIPE_CAPACITY,
+};
 
 /// Pipe error types
 #[derive(Debug, Error)]

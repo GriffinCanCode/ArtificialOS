@@ -374,8 +374,8 @@ impl ProcessResources {
     #[inline(always)]
     #[must_use]
     pub const fn is_high_usage(&self) -> bool {
-        self.memory_bytes > 100 * 1024 * 1024 || // > 100MB
-        self.open_files > 100 ||
-        self.child_processes > 10
+        self.memory_bytes > crate::core::limits::HIGH_MEMORY_THRESHOLD
+            || self.open_files > crate::core::limits::HIGH_FD_THRESHOLD
+            || self.child_processes > 10
     }
 }

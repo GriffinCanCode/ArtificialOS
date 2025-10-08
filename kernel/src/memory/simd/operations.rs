@@ -7,7 +7,7 @@ use std::cmp::Ordering;
 
 /// Threshold for using SIMD operations (bytes)
 /// Below this, standard operations are faster due to setup overhead
-const SIMD_THRESHOLD: usize = 64;
+use crate::core::limits::MEMORY_SIMD_THRESHOLD as SIMD_THRESHOLD;
 
 /// SIMD-accelerated memcpy
 /// Copies `len` bytes from `src` to `dst` using SIMD when beneficial

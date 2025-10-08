@@ -38,14 +38,15 @@ pub struct SyscallTimeoutConfig {
 impl SyscallTimeoutConfig {
     /// Create default timeout configuration
     pub fn new() -> Self {
+        use crate::core::limits::*;
         Self {
-            pipe_read: TimeoutPolicy::Ipc(Duration::from_secs(10)),
-            pipe_write: TimeoutPolicy::Ipc(Duration::from_secs(10)),
-            queue_receive: TimeoutPolicy::Ipc(Duration::from_secs(10)),
-            file_io: TimeoutPolicy::Io(Duration::from_secs(30)),
-            file_sync: TimeoutPolicy::Io(Duration::from_secs(60)),
-            network: TimeoutPolicy::Io(Duration::from_secs(60)),
-            process_wait: TimeoutPolicy::Io(Duration::from_secs(300)),
+            pipe_read: TimeoutPolicy::Ipc(STANDARD_IPC_TIMEOUT),
+            pipe_write: TimeoutPolicy::Ipc(STANDARD_IPC_TIMEOUT),
+            queue_receive: TimeoutPolicy::Ipc(STANDARD_IPC_TIMEOUT),
+            file_io: TimeoutPolicy::Io(STANDARD_FILE_IO_TIMEOUT),
+            file_sync: TimeoutPolicy::Io(STANDARD_FSYNC_TIMEOUT),
+            network: TimeoutPolicy::Io(STANDARD_NETWORK_TIMEOUT),
+            process_wait: TimeoutPolicy::Io(STANDARD_PROCESS_WAIT_TIMEOUT),
             enabled: true,
         }
     }
@@ -66,10 +67,11 @@ impl SyscallTimeoutConfig {
 
     /// Create aggressive timeout configuration for development
     pub fn aggressive() -> Self {
+        use crate::core::limits::*;
         Self {
-            pipe_read: TimeoutPolicy::Ipc(Duration::from_secs(2)),
-            pipe_write: TimeoutPolicy::Ipc(Duration::from_secs(2)),
-            queue_receive: TimeoutPolicy::Ipc(Duration::from_secs(2)),
+            pipe_read: TimeoutPolicy::Ipc(RESTRICTED_IPC_TIMEOUT),
+            pipe_write: TimeoutPolicy::Ipc(RESTRICTED_IPC_TIMEOUT),
+            queue_receive: TimeoutPolicy::Ipc(RESTRICTED_IPC_TIMEOUT),
             file_io: TimeoutPolicy::Io(Duration::from_secs(5)),
             file_sync: TimeoutPolicy::Io(Duration::from_secs(10)),
             network: TimeoutPolicy::Io(Duration::from_secs(10)),
@@ -80,10 +82,11 @@ impl SyscallTimeoutConfig {
 
     /// Create relaxed timeout configuration for slow environments
     pub fn relaxed() -> Self {
+        use crate::core::limits::*;
         Self {
-            pipe_read: TimeoutPolicy::Ipc(Duration::from_secs(60)),
-            pipe_write: TimeoutPolicy::Ipc(Duration::from_secs(60)),
-            queue_receive: TimeoutPolicy::Ipc(Duration::from_secs(60)),
+            pipe_read: TimeoutPolicy::Ipc(RELAXED_IPC_TIMEOUT),
+            pipe_write: TimeoutPolicy::Ipc(RELAXED_IPC_TIMEOUT),
+            queue_receive: TimeoutPolicy::Ipc(RELAXED_IPC_TIMEOUT),
             file_io: TimeoutPolicy::Io(Duration::from_secs(300)),
             file_sync: TimeoutPolicy::Io(Duration::from_secs(600)),
             network: TimeoutPolicy::Io(Duration::from_secs(600)),

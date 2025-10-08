@@ -189,8 +189,11 @@ impl MemoryManager {
                     free_list.insert(FreeBlock { address, size });
 
                     // Periodically coalesce adjacent blocks to reduce fragmentation
-                    // Only coalesce every 100 deallocations to amortize the O(n log n) cost
-                    if self.deallocated_count.load(Ordering::SeqCst) % 100 == 0 {
+                    // Only coalesce every N deallocations to amortize the O(n log n) cost
+                    if self.deallocated_count.load(Ordering::SeqCst)
+                        % crate::core::limits::DEALLOC_COALESCE_INTERVAL
+                        == 0
+                    {
                         Self::coalesce_free_blocks(&mut free_list);
                     }
                 }

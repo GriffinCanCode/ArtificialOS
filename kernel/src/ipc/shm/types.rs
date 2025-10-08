@@ -4,15 +4,14 @@
  */
 
 use super::super::types::{IpcError, ShmId};
+use crate::core::limits;
 use crate::core::serde::{is_empty_vec, is_zero_usize};
 use crate::core::types::{Pid, Size};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-// Shared memory limits
-pub const MAX_SEGMENT_SIZE: usize = 100 * 1024 * 1024; // 100MB per segment
-pub const MAX_SEGMENTS_PER_PROCESS: usize = 10;
-pub const GLOBAL_SHM_MEMORY_LIMIT: usize = 500 * 1024 * 1024; // 500MB total
+// Shared memory limits - centralized in core::limits
+pub use limits::{GLOBAL_SHM_MEMORY_LIMIT, MAX_SEGMENTS_PER_PROCESS, MAX_SEGMENT_SIZE};
 
 /// Shared memory error types
 #[derive(Debug, Clone, Error, Serialize, Deserialize)]

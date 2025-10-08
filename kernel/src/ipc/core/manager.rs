@@ -7,6 +7,7 @@ use super::traits::{
     AsyncQueue, IpcCleanup, IpcManager as IpcManagerTrait, MessageQueue, PipeChannel, SharedMemory,
 };
 use super::types::{IpcError, IpcResult, Message};
+use crate::core::limits::{IPC_MANAGER_QUEUE_SIZE, MAX_MESSAGE_SIZE};
 use crate::core::types::{Pid, Size};
 use crate::ipc::pipe::PipeManager;
 use crate::ipc::queue::QueueManager;
@@ -18,10 +19,6 @@ use dashmap::DashMap;
 use log::info;
 use std::collections::VecDeque;
 use std::sync::Arc;
-
-// Queue limits to prevent DoS
-const MAX_QUEUE_SIZE: usize = 1000;
-const MAX_MESSAGE_SIZE: usize = 1024 * 1024; // 1MB
 
 /// IPC Manager
 ///
@@ -42,7 +39,7 @@ impl IPCManager {
     pub fn new(memory_manager: MemoryManager) -> Self {
         info!(
             "IPC manager initialized with unified memory management (queue limit: {})",
-            MAX_QUEUE_SIZE
+            IPC_MANAGER_QUEUE_SIZE
         );
         Self {
             message_queues: Arc::new(DashMap::with_hasher(RandomState::new())),
@@ -58,7 +55,7 @@ impl IPCManager {
     pub fn with_zerocopy(memory_manager: MemoryManager) -> Self {
         info!(
             "IPC manager initialized with zero-copy support (queue limit: {})",
-            MAX_QUEUE_SIZE
+            IPC_MANAGER_QUEUE_SIZE
         );
         Self {
             message_queues: Arc::new(DashMap::with_hasher(RandomState::new())),
@@ -103,10 +100,10 @@ impl IPCManager {
         let mut queue = self.message_queues.entry(to).or_default();
 
         // Check per-process queue bounds
-        if queue.len() >= MAX_QUEUE_SIZE {
+        if queue.len() >= IPC_MANAGER_QUEUE_SIZE {
             return Err(IpcError::LimitExceeded(format!(
                 "Queue for PID {} is full ({} messages)",
-                to, MAX_QUEUE_SIZE
+                to, IPC_MANAGER_QUEUE_SIZE
             )));
         }
 
@@ -141,7 +138,11 @@ impl IPCManager {
                 // Deallocate memory through MemoryManager (integrated tracking)
                 if let Some(address) = message.mem_address {
                     if let Err(e) = self.memory_manager.deallocate(address) {
-                        log::warn!("Failed to deallocate message memory at 0x{:x}: {}", address, e);
+                        log::warn!(
+                            "Failed to deallocate message memory at 0x{:x}: {}",
+                            address,
+                            e
+                        );
                     }
                 }
 
@@ -175,7 +176,11 @@ impl IPCManager {
             for message in queue {
                 if let Some(address) = message.mem_address {
                     if let Err(e) = self.memory_manager.deallocate(address) {
-                        log::warn!("Failed to deallocate message memory at 0x{:x} during cleanup: {}", address, e);
+                        log::warn!(
+                            "Failed to deallocate message memory at 0x{:x} during cleanup: {}",
+                            address,
+                            e
+                        );
                     }
                 }
             }

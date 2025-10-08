@@ -14,8 +14,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 
 /// Maximum events to keep in memory
-const MAX_AUDIT_EVENTS: usize = 10_000;
-const MAX_PID_EVENTS: usize = 100;
+use crate::core::limits::{MAX_AUDIT_EVENTS, MAX_AUDIT_EVENTS_PER_PID as MAX_PID_EVENTS};
 
 /// Audit event severity
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

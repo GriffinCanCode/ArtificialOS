@@ -4,17 +4,17 @@
  */
 
 use super::super::types::{QueueId, QueueType};
+use crate::core::limits;
 use crate::core::serde::{is_false, is_zero_usize, system_time_micros};
 use crate::core::types::{Pid, Size};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::time::SystemTime;
 
-// Queue limits
-pub const MAX_QUEUE_CAPACITY: usize = 10_000;
-pub const MAX_MESSAGE_SIZE: usize = 1024 * 1024; // 1MB
-pub const MAX_QUEUES_PER_PROCESS: usize = 100;
-pub const GLOBAL_QUEUE_MEMORY_LIMIT: usize = 100 * 1024 * 1024; // 100MB
+// Queue limits - centralized in core::limits
+pub use limits::{
+    GLOBAL_QUEUE_MEMORY_LIMIT, MAX_MESSAGE_SIZE, MAX_QUEUES_PER_PROCESS, MAX_QUEUE_CAPACITY,
+};
 
 /// Queue message with metadata (data stored in MemoryManager)
 ///

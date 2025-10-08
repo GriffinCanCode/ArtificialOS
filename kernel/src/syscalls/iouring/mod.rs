@@ -28,8 +28,7 @@ use thiserror::Error;
 use tracing::{debug, info};
 
 /// Default queue sizes for submission and completion
-pub const DEFAULT_SQ_SIZE: usize = 256;
-pub const DEFAULT_CQ_SIZE: usize = 512;
+pub use crate::core::limits::{DEFAULT_CQ_SIZE, DEFAULT_SQ_SIZE};
 
 /// io_uring-style manager for async syscall completion
 ///

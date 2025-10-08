@@ -81,7 +81,7 @@ pub struct MemoryManager {
 
 impl MemoryManager {
     pub fn new() -> Self {
-        Self::with_capacity(1024 * 1024 * 1024) // 1GB simulated memory
+        Self::with_capacity(crate::core::limits::DEFAULT_MEMORY_POOL)
     }
 
     /// Create memory manager with custom capacity (useful for testing)

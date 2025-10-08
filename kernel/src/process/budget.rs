@@ -33,10 +33,11 @@ impl ResourceBudget {
 
     /// Create standard budget for typical processes
     pub fn standard() -> Self {
+        use crate::core::limits::*;
         Self {
-            max_memory_bytes: Some(1024 * 1024 * 1024), // 1GB
-            max_file_descriptors: Some(1024),
-            max_sockets: Some(100),
+            max_memory_bytes: Some(STANDARD_PROCESS_MEMORY),
+            max_file_descriptors: Some(STANDARD_MAX_FILE_DESCRIPTORS),
+            max_sockets: Some(MAX_SOCKETS),
             max_mappings: Some(500),
             max_ipc_queues: Some(50),
             max_async_tasks: Some(1000),
@@ -45,13 +46,14 @@ impl ResourceBudget {
 
     /// Create restricted budget for low-priority processes
     pub fn restricted() -> Self {
+        use crate::core::limits::*;
         Self {
-            max_memory_bytes: Some(256 * 1024 * 1024), // 256MB
-            max_file_descriptors: Some(256),
+            max_memory_bytes: Some(RESTRICTED_PROCESS_MEMORY),
+            max_file_descriptors: Some(RESTRICTED_MAX_FILE_DESCRIPTORS),
             max_sockets: Some(20),
-            max_mappings: Some(100),
+            max_mappings: Some(MAX_MEMORY_MAPPINGS),
             max_ipc_queues: Some(10),
-            max_async_tasks: Some(100),
+            max_async_tasks: Some(MAX_ASYNC_TASKS),
         }
     }
 
