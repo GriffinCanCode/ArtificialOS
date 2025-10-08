@@ -6,6 +6,7 @@
 
 use crate::core::json;
 use crate::core::types::{Pid, Priority};
+use crate::monitoring::span_operation;
 use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
 use log::{error, info, warn};
 use std::process::Command;
@@ -17,21 +18,30 @@ use super::types::{ProcessOutput, SyscallResult};
 
 impl SyscallExecutor {
     pub(super) fn spawn_process(&self, pid: Pid, command: &str, args: &[String]) -> SyscallResult {
+        let span = span_operation("process_spawn");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+        span.record("command", command);
+        span.record("args_count", &format!("{}", args.len()));
+
         let request = PermissionRequest::new(pid, Resource::Process { pid: 0 }, Action::Create);
         let response = self.permission_manager.check_and_audit(&request);
 
         if !response.is_allowed() {
+            span.record_error(response.reason());
             return SyscallResult::permission_denied(response.reason());
         }
 
         if command.is_empty() || command.contains([';', '|', '&', '\n', '\0']) {
             error!("Invalid command attempted: {:?}", command);
+            span.record_error("Invalid command: contains shell metacharacters");
             return SyscallResult::error("Invalid command: contains shell metacharacters");
         }
 
         for arg in args {
             if arg.contains('\0') {
                 error!("Invalid argument attempted: contains null byte");
+                span.record_error("Invalid argument: contains null byte");
                 return SyscallResult::error("Invalid argument: contains null byte");
             }
         }
@@ -62,27 +72,37 @@ impl SyscallExecutor {
                 };
 
                 self.sandbox_manager.record_termination(pid);
+                span.record("exit_code", &format!("{}", process_output.exit_code));
+                span.record_result(true);
 
                 match json::to_vec(&process_output) {
                     Ok(result) => SyscallResult::success_with_data(result),
                     Err(e) => {
                         error!("Failed to serialize process output: {}", e);
+                        span.record_error("Failed to serialize process output");
                         SyscallResult::error("Failed to serialize process output")
                     }
                 }
             }
             Err(e) => {
                 error!("Failed to spawn process: {}", e);
+                span.record_error(&format!("Spawn failed: {}", e));
                 SyscallResult::error(format!("Spawn failed: {}", e))
             }
         }
     }
 
     pub(super) fn kill_process(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
+        let span = span_operation("process_kill");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+        span.record("target_pid", &format!("{}", target_pid));
+
         let request = PermissionRequest::proc_kill(pid, target_pid);
         let response = self.permission_manager.check_and_audit(&request);
 
         if !response.is_allowed() {
+            span.record_error(response.reason());
             return SyscallResult::permission_denied(response.reason());
         }
 
@@ -92,39 +112,58 @@ impl SyscallExecutor {
             "PID {} terminated PID {} and cleaned up sandbox",
             pid, target_pid
         );
+        span.record_result(true);
         SyscallResult::success()
     }
 
     pub(super) fn get_process_info(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
+        let span = span_operation("process_get_info");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+        span.record("target_pid", &format!("{}", target_pid));
+
         let request =
             PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Inspect);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
+            span.record_error(response.reason());
             return SyscallResult::permission_denied(response.reason());
         }
 
         let process_manager = match &self.process_manager {
             Some(pm) => pm,
-            None => return SyscallResult::error("Process manager not available"),
+            None => {
+                span.record_error("Process manager not available");
+                return SyscallResult::error("Process manager not available");
+            }
         };
 
         match process_manager.get_process(target_pid) {
             Some(process) => match json::to_vec(&process) {
                 Ok(data) => {
                     info!("PID {} retrieved info for PID {}", pid, target_pid);
+                    span.record_result(true);
                     SyscallResult::success_with_data(data)
                 }
                 Err(e) => {
                     error!("Failed to serialize process info: {}", e);
+                    span.record_error("Serialization failed");
                     SyscallResult::error("Serialization failed")
                 }
             },
-            None => SyscallResult::error(format!("Process {} not found", target_pid)),
+            None => {
+                span.record_error(&format!("Process {} not found", target_pid));
+                SyscallResult::error(format!("Process {} not found", target_pid))
+            }
         }
     }
 
     pub(super) fn get_process_list(&self, pid: Pid) -> SyscallResult {
+        let span = span_operation("process_list");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+
         let request = PermissionRequest::new(
             pid,
             Resource::System {
@@ -135,22 +174,29 @@ impl SyscallExecutor {
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
+            span.record_error(response.reason());
             return SyscallResult::permission_denied(response.reason());
         }
 
         let process_manager = match &self.process_manager {
             Some(pm) => pm,
-            None => return SyscallResult::error("Process manager not available"),
+            None => {
+                span.record_error("Process manager not available");
+                return SyscallResult::error("Process manager not available");
+            }
         };
 
         let processes = process_manager.list_processes();
+        span.record("process_count", &format!("{}", processes.len()));
         match json::to_vec(&processes) {
             Ok(data) => {
                 info!("PID {} listed {} processes", pid, processes.len());
+                span.record_result(true);
                 SyscallResult::success_with_data(data)
             }
             Err(e) => {
                 error!("Failed to serialize process list: {}", e);
+                span.record_error("Serialization failed");
                 SyscallResult::error("Serialization failed")
             }
         }

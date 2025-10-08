@@ -6,6 +6,7 @@
 use crate::core::bincode;
 use crate::core::json;
 use crate::core::types::Pid;
+use crate::monitoring::span_operation;
 use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
 use crate::security::Capability;
 use crate::syscalls::executor::SyscallExecutor;
@@ -19,17 +20,26 @@ impl SyscallExecutor {
         queue_type: &str,
         capacity: Option<usize>,
     ) -> SyscallResult {
+        let span = span_operation("queue_create");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+        span.record("queue_type", queue_type);
+
         let request =
             PermissionRequest::new(pid, Resource::IpcChannel { channel_id: 0 }, Action::Create);
         let response = self.permission_manager.check_and_audit(&request);
 
         if !response.is_allowed() {
+            span.record_error(response.reason());
             return SyscallResult::permission_denied(response.reason());
         }
 
         let queue_manager = match &self.queue_manager {
             Some(qm) => qm,
-            None => return SyscallResult::error("Queue manager not available"),
+            None => {
+                span.record_error("Queue manager not available");
+                return SyscallResult::error("Queue manager not available");
+            }
         };
 
         let q_type = match queue_type {
@@ -44,16 +54,20 @@ impl SyscallExecutor {
         match queue_manager.create(pid, q_type, capacity) {
             Ok(queue_id) => {
                 info!("PID {} created {:?} queue {}", pid, q_type, queue_id);
+                span.record("queue_id", &format!("{}", queue_id));
+                span.record_result(true);
                 match json::to_vec(&queue_id) {
                     Ok(data) => SyscallResult::success_with_data(data),
                     Err(e) => {
                         error!("Failed to serialize queue ID: {}", e);
+                        span.record_error("Serialization failed");
                         SyscallResult::error("Serialization failed")
                     }
                 }
             }
             Err(e) => {
                 error!("Failed to create queue: {}", e);
+                span.record_error(&format!("Queue creation failed: {}", e));
                 SyscallResult::error(format!("Queue creation failed: {}", e))
             }
         }
@@ -66,6 +80,15 @@ impl SyscallExecutor {
         data: &[u8],
         priority: Option<u8>,
     ) -> SyscallResult {
+        let span = span_operation("queue_send");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+        span.record("queue_id", &format!("{}", queue_id));
+        span.record("data_len", &format!("{}", data.len()));
+        if let Some(p) = priority {
+            span.record("priority", &format!("{}", p));
+        }
+
         let request = PermissionRequest::new(
             pid,
             Resource::IpcChannel {
@@ -76,12 +99,16 @@ impl SyscallExecutor {
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
+            span.record_error(response.reason());
             return SyscallResult::permission_denied(response.reason());
         }
 
         let queue_manager = match &self.queue_manager {
             Some(qm) => qm,
-            None => return SyscallResult::error("Queue manager not available"),
+            None => {
+                span.record_error("Queue manager not available");
+                return SyscallResult::error("Queue manager not available");
+            }
         };
 
         match queue_manager.send(queue_id, pid, data.to_vec(), priority) {
@@ -92,16 +119,23 @@ impl SyscallExecutor {
                     data.len(),
                     queue_id
                 );
+                span.record_result(true);
                 SyscallResult::success()
             }
             Err(e) => {
                 error!("Queue send failed: {}", e);
+                span.record_error(&format!("Send failed: {}", e));
                 SyscallResult::error(format!("Send failed: {}", e))
             }
         }
     }
 
     pub(crate) fn receive_queue(&self, pid: Pid, queue_id: u32) -> SyscallResult {
+        let span = span_operation("queue_receive");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+        span.record("queue_id", &format!("{}", queue_id));
+
         let request = PermissionRequest::new(
             pid,
             Resource::IpcChannel {
@@ -112,24 +146,51 @@ impl SyscallExecutor {
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
+            span.record_error(response.reason());
             return SyscallResult::permission_denied(response.reason());
         }
 
-        // Use timeout operations if enabled
-        if self.timeout_config.enabled && self.timeout_queue_ops.is_some() {
-            let timeout_ops = self.timeout_queue_ops.as_ref().unwrap();
-            match timeout_ops.receive_timeout(queue_id, pid, self.timeout_config.queue_receive) {
-                Ok(msg) => {
-                    // Read message data
-                    let queue_manager = self.queue_manager.as_ref().unwrap();
-                    match queue_manager.read_message_data(&msg) {
+        let queue_manager = match &self.queue_manager {
+            Some(qm) => qm,
+            None => {
+                span.record_error("Queue manager not available");
+                return SyscallResult::error("Queue manager not available");
+            }
+        };
+
+        // Use generic timeout executor for blocking receive
+        use crate::ipc::types::IpcError;
+
+        #[derive(Debug)]
+        enum ReceiveError {
+            NoMessage,
+            Ipc(IpcError),
+        }
+
+        let result = self.timeout_executor.execute_with_retry(
+            || match queue_manager.receive(queue_id, pid) {
+                Ok(Some(msg)) => Ok(msg),
+                Ok(None) => Err(ReceiveError::NoMessage),
+                Err(e) => Err(ReceiveError::Ipc(e)),
+            },
+            |e| matches!(e, ReceiveError::NoMessage),
+            self.timeout_config.queue_receive,
+            "queue_receive",
+        );
+
+        match result {
+            Ok(msg) => {
+                // Read message data from MemoryManager
+                match queue_manager.read_message_data(&msg) {
                         Ok(data) => {
                             info!(
-                                "PID {} received {} bytes from queue {} (with timeout)",
+                                "PID {} received {} bytes from queue {}",
                                 pid,
                                 data.len(),
                                 queue_id
                             );
+                            span.record("bytes_received", &format!("{}", data.len()));
+                            span.record_result(true);
 
                             #[derive(serde::Serialize)]
                             struct MessageResponse {
@@ -156,73 +217,26 @@ impl SyscallExecutor {
                         }
                         Err(e) => {
                             error!("Failed to read message data: {}", e);
+                            span.record_error(&format!("Read failed: {}", e));
                             SyscallResult::error(format!("Read failed: {}", e))
                         }
                     }
                 }
-                Err(e) => {
-                    error!("Queue receive failed: {}", e);
-                    SyscallResult::error(format!("Receive failed: {}", e))
-                }
+            Err(super::super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+                error!("Queue receive timed out for PID {}, queue {} after {}ms", pid, queue_id, elapsed_ms);
+                span.record_error(&format!("Timeout after {}ms", elapsed_ms));
+                SyscallResult::error("Queue receive timed out")
             }
-        } else {
-            // Fallback to non-blocking operation
-            let queue_manager = match &self.queue_manager {
-                Some(qm) => qm,
-                None => return SyscallResult::error("Queue manager not available"),
-            };
-
-            match queue_manager.receive(queue_id, pid) {
-            Ok(Some(msg)) => {
-                // Read message data from MemoryManager
-                match queue_manager.read_message_data(&msg) {
-                    Ok(data) => {
-                        info!(
-                            "PID {} received {} bytes from queue {}",
-                            pid,
-                            data.len(),
-                            queue_id
-                        );
-
-                        // Create a serializable message with the data
-                        #[derive(serde::Serialize)]
-                        struct MessageResponse {
-                            id: u64,
-                            from: u32,
-                            data: Vec<u8>,
-                            priority: u8,
-                        }
-
-                        let response = MessageResponse {
-                            id: msg.id,
-                            from: msg.from,
-                            data,
-                            priority: msg.priority,
-                        };
-
-                        match bincode::serialize_ipc_message(&response) {
-                            Ok(serialized) => SyscallResult::success_with_data(serialized),
-                            Err(e) => {
-                                error!("Failed to serialize message: {}", e);
-                                SyscallResult::error("Serialization failed")
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        error!("Failed to read message data: {}", e);
-                        SyscallResult::error(format!("Read failed: {}", e))
-                    }
-                }
-            }
-            Ok(None) => {
-                // No message available (non-blocking)
-                SyscallResult::success()
-            }
-            Err(e) => {
+            Err(super::super::TimeoutError::Operation(ReceiveError::Ipc(e))) => {
                 error!("Queue receive failed: {}", e);
+                span.record_error(&format!("Receive failed: {}", e));
                 SyscallResult::error(format!("Receive failed: {}", e))
             }
-        }
+            Err(super::super::TimeoutError::Operation(ReceiveError::NoMessage)) => {
+                // Should not reach here (filtered by is_would_block), but handle gracefully
+                span.record_result(true);
+                SyscallResult::success()
+            }
         }
     }
 

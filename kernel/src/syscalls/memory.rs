@@ -6,6 +6,7 @@
 
 use crate::core::json;
 use crate::core::types::Pid;
+use crate::monitoring::span_operation;
 use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
 
 use log::{error, info, warn};
@@ -17,6 +18,10 @@ use super::types::SyscallResult;
 
 impl SyscallExecutor {
     pub(super) fn get_memory_stats(&self, pid: Pid) -> SyscallResult {
+        let span = span_operation("memory_get_stats");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+
         // Check permission using centralized manager
         let request = PermissionRequest::new(
             pid,
@@ -28,40 +33,57 @@ impl SyscallExecutor {
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
+            span.record_error(response.reason());
             return SyscallResult::permission_denied(response.reason());
         }
 
         let memory_manager = match &self.memory_manager {
             Some(mm) => mm,
-            None => return SyscallResult::error("Memory manager not available"),
+            None => {
+                span.record_error("Memory manager not available");
+                return SyscallResult::error("Memory manager not available");
+            }
         };
 
         let stats = memory_manager.stats();
+        span.record("total_memory", &format!("{}", stats.total_memory));
+        span.record("used_memory", &format!("{}", stats.used_memory));
         match json::to_vec(&stats) {
             Ok(data) => {
                 info!("PID {} retrieved global memory stats", pid);
+                span.record_result(true);
                 SyscallResult::success_with_data(data)
             }
             Err(e) => {
                 error!("Failed to serialize memory stats: {}", e);
+                span.record_error("Serialization failed");
                 SyscallResult::error("Serialization failed")
             }
         }
     }
 
     pub(super) fn get_process_memory_stats(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
+        let span = span_operation("memory_get_process_stats");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+        span.record("target_pid", &format!("{}", target_pid));
+
         // Check permission using centralized manager
         let request =
             PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Inspect);
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
+            span.record_error(response.reason());
             return SyscallResult::permission_denied(response.reason());
         }
 
         let memory_manager = match &self.memory_manager {
             Some(mm) => mm,
-            None => return SyscallResult::error("Memory manager not available"),
+            None => {
+                span.record_error("Memory manager not available");
+                return SyscallResult::error("Memory manager not available");
+            }
         };
 
         let (allocated_bytes, peak_bytes, allocation_count) =
@@ -74,19 +96,31 @@ impl SyscallExecutor {
             allocation_count,
         };
 
+        span.record("allocated_bytes", &format!("{}", allocated_bytes));
+        span.record("peak_bytes", &format!("{}", peak_bytes));
+
         match json::to_vec(&stats) {
             Ok(data) => {
                 info!("PID {} retrieved memory stats for PID {}", pid, target_pid);
+                span.record_result(true);
                 SyscallResult::success_with_data(data)
             }
             Err(e) => {
                 error!("Failed to serialize process memory stats: {}", e);
+                span.record_error("Serialization failed");
                 SyscallResult::error("Serialization failed")
             }
         }
     }
 
     pub(super) fn trigger_gc(&self, pid: Pid, target_pid: Option<u32>) -> SyscallResult {
+        let span = span_operation("memory_trigger_gc");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+        if let Some(target) = target_pid {
+            span.record("target_pid", &format!("{}", target));
+        }
+
         // Check permission using centralized manager
         let request = PermissionRequest::new(
             pid,
@@ -98,12 +132,16 @@ impl SyscallExecutor {
         let response = self.permission_manager.check_and_audit(&request);
 
         if !response.is_allowed() {
+            span.record_error(response.reason());
             return SyscallResult::permission_denied(response.reason());
         }
 
         let memory_manager = match &self.memory_manager {
             Some(mm) => mm,
-            None => return SyscallResult::error("Memory manager not available"),
+            None => {
+                span.record_error("Memory manager not available");
+                return SyscallResult::error("Memory manager not available");
+            }
         };
 
         match target_pid {
@@ -114,6 +152,8 @@ impl SyscallExecutor {
                     "PID {} triggered targeted GC for PID {}, freed {} bytes",
                     pid, target, freed
                 );
+                span.record("freed_bytes", &format!("{}", freed));
+                span.record_result(true);
 
                 match json::to_vec(&serde_json::json!({
                     "freed_bytes": freed,
@@ -122,6 +162,7 @@ impl SyscallExecutor {
                     Ok(data) => SyscallResult::success_with_data(data),
                     Err(e) => {
                         warn!("Failed to serialize GC result: {}", e);
+                        span.record_error("Internal serialization error");
                         SyscallResult::error("Internal serialization error")
                     }
                 }
@@ -131,12 +172,15 @@ impl SyscallExecutor {
                 use crate::memory::{GcStrategy, GlobalGarbageCollector};
 
                 info!("PID {} triggered global GC", pid);
+                span.record("gc_type", "global");
 
                 // Create global GC instance
                 let gc = GlobalGarbageCollector::new(memory_manager.clone());
 
                 // Run global collection
                 let stats = gc.collect(GcStrategy::Global);
+                span.record("freed_bytes", &format!("{}", stats.freed_bytes));
+                span.record_result(true);
 
                 info!(
                     "Global GC completed: freed {} bytes ({} blocks) from {} processes in {}ms",
