@@ -12,6 +12,6 @@ pub mod types;
 
 // Re-export for convenience
 pub use execution::{AsyncTaskManager, BatchExecutor, StreamingManager, TaskStatus};
-pub use server::{start_grpc_server, GrpcServer, MetricsService};
+pub use server::{start_grpc_server, GrpcServer, MetricsService, KernelServiceImpl, kernel_proto};
 pub use traits::*;
 pub use types::*;

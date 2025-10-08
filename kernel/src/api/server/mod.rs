@@ -6,5 +6,5 @@
 pub mod grpc_server;
 pub mod metrics;
 
-pub use grpc_server::{start_grpc_server, GrpcServer, KernelServiceImpl};
+pub use grpc_server::{start_grpc_server, GrpcServer, KernelServiceImpl, kernel_proto};
 pub use metrics::MetricsService;

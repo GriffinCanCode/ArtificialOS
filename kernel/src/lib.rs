@@ -19,7 +19,11 @@ pub mod vfs;
 
 // Re-exports for backwards compatibility
 // API
-pub use api::start_grpc_server;
+pub use api::{
+    start_grpc_server, KernelServiceImpl, kernel_proto,
+    AsyncTaskManager, BatchExecutor, StreamingManager, TaskStatus,
+};
+pub use api::execution::{IoUringExecutor, IoUringManager};
 
 // Core
 pub use core::*;
