@@ -40,6 +40,7 @@ mod tracking;
 use super::traits::{Allocator, GarbageCollector, MemoryInfo, ProcessMemoryCleanup};
 use super::types::MemoryBlock;
 use crate::core::types::{Address, Pid, Size};
+use crate::monitoring::Collector;
 use ahash::RandomState;
 use dashmap::DashMap;
 use free_list::SegregatedFreeList;
@@ -70,11 +71,17 @@ pub struct MemoryManager {
     pub(super) memory_storage: Arc<DashMap<Address, Vec<u8>, RandomState>>,
     // Segregated free list for O(1) small/medium and O(log n) large block allocation
     pub(super) free_list: Arc<Mutex<SegregatedFreeList>>,
+    // Observability collector for event streaming
+    collector: Option<Arc<Collector>>,
 }
 
 impl MemoryManager {
     pub fn new() -> Self {
-        let total = 1024 * 1024 * 1024; // 1GB simulated memory
+        Self::with_capacity(1024 * 1024 * 1024) // 1GB simulated memory
+    }
+
+    /// Create memory manager with custom capacity (useful for testing)
+    pub fn with_capacity(total: Size) -> Self {
         info!(
             "Memory manager initialized with {} bytes and segregated free list allocator (O(1) small/medium, O(log n) large)",
             total
@@ -107,7 +114,19 @@ impl MemoryManager {
                 128,
             )),
             free_list: Arc::new(Mutex::new(SegregatedFreeList::new())),
+            collector: None,
         }
+    }
+
+    /// Add observability collector
+    pub fn with_collector(mut self, collector: Arc<Collector>) -> Self {
+        self.collector = Some(collector);
+        self
+    }
+
+    /// Set collector after construction
+    pub fn set_collector(&mut self, collector: Arc<Collector>) {
+        self.collector = Some(collector);
     }
 }
 
@@ -186,6 +205,7 @@ impl Clone for MemoryManager {
             process_tracking: Arc::clone(&self.process_tracking),
             memory_storage: Arc::clone(&self.memory_storage),
             free_list: Arc::clone(&self.free_list),
+            collector: self.collector.as_ref().map(Arc::clone),
         }
     }
 }

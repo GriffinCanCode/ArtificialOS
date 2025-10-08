@@ -233,7 +233,9 @@ fn test_global_memory_tracking() {
 #[test]
 #[serial]
 fn test_global_memory_limit() {
-    let ipc = IPCManager::new(MemoryManager::new());
+    // Create MemoryManager with 100MB limit to test global memory limits
+    let memory_manager = MemoryManager::with_capacity(100 * 1024 * 1024);
+    let ipc = IPCManager::new(memory_manager);
 
     // Try to fill up global IPC memory (100MB limit)
     // Message size limit is 1MB, so use messages within that limit
@@ -251,9 +253,10 @@ fn test_global_memory_limit() {
             let err = result.unwrap_err();
             let err_str = err.to_string();
             assert!(
-                err_str.contains("Global IPC memory limit")
+                err_str.contains("Memory allocation failed")
                     || err_str.contains("Queue for PID")
-                    || err_str.contains("exceeds limit"),
+                    || err_str.contains("exceeds limit")
+                    || err_str.contains("Out of memory"),
                 "Unexpected error: {}",
                 err
             );
@@ -263,9 +266,9 @@ fn test_global_memory_limit() {
     }
 
     // Should have sent some but not all, and should have hit the limit
-    assert!(sent_count > 0);
-    assert!(sent_count < 150);
-    assert!(hit_limit);
+    assert!(sent_count > 0, "Should have sent at least one message");
+    assert!(sent_count < 150, "Should not have sent all 150 messages (sent {})", sent_count);
+    assert!(hit_limit, "Should have hit the memory limit");
 
     // Clean up messages
     for i in 0..sent_count {

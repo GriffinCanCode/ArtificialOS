@@ -217,7 +217,9 @@ fn test_ipc_id_exhaustion_prevention() {
     let ipc_manager = IPCManager::new(memory_manager);
 
     let pid = 1;
-    let iterations = 100;
+    // Use 10 iterations to stay under the strictest per-process limit
+    // (pipes: 100, queues: 100, but shared memory segments: only 10)
+    let iterations = 10;
 
     println!("Testing that IPC ID recycling prevents ID space exhaustion");
     println!(
