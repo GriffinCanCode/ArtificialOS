@@ -13,6 +13,7 @@ import (
 	"github.com/GriffinCanCode/AgentOS/backend/internal/domain/session"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/grpc"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/grpc/kernel"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/infrastructure/tracing"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/types"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/utils"
 )
@@ -26,6 +27,7 @@ type Handlers struct {
 	aiClient       *grpc.AIClient
 	kernel         *kernel.KernelClient
 	metrics        *HandlerMetrics
+	tracer         *tracing.Tracer
 }
 
 // NewHandlers creates a new handler set
@@ -37,6 +39,7 @@ func NewHandlers(
 	aiClient *grpc.AIClient,
 	kernel *kernel.KernelClient,
 	metrics *HandlerMetrics,
+	tracer *tracing.Tracer,
 ) *Handlers {
 	return &Handlers{
 		appManager:     appManager,
@@ -46,6 +49,7 @@ func NewHandlers(
 		aiClient:       aiClient,
 		kernel:         kernel,
 		metrics:        metrics,
+		tracer:         tracer,
 	}
 }
 
@@ -86,15 +90,28 @@ func (h *Handlers) ListApps(c *gin.Context) {
 func (h *Handlers) FocusApp(c *gin.Context) {
 	defer h.metrics.TrackAppOperation("focus")()
 
+	span, _ := h.tracer.StartSpan(c.Request.Context(), "focus_app")
+	defer func() {
+		span.Finish()
+		h.tracer.Submit(span)
+	}()
+
 	appID := c.Param("id")
+	span.SetTag("app_id", appID)
 
 	// Validate app ID
 	if err := utils.ValidateID(appID, "app_id", true); err != nil {
+		span.SetError(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	success := h.appManager.Focus(appID)
+	if success {
+		span.SetTag("success", "true")
+	} else {
+		span.SetTag("success", "false")
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": success,
@@ -104,15 +121,29 @@ func (h *Handlers) FocusApp(c *gin.Context) {
 
 // CloseApp closes and destroys an app
 func (h *Handlers) CloseApp(c *gin.Context) {
+	span, _ := h.tracer.StartSpan(c.Request.Context(), "close_app")
+	defer func() {
+		span.Finish()
+		h.tracer.Submit(span)
+	}()
+
 	appID := c.Param("id")
+	span.SetTag("app_id", appID)
 
 	// Validate app ID
 	if err := utils.ValidateID(appID, "app_id", true); err != nil {
+		span.SetError(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	success := h.appManager.Close(appID)
+	if success {
+		span.SetTag("success", "true")
+	} else {
+		span.SetTag("success", "false")
+	}
+	span.Log("app_closed", map[string]interface{}{"app_id": appID})
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": success,
@@ -200,14 +231,27 @@ func (h *Handlers) DiscoverServices(c *gin.Context) {
 
 // ExecuteService executes a service tool
 func (h *Handlers) ExecuteService(c *gin.Context) {
+	span, ctx := h.tracer.StartSpan(c.Request.Context(), "execute_service")
+	defer func() {
+		span.Finish()
+		h.tracer.Submit(span)
+	}()
+
 	var req types.ExecuteRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		span.SetError(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	span.SetTag("tool_id", req.ToolID)
+	if req.AppID != nil {
+		span.SetTag("app_id", *req.AppID)
+	}
+
 	// Validate tool ID (allows dots for service.tool format)
 	if err := utils.ValidateToolID(req.ToolID, "tool_id", true); err != nil {
+		span.SetError(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -215,27 +259,34 @@ func (h *Handlers) ExecuteService(c *gin.Context) {
 	// Validate app ID if provided
 	if req.AppID != nil {
 		if err := utils.ValidateID(*req.AppID, "app_id", false); err != nil {
+			span.SetError(err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 	}
 
-	var ctx *types.Context
+	var serviceCtx *types.Context
 	if req.AppID != nil {
 		if app, ok := h.appManager.Get(*req.AppID); ok {
-			ctx = &types.Context{
+			serviceCtx = &types.Context{
 				AppID:      req.AppID,
 				SandboxPID: app.SandboxPID,
 			}
+			span.SetTag("sandbox_pid", string(rune(app.SandboxPID)))
 		}
 	}
 
-	result, err := h.registry.Execute(c.Request.Context(), req.ToolID, req.Params, ctx)
+	result, err := h.registry.Execute(ctx, req.ToolID, req.Params, serviceCtx)
 	if err != nil {
+		span.SetError(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	span.Log("service_executed", map[string]interface{}{
+		"tool_id": req.ToolID,
+		"success": true,
+	})
 	c.JSON(http.StatusOK, result)
 }
 

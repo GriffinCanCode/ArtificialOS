@@ -6,13 +6,14 @@
 
 use crate::core::json;
 use crate::core::types::Pid;
+use crate::monitoring::span_operation;
 use crate::permissions::{PermissionChecker, PermissionRequest};
 use crate::vfs::{FileSystem, OpenFlags, OpenMode};
 
 use ahash::RandomState;
 use crossbeam_queue::SegQueue;
 use dashmap::DashMap;
-use log::{error, info, warn};
+use log::{error, info, trace, warn};
 use std::collections::HashSet;
 use std::fs::OpenOptions;
 use std::io::SeekFrom;
@@ -140,6 +141,9 @@ impl Clone for FdManager {
 
 impl SyscallExecutor {
     pub(super) fn open(&self, pid: Pid, path: &PathBuf, flags: u32, mode: u32) -> SyscallResult {
+        let span = span_operation("fd_open");
+        let _guard = span.enter();
+
         // Check per-process FD limit BEFORE doing expensive operations
         use crate::security::ResourceLimitProvider;
         if let Some(limits) = self.sandbox_manager.get_limits(pid) {
@@ -202,6 +206,9 @@ impl SyscallExecutor {
                     "PID {} opened {:?} via VFS with FD {}, flags: 0x{:x}",
                     pid, path, fd, flags
                 );
+                span.record("fd", &format!("{}", fd));
+                span.record("method", "vfs");
+                span.record_result(true);
 
                 return match json::to_vec(&serde_json::json!({ "fd": fd })) {
                     Ok(data) => SyscallResult::success_with_data(data),
@@ -209,6 +216,7 @@ impl SyscallExecutor {
                         // Clean up FD on serialization error to prevent leak
                         let _ = self.close_fd(pid, fd);
                         warn!("Failed to serialize open result: {}", e);
+                        span.record_error("Serialization failed");
                         SyscallResult::error("Internal serialization error")
                     }
                 };
@@ -218,11 +226,13 @@ impl SyscallExecutor {
                         "VFS open failed for {:?}: {}, falling back to std::fs",
                         path, e
                     );
+                    span.record("vfs_error", &format!("{}", e));
                 }
             }
         }
 
         // Fallback to std::fs if VFS unavailable or failed
+        trace!("Falling back to std::fs for open");
         // Canonicalize path for std::fs (only for real filesystem)
         let std_path = match path.canonicalize() {
             Ok(p) => p,
@@ -230,6 +240,7 @@ impl SyscallExecutor {
                 if create_flag != 0 {
                     path.clone()
                 } else {
+                    span.record_error("File does not exist");
                     return SyscallResult::error("File does not exist");
                 }
             }
@@ -269,6 +280,9 @@ impl SyscallExecutor {
                     "PID {} opened {:?} with FD {}, flags: 0x{:x}, mode: 0o{:o}",
                     pid, path, fd, flags, mode
                 );
+                span.record("fd", &format!("{}", fd));
+                span.record("method", "std::fs");
+                span.record_result(true);
 
                 match json::to_vec(&serde_json::json!({ "fd": fd })) {
                     Ok(data) => SyscallResult::success_with_data(data),
@@ -276,18 +290,25 @@ impl SyscallExecutor {
                         // Clean up FD on serialization error to prevent leak
                         let _ = self.close_fd(pid, fd);
                         warn!("Failed to serialize open result: {}", e);
+                        span.record_error("Serialization failed");
                         SyscallResult::error("Internal serialization error")
                     }
                 }
             }
             Err(e) => {
                 error!("Failed to open file {:?}: {}", path, e);
+                span.record_error(&format!("Open failed: {}", e));
                 SyscallResult::error(format!("Open failed: {}", e))
             }
         }
     }
 
     pub(super) fn close_fd(&self, pid: Pid, fd: u32) -> SyscallResult {
+        let span = span_operation("fd_close");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+        span.record("fd", &format!("{}", fd));
+
         // No capability check - closing is always allowed
 
         // Remove file from fd_manager
@@ -295,14 +316,21 @@ impl SyscallExecutor {
             // Untrack FD from process
             self.fd_manager.untrack_fd(pid, fd);
             info!("PID {} closed FD {}", pid, fd);
+            span.record_result(true);
             SyscallResult::success()
         } else {
             warn!("PID {} attempted to close non-existent FD {}", pid, fd);
+            span.record_error("Invalid file descriptor");
             SyscallResult::error("Invalid file descriptor")
         }
     }
 
     pub(super) fn dup(&self, pid: Pid, fd: u32) -> SyscallResult {
+        let span = span_operation("fd_dup");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+        span.record("fd", &format!("{}", fd));
+
         // Note: dup doesn't check specific path permissions, just general file access
         // The original fd already had permissions checked at open time
 
@@ -315,6 +343,7 @@ impl SyscallExecutor {
                     "PID {} exceeded FD limit during dup: {}/{} file descriptors",
                     pid, current_fd_count, limits.max_file_descriptors
                 );
+                span.record_error(&format!("FD limit exceeded: {}/{}", current_fd_count, limits.max_file_descriptors));
                 return SyscallResult::permission_denied(format!(
                     "File descriptor limit exceeded: {}/{} FDs open",
                     current_fd_count, limits.max_file_descriptors
@@ -338,6 +367,8 @@ impl SyscallExecutor {
                 "PID {} duplicated FD {} to {} (Arc reference count incremented)",
                 pid, fd, new_fd
             );
+            span.record("new_fd", &format!("{}", new_fd));
+            span.record_result(true);
 
             match json::to_vec(&serde_json::json!({
                 "new_fd": new_fd
@@ -345,15 +376,23 @@ impl SyscallExecutor {
                 Ok(data) => SyscallResult::success_with_data(data),
                 Err(e) => {
                     warn!("Failed to serialize dup result: {}", e);
+                    span.record_error("Serialization failed");
                     SyscallResult::error("Internal serialization error")
                 }
             }
         } else {
+            span.record_error("Invalid file descriptor");
             SyscallResult::error("Invalid file descriptor")
         }
     }
 
     pub(super) fn dup2(&self, pid: Pid, oldfd: u32, newfd: u32) -> SyscallResult {
+        let span = span_operation("fd_dup2");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+        span.record("oldfd", &format!("{}", oldfd));
+        span.record("newfd", &format!("{}", newfd));
+
         // Note: dup2 doesn't check specific path permissions, just general file access
         // The original fd already had permissions checked at open time
 
