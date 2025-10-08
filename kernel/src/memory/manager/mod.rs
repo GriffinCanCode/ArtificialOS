@@ -17,9 +17,6 @@
  * - **Large blocks** (>64KB): O(log n) lookup via BTreeMap
  *   - Efficient range queries for best-fit allocation
  *
- * **Old implementation**: O(n) linear scan of entire free list
- * **New implementation**: O(1) for small/medium, O(log n) for large
- *
  * ## Features
  *
  * - **Address recycling**: Deallocated memory is immediately available for reuse
@@ -44,6 +41,7 @@ pub use core::{
 };
 pub use extensions::MemoryGuardExt;
 
+use crate::core::memory::CowMemory;
 use crate::core::sync::lockfree::FlatCombiningCounter;
 use crate::core::types::{Address, Pid, Size};
 use crate::core::{ShardManager, WorkloadProfile};
@@ -74,8 +72,8 @@ pub struct MemoryManager {
     pub(super) deallocated_count: Arc<FlatCombiningCounter>,
     // Per-process memory tracking (for peak_bytes and allocation_count)
     pub(super) process_tracking: Arc<DashMap<Pid, ProcessMemoryTracking, RandomState>>,
-    // Memory storage - maps addresses to their byte contents
-    pub(super) memory_storage: Arc<DashMap<Address, Vec<u8>, RandomState>>,
+    // Memory storage - maps addresses to CoW memory
+    pub(super) memory_storage: Arc<DashMap<Address, CowMemory, RandomState>>,
     // Segregated free list for O(1) small/medium and O(log n) large block allocation
     pub(super) free_list: Arc<Mutex<SegregatedFreeList>>,
     // Observability collector for event streaming
@@ -136,6 +134,28 @@ impl MemoryManager {
     /// Get collector reference
     pub fn collector(&self) -> Option<Arc<Collector>> {
         self.collector.clone()
+    }
+
+    /// Fork process memory using CoW semantics
+    pub fn fork_memory(&self, parent_pid: Pid, child_pid: Pid) {
+        let parent_blocks: Vec<_> = self.blocks
+            .iter()
+            .filter(|e| e.value().allocated && e.value().owner_pid == Some(parent_pid))
+            .map(|e| (e.key().clone(), e.value().clone()))
+            .collect();
+
+        for (addr, mut block) in parent_blocks {
+            if let Some(parent_cow) = self.memory_storage.get(&addr) {
+                let child_cow = parent_cow.clone_cow();
+
+                block.owner_pid = Some(child_pid);
+                let child_addr = self.next_address.fetch_add(1, std::sync::atomic::Ordering::SeqCst) as Address;
+                block.address = child_addr;
+
+                self.blocks.insert(child_addr, block);
+                self.memory_storage.insert(child_addr, child_cow);
+            }
+        }
     }
 }
 

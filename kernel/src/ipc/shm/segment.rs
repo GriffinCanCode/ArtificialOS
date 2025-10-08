@@ -4,14 +4,15 @@
  */
 
 use super::types::{ShmError, ShmPermission};
+use crate::core::memory::CowMemory;
 use crate::core::types::{Address, Pid, Size};
 use crate::memory::MemoryManager;
 use ahash::HashMap;
 use std::collections::HashSet;
+use std::sync::{Arc, RwLock};
 
 use super::super::types::ShmId;
 
-/// Shared memory segment
 pub(super) struct SharedSegment {
     pub id: ShmId,
     pub size: Size,
@@ -20,6 +21,7 @@ pub(super) struct SharedSegment {
     pub owner_pid: Pid,
     pub attached_pids: HashSet<Pid>,
     pub permissions: HashMap<Pid, ShmPermission>,
+    pub cow_data: Arc<RwLock<Option<CowMemory>>>,
 }
 
 impl SharedSegment {
@@ -36,6 +38,8 @@ impl SharedSegment {
         let mut permissions = HashMap::default();
         permissions.insert(owner_pid, ShmPermission::ReadWrite);
 
+        let cow_data = Arc::new(RwLock::new(Some(CowMemory::new(vec![0u8; size]))));
+
         Self {
             id,
             size,
@@ -44,6 +48,7 @@ impl SharedSegment {
             owner_pid,
             attached_pids,
             permissions,
+            cow_data,
         }
     }
 
@@ -74,21 +79,23 @@ impl SharedSegment {
             });
         }
 
-        // Write to memory through the MemoryManager
-        // The address is the base address of this shared memory segment
-        let write_address = self.address + offset;
+        if let Ok(mut cow_lock) = self.cow_data.write() {
+            if let Some(ref mut cow) = *cow_lock {
+                cow.write(|buffer| {
+                    let end = offset + data.len();
+                    buffer[offset..end].copy_from_slice(data);
+                });
+                return Ok(());
+            }
+        }
 
-        // Use memory manager to write data to the shared memory region
-        // This writes to our simulated physical memory storage
         self.memory_manager
-            .write_bytes(write_address, data)
+            .write_bytes(self.address + offset, data)
             .map_err(|_| ShmError::InvalidRange {
                 offset,
                 size: data.len(),
                 segment_size: self.size,
-            })?;
-
-        Ok(())
+            })
     }
 
     pub fn read(&self, offset: Size, size: Size) -> Result<Vec<u8>, ShmError> {
@@ -100,21 +107,21 @@ impl SharedSegment {
             });
         }
 
-        // Read from memory through the MemoryManager
-        // The address is the base address of this shared memory segment
-        let read_address = self.address + offset;
+        if let Ok(cow_lock) = self.cow_data.read() {
+            if let Some(ref cow) = *cow_lock {
+                return Ok(cow.read(|buffer| {
+                    let end = offset + size;
+                    buffer[offset..end].to_vec()
+                }));
+            }
+        }
 
-        // Use memory manager to read data from the shared memory region
-        // This reads from our simulated physical memory storage
-        let data = self
-            .memory_manager
-            .read_bytes(read_address, size)
+        self.memory_manager
+            .read_bytes(self.address + offset, size)
             .map_err(|_| ShmError::InvalidRange {
                 offset,
                 size,
                 segment_size: self.size,
-            })?;
-
-        Ok(data)
+            })
     }
 }

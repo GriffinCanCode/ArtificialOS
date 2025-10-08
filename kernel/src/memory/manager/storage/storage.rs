@@ -12,14 +12,12 @@ impl MemoryManager {
     /// Write bytes to a memory address
     /// This simulates writing to physical memory for shared memory segments
     pub fn write_bytes(&self, address: Address, data: &[u8]) -> MemoryResult<()> {
-        // Find the block containing this address
         let mut base_addr = None;
         let mut block_size = 0;
         for entry in self.blocks.iter() {
             let addr = *entry.key();
             let block = entry.value();
             if block.allocated && address >= addr && address < addr + block.size {
-                // Check if write fits within block bounds
                 if address + data.len() <= addr + block.size {
                     base_addr = Some(addr);
                     block_size = block.size;
@@ -31,23 +29,23 @@ impl MemoryManager {
         }
 
         if let Some(base_addr) = base_addr {
-            // Calculate offset within the block
             let offset = address - base_addr;
 
-            // Get or create storage for this block
             let mut entry = self
                 .memory_storage
                 .entry(base_addr)
-                .or_insert_with(|| vec![0u8; block_size]);
+                .or_insert_with(|| {
+                    use crate::core::memory::CowMemory;
+                    CowMemory::new(vec![0u8; block_size])
+                });
 
-            // Ensure block_data is large enough
-            if entry.len() < block_size {
-                entry.resize(block_size, 0u8);
-            }
-
-            // Write data at the offset
-            let end = offset + data.len();
-            entry[offset..end].copy_from_slice(data);
+            entry.write(|buffer| {
+                if buffer.len() < block_size {
+                    buffer.resize(block_size, 0u8);
+                }
+                let end = offset + data.len();
+                buffer[offset..end].copy_from_slice(data);
+            });
 
             info!(
                 "Wrote {} bytes to address 0x{:x} (offset {} in block at 0x{:x})",
@@ -65,13 +63,11 @@ impl MemoryManager {
     /// Read bytes from a memory address
     /// This simulates reading from physical memory for shared memory segments
     pub fn read_bytes(&self, address: Address, size: Size) -> MemoryResult<Vec<u8>> {
-        // Find the block containing this address
         let mut base_addr = None;
         for entry in self.blocks.iter() {
             let addr = *entry.key();
             let block = entry.value();
             if block.allocated && address >= addr && address < addr + block.size {
-                // Check if read fits within block bounds
                 if address + size <= addr + block.size {
                     base_addr = Some(addr);
                     break;
@@ -82,18 +78,16 @@ impl MemoryManager {
         }
 
         if let Some(base_addr) = base_addr {
-            // Calculate offset within the block
             let offset = address - base_addr;
 
-            // Get storage for this block
-            let data = if let Some(block_data) = self.memory_storage.get(&base_addr) {
-                // Read data from the stored bytes using SIMD-accelerated copy
-                let end = offset + size;
-                let mut result = vec![0u8; size];
-                result.copy_from_slice(&block_data[offset..end]);
-                result
+            let data = if let Some(cow_mem) = self.memory_storage.get(&base_addr) {
+                cow_mem.read(|buffer| {
+                    let end = offset + size;
+                    let mut result = vec![0u8; size];
+                    result.copy_from_slice(&buffer[offset..end]);
+                    result
+                })
             } else {
-                // Block has no data written yet, return zeros
                 vec![0u8; size]
             };
 
