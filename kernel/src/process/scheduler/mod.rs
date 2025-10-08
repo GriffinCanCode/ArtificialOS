@@ -3,10 +3,17 @@
  * Manages process scheduling with multiple policies and preemption
  */
 
-use super::atomic_stats::AtomicSchedulerStats;
-use super::types::SchedulingPolicy;
+mod atomic_stats;
+mod entry;
+mod operations;
+mod policy;
+mod stats;
+pub mod task;
+
+use atomic_stats::AtomicSchedulerStats;
 use crate::core::types::Pid;
 use crate::monitoring::Collector;
+use crate::process::core::types::SchedulingPolicy;
 use dashmap::DashMap;
 use log::info;
 use parking_lot::RwLock;
@@ -14,10 +21,8 @@ use std::collections::{BinaryHeap, VecDeque};
 use std::sync::Arc;
 use std::time::Duration;
 
-mod entry;
-mod operations;
-mod policy;
-mod stats;
+// Re-export scheduler task
+pub use task::{SchedulerCommand, SchedulerTask};
 
 use entry::{Entry, FairEntry};
 

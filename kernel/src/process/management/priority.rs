@@ -3,9 +3,9 @@
  * Helpers for managing process priorities and limits
  */
 
-use super::types::ProcessInfo;
 use crate::core::types::{Pid, Priority};
-use crate::process::Scheduler;
+use crate::process::core::types::ProcessInfo;
+use crate::process::scheduler::Scheduler;
 use crate::security::Limits;
 use ahash::RandomState;
 use dashmap::DashMap;
@@ -14,7 +14,7 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 
 /// Convert priority to resource limits
-pub(super) fn priority_to_limits(priority: Priority) -> Limits {
+pub(crate) fn priority_to_limits(priority: Priority) -> Limits {
     // Higher priority = more resources
     use crate::core::limits::*;
     let (memory_bytes, max_pids, max_open_files, cpu_shares) = match priority {

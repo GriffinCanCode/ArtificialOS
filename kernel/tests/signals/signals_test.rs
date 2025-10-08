@@ -4,7 +4,7 @@
  */
 
 use ai_os_kernel::core::types::Pid;
-use ai_os_kernel::process::types::ProcessState;
+use ai_os_kernel::process::core::types::ProcessState;
 use ai_os_kernel::signals::*;
 use std::sync::Arc;
 

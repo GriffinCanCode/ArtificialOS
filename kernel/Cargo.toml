@@ -3,11 +3,6 @@ name = "ai-os-kernel"
 version = "0.1.0"
 edition = "2021"
 
-[features]
-default = []
-nightly = []
-tokio = []
-
 [lib]
 name = "ai_os_kernel"
 path = "src/lib.rs"
@@ -46,6 +41,10 @@ ahash = "0.8"
 ringbuf = "0.4"
 flume = "0.11"
 crossbeam-queue = "0.3"  # Lock-free queues for hot paths
+crossbeam-epoch = "0.9"  # Epoch-based reclamation for lock-free structures
+arc-swap = "1.7"  # RCU-style atomic pointer swapping
+seqlock = "0.2"  # Lock-free read-optimized synchronization
+smartstring = "1.0"  # Inline string optimization
 
 # Structured logging
 tracing = { version = "0.1", default-features = false, features = ["std", "attributes"] }
@@ -68,6 +67,19 @@ reqwest = { version = "0.12", default-features = false, features = ["blocking", 
 
 # Path utilities
 path-clean = "1.0"
+
+# Arena allocation
+bumpalo = { version = "3.14", features = ["collections"] }
+
+# Custom allocator (optional - enable via feature)
+[target.'cfg(not(target_env = "msvc"))'.dependencies]
+tikv-jemallocator = { version = "0.5", optional = true }
+
+[features]
+default = []
+nightly = []
+tokio = []
+jemalloc = ["tikv-jemallocator"]
 
 [target.'cfg(target_os = "linux")'.dependencies]
 rtnetlink = { version = "0.14", default-features = false }

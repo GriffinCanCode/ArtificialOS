@@ -5,9 +5,9 @@
 
 use super::manager::ProcessManager;
 use super::priority;
-use super::scheduler_task::SchedulerTask;
-use super::types::{ProcessStats, SchedulerStats, SchedulingPolicy};
 use crate::core::types::{Pid, Priority};
+use crate::process::core::types::{ProcessStats, SchedulerStats, SchedulingPolicy};
+use crate::process::scheduler::SchedulerTask;
 use log::info;
 use std::sync::Arc;
 

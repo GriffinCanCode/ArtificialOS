@@ -14,7 +14,7 @@ use ai_os_kernel::ipc::queue::QueueManager;
 use ai_os_kernel::ipc::shm::ShmManager;
 use ai_os_kernel::ipc::QueueType;
 use ai_os_kernel::memory::MemoryManager;
-use ai_os_kernel::process::manager::ProcessManagerBuilder;
+use ai_os_kernel::process::ProcessManagerBuilder;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;

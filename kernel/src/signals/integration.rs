@@ -4,7 +4,7 @@
  */
 
 use super::handler::SignalOutcome;
-use crate::process::types::ProcessState;
+use crate::process::core::types::ProcessState;
 
 /// Convert signal outcome to process state change
 pub fn outcome_to_state(outcome: SignalOutcome) -> Option<ProcessState> {

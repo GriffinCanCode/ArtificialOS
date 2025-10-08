@@ -1,34 +1,41 @@
 /*!
  * Process Module
  * Process management, execution, and scheduling
+ *
+ * # Organization
+ *
+ * - **core**: Core types and traits (ProcessInfo, ProcessState, etc.)
+ * - **execution**: OS-level process execution and preemption
+ * - **lifecycle**: Process initialization, cleanup, and budgeting
+ * - **management**: Process manager implementations
+ * - **scheduler**: CPU scheduling with multiple policies
+ * - **resources**: Resource cleanup system
  */
 
-pub mod atomic_stats;
-pub mod budget;
-mod cleanup;
-pub mod executor;
+pub mod core;
+pub mod execution;
 pub mod lifecycle;
-pub mod manager;
-pub mod manager_builder;
-pub mod manager_scheduler;
-pub mod preemption;
-mod priority;
+pub mod management;
 pub mod resources;
 pub mod scheduler;
-pub mod scheduler_task;
-pub mod traits;
-pub mod types;
-mod validation;
 
-// Re-export types for convenience
-pub use types::*;
+// Re-export core types for convenience
+pub use core::*;
 
-// Re-export implementations
-pub use budget::{ResourceBudget, ResourceTracker, ResourceUsage};
-pub use executor::ProcessExecutor as ProcessExecutorImpl;
-pub use lifecycle::{LifecycleRegistry, ProcessInitConfig};
-pub use manager::ProcessManager as ProcessManagerImpl;
-pub use manager_builder::ProcessManagerBuilder;
-pub use preemption::PreemptionController;
-pub use scheduler::Scheduler;
-pub use scheduler_task::{SchedulerCommand, SchedulerTask};
+// Re-export execution types
+pub use execution::{ExecutingProcess, PreemptionController, ProcessExecutor};
+
+// Re-export lifecycle types
+pub use lifecycle::{
+    LifecycleError, LifecycleRegistry, LifecycleResult, ProcessInitConfig, ResourceBudget,
+    ResourceTracker, ResourceUsage,
+};
+
+// Re-export management types
+pub use management::{Process, ProcessManager, ProcessManagerBuilder, ProcessManagerImpl};
+
+// Re-export scheduler types
+pub use scheduler::{Scheduler, SchedulerCommand, SchedulerTask};
+
+// Backwards compatibility aliases
+pub use execution::ProcessExecutor as ProcessExecutorImpl;

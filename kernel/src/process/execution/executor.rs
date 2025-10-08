@@ -3,9 +3,9 @@
  * Handles OS-level process spawning and management
  */
 
-use super::types::{ExecutionConfig, ProcessError, ProcessResult};
 use super::validation;
 use crate::core::types::Pid;
+use crate::process::core::types::{ExecutionConfig, ProcessError, ProcessResult};
 use crate::security::types::Limits;
 use ahash::RandomState;
 use dashmap::DashMap;

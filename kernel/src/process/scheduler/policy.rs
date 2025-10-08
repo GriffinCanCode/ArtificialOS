@@ -6,7 +6,7 @@
 use super::entry::{Entry, FairEntry};
 use super::{QueueLocation, Scheduler};
 use crate::core::types::{Pid, Priority};
-use crate::process::types::SchedulingPolicy;
+use crate::process::core::types::SchedulingPolicy;
 use log::info;
 use std::time::Duration;
 

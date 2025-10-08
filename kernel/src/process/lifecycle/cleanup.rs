@@ -5,18 +5,17 @@
  * Note: Resource cleanup (memory, IPC, FDs, etc.) is handled by ResourceOrchestrator
  */
 
-use super::executor::ProcessExecutor;
-use super::preemption::PreemptionController;
-use super::scheduler::Scheduler;
-use super::types::ProcessInfo;
 use crate::core::types::Pid;
+use crate::process::core::types::ProcessInfo;
+use crate::process::execution::{PreemptionController, ProcessExecutor};
+use crate::process::scheduler::Scheduler;
 use crate::security::LimitManager;
 use log::warn;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
 /// Cleanup OS process resources
-pub(super) fn cleanup_os_process(
+pub(crate) fn cleanup_os_process(
     process: &ProcessInfo,
     pid: Pid,
     executor: &Option<ProcessExecutor>,
@@ -39,14 +38,14 @@ pub(super) fn cleanup_os_process(
 }
 
 /// Remove from scheduler
-pub(super) fn cleanup_scheduler(pid: Pid, scheduler: &Option<Arc<RwLock<Scheduler>>>) {
+pub(crate) fn cleanup_scheduler(pid: Pid, scheduler: &Option<Arc<RwLock<Scheduler>>>) {
     if let Some(ref sched) = scheduler {
         sched.read().remove(pid);
     }
 }
 
 /// Notify preemption controller
-pub(super) fn cleanup_preemption(pid: Pid, preemption: &Option<Arc<PreemptionController>>) {
+pub(crate) fn cleanup_preemption(pid: Pid, preemption: &Option<Arc<PreemptionController>>) {
     if let Some(ref preempt) = preemption {
         preempt.cleanup_process(pid);
     }

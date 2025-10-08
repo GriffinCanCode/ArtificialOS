@@ -3,7 +3,7 @@
  * Uses atomic counters for zero-contention stats tracking in hot scheduling paths
  */
 
-use crate::process::types::{SchedulerStats, SchedulingPolicy};
+use crate::process::core::types::{SchedulerStats, SchedulingPolicy};
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::Duration;
 

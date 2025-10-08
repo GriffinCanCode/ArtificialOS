@@ -3,7 +3,7 @@
  * Common types for process management
  */
 
-use crate::core::serde::{is_false, is_none, is_zero_u64, is_zero_usize};
+use crate::core::serialization::serde::{is_false, is_none, is_zero_u64, is_zero_usize};
 use crate::core::types::{Pid, Priority};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;

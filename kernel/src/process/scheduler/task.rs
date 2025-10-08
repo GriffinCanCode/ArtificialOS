@@ -44,8 +44,8 @@
  * # use std::sync::Arc;
  * # use parking_lot::RwLock;
  * # use ai_os_kernel::process::scheduler::Scheduler;
- * # use ai_os_kernel::process::scheduler_task::SchedulerTask;
- * # use ai_os_kernel::process::types::SchedulingPolicy;
+ * # use ai_os_kernel::process::scheduler::SchedulerTask;
+ * # use ai_os_kernel::process::core::types::SchedulingPolicy;
  * # async fn example() {
  * let scheduler = Arc::new(RwLock::new(Scheduler::new(SchedulingPolicy::Fair)));
  * let task = SchedulerTask::spawn(scheduler);
@@ -60,8 +60,8 @@
  * ```
  */
 
-use super::preemption::PreemptionController;
-use super::scheduler::Scheduler;
+use super::Scheduler;
+use crate::process::execution::PreemptionController;
 use log::{info, warn};
 use parking_lot::RwLock;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -294,7 +294,7 @@ impl Drop for SchedulerTask {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::process::types::SchedulingPolicy;
+    use crate::process::core::types::SchedulingPolicy;
 
     #[tokio::test]
     async fn test_scheduler_task_lifecycle() {

@@ -3,7 +3,7 @@
  * Security validation for process commands and arguments
  */
 
-use super::types::{ProcessError, ProcessResult};
+use crate::process::core::types::{ProcessError, ProcessResult};
 use std::path::Path;
 
 /// Validate command for security issues

@@ -3,18 +3,16 @@
  * Builder pattern for ProcessManager construction
  */
 
-use super::lifecycle::LifecycleRegistry;
 use super::manager::ProcessManager;
-use super::preemption::PreemptionController;
-use super::resources::ResourceOrchestrator;
-use super::scheduler::Scheduler;
-use super::scheduler_task::SchedulerTask;
-use super::types::SchedulingPolicy;
 use crate::core::{ShardManager, WorkloadProfile};
 use crate::ipc::IPCManager;
 use crate::memory::MemoryManager;
 use crate::monitoring::Collector;
-use crate::process::executor::ProcessExecutor;
+use crate::process::core::types::SchedulingPolicy;
+use crate::process::execution::{PreemptionController, ProcessExecutor};
+use crate::process::lifecycle::LifecycleRegistry;
+use crate::process::resources::ResourceOrchestrator;
+use crate::process::scheduler::{Scheduler, SchedulerTask};
 use crate::security::LimitManager;
 use ahash::RandomState;
 use dashmap::DashMap;
@@ -129,17 +127,17 @@ impl ProcessManagerBuilder {
 
             // Register memory if available
             if let Some(ref mem_mgr) = self.memory_manager {
-                orch = orch.register(super::resources::MemoryResource::new(mem_mgr.clone()));
+                orch = orch.register(crate::process::resources::MemoryResource::new(mem_mgr.clone()));
             }
 
             // Register IPC if available
             if let Some(ref ipc_mgr) = self.ipc_manager {
-                orch = orch.register(super::resources::IpcResource::new(ipc_mgr.clone()));
+                orch = orch.register(crate::process::resources::IpcResource::new(ipc_mgr.clone()));
             }
 
             // Register FD if available
             if let Some(ref fd_mgr) = self.fd_manager {
-                orch = orch.register(super::resources::FdResource::new(fd_mgr.clone()));
+                orch = orch.register(crate::process::resources::FdResource::new(fd_mgr.clone()));
             }
 
             orch

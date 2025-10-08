@@ -4,7 +4,7 @@
  */
 
 use super::Scheduler;
-use crate::process::types::{SchedulerStats, SchedulingPolicy};
+use crate::process::core::types::{SchedulerStats, SchedulingPolicy};
 
 impl Scheduler {
     /// Get scheduler statistics (lock-free snapshot)

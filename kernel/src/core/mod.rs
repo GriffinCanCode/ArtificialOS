@@ -1,38 +1,75 @@
 /*!
  * Core Module
- * Fundamental kernel types and error handling
+ *
+ * Fundamental kernel types, error handling, and performance primitives.
+ *
+ * # Module Organization
+ *
+ * - **errors**, **types**, **traits**: Core abstractions and type system
+ * - **limits**: System-wide limits and constants
+ * - **guard**: RAII resource guards with type-state pattern
+ * - **sync**: Synchronization primitives (locks, wait queues, RCU)
+ * - **memory**: Memory utilities (arena, CoW, pooling)
+ * - **serialization**: Bincode and JSON with SIMD optimization
+ * - **data_structures**: Specialized data structures (inline strings, epoch FD table)
+ * - **optimization**: Low-level performance hints (prefetch, branch prediction, SIMD)
  */
 
-pub mod bincode;
-pub mod const_generics;
+// Core abstractions
 pub mod errors;
-pub mod flat_combining;
 pub mod guard;
-pub mod hints;
-pub mod inline_string;
-pub mod json;
 pub mod limits;
-pub mod rcu;
-pub mod serde;
-pub mod seqlock_stats;
-pub mod shard_manager;
-pub mod sync;
 pub mod traits;
 pub mod types;
 
-// Re-export for convenience
+// Modules
+pub mod data_structures;
+pub mod memory;
+pub mod optimization;
+pub mod serialization;
+pub mod sync;
+
+// Re-export core abstractions
 pub use errors::*;
-pub use flat_combining::FlatCombiningCounter;
+pub use limits::*;
+pub use traits::*;
+pub use types::*;
+
+// Re-export guard types
 pub use guard::{
     AsyncTaskGuard, CompositeGuard, FdGuard, Guard, GuardDrop, GuardError, GuardRef, GuardResult,
     IpcGuard, IpcResourceType, LockGuard, LockState, Locked, MemoryGuard, Observable,
-    ObservableGuard, Operation, Recoverable, SyscallGuard, TransactionGuard, TypedGuard,
-    TypedState, Unlocked,
+    ObservableGuard, Operation, Recoverable, SyscallGuard, TimeoutPolicy, TransactionGuard,
+    TypedGuard, TypedState, Unlocked,
 };
-pub use hints::*;
-pub use inline_string::InlineString;
-pub use rcu::RcuCell;
-pub use seqlock_stats::SeqlockStats;
-pub use shard_manager::{ShardManager, WorkloadProfile};
-pub use traits::*;
-pub use types::*;
+
+// Re-export sync primitives
+pub use sync::{
+    AdaptiveLock, CondvarWait, FlatCombiningCounter, FutexWait, RcuCell, SeqlockStats,
+    ShardManager, SpinWait, StrategyType, StripedMap, SyncConfig, WaitError, WaitQueue,
+    WaitResult, WaitStrategy, WakeResult, WorkloadProfile,
+};
+
+// Re-export memory utilities
+pub use memory::{
+    with_arena, ArenaString, ArenaVec, CowMemory, CowMemoryManager, CowStats, PooledBuffer,
+    SharedPool,
+};
+
+// Re-export serialization utilities
+pub use serialization::{
+    from_bincode, from_json, is_zero_u32, is_zero_u64, is_zero_usize, serialized_size,
+    skip_serializing_none, system_time_micros, to_bincode, to_json, to_json_string,
+};
+
+// Re-export data structures
+pub use data_structures::{EpochFdTable, InlineString};
+
+// Re-export optimization utilities
+pub use optimization::{
+    find_hash_simd, likely, path_starts_with_any, prefetch_read, prefetch_write, unlikely,
+    PrefetchExt,
+};
+
+// Re-export CPU hints wildcard (barrier, spin_loop, etc.)
+pub use optimization::*;

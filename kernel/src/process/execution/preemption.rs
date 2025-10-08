@@ -5,9 +5,9 @@
  * preemptive multitasking using SIGSTOP/SIGCONT signals.
  */
 
-use super::executor::ProcessExecutor;
-use super::scheduler::Scheduler;
+use super::ProcessExecutor;
 use crate::core::types::Pid;
+use crate::process::scheduler::Scheduler;
 use log::{debug, info, warn};
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -157,7 +157,7 @@ impl Clone for PreemptionController {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::process::types::SchedulingPolicy;
+    use crate::process::core::types::SchedulingPolicy;
 
     #[test]
     fn test_preemption_controller_creation() {
