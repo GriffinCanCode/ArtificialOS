@@ -4,6 +4,7 @@
  */
 
 use super::cleanup;
+use super::lifecycle::{LifecycleRegistry, ProcessInitConfig};
 use super::preemption::PreemptionController;
 use super::priority;
 use super::resources::ResourceOrchestrator;
@@ -46,6 +47,8 @@ pub struct ProcessManager {
     pub(super) resource_orchestrator: Option<ResourceOrchestrator>,
     // Track child processes per parent PID for limit enforcement
     pub(super) child_counts: Arc<DashMap<Pid, u32, RandomState>>,
+    // Lifecycle hook coordinator (prevents race conditions during initialization)
+    pub(super) lifecycle: Option<LifecycleRegistry>,
 }
 
 impl ProcessManager {
@@ -75,6 +78,7 @@ impl ProcessManager {
                 RandomState::new(),
                 64,
             )),
+            lifecycle: None,
         }
     }
 
@@ -97,6 +101,15 @@ impl ProcessManager {
     ) -> u32 {
         // Allocate PID atomically
         let pid = self.next_pid.fetch_add(1, Ordering::SeqCst);
+
+        // Create process in Creating state (not yet initialized)
+        let mut process = ProcessInfo {
+            pid,
+            name: name.clone(),
+            state: ProcessState::Creating,  // Start in Creating state
+            priority,
+            os_pid: None,
+        };
 
         // Spawn OS process if command provided and executor available
         let os_pid = if let Some(mut cfg) = config {
@@ -138,21 +151,36 @@ impl ProcessManager {
             None
         };
 
-        let process = ProcessInfo {
-            pid,
-            name: name.clone(),
-            state: ProcessState::Ready,
-            priority,
-            os_pid,
-        };
+        process.os_pid = os_pid;
 
-        self.processes.insert(pid, process);
+        // CRITICAL: Run lifecycle initialization hooks BEFORE making process schedulable
+        // This prevents race conditions where process tries to use uninitialized resources
+        process.state = ProcessState::Initializing;
+        self.processes.insert(pid, process.clone());
+
+        if let Some(ref lifecycle) = self.lifecycle {
+            let init_config = ProcessInitConfig::default();
+            if let Err(e) = lifecycle.initialize_process(pid, &init_config) {
+                log::error!(
+                    "Failed to initialize process {} resources: {}. Process may be unstable.",
+                    pid, e
+                );
+                // Continue anyway - process will initialize resources lazily (old behavior)
+            }
+        }
+
+        // Transition to Ready state - now fully initialized and can be scheduled
+        if let Some(mut proc) = self.processes.get_mut(&pid) {
+            proc.state = ProcessState::Ready;
+        }
+
         info!(
-            "Created process: {} (PID: {}, OS PID: {:?})",
-            name, pid, os_pid
+            "Created process: {} (PID: {}, OS PID: {:?}, lifecycle: {})",
+            name, pid, os_pid,
+            if self.lifecycle.is_some() { "initialized" } else { "lazy" }
         );
 
-        // Add to scheduler if available
+        // Add to scheduler if available (only Ready processes can be scheduled)
         if let Some(ref scheduler) = self.scheduler {
             scheduler.read().add(pid, priority);
         }
@@ -183,7 +211,15 @@ impl ProcessManager {
             cleanup::cleanup_preemption(pid, &self.preemption);
             cleanup::cleanup_file_descriptors(pid, &self.fd_manager);
 
+            // Lifecycle cleanup (signals, zero-copy rings, FD table state)
+            // This runs before comprehensive cleanup to ensure proper ordering
+            if let Some(ref lifecycle) = self.lifecycle {
+                lifecycle.cleanup_process(pid);
+            }
+
             // Comprehensive resource cleanup (sockets, signals, rings, tasks, mappings)
+            // Note: Some resources may be cleaned twice (once by lifecycle, once here)
+            // This is intentional for defense-in-depth - second cleanup is a no-op
             cleanup::cleanup_comprehensive(pid, &self.resource_orchestrator);
 
             true
@@ -272,6 +308,7 @@ impl Clone for ProcessManager {
             fd_manager: self.fd_manager.clone(),
             resource_orchestrator: None, // Resource orchestrator is not Clone
             child_counts: Arc::clone(&self.child_counts),
+            lifecycle: self.lifecycle.clone(),
         }
     }
 }

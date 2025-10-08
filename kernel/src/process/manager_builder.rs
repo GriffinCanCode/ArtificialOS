@@ -3,6 +3,7 @@
  * Builder pattern for ProcessManager construction
  */
 
+use super::lifecycle::LifecycleRegistry;
 use super::manager::ProcessManager;
 use super::preemption::PreemptionController;
 use super::resources::ResourceOrchestrator;
@@ -29,6 +30,7 @@ pub struct ProcessManagerBuilder {
     scheduler_policy: Option<SchedulingPolicy>,
     fd_manager: Option<crate::syscalls::fd::FdManager>,
     resource_orchestrator: Option<ResourceOrchestrator>,
+    signal_manager: Option<Arc<crate::signals::SignalManagerImpl>>,
 }
 
 impl ProcessManagerBuilder {
@@ -42,6 +44,7 @@ impl ProcessManagerBuilder {
             scheduler_policy: None,
             fd_manager: None,
             resource_orchestrator: None,
+            signal_manager: None,
         }
     }
 
@@ -84,6 +87,12 @@ impl ProcessManagerBuilder {
     /// Add resource orchestrator for comprehensive cleanup
     pub fn with_resource_orchestrator(mut self, orchestrator: ResourceOrchestrator) -> Self {
         self.resource_orchestrator = Some(orchestrator);
+        self
+    }
+
+    /// Add signal manager for lifecycle initialization
+    pub fn with_signal_manager(mut self, signal_manager: Arc<crate::signals::SignalManagerImpl>) -> Self {
+        self.signal_manager = Some(signal_manager);
         self
     }
 
@@ -151,6 +160,34 @@ impl ProcessManagerBuilder {
             features.push("comprehensive-cleanup");
         }
 
+        // Build lifecycle registry if we have relevant managers
+        // This coordinates initialization hooks across subsystems
+        let lifecycle = if self.signal_manager.is_some() || self.ipc_manager.is_some() || self.fd_manager.is_some() {
+            let mut registry = LifecycleRegistry::new();
+
+            // Register signal manager if available
+            if let Some(ref signal_mgr) = self.signal_manager {
+                registry = registry.with_signal_manager(Arc::clone(signal_mgr));
+            }
+
+            // Register zero-copy IPC if we have IPC manager
+            if let Some(ref ipc_mgr) = self.ipc_manager {
+                if let Some(zerocopy) = ipc_mgr.zerocopy() {
+                    registry = registry.with_zerocopy_ipc(Arc::new(zerocopy.clone()));
+                }
+            }
+
+            // Register FD manager if available
+            if let Some(ref fd_mgr) = self.fd_manager {
+                registry = registry.with_fd_manager(Arc::new(fd_mgr.clone()));
+            }
+
+            features.push("lifecycle-hooks");
+            Some(registry)
+        } else {
+            None
+        };
+
         info!("Process manager initialized with: {}", features.join(", "));
 
         ProcessManager {
@@ -176,6 +213,7 @@ impl ProcessManagerBuilder {
                 RandomState::new(),
                 64,
             )),
+            lifecycle,
         }
     }
 }

@@ -17,6 +17,8 @@ fn test_process_creation() {
     let process = pm.get_process(pid).unwrap();
     assert_eq!(process.name, "test-app");
     assert_eq!(process.priority, 5);
+    // Process goes through Creating -> Initializing -> Ready lifecycle
+    // With no lifecycle hooks configured, it transitions directly to Ready
     assert!(matches!(process.state, ProcessState::Ready));
 }
 

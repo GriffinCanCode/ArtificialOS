@@ -47,7 +47,11 @@ pub enum ProcessError {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ProcessState {
-    /// Process is ready to run
+    /// Process structure is being created (not yet initialized)
+    Creating,
+    /// Process resources are being initialized (lifecycle hooks running)
+    Initializing,
+    /// Process is ready to run (fully initialized)
     Ready,
     /// Process is currently running
     Running,
@@ -92,7 +96,7 @@ impl ProcessInfo {
         Self {
             pid,
             name,
-            state: ProcessState::Ready,
+            state: ProcessState::Creating,  // Start in Creating state
             priority,
             os_pid: None,
         }
@@ -130,6 +134,23 @@ impl ProcessInfo {
     #[must_use]
     pub const fn is_terminated(&self) -> bool {
         matches!(self.state, ProcessState::Terminated)
+    }
+
+    /// Check if process is initializing
+    #[inline(always)]
+    #[must_use]
+    pub const fn is_initializing(&self) -> bool {
+        matches!(self.state, ProcessState::Creating | ProcessState::Initializing)
+    }
+
+    /// Check if process can be scheduled
+    ///
+    /// # Performance
+    /// Hot path - checked by scheduler before adding to queue
+    #[inline(always)]
+    #[must_use]
+    pub const fn can_be_scheduled(&self) -> bool {
+        matches!(self.state, ProcessState::Ready | ProcessState::Running | ProcessState::Waiting)
     }
 }
 

@@ -12,6 +12,10 @@ use std::time::Instant;
 
 impl Scheduler {
     /// Add process to scheduler
+    ///
+    /// # Safety
+    /// Process must be in Ready state or later (fully initialized) before being scheduled.
+    /// Adding a process in Creating or Initializing state is unsafe and could cause race conditions.
     pub fn add(&self, pid: Pid, priority: Priority) {
         let quantum = *self.quantum.read();
         let policy = *self.policy.read();

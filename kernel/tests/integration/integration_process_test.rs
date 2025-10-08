@@ -100,6 +100,7 @@ async fn test_process_without_os_execution() {
     let process = pm.get_process(pid).unwrap();
     assert_eq!(process.name, "virtual-app");
     assert_eq!(process.os_pid, None);
+    // Process completes full lifecycle: Creating -> Initializing -> Ready
     assert!(matches!(process.state, ProcessState::Ready));
 
     pm.terminate_process(pid);
