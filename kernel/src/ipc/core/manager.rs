@@ -11,6 +11,7 @@ use crate::core::types::{Pid, Size};
 use crate::ipc::pipe::PipeManager;
 use crate::ipc::queue::QueueManager;
 use crate::ipc::shm::ShmManager;
+use crate::ipc::zerocopy::ZeroCopyIpc;
 use crate::memory::MemoryManager;
 use dashmap::DashMap;
 use ahash::RandomState;
@@ -33,6 +34,7 @@ pub struct IPCManager {
     pipe_manager: PipeManager,
     shm_manager: ShmManager,
     queue_manager: QueueManager,
+    zerocopy_ipc: Option<ZeroCopyIpc>,
     memory_manager: MemoryManager,
 }
 
@@ -47,6 +49,23 @@ impl IPCManager {
             pipe_manager: PipeManager::new(memory_manager.clone()),
             shm_manager: ShmManager::new(memory_manager.clone()),
             queue_manager: QueueManager::new(memory_manager.clone()),
+            zerocopy_ipc: None,
+            memory_manager,
+        }
+    }
+
+    /// Create IPCManager with zero-copy IPC support
+    pub fn with_zerocopy(memory_manager: MemoryManager) -> Self {
+        info!(
+            "IPC manager initialized with zero-copy support (queue limit: {})",
+            MAX_QUEUE_SIZE
+        );
+        Self {
+            message_queues: Arc::new(DashMap::with_hasher(RandomState::new())),
+            pipe_manager: PipeManager::new(memory_manager.clone()),
+            shm_manager: ShmManager::new(memory_manager.clone()),
+            queue_manager: QueueManager::new(memory_manager.clone()),
+            zerocopy_ipc: Some(ZeroCopyIpc::new(memory_manager.clone())),
             memory_manager,
         }
     }
@@ -64,6 +83,11 @@ impl IPCManager {
     /// Get reference to async queue manager
     pub fn queues(&self) -> &QueueManager {
         &self.queue_manager
+    }
+
+    /// Get reference to zero-copy IPC manager (if enabled)
+    pub fn zerocopy(&self) -> Option<&ZeroCopyIpc> {
+        self.zerocopy_ipc.as_ref()
     }
 
     pub fn send_message(&self, from: Pid, to: Pid, data: Vec<u8>) -> IpcResult<()> {
@@ -159,12 +183,21 @@ impl IPCManager {
         let queues_cleaned = self.queue_manager.cleanup_process(pid);
         total_cleaned += queues_cleaned;
 
+        // Clean up zero-copy rings (if enabled)
+        let zerocopy_cleaned = if let Some(ref zc) = self.zerocopy_ipc {
+            let (count, _bytes) = zc.cleanup_process_rings(pid);
+            count
+        } else {
+            0
+        };
+        total_cleaned += zerocopy_cleaned;
+
         if total_cleaned > 0 {
             info!(
-                "Total IPC cleanup for PID {}: {} resources ({} messages, {} pipes, {} shm segments, {} queues)",
+                "Total IPC cleanup for PID {}: {} resources ({} messages, {} pipes, {} shm segments, {} queues, {} zerocopy rings)",
                 pid, total_cleaned,
-                total_cleaned - pipes_cleaned - shm_cleaned - queues_cleaned,
-                pipes_cleaned, shm_cleaned, queues_cleaned
+                total_cleaned - pipes_cleaned - shm_cleaned - queues_cleaned - zerocopy_cleaned,
+                pipes_cleaned, shm_cleaned, queues_cleaned, zerocopy_cleaned
             );
         }
 
