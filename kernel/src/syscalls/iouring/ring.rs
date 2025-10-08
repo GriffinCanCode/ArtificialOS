@@ -6,9 +6,9 @@
 use super::completion::{SyscallCompletionEntry, SyscallCompletionQueue, SyscallCompletionStatus};
 use super::submission::{SyscallSubmissionEntry, SyscallSubmissionQueue};
 use super::IoUringError;
+use crate::core::sync::lockfree::SeqlockStats;
 use crate::core::sync::WaitQueue;
 use crate::core::types::Pid;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -38,7 +38,7 @@ impl SyscallCompletionRing {
             pid,
             submission_queue: Arc::new(SyscallSubmissionQueue::new(sq_size).into()),
             completion_queue: Arc::new(SyscallCompletionQueue::new(cq_size).into()),
-            stats: Arc::new(RingStats::default().into()),
+            stats: Arc::new(SeqlockStats::new(RingCounters { submissions: 0, completions: 0 }).into()),
             // Use low_latency config for syscall completions
             wait_queue: WaitQueue::low_latency(),
         }
@@ -50,7 +50,7 @@ impl SyscallCompletionRing {
     /// Hot path - zero-contention atomic operation
     pub fn submit(&self, entry: SyscallSubmissionEntry) -> Result<u64, IoUringError> {
         let seq = self.submission_queue.push(entry)?;
-        self.stats.submissions.fetch_add(1, Ordering::Relaxed);
+        self.stats.write(|c| c.submissions += 1);
         Ok(seq)
     }
 
@@ -83,9 +83,8 @@ impl SyscallCompletionRing {
     ) {
         let entry = SyscallCompletionEntry::new(seq, status, result, user_data);
         let _ = self.completion_queue.push(entry);
-        self.stats.completions.fetch_add(1, Ordering::Relaxed);
+        self.stats.write(|c| c.completions += 1);
 
-        // Wake any waiters (futex on Linux, no polling!)
         self.wait_queue.wake_one(seq);
     }
 
@@ -170,24 +169,23 @@ impl SyscallCompletionRing {
 
     /// Get statistics (lock-free)
     pub fn stats(&self) -> RingStatistics {
+        let c = self.stats.read();
         RingStatistics {
-            submissions: self.stats.submissions.load(Ordering::Relaxed),
-            completions: self.stats.completions.load(Ordering::Relaxed),
+            submissions: c.submissions,
+            completions: c.completions,
         }
     }
 }
 
-/// Ring statistics
-///
-/// Cache-line aligned to prevent false sharing
 #[repr(C, align(64))]
-#[derive(Default)]
-struct RingStats {
-    submissions: AtomicU64,
-    completions: AtomicU64,
+#[derive(Debug, Clone, Copy)]
+struct RingCounters {
+    submissions: u64,
+    completions: u64,
 }
 
-/// Public statistics snapshot
+type RingStats = SeqlockStats<RingCounters>;
+
 #[derive(Debug, Clone)]
 pub struct RingStatistics {
     pub submissions: u64,

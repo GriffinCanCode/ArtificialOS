@@ -6,15 +6,21 @@
  * Zero-copy where possible, bounded memory usage, automatic backpressure
  */
 
+use crate::core::limits::EVENT_RING_SIZE as RING_SIZE;
+use crate::core::sync::lockfree::SeqlockStats;
 use crate::monitoring::events::{Event, EventFilter};
 use crossbeam_queue::ArrayQueue;
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
-/// Maximum events in ring buffer (power of 2 for performance)
-use crate::core::limits::EVENT_RING_SIZE as RING_SIZE;
+#[repr(C, align(64))]
+#[derive(Debug, Clone, Copy)]
+struct StreamCounters {
+    events_produced: u64,
+    events_consumed: u64,
+    events_dropped: u64,
+}
 
-/// Event statistics for monitoring the observer
 #[derive(Debug, Clone, Default)]
 pub struct StreamStats {
     pub events_produced: u64,
@@ -23,17 +29,9 @@ pub struct StreamStats {
     pub active_subscribers: usize,
 }
 
-/// Event stream - lock-free MPMC ring buffer
 pub struct EventStream {
-    /// Main event queue (lock-free, bounded)
     queue: Arc<ArrayQueue<Event>>,
-
-    /// Statistics
-    produced: Arc<AtomicU64>,
-    consumed: Arc<AtomicU64>,
-    dropped: Arc<AtomicU64>,
-
-    /// Subscriber tracking
+    counters: SeqlockStats<StreamCounters>,
     subscribers: Arc<AtomicUsize>,
 }
 
@@ -42,9 +40,11 @@ impl EventStream {
     pub fn new() -> Self {
         Self {
             queue: Arc::new(ArrayQueue::new(RING_SIZE).into()),
-            produced: Arc::new(AtomicU64::new(0).into()),
-            consumed: Arc::new(AtomicU64::new(0).into()),
-            dropped: Arc::new(AtomicU64::new(0).into()),
+            counters: SeqlockStats::new(StreamCounters {
+                events_produced: 0,
+                events_consumed: 0,
+                events_dropped: 0,
+            }),
             subscribers: Arc::new(AtomicUsize::new(0).into()),
         }
     }
@@ -54,12 +54,11 @@ impl EventStream {
     pub fn publish(&self, event: Event) -> bool {
         match self.queue.push(event) {
             Ok(()) => {
-                self.produced.fetch_add(1, Ordering::Relaxed);
+                self.counters.write(|c| c.events_produced += 1);
                 true
             }
             Err(_) => {
-                // Queue full - apply backpressure
-                self.dropped.fetch_add(1, Ordering::Relaxed);
+                self.counters.write(|c| c.events_dropped += 1);
                 false
             }
         }
@@ -69,7 +68,7 @@ impl EventStream {
     #[inline]
     pub fn try_consume(&self) -> Option<Event> {
         self.queue.pop().map(|event| {
-            self.consumed.fetch_add(1, Ordering::Relaxed);
+            self.counters.write(|c| c.events_consumed += 1);
             event
         })
     }
@@ -85,10 +84,11 @@ impl EventStream {
 
     /// Get stream statistics
     pub fn stats(&self) -> StreamStats {
+        let c = self.counters.read();
         StreamStats {
-            events_produced: self.produced.load(Ordering::Relaxed),
-            events_consumed: self.consumed.load(Ordering::Relaxed),
-            events_dropped: self.dropped.load(Ordering::Relaxed),
+            events_produced: c.events_produced,
+            events_consumed: c.events_consumed,
+            events_dropped: c.events_dropped,
             active_subscribers: self.subscribers.load(Ordering::Relaxed),
         }
     }
@@ -110,9 +110,7 @@ impl Clone for EventStream {
     fn clone(&self) -> Self {
         Self {
             queue: Arc::clone(&self.queue),
-            produced: Arc::clone(&self.produced),
-            consumed: Arc::clone(&self.consumed),
-            dropped: Arc::clone(&self.dropped),
+            counters: self.counters.clone(),
             subscribers: Arc::clone(&self.subscribers),
         }
     }
@@ -140,9 +138,8 @@ impl Subscriber {
         })
     }
 
-    /// Consume events matching a filter
     pub fn filter(&mut self, filter: &EventFilter) -> Vec<Event> {
-        let mut events = Vec::new();
+        let mut events = Vec::with_capacity(32);
         while let Some(event) = self.next() {
             if event.matches(filter) {
                 events.push(event);

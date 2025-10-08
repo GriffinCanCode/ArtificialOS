@@ -3,12 +3,12 @@
  * Simple LRU cache for permission check results
  */
 
+use crate::core::sync::lockfree::SeqlockStats;
 use crate::core::types::Pid;
 use crate::permissions::types::{Action, PermissionRequest, PermissionResponse, Resource};
 use ahash::RandomState;
 use dashmap::DashMap;
 use std::hash::{Hash, Hasher};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime};
 
 /// Cache key for permission lookups
@@ -48,17 +48,11 @@ struct CachedDecision {
     expires_at: SystemTime,
 }
 
-/// Permission cache with LRU eviction
-///
-/// # Performance
-/// - Cache-line aligned to prevent false sharing of atomic hit/miss counters (checked on EVERY syscall)
-#[repr(C, align(64))]
 pub struct PermissionCache {
     cache: DashMap<CacheKey, CachedDecision, RandomState>,
     max_size: usize,
     ttl: Duration,
-    hits: AtomicU64,
-    misses: AtomicU64,
+    counters: SeqlockStats<PermCacheCounters>,
 }
 
 impl PermissionCache {
@@ -68,8 +62,7 @@ impl PermissionCache {
             cache: DashMap::with_capacity_and_hasher(max_size, RandomState::new().into()),
             max_size,
             ttl,
-            hits: AtomicU64::new(0),
-            misses: AtomicU64::new(0),
+            counters: SeqlockStats::new(PermCacheCounters { hits: 0, misses: 0 }),
         }
     }
 
@@ -80,16 +73,15 @@ impl PermissionCache {
         if let Some(entry) = self.cache.get(&key) {
             let now = SystemTime::now();
             if entry.expires_at > now {
-                self.hits.fetch_add(1, Ordering::Relaxed);
+                self.counters.write(|c| c.hits += 1);
                 return Some(entry.response.clone().with_cached(true));
             } else {
-                // Expired, remove it
                 drop(entry);
                 self.cache.remove(&key);
             }
         }
 
-        self.misses.fetch_add(1, Ordering::Relaxed);
+        self.counters.write(|c| c.misses += 1);
         None
     }
 
@@ -128,11 +120,10 @@ impl PermissionCache {
 
     /// Get cache statistics
     pub fn stats(&self) -> CacheStats {
-        let hits = self.hits.load(Ordering::Relaxed);
-        let misses = self.misses.load(Ordering::Relaxed);
-        let total = hits + misses;
+        let counters = self.counters.read();
+        let total = counters.hits + counters.misses;
         let hit_rate = if total > 0 {
-            (hits as f64 / total as f64) * 100.0
+            (counters.hits as f64 / total as f64) * 100.0
         } else {
             0.0
         };
@@ -140,8 +131,8 @@ impl PermissionCache {
         CacheStats {
             size: self.cache.len(),
             max_size: self.max_size,
-            hits,
-            misses,
+            hits: counters.hits,
+            misses: counters.misses,
             hit_rate,
         }
     }
@@ -154,7 +145,13 @@ impl Default for PermissionCache {
     }
 }
 
-/// Cache statistics
+#[repr(C, align(64))]
+#[derive(Debug, Clone, Copy)]
+struct PermCacheCounters {
+    hits: u64,
+    misses: u64,
+}
+
 #[derive(Debug, Clone)]
 pub struct CacheStats {
     pub size: usize,

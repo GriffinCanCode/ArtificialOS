@@ -6,7 +6,8 @@
  * to maintain target overhead percentage (default 1-2%)
  */
 
-use std::sync::atomic::{AtomicU64, AtomicU8, Ordering};
+use crate::core::sync::lockfree::SeqlockStats;
+use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
 
 /// Target overhead as percentage of CPU time (1-100)
@@ -15,28 +16,23 @@ const TARGET_OVERHEAD_PCT: u8 = 2;
 /// Sampling adjustment interval (number of events)
 use crate::core::limits::SAMPLING_ADJUSTMENT_INTERVAL as ADJUSTMENT_INTERVAL;
 
-/// Sampling decision result
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SampleDecision {
     Accept,
     Reject,
 }
 
-/// Adaptive sampler with automatic rate adjustment
+#[repr(C, align(64))]
+#[derive(Debug, Clone, Copy)]
+struct SamplerCounters {
+    evaluated: u64,
+    accepted: u64,
+}
+
 pub struct Sampler {
-    /// Current sampling rate (0-100 as percentage)
     rate: Arc<AtomicU8>,
-
-    /// Events evaluated
-    evaluated: Arc<AtomicU64>,
-
-    /// Events accepted
-    accepted: Arc<AtomicU64>,
-
-    /// Estimated overhead percentage
+    counters: SeqlockStats<SamplerCounters>,
     overhead_pct: Arc<AtomicU8>,
-
-    /// Per-category sampling rates (for priority sampling)
     category_rates: [Arc<AtomicU8>; 9],
 }
 
@@ -45,8 +41,7 @@ impl Sampler {
     pub fn new() -> Self {
         Self {
             rate: Arc::new(AtomicU8::new(100).into()),
-            evaluated: Arc::new(AtomicU64::new(0).into()),
-            accepted: Arc::new(AtomicU64::new(0).into()),
+            counters: SeqlockStats::new(SamplerCounters { evaluated: 0, accepted: 0 }),
             overhead_pct: Arc::new(AtomicU8::new(0).into()),
             category_rates: [
                 Arc::new(AtomicU8::new(100).into()),
@@ -65,25 +60,25 @@ impl Sampler {
     /// Decide whether to sample this event (fast path)
     #[inline]
     pub fn should_sample(&self) -> SampleDecision {
-        let evaluated = self.evaluated.fetch_add(1, Ordering::Relaxed);
+        let evaluated = self.counters.write_batch(|c| {
+            c.evaluated += 1;
+            c.evaluated
+        });
 
-        // Periodic adjustment
         if evaluated % ADJUSTMENT_INTERVAL == 0 {
             self.adjust_rate();
         }
 
         let rate = self.rate.load(Ordering::Relaxed);
 
-        // Fast rejection for low sampling rates
         if rate < 100 {
-            // Use fast random decision (xorshift)
             let random = self.fast_random() % 100;
             if random >= rate as u64 {
                 return SampleDecision::Reject;
             }
         }
 
-        self.accepted.fetch_add(1, Ordering::Relaxed);
+        self.counters.write(|c| c.accepted += 1);
         SampleDecision::Accept
     }
 
@@ -103,7 +98,7 @@ impl Sampler {
             }
         }
 
-        self.accepted.fetch_add(1, Ordering::Relaxed);
+        self.counters.write(|c| c.accepted += 1);
         SampleDecision::Accept
     }
 
@@ -152,20 +147,17 @@ impl Sampler {
 
     /// Get acceptance rate (actual samples / evaluated)
     pub fn acceptance_rate(&self) -> f64 {
-        let evaluated = self.evaluated.load(Ordering::Relaxed);
-        let accepted = self.accepted.load(Ordering::Relaxed);
-
-        if evaluated == 0 {
+        let c = self.counters.read();
+        if c.evaluated == 0 {
             1.0
         } else {
-            accepted as f64 / evaluated as f64
+            c.accepted as f64 / c.evaluated as f64
         }
     }
 
     /// Reset statistics
     pub fn reset(&self) {
-        self.evaluated.store(0, Ordering::Relaxed);
-        self.accepted.store(0, Ordering::Relaxed);
+        self.counters.replace(SamplerCounters { evaluated: 0, accepted: 0 });
     }
 
     /// Fast random number generator (xorshift)
@@ -202,8 +194,7 @@ impl Clone for Sampler {
     fn clone(&self) -> Self {
         Self {
             rate: Arc::clone(&self.rate),
-            evaluated: Arc::clone(&self.evaluated),
-            accepted: Arc::clone(&self.accepted),
+            counters: self.counters.clone(),
             overhead_pct: Arc::clone(&self.overhead_pct),
             category_rates: [
                 Arc::clone(&self.category_rates[0]),
@@ -288,7 +279,8 @@ mod tests {
         }
 
         sampler.reset();
-        assert_eq!(sampler.evaluated.load(Ordering::Relaxed), 0);
-        assert_eq!(sampler.accepted.load(Ordering::Relaxed), 0);
+        let c = sampler.counters.read();
+        assert_eq!(c.evaluated, 0);
+        assert_eq!(c.accepted, 0);
     }
 }

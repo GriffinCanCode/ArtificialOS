@@ -6,10 +6,10 @@
 use super::completion::{CompletionEntry, CompletionQueue, CompletionStatus};
 use super::submission::{SubmissionEntry, SubmissionQueue};
 use super::ZeroCopyError;
+use crate::core::sync::lockfree::SeqlockStats;
 use crate::core::sync::WaitQueue;
 use crate::core::types::{Address, Pid, Size};
 use parking_lot::RwLock;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -34,7 +34,7 @@ impl ZeroCopyRing {
             ring_size: sq_size + cq_size,
             submission_queue: Arc::new(RwLock::new(SubmissionQueue::new(sq_size).into())),
             completion_queue: Arc::new(RwLock::new(CompletionQueue::new(cq_size).into())),
-            stats: Arc::new(RingStats::default().into()),
+            stats: Arc::new(SeqlockStats::new(RingCounters { submissions: 0, completions: 0 }).into()),
             // Use long_wait config since IPC operations may take a while
             wait_queue: WaitQueue::long_wait(),
         }
@@ -44,7 +44,7 @@ impl ZeroCopyRing {
     pub fn submit(&self, entry: SubmissionEntry) -> Result<u64, ZeroCopyError> {
         let mut sq = self.submission_queue.write();
         let seq = sq.push(entry)?;
-        self.stats.submissions.fetch_add(1, Ordering::Relaxed);
+        self.stats.write(|c| c.submissions += 1);
         Ok(seq)
     }
 
@@ -53,10 +53,9 @@ impl ZeroCopyRing {
         let mut cq = self.completion_queue.write();
         let entry = CompletionEntry::new(seq, status, result);
         let _ = cq.push(entry);
-        self.stats.completions.fetch_add(1, Ordering::Relaxed);
+        self.stats.write(|c| c.completions += 1);
         drop(cq);
 
-        // Wake waiters for this sequence number (futex-based, no busy-wait!)
         self.wait_queue.wake_one(seq);
     }
 
@@ -124,23 +123,22 @@ impl ZeroCopyRing {
 
     /// Get statistics
     pub fn stats(&self) -> RingStatistics {
+        let c = self.stats.read();
         RingStatistics {
-            submissions: self.stats.submissions.load(Ordering::Relaxed),
-            completions: self.stats.completions.load(Ordering::Relaxed),
+            submissions: c.submissions,
+            completions: c.completions,
         }
     }
 }
 
-/// Ring statistics
-///
-/// # Performance
-/// - Cache-line aligned to prevent false sharing between submission and completion counters
 #[repr(C, align(64))]
-#[derive(Default)]
-struct RingStats {
-    submissions: AtomicU64,
-    completions: AtomicU64,
+#[derive(Debug, Clone, Copy)]
+struct RingCounters {
+    submissions: u64,
+    completions: u64,
 }
+
+type RingStats = SeqlockStats<RingCounters>;
 
 #[derive(Debug, Clone)]
 pub struct RingStatistics {
