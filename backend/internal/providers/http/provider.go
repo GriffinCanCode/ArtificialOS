@@ -12,8 +12,16 @@ import (
 	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/types"
 )
 
+// KernelClient interface for syscall operations
+type KernelClient interface {
+	ExecuteSyscall(ctx context.Context, pid uint32, syscallType string, params map[string]interface{}) ([]byte, error)
+}
+
 // Provider implements comprehensive HTTP client operations
 type Provider struct {
+	kernel KernelClient
+	pid    uint32
+
 	// Module instances
 	requestsOps   *requests.RequestsOps
 	configOps     *config.ConfigOps
@@ -25,13 +33,15 @@ type Provider struct {
 	connectionOps *config.ConnectionOps
 }
 
-// NewProvider creates a modular HTTP provider with specialized libraries
-func NewProvider() *Provider {
+// NewProvider creates a modular HTTP provider with kernel integration
+func NewProvider(kernelClient KernelClient, pid uint32) *Provider {
 	httpClient := client.NewClient()
 	ops := &client.HTTPOps{Client: httpClient}
 
 	return &Provider{
-		requestsOps:   &requests.RequestsOps{HTTPOps: ops},
+		kernel:        kernelClient,
+		pid:           pid,
+		requestsOps:   &requests.RequestsOps{HTTPOps: ops, Kernel: kernelClient, PID: pid},
 		configOps:     &config.ConfigOps{HTTPOps: ops},
 		downloadsOps:  &files.DownloadsOps{HTTPOps: ops},
 		uploadsOps:    &files.UploadsOps{HTTPOps: ops},

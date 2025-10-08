@@ -12,7 +12,8 @@ import (
 )
 
 func TestHTTPProviderDefinition(t *testing.T) {
-	httpProvider := http.NewProvider()
+	// Pass nil kernel client for testing (graceful degradation)
+	httpProvider := http.NewProvider(nil, 0)
 	def := httpProvider.Definition()
 
 	t.Run("service metadata", func(t *testing.T) {
@@ -98,7 +99,7 @@ func TestHTTPProviderDefinition(t *testing.T) {
 }
 
 func TestHTTPConfigOperations(t *testing.T) {
-	httpProvider := http.NewProvider()
+	httpProvider := http.NewProvider(nil, 0)
 	ctx := context.Background()
 
 	t.Run("set and remove header", func(t *testing.T) {
@@ -205,7 +206,7 @@ func TestHTTPConfigOperations(t *testing.T) {
 }
 
 func TestHTTPResilienceOperations(t *testing.T) {
-	httpProvider := http.NewProvider()
+	httpProvider := http.NewProvider(nil, 0)
 	ctx := context.Background()
 
 	t.Run("set retry valid", func(t *testing.T) {
@@ -285,7 +286,7 @@ func TestHTTPResilienceOperations(t *testing.T) {
 }
 
 func TestHTTPConnectionOperations(t *testing.T) {
-	httpProvider := http.NewProvider()
+	httpProvider := http.NewProvider(nil, 0)
 	ctx := context.Background()
 
 	t.Run("set proxy valid", func(t *testing.T) {
@@ -380,7 +381,7 @@ func TestHTTPConnectionOperations(t *testing.T) {
 }
 
 func TestHTTPParseOperations(t *testing.T) {
-	httpProvider := http.NewProvider()
+	httpProvider := http.NewProvider(nil, 0)
 	ctx := context.Background()
 
 	t.Run("parse JSON object", func(t *testing.T) {
@@ -493,7 +494,7 @@ func TestHTTPParseOperations(t *testing.T) {
 }
 
 func TestHTTPURLOperations(t *testing.T) {
-	httpProvider := http.NewProvider()
+	httpProvider := http.NewProvider(nil, 0)
 	ctx := context.Background()
 
 	t.Run("build URL simple", func(t *testing.T) {
@@ -640,7 +641,7 @@ func TestHTTPURLOperations(t *testing.T) {
 }
 
 func TestHTTPRequestParameterValidation(t *testing.T) {
-	httpProvider := http.NewProvider()
+	httpProvider := http.NewProvider(nil, 0)
 	ctx := context.Background()
 
 	t.Run("get missing url", func(t *testing.T) {
@@ -667,7 +668,7 @@ func TestHTTPRequestParameterValidation(t *testing.T) {
 }
 
 func TestHTTPUnknownTool(t *testing.T) {
-	httpProvider := http.NewProvider()
+	httpProvider := http.NewProvider(nil, 0)
 	ctx := context.Background()
 
 	result, err := httpProvider.Execute(ctx, "http.unknownTool", map[string]interface{}{}, nil)

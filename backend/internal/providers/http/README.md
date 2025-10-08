@@ -1,8 +1,33 @@
 # HTTP Provider
 
-High-performance HTTP client with enterprise-grade features built on specialized Go libraries.
+High-performance HTTP client with kernel-integrated security and observability.
 
 ## Architecture
+
+### Hybrid Permission-First Design
+
+The HTTP provider uses a **hybrid architecture** that combines kernel security with local execution for optimal performance:
+
+1. **Permission Check** (Kernel): Fast permission validation before network access
+2. **Local Execution** (Go): Full-featured HTTP client with retries, circuit breakers, and streaming
+3. **Metrics Reporting** (Kernel): Async observability without blocking the response
+
+This mirrors real operating systems where permission checks happen in kernel space but data transfer happens in userspace.
+
+### Why Hybrid?
+
+**Traditional Approach (Rejected):** Route all HTTP traffic through kernel syscalls
+- ❌ Massive gRPC overhead for large payloads
+- ❌ Lose advanced HTTP features (circuit breakers, streaming, multipart uploads)
+- ❌ Duplicate HTTP client logic in kernel
+
+**Hybrid Approach (Implemented):** Permission-first with local execution
+- ✅ Security: Kernel controls access via permission checks
+- ✅ Performance: No gRPC overhead for data transfer
+- ✅ Features: Keep all resty/retryablehttp capabilities
+- ✅ Observability: Kernel tracks network activity via metrics
+
+### Module Organization
 
 The HTTP provider follows a modular design pattern with 8 specialized operation modules:
 
@@ -18,6 +43,40 @@ http/
 ├── parse.go        # JSON/XML parsing
 └── url.go          # URL building & parsing
 ```
+
+## Security Flow
+
+Every HTTP request follows this pattern:
+
+```go
+// Step 1: Permission Check (kernel, ~1ms)
+kernel.ExecuteSyscall(ctx, pid, "check_permission", {
+    "resource": "network",
+    "action":   "connect",
+    "target":   "api.example.com"
+})
+// Returns error if permission denied
+
+// Step 2: Execute Request (local, full-featured)
+response := httpClient.Get(url)
+
+// Step 3: Report Metrics (async, non-blocking)
+go kernel.ExecuteSyscall(ctx, pid, "emit_network_metric", {
+    "host":           "api.example.com",
+    "method":         "GET",
+    "status":         200,
+    "bytes_received": 1024,
+    "duration_ms":    150
+})
+```
+
+### Graceful Degradation
+
+If kernel is unavailable:
+- ✅ Permission checks skipped
+- ✅ HTTP requests execute normally
+- ✅ Metrics not reported
+- Perfect for development/testing
 
 ## Libraries Used
 
@@ -40,6 +99,11 @@ http/
    - Context-aware waiting
    - Sub-microsecond overhead
    - Used by Kubernetes, Google Cloud SDK
+
+4. **Kernel Integration** (Optional)
+   - Permission checks before network access
+   - Network metrics for observability
+   - Sandboxed process isolation
 
 ## Features
 

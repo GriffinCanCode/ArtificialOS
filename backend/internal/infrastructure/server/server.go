@@ -301,10 +301,14 @@ func registerProviders(registry *service.Registry, kernel *kernel.KernelClient) 
 		fmt.Printf("Warning: Failed to register filesystem provider: %v\n", err)
 	}
 
-	// HTTP provider
-	htProvider := httpProvider.NewProvider()
-	if err := registry.Register(htProvider); err != nil {
-		fmt.Printf("Warning: Failed to register http provider: %v\n", err)
+	// HTTP provider (requires kernel for network syscalls)
+	if kernel != nil {
+		htProvider := httpProvider.NewProvider(kernel, storagePID)
+		if err := registry.Register(htProvider); err != nil {
+			fmt.Printf("Warning: Failed to register http provider: %v\n", err)
+		}
+	} else {
+		fmt.Printf("Warning: HTTP provider requires kernel connection, skipping registration\n")
 	}
 
 	// Scraper provider
