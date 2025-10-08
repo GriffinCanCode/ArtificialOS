@@ -3,9 +3,10 @@
 # Initialize AgentOS storage structure
 # Run from project root
 
-STORAGE_ROOT="/tmp/agentos-storage"
+# Use consistent path across kernel, backend, and frontend
+STORAGE_ROOT="${KERNEL_STORAGE_PATH:-/tmp/ai-os-storage}"
 
-echo "Initializing AgentOS storage structure..."
+echo "Initializing AgentOS storage structure at $STORAGE_ROOT..."
 
 # Create system directories
 mkdir -p "$STORAGE_ROOT/system/apps"

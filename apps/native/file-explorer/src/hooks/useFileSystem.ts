@@ -12,7 +12,8 @@ export function useFileSystem(context: NativeAppContext): UseFileSystemReturn {
   const { executor } = context;
 
   const [entries, setEntries] = useState<FileEntry[]>([]);
-  const [currentPath, setCurrentPath] = useState('/tmp/ai-os-storage');
+  // Use VFS path instead of absolute path - kernel mounts at /storage
+  const [currentPath, setCurrentPath] = useState('/storage');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -104,11 +105,16 @@ export function useFileSystem(context: NativeAppContext): UseFileSystemReturn {
   const createFolder = useCallback(async (name: string) => {
     const newPath = joinPath(currentPath, name);
 
+    console.log('[FileSystem] Creating folder:', { name, currentPath, newPath });
+
     try {
-      await executor.execute('filesystem.mkdir', { path: newPath });
+      const result = await executor.execute('filesystem.mkdir', { path: newPath });
+      console.log('[FileSystem] Folder created successfully:', result);
       await refresh();
     } catch (err) {
-      throw new Error(`Failed to create folder: ${(err as Error).message}`);
+      const errorMsg = `Failed to create folder "${name}": ${(err as Error).message}`;
+      console.error('[FileSystem] Create folder failed:', { name, newPath, error: err });
+      throw new Error(errorMsg);
     }
   }, [currentPath, executor, refresh]);
 

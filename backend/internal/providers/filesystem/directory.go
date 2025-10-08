@@ -131,10 +131,18 @@ func (d *DirectoryOps) Create(ctx context.Context, params map[string]interface{}
 	}
 
 	pid := d.GetPID(appCtx)
-	_, err := d.Kernel.ExecuteSyscall(ctx, pid, "create_directory", map[string]interface{}{"path": path})
+
+	// Log the directory creation attempt
+	fmt.Printf("[Filesystem] Creating directory: path=%s, pid=%d\n", path, pid)
+
+	data, err := d.Kernel.ExecuteSyscall(ctx, pid, "create_directory", map[string]interface{}{"path": path})
 	if err != nil {
-		return Failure(fmt.Sprintf("create failed: %v", err))
+		errMsg := fmt.Sprintf("create failed for path '%s': %v", path, err)
+		fmt.Printf("[Filesystem] ERROR: %s\n", errMsg)
+		return Failure(errMsg)
 	}
+
+	fmt.Printf("[Filesystem] Directory created successfully: path=%s, result=%s\n", path, string(data))
 
 	return Success(map[string]interface{}{"created": true, "path": path})
 }

@@ -40,15 +40,16 @@ export class FilesystemExecutor implements AsyncExecutor {
 
   private async listDirectory(params: Record<string, any>): Promise<any> {
     // Handle path from multiple sources: explicit param, component state, or clicked file
+    // Use VFS path - kernel mounts at /storage
     let path =
       params.path ||
       this.context.componentState.get("path-input") ||
       this.context.componentState.get("current-path") ||
-      "/tmp/ai-os-storage";
+      "/storage";
 
     // If a file/directory was clicked, extract the name and append to current path
     if (params.value && params.value.includes("📁")) {
-      const currentPath = this.context.componentState.get("current-path") || "/tmp/ai-os-storage";
+      const currentPath = this.context.componentState.get("current-path") || "/storage";
       const dirName = params.value.replace("📁 ", "").trim();
       path = `${currentPath}/${dirName}`.replace(/\/+/g, "/"); // Clean up double slashes
     }

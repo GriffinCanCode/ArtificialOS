@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -112,7 +113,12 @@ func NewServer(cfg *config.Config) (*Server, error) {
 			storagePID = *pid
 		}
 	}
-	appRegistry := registry.NewManager(kernelClient, storagePID, "/tmp/agentos-storage/system")
+	// Use consistent storage path with kernel
+	storagePath := os.Getenv("KERNEL_STORAGE_PATH")
+	if storagePath == "" {
+		storagePath = "/tmp/ai-os-storage"
+	}
+	appRegistry := registry.NewManager(kernelClient, storagePID, storagePath+"/system")
 
 	// Seed prebuilt apps
 	logger.Info("Loading prebuilt apps...")
@@ -125,7 +131,7 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	}
 
 	// Initialize session manager
-	sessionManager := session.NewManager(appManager, kernelClient, storagePID, "/tmp/agentos-storage/system")
+	sessionManager := session.NewManager(appManager, kernelClient, storagePID, storagePath+"/system")
 
 	// Create router
 	if !cfg.Logging.Development {
@@ -262,7 +268,11 @@ func (s *Server) Close() error {
 }
 
 func registerProviders(registry *service.Registry, kernel *kernel.KernelClient) {
-	storagePath := "/tmp/agentos-storage"
+	// Use consistent storage path with kernel
+	storagePath := os.Getenv("KERNEL_STORAGE_PATH")
+	if storagePath == "" {
+		storagePath = "/tmp/ai-os-storage"
+	}
 	var storagePID uint32 = 1
 
 	// Storage provider
