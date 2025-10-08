@@ -7,6 +7,7 @@ import React, { useCallback, useState, useRef } from "react";
 import type { Icon as IconType } from "../core/types";
 import { gridToPixel } from "../core/grid";
 import { DEFAULT_GRID_CONFIG, DOUBLE_CLICK_THRESHOLD } from "../core/types";
+import { Badge } from "./Badge";
 import "./Icon.css";
 
 // ============================================================================
@@ -122,7 +123,10 @@ export const Icon: React.FC<IconProps> = React.memo(
         onMouseDown={handleMouseDown}
         onContextMenu={handleContextMenu}
       >
-        <div className="desktop-icon-image">{icon.icon}</div>
+        <div className="desktop-icon-image">
+          {icon.icon}
+          {icon.badge && <Badge badge={icon.badge} />}
+        </div>
         <div className="desktop-icon-label">{icon.label}</div>
       </div>
     );

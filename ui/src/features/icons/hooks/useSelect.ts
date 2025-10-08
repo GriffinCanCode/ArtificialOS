@@ -4,7 +4,7 @@
  */
 
 import { useCallback } from "react";
-import { useActions, useSelectedIcons } from "../store/store";
+import { useActions, useSelectedIcons, useAnchorId } from "../store/store";
 
 // ============================================================================
 // Selection Hook
@@ -33,7 +33,8 @@ export interface SelectModifiers {
  */
 export function useSelect(): SelectHook {
   const selectedIcons = useSelectedIcons();
-  const { select, deselect, selectAll, clearSelection } = useActions();
+  const anchorId = useAnchorId();
+  const { select, selectRange, deselect, selectAll, clearSelection } = useActions();
 
   const selectedIds = new Set(selectedIcons.map((i) => i.id));
 
@@ -58,17 +59,16 @@ export function useSelect(): SelectHook {
         return;
       }
 
-      // Range selection (Shift+Click) - simplified version
-      if (shift && selectedIds.size > 0) {
-        // TODO: Implement range selection based on grid positions
-        select(iconId, true);
+      // Range selection (Shift+Click)
+      if (shift && anchorId) {
+        selectRange(anchorId, iconId);
         return;
       }
 
       // Single selection
       select(iconId, false);
     },
-    [isSelected, select, deselect, selectedIds]
+    [isSelected, select, selectRange, deselect, anchorId]
   );
 
   const toggle = useCallback(
@@ -82,15 +82,6 @@ export function useSelect(): SelectHook {
     [isSelected, select, deselect]
   );
 
-  const selectRange = useCallback(
-    (startId: string, endId: string) => {
-      // TODO: Implement range selection based on grid traversal
-      select(startId, false);
-      select(endId, true);
-    },
-    [select]
-  );
-
   return {
     selectedIds,
     isSelected,
@@ -99,7 +90,7 @@ export function useSelect(): SelectHook {
     toggle,
     selectAll,
     clearSelection,
-    selectRange,
+    selectRange, // Use the store's selectRange action directly
   };
 }
 

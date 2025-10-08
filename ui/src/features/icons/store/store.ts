@@ -6,9 +6,11 @@
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
-import type { Icon, IconType, IconMetadata, GridPosition, ArrangeStrategy } from "../core/types";
+import type { Icon, GridPosition, ArrangeStrategy, SelectionBox, IconBadge } from "../core/types";
 import { buildCollisionMap, findNearestAvailable, findFirstAvailable } from "../core/collision";
 import { arrange, compactLayout } from "../utils/arrange";
+import { filterIcons, sortByRelevance } from "../utils/search";
+import { getIconIdsInBox, getIconIdsInRange } from "../utils/selection";
 
 // ============================================================================
 // Store Interface
@@ -18,9 +20,13 @@ interface Store {
   // State
   icons: Icon[];
   selectedIds: Set<string>;
+  anchorId: string | null; // Anchor for range selection
   draggedIds: Set<string>;
   nextZIndex: number;
   viewportDimensions: { width: number; height: number; rows: number; cols: number };
+  selectionBox: SelectionBox | null;
+  searchQuery: string;
+  searchResults: string[]; // Filtered icon IDs
 
   // Icon CRUD
   add: (icon: Omit<Icon, "id" | "isSelected" | "isDragging" | "isHovered" | "zIndex" | "createdAt" | "updatedAt">) => string;
@@ -36,10 +42,17 @@ interface Store {
 
   // Selection
   select: (iconId: string, multi?: boolean) => void;
+  selectRange: (startId: string, endId: string) => void;
   deselect: (iconId: string) => void;
   selectAll: () => void;
   clearSelection: () => void;
   getSelected: () => Icon[];
+
+  // Selection Box
+  startSelectionBox: (start: { x: number; y: number }) => void;
+  updateSelectionBox: (current: { x: number; y: number }) => void;
+  endSelectionBox: () => void;
+  cancelSelectionBox: () => void;
 
   // Drag state
   startDrag: (iconIds: string[]) => void;
@@ -51,6 +64,14 @@ interface Store {
 
   // Viewport
   updateViewport: (width: number, height: number, rows: number, cols: number) => void;
+
+  // Search
+  setSearchQuery: (query: string) => void;
+  getSearchResults: () => Icon[];
+
+  // Badges
+  setBadge: (iconId: string, badge: IconBadge | undefined) => void;
+  clearBadge: (iconId: string) => void;
 
   // Utilities
   clearAll: () => void;
@@ -79,9 +100,13 @@ export const useStore = create<Store>()(
         // Initial state
         icons: [],
         selectedIds: new Set(),
+        anchorId: null,
         draggedIds: new Set(),
         nextZIndex: 100,
         viewportDimensions: { width: 1920, height: 1080, rows: 8, cols: 16 },
+        selectionBox: null,
+        searchQuery: "",
+        searchResults: [],
 
         // ====================================================================
         // Icon CRUD Operations
@@ -234,6 +259,7 @@ export const useStore = create<Store>()(
 
               return {
                 selectedIds: newSelectedIds,
+                anchorId: iconId, // Set anchor for range selection
                 icons: state.icons.map((icon) => ({
                   ...icon,
                   isSelected: newSelectedIds.has(icon.id),
@@ -244,6 +270,25 @@ export const useStore = create<Store>()(
             },
             false,
             "select"
+          );
+        },
+
+        selectRange: (startId, endId) => {
+          set(
+            (state) => {
+              const rangeIds = getIconIdsInRange(state.icons, startId, endId);
+              const newSelectedIds = new Set([...state.selectedIds, ...rangeIds]);
+
+              return {
+                selectedIds: newSelectedIds,
+                icons: state.icons.map((icon) => ({
+                  ...icon,
+                  isSelected: newSelectedIds.has(icon.id),
+                })),
+              };
+            },
+            false,
+            "selectRange"
           );
         },
 
@@ -280,6 +325,7 @@ export const useStore = create<Store>()(
           set(
             (state) => ({
               selectedIds: new Set(),
+              anchorId: null,
               icons: state.icons.map((icon) => ({ ...icon, isSelected: false })),
             }),
             false,
@@ -290,6 +336,76 @@ export const useStore = create<Store>()(
         getSelected: () => {
           const state = get();
           return state.icons.filter((i) => state.selectedIds.has(i.id));
+        },
+
+        // ====================================================================
+        // Selection Box
+        // ====================================================================
+
+        startSelectionBox: (start) => {
+          set(
+            {
+              selectionBox: {
+                start,
+                end: start,
+                current: start,
+                isActive: true,
+              },
+            },
+            false,
+            "startSelectionBox"
+          );
+        },
+
+        updateSelectionBox: (current) => {
+          set(
+            (state) => {
+              if (!state.selectionBox) return state;
+
+              const updatedBox = {
+                ...state.selectionBox,
+                end: current,
+                current,
+              };
+
+              // Get icons in box
+              const iconsInBox = getIconIdsInBox(state.icons, updatedBox);
+              const newSelectedIds = new Set(iconsInBox);
+
+              return {
+                selectionBox: updatedBox,
+                selectedIds: newSelectedIds,
+                icons: state.icons.map((icon) => ({
+                  ...icon,
+                  isSelected: newSelectedIds.has(icon.id),
+                })),
+              };
+            },
+            false,
+            "updateSelectionBox"
+          );
+        },
+
+        endSelectionBox: () => {
+          set(
+            {
+              selectionBox: null,
+            },
+            false,
+            "endSelectionBox"
+          );
+        },
+
+        cancelSelectionBox: () => {
+          set(
+            (state) => ({
+              selectionBox: null,
+              selectedIds: new Set(),
+              icons: state.icons.map((icon) => ({ ...icon, isSelected: false })),
+            }),
+            false,
+            "cancelSelectionBox"
+          );
         },
 
         // ====================================================================
@@ -363,6 +479,61 @@ export const useStore = create<Store>()(
         },
 
         // ====================================================================
+        // Search
+        // ====================================================================
+
+        setSearchQuery: (query) => {
+          set(
+            (state) => {
+              const results = query.trim() ? filterIcons(query, state.icons) : state.icons.map((i) => i.id);
+
+              return {
+                searchQuery: query,
+                searchResults: results,
+              };
+            },
+            false,
+            "setSearchQuery"
+          );
+        },
+
+        getSearchResults: () => {
+          const state = get();
+          if (!state.searchQuery.trim()) {
+            return state.icons;
+          }
+          return sortByRelevance(state.icons, state.searchQuery).filter((icon) =>
+            state.searchResults.includes(icon.id)
+          );
+        },
+
+        // ====================================================================
+        // Badges
+        // ====================================================================
+
+        setBadge: (iconId, badge) => {
+          set(
+            (state) => ({
+              icons: state.icons.map((icon) =>
+                icon.id === iconId
+                  ? {
+                      ...icon,
+                      badge,
+                      updatedAt: now(),
+                    }
+                  : icon
+              ),
+            }),
+            false,
+            "setBadge"
+          );
+        },
+
+        clearBadge: (iconId) => {
+          get().setBadge(iconId, undefined);
+        },
+
+        // ====================================================================
         // Utilities
         // ====================================================================
 
@@ -371,7 +542,11 @@ export const useStore = create<Store>()(
             {
               icons: [],
               selectedIds: new Set(),
+              anchorId: null,
               draggedIds: new Set(),
+              selectionBox: null,
+              searchQuery: "",
+              searchResults: [],
             },
             false,
             "clearAll"
@@ -415,14 +590,22 @@ export function useActions() {
       updatePositions: state.updatePositions,
       moveToPosition: state.moveToPosition,
       select: state.select,
+      selectRange: state.selectRange,
       deselect: state.deselect,
       selectAll: state.selectAll,
       clearSelection: state.clearSelection,
+      startSelectionBox: state.startSelectionBox,
+      updateSelectionBox: state.updateSelectionBox,
+      endSelectionBox: state.endSelectionBox,
+      cancelSelectionBox: state.cancelSelectionBox,
       startDrag: state.startDrag,
       endDrag: state.endDrag,
       autoArrange: state.autoArrange,
       compact: state.compact,
       updateViewport: state.updateViewport,
+      setSearchQuery: state.setSearchQuery,
+      setBadge: state.setBadge,
+      clearBadge: state.clearBadge,
       clearAll: state.clearAll,
     }))
   );
@@ -454,5 +637,39 @@ export function useDraggedIds() {
  */
 export function useViewport() {
   return useStore((state) => state.viewportDimensions);
+}
+
+/**
+ * Subscribe to selection box
+ */
+export function useSelectionBox() {
+  return useStore((state) => state.selectionBox);
+}
+
+/**
+ * Subscribe to search state
+ */
+export function useSearchState() {
+  return useStore(
+    useShallow((state) => ({
+      query: state.searchQuery,
+      results: state.searchResults,
+      isActive: state.searchQuery.length > 0,
+    }))
+  );
+}
+
+/**
+ * Subscribe to search results (filtered icons)
+ */
+export function useSearchResults() {
+  return useStore((state) => state.getSearchResults());
+}
+
+/**
+ * Subscribe to anchor ID
+ */
+export function useAnchorId() {
+  return useStore((state) => state.anchorId);
 }
 

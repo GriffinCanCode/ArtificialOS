@@ -13,6 +13,10 @@ export type IconSize = "small" | "medium" | "large";
 
 export type ArrangeStrategy = "grid" | "name" | "type" | "date" | "size";
 
+export type BadgeType = "notification" | "status" | "count" | "alert" | "success" | "error";
+
+export type BadgePosition = "top-right" | "top-left" | "bottom-right" | "bottom-left";
+
 // ============================================================================
 // Position & Grid
 // ============================================================================
@@ -54,6 +58,8 @@ export interface Icon {
   zIndex: number; // Z-index for layering
   createdAt: number; // Creation timestamp
   updatedAt: number; // Last update timestamp
+  badge?: IconBadge; // Optional badge
+  searchScore?: number; // Search relevance score
 }
 
 // ============================================================================
@@ -101,19 +107,49 @@ export interface NativeMetadata {
 }
 
 // ============================================================================
+// Badge System
+// ============================================================================
+
+export interface IconBadge {
+  type: BadgeType;
+  content?: string | number; // Badge content (text or count)
+  position?: BadgePosition;
+  tooltip?: string;
+  color?: string; // Custom color override
+}
+
+// ============================================================================
 // Selection
 // ============================================================================
 
 export interface SelectionBox {
   start: PixelPosition;
   end: PixelPosition;
+  current?: PixelPosition; // Current mouse position during drag
   isActive: boolean;
 }
 
 export interface SelectionState {
   selectedIds: Set<string>;
   lastSelectedId: string | null;
+  anchorId: string | null; // Anchor for range selection
   box: SelectionBox | null;
+}
+
+// ============================================================================
+// Search & Filter
+// ============================================================================
+
+export interface SearchState {
+  query: string;
+  results: string[]; // Icon IDs matching search
+  isActive: boolean;
+}
+
+export interface SearchOptions {
+  threshold?: number; // Fuzzy match threshold (0.0 to 1.0)
+  keys?: string[]; // Fields to search
+  includeScore?: boolean;
 }
 
 // ============================================================================

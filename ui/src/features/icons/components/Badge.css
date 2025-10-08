@@ -1,0 +1,80 @@
+/**
+ * Badge Styles
+ * Modern badge design with glow effects
+ */
+
+.icon-badge {
+  position: absolute;
+  min-width: 18px;
+  height: 18px;
+  padding: 2px 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    0 0 0 2px rgba(255, 255, 255, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  z-index: 10;
+  pointer-events: none;
+  animation: badge-appear 0.2s ease;
+}
+
+@keyframes badge-appear {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Badge types */
+.icon-badge-notification {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.icon-badge-status {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+}
+
+.icon-badge-count {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.icon-badge-alert {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  animation: badge-pulse 2s ease-in-out infinite;
+}
+
+.icon-badge-success {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.icon-badge-error {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+@keyframes badge-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 2px 8px rgba(239, 68, 68, 0.5),
+      0 0 0 2px rgba(255, 255, 255, 0.2),
+      0 0 16px rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    box-shadow:
+      0 2px 8px rgba(239, 68, 68, 0.3),
+      0 0 0 2px rgba(255, 255, 255, 0.2),
+      0 0 24px rgba(239, 68, 68, 0.6);
+  }
+}
+

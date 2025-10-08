@@ -33,6 +33,13 @@ icons/
 - **Persistent** - Saved to localStorage after initialization
 - **User control** - Can be moved, removed, or rearranged
 
+### Badge System
+- **Notifications** - Display counts and alerts on icons
+- **Status indicators** - Show success, error, or custom status
+- **Flexible positioning** - Top/bottom, left/right corners
+- **Custom colors** - Override default badge colors
+- **Auto-formatting** - Numbers > 999 show as "999+"
+
 ### Grid System
 - **Bijective grid-to-pixel mapping** - Efficient coordinate transformations
 - **Spatial hashing** - O(1) collision detection
@@ -48,9 +55,11 @@ icons/
 ### Selection
 - **Single selection** - Click to select
 - **Multi-selection** - Cmd/Ctrl+Click
-- **Range selection** - Shift+Click (TODO)
+- **Range selection** - Shift+Click (reading order)
+- **Box selection** - Drag on background to select multiple
 - **Select all** - Cmd/Ctrl+A
-- **Keyboard navigation** - Escape to deselect
+- **Invert selection** - Cmd/Ctrl+I
+- **Keyboard navigation** - Arrow keys, Home, End
 
 ### Drag & Drop
 - **Drag threshold** - Prevents accidental drags
@@ -66,6 +75,22 @@ icons/
 - **By date** - Sort by creation date
 - **By size** - Sort by file size (for files)
 - **Compact layout** - Fill gaps while preserving order
+
+### Search & Filter
+- **Fuzzy search** - Find icons by name using Fuse.js
+- **Real-time filtering** - Icons update as you type
+- **Score-based ranking** - Most relevant icons first
+- **Keyboard shortcut** - Cmd/Ctrl+F to focus search
+- **Clear on Escape** - Quick exit from search mode
+
+### Keyboard Navigation
+- **Arrow keys** - Navigate between icons
+- **Shift+Arrow** - Extend selection while navigating
+- **Home/End** - Jump to first/last icon
+- **Cmd/Ctrl+A** - Select all icons
+- **Cmd/Ctrl+I** - Invert selection
+- **Cmd/Ctrl+Shift+A** - Auto-arrange grid
+- **Escape** - Clear selection or exit search
 
 ### Advanced Features
 - **K-means clustering** - Group icons by proximity
@@ -99,6 +124,7 @@ function Desktop() {
         appId: "calculator",
         launchable: true,
       },
+      badge: notificationBadge(3), // Optional badge
     });
   };
 
@@ -107,6 +133,7 @@ function Desktop() {
       <Grid
         onIconDoubleClick={(icon) => console.log("Open:", icon)}
         onBackgroundClick={() => console.log("Background clicked")}
+        enableSearch={true} // Enable search bar (default: true)
       />
       <button onClick={handleAddIcon}>Add Icon</button>
     </div>
@@ -174,6 +201,7 @@ const selection = useSelect();
 
 // Select icon
 selection.select(iconId, { ctrl: true }); // Multi-select
+selection.select(iconId, { shift: true }); // Range select
 
 // Select all
 selection.selectAll();
@@ -183,6 +211,77 @@ selection.clearSelection();
 
 // Check if selected
 const isSelected = selection.isSelected(iconId);
+```
+
+### Search & Filter
+
+```typescript
+import { useSearchState, useIconActions } from "@/features/icons";
+
+const searchState = useSearchState();
+const { setSearchQuery } = useIconActions();
+
+// Set search query
+setSearchQuery("terminal");
+
+// Get search state
+console.log(searchState.query); // Current query
+console.log(searchState.results); // Matching icon IDs
+console.log(searchState.isActive); // Whether search is active
+
+// Clear search
+setSearchQuery("");
+```
+
+### Badge System
+
+```typescript
+import { useIconActions, notificationBadge, statusBadge, alertBadge } from "@/features/icons";
+
+const { setBadge, clearBadge } = useIconActions();
+
+// Add notification badge
+setBadge(iconId, notificationBadge(5)); // Shows "5"
+
+// Add status badge
+setBadge(iconId, statusBadge("online", "#10b981"));
+
+// Add alert badge
+setBadge(iconId, alertBadge("Update available"));
+
+// Remove badge
+clearBadge(iconId);
+
+// Custom badge
+setBadge(iconId, {
+  type: "count",
+  content: 42,
+  position: "top-right",
+  tooltip: "42 items",
+  color: "#3b82f6",
+});
+```
+
+### Keyboard Navigation
+
+```typescript
+import { useKeyboard } from "@/features/icons";
+
+// Enable keyboard navigation
+useKeyboard({
+  onSearch: () => setShowSearch(true),
+  onEscape: () => setShowSearch(false),
+  disabled: false, // Disable during drag/select operations
+});
+
+// Keyboard shortcuts automatically registered:
+// - Arrow keys: Navigate
+// - Shift+Arrow: Extend selection
+// - Cmd/Ctrl+A: Select all
+// - Cmd/Ctrl+I: Invert selection
+// - Cmd/Ctrl+F: Focus search
+// - Escape: Clear selection or exit search
+// - Home/End: Jump to first/last
 ```
 
 ### Grid Calculations
@@ -284,16 +383,18 @@ npm test useGrid.test.ts
 
 ## Future Enhancements
 
-- [ ] Range selection with Shift+Click
-- [ ] Selection box (drag to select multiple)
-- [ ] Icon grouping/folders
+- [x] Range selection with Shift+Click ✓
+- [x] Selection box (drag to select multiple) ✓
+- [x] Icon badges (notifications, status) ✓
+- [x] Search/filter icons ✓
+- [x] Keyboard navigation (arrow keys) ✓
+- [ ] Icon grouping/folders (nested structure)
 - [ ] Custom grid layouts (spiral, circular)
 - [ ] Animation springs for smoother movement
-- [ ] Icon badges (notifications, status)
 - [ ] Thumbnail generation for files
-- [ ] Search/filter icons
-- [ ] Keyboard navigation (arrow keys)
 - [ ] Touch/gesture support
+- [ ] Icon renaming inline
+- [ ] Bulk operations (delete, move selected)
 
 ## References
 
