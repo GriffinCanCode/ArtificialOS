@@ -15,6 +15,7 @@ use crate::syscalls::{Syscall, SyscallExecutor, SyscallResult};
 use dashmap::DashMap;
 use log::warn;
 use parking_lot::Mutex;
+use std::collections::HashSet;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -55,8 +56,8 @@ struct CleanupTaskHandle {
 #[derive(Clone)]
 pub struct AsyncTaskManager {
     tasks: Arc<DashMap<String, Task>>,
-    /// Track which tasks belong to which process for cleanup
-    process_tasks: Arc<DashMap<Pid, Vec<String>>>,
+    /// Track which tasks belong to which process (HashSet for O(1) removal)
+    process_tasks: Arc<DashMap<Pid, HashSet<String>>>,
     executor: SyscallExecutor,
     /// TTL for completed tasks before automatic cleanup
     task_ttl: Duration,
@@ -102,7 +103,7 @@ impl AsyncTaskManager {
     /// Spawn background cleanup task with graceful shutdown support
     fn spawn_cleanup_task(
         tasks: Arc<DashMap<String, Task>>,
-        process_tasks: Arc<DashMap<Pid, Vec<String>>>,
+        process_tasks: Arc<DashMap<Pid, HashSet<String>>>,
         ttl: Duration,
         mut shutdown_rx: oneshot::Receiver<()>,
     ) -> tokio::task::JoinHandle<()> {
@@ -147,9 +148,9 @@ impl AsyncTaskManager {
                             tasks.remove(&task_id);
                             cleaned_count += 1;
 
-                            // Also remove from process_tasks
-                            if let Some(mut task_list) = process_tasks.get_mut(&pid) {
-                                task_list.retain(|id| id != &task_id);
+                            // Also remove from process_tasks (O(1) HashSet removal)
+                            if let Some(mut task_set) = process_tasks.get_mut(&pid) {
+                                task_set.remove(&task_id);
                             }
                         }
 
@@ -184,11 +185,11 @@ impl AsyncTaskManager {
             },
         );
 
-        // Track task for this process
+        // Track task for this process (HashSet for O(1) operations)
         self.process_tasks
             .entry(pid)
-            .or_insert_with(Vec::new)
-            .push(task_id.clone());
+            .or_insert_with(HashSet::new)
+            .insert(task_id.clone());
 
         // Spawn async execution
         let tasks = Arc::clone(&self.tasks);
@@ -284,9 +285,9 @@ impl AsyncTaskManager {
             self.tasks.remove(&task_id);
             cleaned_count += 1;
 
-            // Also remove from process_tasks
-            if let Some(mut task_list) = self.process_tasks.get_mut(&pid) {
-                task_list.retain(|id| id != &task_id);
+            // Also remove from process_tasks (O(1) HashSet removal)
+            if let Some(mut task_set) = self.process_tasks.get_mut(&pid) {
+                task_set.remove(&task_id);
             }
         }
 
@@ -324,9 +325,9 @@ impl AsyncTaskManager {
             self.tasks.remove(&task_id);
             cleaned_count += 1;
 
-            // Also remove from process_tasks
-            if let Some(mut task_list) = self.process_tasks.get_mut(&pid) {
-                task_list.retain(|id| id != &task_id);
+            // Also remove from process_tasks (O(1) HashSet removal)
+            if let Some(mut task_set) = self.process_tasks.get_mut(&pid) {
+                task_set.remove(&task_id);
             }
         }
 

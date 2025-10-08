@@ -9,9 +9,11 @@ use crate::core::types::Pid;
 use crate::permissions::{PermissionChecker, PermissionRequest};
 
 use ahash::RandomState;
+use crossbeam_queue::SegQueue;
 use dashmap::DashMap;
 use log::{error, info, warn};
 use parking_lot::RwLock;
+use std::collections::HashSet;
 use std::fs::{File, OpenOptions};
 use std::io::{Seek, SeekFrom};
 use std::path::PathBuf;
@@ -26,28 +28,40 @@ use super::types::SyscallResult;
 ///
 /// # Performance
 /// - Cache-line aligned to prevent false sharing of atomic FD counter (high-frequency I/O)
+/// - HashSet-based per-process tracking for O(1) untrack operations
+/// - Lock-free FD recycling via SegQueue to prevent FD exhaustion
+/// - Atomic count tracking for O(1) limit checks
 #[repr(C, align(64))]
 pub struct FdManager {
     next_fd: Arc<AtomicU32>,
     open_files: Arc<DashMap<u32, Arc<RwLock<File>>, RandomState>>,
-    /// Track which FDs belong to which process for cleanup
-    process_fds: Arc<DashMap<Pid, Vec<u32>, RandomState>>,
+    /// Track which FDs belong to which process (HashSet for O(1) untrack)
+    process_fds: Arc<DashMap<Pid, HashSet<u32>, RandomState>>,
     /// Per-process FD counts for O(1) limit checks (lock-free via alter())
     process_fd_counts: Arc<DashMap<Pid, u32, RandomState>>,
+    /// Lock-free queue for FD recycling (prevents FD exhaustion)
+    free_fds: Arc<SegQueue<u32>>,
 }
 
 impl FdManager {
     pub fn new() -> Self {
+        info!("FD manager initialized with lock-free FD recycling and O(1) tracking");
         Self {
             next_fd: Arc::new(AtomicU32::new(3)), // Start at 3 (0, 1, 2 are stdin, stdout, stderr)
             open_files: Arc::new(DashMap::with_hasher(RandomState::new())),
             process_fds: Arc::new(DashMap::with_hasher(RandomState::new())),
             process_fd_counts: Arc::new(DashMap::with_hasher(RandomState::new())),
+            free_fds: Arc::new(SegQueue::new()),
         }
     }
 
+    /// Allocate an FD (recycle or create new, lock-free)
     fn allocate_fd(&self) -> u32 {
-        self.next_fd.fetch_add(1, Ordering::SeqCst)
+        if let Some(recycled_fd) = self.free_fds.pop() {
+            recycled_fd
+        } else {
+            self.next_fd.fetch_add(1, Ordering::SeqCst)
+        }
     }
 
     /// Get current FD count for a process (O(1) lookup)
@@ -65,19 +79,20 @@ impl FdManager {
 
     /// Track that a process owns an FD (atomic increment)
     pub(super) fn track_fd(&self, pid: Pid, fd: u32) {
+        // Use entry API for HashSet (simpler and correct)
         self.process_fds
             .entry(pid)
-            .or_insert_with(Vec::new)
-            .push(fd);
+            .or_insert_with(HashSet::new)
+            .insert(fd);
 
         // Atomic increment using alter() for lock-free counting
         self.process_fd_counts.alter(&pid, |_, count| count + 1);
     }
 
-    /// Untrack an FD from a process (atomic decrement)
+    /// Untrack an FD from a process (atomic decrement, O(1) removal)
     pub(super) fn untrack_fd(&self, pid: Pid, fd: u32) {
         if let Some(mut fds) = self.process_fds.get_mut(&pid) {
-            fds.retain(|&x| x != fd);
+            fds.remove(&fd);  // O(1) HashSet removal
         }
 
         // Atomic decrement using alter() for lock-free counting
@@ -88,7 +103,7 @@ impl FdManager {
     /// Cleanup all file descriptors for a terminated process
     pub fn cleanup_process_fds(&self, pid: Pid) -> usize {
         let fds_to_close = if let Some((_, fds)) = self.process_fds.remove(&pid) {
-            fds
+            fds.into_iter().collect::<Vec<_>>()
         } else {
             return 0;
         };
@@ -97,10 +112,12 @@ impl FdManager {
         for fd in fds_to_close {
             if self.open_files.remove(&fd).is_some() {
                 closed_count += 1;
+                // Recycle FD for reuse (lock-free)
+                self.free_fds.push(fd);
             }
         }
 
-        // Remove the count entry (already removed fds)
+        // Remove the count entry
         self.process_fd_counts.remove(&pid);
 
         closed_count
@@ -114,6 +131,7 @@ impl Clone for FdManager {
             open_files: Arc::clone(&self.open_files),
             process_fds: Arc::clone(&self.process_fds),
             process_fd_counts: Arc::clone(&self.process_fd_counts),
+            free_fds: Arc::clone(&self.free_fds),
         }
     }
 }
