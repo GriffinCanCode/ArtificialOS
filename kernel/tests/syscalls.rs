@@ -26,3 +26,6 @@ mod streaming_test;
 
 #[path = "syscalls/fd_limits_test.rs"]
 mod fd_limits_test;
+
+#[path = "syscalls/socket_cleanup_test.rs"]
+mod socket_cleanup_test;
