@@ -3,31 +3,56 @@
  *
  * Uses parking_lot_core for futex-like operations on all platforms.
  * On Linux, this maps directly to futex syscalls for minimal overhead.
+ *
+ * # Design
+ *
+ * Follows Linux futex design: a fixed sharded hash table of parking slots.
+ * - Zero allocations after initialization
+ * - Guaranteed stable memory addresses
+ * - Lock-free fast path
+ * - Multiple keys can share a slot (spurious wakeups are acceptable)
  */
 
 use super::traits::{WaitStrategy, WakeResult};
-use ahash::RandomState;
-use dashmap::DashMap;
 use parking_lot_core::{park, unpark_all, unpark_one, ParkResult, ParkToken, UnparkToken};
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
-/// Futex-based wait strategy using parking_lot_core
+/// Number of parking slots (power of 2 for fast modulo via bitwise AND)
+const PARKING_SLOTS: usize = 512;
+const SLOT_MASK: usize = PARKING_SLOTS - 1;
+
+/// A single parking slot with a waiter counter
+#[repr(C, align(64))] // Cache-line aligned to prevent false sharing
+struct ParkingSlot {
+    waiters: AtomicUsize,
+}
+
+impl ParkingSlot {
+    const fn new() -> Self {
+        Self {
+            waiters: AtomicUsize::new(0),
+        }
+    }
+}
+
+/// Futex-based wait strategy using sharded parking slots
 ///
 /// # Performance
 ///
+/// - Zero allocations after initialization
 /// - Direct futex syscalls on Linux
-/// - Minimal memory overhead
-/// - Cache-line aligned counters
 /// - Lock-free fast path
+/// - O(1) lookup via hash
 #[repr(C, align(64))]
 pub struct FutexWait<K>
 where
     K: Eq + Hash + Copy + Send + Sync + 'static,
 {
-    /// Waiter counts per key (for diagnostics)
-    waiters: DashMap<K, AtomicUsize, RandomState>,
+    /// Fixed array of parking slots (never resizes, stable addresses)
+    slots: Box<[ParkingSlot; PARKING_SLOTS]>,
+    _phantom: std::marker::PhantomData<K>,
 }
 
 impl<K> FutexWait<K>
@@ -36,38 +61,19 @@ where
 {
     /// Create a new futex-based wait strategy
     pub fn new() -> Self {
+        // Initialize all slots (const init, very fast)
         Self {
-            waiters: DashMap::with_hasher(RandomState::new()),
+            slots: Box::new([const { ParkingSlot::new() }; PARKING_SLOTS]),
+            _phantom: std::marker::PhantomData,
         }
     }
 
-    /// Get parking address for a key (used by parking_lot_core)
-    ///
-    /// This converts a key into a unique address that parking_lot can use
-    fn parking_address(&self, key: K) -> usize {
-        // Use key's hash as the parking address
+    /// Hash key to parking slot index
+    #[inline]
+    fn slot_index(&self, key: K) -> usize {
         let mut hasher = ahash::AHasher::default();
         key.hash(&mut hasher);
-        hasher.finish() as usize
-    }
-
-    /// Increment waiter count
-    fn inc_waiters(&self, key: K) {
-        self.waiters
-            .entry(key)
-            .or_insert_with(|| AtomicUsize::new(0))
-            .fetch_add(1, Ordering::Relaxed);
-    }
-
-    /// Decrement waiter count
-    fn dec_waiters(&self, key: K) {
-        if let Some(count) = self.waiters.get(&key) {
-            let prev = count.fetch_sub(1, Ordering::Relaxed);
-            // Clean up if this was the last waiter
-            if prev == 1 {
-                self.waiters.remove(&key);
-            }
-        }
+        (hasher.finish() as usize) & SLOT_MASK
     }
 }
 
@@ -85,90 +91,84 @@ where
     K: Eq + Hash + Copy + Send + Sync + 'static,
 {
     fn wait(&self, key: K, timeout: Option<Duration>) -> bool {
-        self.inc_waiters(key);
+        let idx = self.slot_index(key);
+        let slot = &self.slots[idx];
 
-        let addr = self.parking_address(key);
+        // Increment waiter count
+        slot.waiters.fetch_add(1, Ordering::Relaxed);
+
+        // Get stable parking address (same as in wake methods)
+        let addr = &slot.waiters as *const AtomicUsize as usize;
         let start = Instant::now();
         let deadline = timeout.map(|d| Instant::now() + d);
 
-        // Use parking_lot's efficient park
+        // Park the thread using parking_lot_core
         let result = unsafe {
             park(
                 addr,
                 || {
-                    // Validate callback: check if we should still park
-                    // Always return true to actually park
+                    // Validate callback: always park
                     true
                 },
                 || {
-                    // Before sleep callback: nothing needed
+                    // Before sleep callback
                 },
                 |_timed_out, _result| {
-                    // After unpark callback: nothing needed
+                    // After unpark callback
                 },
                 ParkToken(0),
                 deadline,
             )
         };
 
-        self.dec_waiters(key);
+        // Decrement waiter count
+        slot.waiters.fetch_sub(1, Ordering::Relaxed);
 
         // Return true if woken, false if timeout
         match result {
             ParkResult::Unparked(_) => true,
-            ParkResult::TimedOut => {
-                // Double-check: parking_lot may spuriously wake
-                timeout.map_or(false, |t| start.elapsed() >= t)
-            }
-            ParkResult::Invalid => false,
+            ParkResult::TimedOut => false, // Timed out, not woken
+            ParkResult::Invalid => false,  // Invalid state, treat as not woken
         }
     }
 
     fn wake_one(&self, key: K) -> WakeResult {
-        let addr = self.parking_address(key);
+        let idx = self.slot_index(key);
+        let slot = &self.slots[idx];
 
-        // Get current waiter count
-        let count = self
-            .waiters
-            .get(&key)
-            .map(|v| v.load(Ordering::Relaxed))
-            .unwrap_or(0);
-
+        // Check if anyone is waiting
+        let count = slot.waiters.load(Ordering::Relaxed);
         if count == 0 {
             return WakeResult::NoWaiters;
         }
 
-        // Unpark one thread
+        // Unpark one thread at this address
+        let addr = &slot.waiters as *const AtomicUsize as usize;
         let result = unsafe { unpark_one(addr, |_| UnparkToken(0)) };
 
         WakeResult::Woken(result.unparked_threads)
     }
 
     fn wake_all(&self, key: K) -> WakeResult {
-        let addr = self.parking_address(key);
+        let idx = self.slot_index(key);
+        let slot = &self.slots[idx];
 
-        // Get current waiter count
-        let count = self
-            .waiters
-            .get(&key)
-            .map(|v| v.load(Ordering::Relaxed))
-            .unwrap_or(0);
-
+        // Check if anyone is waiting
+        let count = slot.waiters.load(Ordering::Relaxed);
         if count == 0 {
             return WakeResult::NoWaiters;
         }
 
-        // Unpark all threads
-        let count = unsafe { unpark_all(addr, UnparkToken(0)) };
+        // Unpark all threads at this address
+        let addr = &slot.waiters as *const AtomicUsize as usize;
+        let unparked = unsafe { unpark_all(addr, UnparkToken(0)) };
 
-        WakeResult::Woken(count)
+        WakeResult::Woken(unparked)
     }
 
     fn waiter_count(&self, key: K) -> usize {
-        self.waiters
-            .get(&key)
-            .map(|v| v.load(Ordering::Relaxed))
-            .unwrap_or(0)
+        let idx = self.slot_index(key);
+        self.slots[idx].waiters.load(Ordering::Relaxed)
     }
 
     fn name(&self) -> &'static str {
@@ -209,3 +209,4 @@ mod tests {
         assert!(elapsed >= Duration::from_millis(50));
     }
 }
+
