@@ -13,9 +13,28 @@ The signals module provides comprehensive signal management for inter-process co
 
 ## Architecture
 
+The signals module is organized into logical domain folders:
+
+```
+signals/
+├── core/                  # Fundamental types and traits
+│   ├── types.rs          # Signal definitions and data structures
+│   ├── traits.rs         # Signal management interfaces
+│   ├── internal_types.rs # Internal manager types
+│   └── atomic_stats.rs   # Lock-free statistics
+├── handler/              # Signal execution
+│   ├── callbacks.rs      # Executable handler registry
+│   └── executor.rs       # Signal action executor
+├── management/           # Central management
+│   ├── manager.rs        # Signal manager implementation
+│   └── delivery.rs       # Scheduler integration hook
+└── integration_support/  # Process integration
+    └── process.rs        # Process state integration helpers
+```
+
 ### Core Components
 
-#### Types (`types.rs`)
+#### Core Types (`core/types.rs`)
 
 Signal definitions and data structures:
 
@@ -26,16 +45,7 @@ Signal definitions and data structures:
 - **`SignalStats`** - System-wide signal statistics
 - **`ProcessSignalState`** - Per-process signal state
 
-#### Callbacks (`callbacks.rs`)
-
-Executable handler registry:
-
-- **`CallbackRegistry`** - Thread-safe handler storage
-- **`HandlerFn`** - Function pointer type: `Fn(Pid, Signal) -> Result<()>`
-- **`register()`** - Register executable callback, returns handler ID
-- **`execute()`** - Execute handler by ID with actual code execution
-
-#### Traits (`traits.rs`)
+#### Core Traits (`core/traits.rs`)
 
 Fine-grained signal management interfaces:
 
@@ -46,7 +56,16 @@ Fine-grained signal management interfaces:
 - **`SignalStateManager`** - Process lifecycle management
 - **`SignalManager`** - Combined trait for complete functionality
 
-#### Handler (`handler.rs`)
+#### Handler Callbacks (`handler/callbacks.rs`)
+
+Executable handler registry:
+
+- **`CallbackRegistry`** - Thread-safe handler storage
+- **`HandlerFn`** - Function pointer type: `Fn(Pid, Signal) -> Result<()>`
+- **`register()`** - Register executable callback, returns handler ID
+- **`execute()`** - Execute handler by ID with actual code execution
+
+#### Handler Executor (`handler/executor.rs`)
 
 Signal action executor:
 
@@ -54,7 +73,7 @@ Signal action executor:
 - **`SignalOutcome`** - Result of signal execution
 - Validates signals and determines default actions
 
-#### Manager (`manager.rs`)
+#### Signal Manager (`management/manager.rs`)
 
 Central signal coordinator:
 
@@ -64,7 +83,7 @@ Central signal coordinator:
 - Signal delivery with blocking/permission checks
 - Automatic priority ordering (RT signals > standard signals)
 
-#### Delivery (`delivery.rs`)
+#### Delivery Hook (`management/delivery.rs`)
 
 Automatic signal delivery integration:
 
@@ -73,7 +92,7 @@ Automatic signal delivery integration:
 - **`should_schedule()`** - Check if process should be scheduled
 - **`pending_count()`** - Get pending signal count for priority
 
-#### Integration (`integration.rs`)
+#### Process Integration (`integration_support/process.rs`)
 
 Process state integration:
 

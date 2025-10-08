@@ -183,7 +183,7 @@ impl LifecycleRegistry {
         // Hook 2: Signal state (if enabled and available)
         if config.enable_signals {
             if let Some(ref signal_mgr) = self.signal_manager {
-                use crate::signals::traits::SignalStateManager;
+                use crate::signals::SignalStateManager;
                 signal_mgr.initialize_process(pid).map_err(|e| {
                     LifecycleError::InitializationFailed {
                         subsystem: "signals".to_string(),

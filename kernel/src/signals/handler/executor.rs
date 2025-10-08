@@ -4,8 +4,8 @@
  */
 
 use super::callbacks::CallbackRegistry;
-use super::types::{Signal, SignalAction, SignalResult};
 use crate::core::types::Pid;
+use crate::signals::core::types::{Signal, SignalAction, SignalResult};
 use log::{debug, info};
 use std::sync::Arc;
 

@@ -3,12 +3,11 @@
  * Central manager for process signals with queuing and delivery
  */
 
-use super::callbacks::CallbackRegistry;
-use super::handler::{SignalHandler, SignalOutcome};
-use super::internal_types::{PrioritySignal, ProcessSignals, MAX_HANDLERS_PER_PROCESS};
-use super::traits::*;
-use super::types::*;
 use crate::core::types::Pid;
+use crate::signals::core::internal_types::{PrioritySignal, ProcessSignals, MAX_HANDLERS_PER_PROCESS};
+use crate::signals::core::traits::*;
+use crate::signals::core::types::*;
+use crate::signals::handler::{CallbackRegistry, SignalHandler, SignalOutcome};
 use crate::core::{ShardManager, WorkloadProfile};
 use ahash::RandomState;
 use dashmap::DashMap;

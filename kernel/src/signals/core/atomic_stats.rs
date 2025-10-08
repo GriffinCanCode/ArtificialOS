@@ -4,7 +4,7 @@
  */
 
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
-use crate::signals::types::SignalStats;
+use super::types::SignalStats;
 
 /// Atomic signal statistics for lock-free updates
 ///

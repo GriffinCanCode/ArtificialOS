@@ -3,8 +3,8 @@
  * Manages executable signal handlers
  */
 
-use super::types::{Signal, SignalError, SignalResult};
 use crate::core::types::Pid;
+use crate::signals::core::types::{Signal, SignalError, SignalResult};
 use ahash::RandomState;
 use dashmap::DashMap;
 use log::{debug, info};

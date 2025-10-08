@@ -3,8 +3,8 @@
  * Links signal outcomes to process state changes
  */
 
-use super::handler::SignalOutcome;
 use crate::process::core::types::ProcessState;
+use crate::signals::handler::SignalOutcome;
 
 /// Convert signal outcome to process state change
 pub fn outcome_to_state(outcome: SignalOutcome) -> Option<ProcessState> {

@@ -3,8 +3,8 @@
  * Integrates signal delivery with process scheduling
  */
 
-use super::traits::{SignalDelivery, SignalQueue};
 use crate::core::types::Pid;
+use crate::signals::core::traits::{SignalDelivery, SignalQueue};
 use log::{debug, warn};
 use std::sync::Arc;
 

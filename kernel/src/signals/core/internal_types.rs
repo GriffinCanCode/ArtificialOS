@@ -10,13 +10,13 @@ use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashSet};
 
 // Configuration constants - centralized in core::limits
-pub(super) use crate::core::limits::{
+pub(crate) use crate::core::limits::{
     MAX_PENDING_SIGNALS, MAX_SIGNAL_HANDLERS as MAX_HANDLERS_PER_PROCESS,
 };
 
 /// Pending signal with priority (for heap ordering)
 #[derive(Debug, Clone)]
-pub(super) struct PrioritySignal {
+pub(crate) struct PrioritySignal {
     pub signal: PendingSignal,
     pub priority: u32,
 }
@@ -46,7 +46,7 @@ impl Ord for PrioritySignal {
 
 /// Process signal information
 #[derive(Debug, Clone)]
-pub(super) struct ProcessSignals {
+pub(crate) struct ProcessSignals {
     pub pid: Pid,
     pub pending: BinaryHeap<PrioritySignal>,
     pub blocked: HashSet<Signal>,
