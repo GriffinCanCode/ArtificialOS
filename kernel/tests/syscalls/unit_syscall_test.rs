@@ -237,11 +237,16 @@ fn test_list_directory() {
 
     match result {
         SyscallResult::Success { data } => {
-            let files: Vec<String> = serde_json::from_slice(&data.unwrap()).unwrap();
-            assert_eq!(files.len(), 3);
-            assert!(files.contains(&"file1.txt".to_string()));
-            assert!(files.contains(&"file2.txt".to_string()));
-            assert!(files.contains(&"file3.txt".to_string()));
+            use serde_json::Value;
+            let entries: Vec<Value> = serde_json::from_slice(&data.unwrap()).unwrap();
+            assert_eq!(entries.len(), 3);
+            let names: Vec<String> = entries
+                .iter()
+                .map(|e| e["name"].as_str().unwrap().to_string())
+                .collect();
+            assert!(names.contains(&"file1.txt".to_string()));
+            assert!(names.contains(&"file2.txt".to_string()));
+            assert!(names.contains(&"file3.txt".to_string()));
         }
         _ => panic!("Expected success, got: {:?}", result),
     }

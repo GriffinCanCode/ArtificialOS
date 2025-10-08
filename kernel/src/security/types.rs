@@ -242,6 +242,9 @@ impl SandboxConfig {
         let mut capabilities = HashSet::new();
         capabilities.insert(Capability::ReadFile(None));
         capabilities.insert(Capability::WriteFile(None));
+        capabilities.insert(Capability::CreateFile(None));
+        capabilities.insert(Capability::DeleteFile(None));
+        capabilities.insert(Capability::ListDirectory(None));
         capabilities.insert(Capability::SystemInfo);
         capabilities.insert(Capability::TimeAccess);
 

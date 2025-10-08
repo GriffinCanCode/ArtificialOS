@@ -121,7 +121,8 @@ impl SyscallExecutor {
         span.record("path", &format!("{:?}", path));
         span.record("data_len", &format!("{}", data.len()));
 
-        let check_path = if path.exists() {
+        let file_exists = path.exists();
+        let check_path = if file_exists {
             match path.canonicalize() {
                 Ok(p) => p,
                 Err(e) => {
@@ -135,7 +136,12 @@ impl SyscallExecutor {
         };
 
         // Check permission using centralized manager
-        let request = PermissionRequest::file_write(pid, check_path.clone());
+        // If file doesn't exist, this is a create operation; otherwise it's a write
+        let request = if file_exists {
+            PermissionRequest::file_write(pid, check_path.clone())
+        } else {
+            PermissionRequest::file_create(pid, check_path.clone())
+        };
         let response = self.permission_manager.check_and_audit(&request);
 
         if !response.is_allowed() {

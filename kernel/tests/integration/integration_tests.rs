@@ -52,6 +52,7 @@ fn test_sandboxed_file_operations() {
     let mut config = SandboxConfig::minimal(pid);
     config.grant_capability(Capability::ReadFile(None));
     config.grant_capability(Capability::WriteFile(None));
+    config.grant_capability(Capability::CreateFile(None));
     config.allow_path(temp_dir.path().canonicalize().unwrap());
     sandbox_mgr.create_sandbox(config);
 

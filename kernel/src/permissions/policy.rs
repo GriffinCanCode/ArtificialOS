@@ -107,9 +107,34 @@ impl Policy for DefaultPolicy {
                 }
             }
 
-            // System operations
-            (Resource::System { .. }, Action::Inspect) => {
+            (Resource::Process { .. }, Action::Inspect) => {
                 use crate::security::types::Capability;
+                // Allow process inspection with SystemInfo capability
+                if context.sandbox.has_capability(&Capability::SystemInfo) {
+                    PolicyDecision::Allow
+                } else {
+                    PolicyDecision::Deny
+                }
+            }
+
+            // System operations
+            (Resource::System { name }, Action::Inspect | Action::Read | Action::List) => {
+                use crate::security::types::Capability;
+                // Time-related system resources require TimeAccess
+                if name == "time" && context.sandbox.has_capability(&Capability::TimeAccess) {
+                    PolicyDecision::Allow
+                // Other system resources require SystemInfo
+                } else if context.sandbox.has_capability(&Capability::SystemInfo) {
+                    PolicyDecision::Allow
+                } else {
+                    PolicyDecision::Deny
+                }
+            }
+
+            (Resource::System { .. }, Action::Execute | Action::Write) => {
+                use crate::security::types::Capability;
+                // Allow execute/write on system resources if SystemInfo capability present
+                // This covers operations like GC trigger, setting env vars, etc.
                 if context.sandbox.has_capability(&Capability::SystemInfo) {
                     PolicyDecision::Allow
                 } else {
