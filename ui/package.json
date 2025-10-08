@@ -60,6 +60,7 @@
     "recharts": "^3.2.1",
     "sonner": "^2.0.7",
     "string-similarity": "^4.0.4",
+    "tinykeys": "^3.0.0",
     "web-vitals": "^4.2.4",
     "zod": "^4.1.11",
     "zustand": "^5.0.8"

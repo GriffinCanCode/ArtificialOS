@@ -1,55 +1,36 @@
 /**
  * Icon Search Utility
- * Fuzzy search using Fuse.js for icon filtering
+ * Wrapper around centralized search system for icons
  */
 
-import Fuse, { type IFuseOptions } from "fuse.js";
 import type { Icon, SearchOptions } from "../core/types";
+import { createEngine } from "../../search";
+import type { SearchConfig } from "../../search/core/types";
 
 // ============================================================================
-// Default Search Configuration
+// Icon Search Configuration
 // ============================================================================
 
-const DEFAULT_SEARCH_OPTIONS: IFuseOptions<Icon> = {
+const DEFAULT_CONFIG: SearchConfig<Icon> = {
   keys: [
     { name: "label", weight: 0.7 },
     { name: "metadata.appId", weight: 0.2 },
     { name: "metadata.packageId", weight: 0.2 },
     { name: "metadata.path", weight: 0.1 },
   ],
-  threshold: 0.3, // Lower = more strict, higher = more fuzzy
+  threshold: 0.3,
   distance: 100,
-  minMatchCharLength: 1,
+  minMatchLength: 1,
   includeScore: true,
-  useExtendedSearch: false,
   ignoreLocation: true,
 };
 
 // ============================================================================
-// Search Engine
+// Search Functions
 // ============================================================================
 
 /**
- * Create Fuse search instance for icons
- */
-export function createSearchEngine(icons: Icon[], options?: SearchOptions): Fuse<Icon> {
-  const fuseOptions: IFuseOptions<Icon> = {
-    ...DEFAULT_SEARCH_OPTIONS,
-    threshold: options?.threshold ?? DEFAULT_SEARCH_OPTIONS.threshold,
-    includeScore: options?.includeScore ?? true,
-  };
-
-  // Override keys if provided
-  if (options?.keys) {
-    fuseOptions.keys = options.keys;
-  }
-
-  return new Fuse(icons, fuseOptions);
-}
-
-/**
  * Search icons using fuzzy matching
- * Returns sorted results with scores
  */
 export function searchIcons(
   query: string,
@@ -60,12 +41,20 @@ export function searchIcons(
     return icons.map((icon) => ({ icon, score: 0 }));
   }
 
-  const fuse = createSearchEngine(icons, options);
-  const results = fuse.search(query);
+  const config: SearchConfig<Icon> = {
+    ...DEFAULT_CONFIG,
+    threshold: options?.threshold ?? DEFAULT_CONFIG.threshold,
+    keys: options?.keys
+      ? options.keys.map((k) => (typeof k === "string" ? { name: k, weight: 1 } : k))
+      : DEFAULT_CONFIG.keys,
+  };
+
+  const engine = createEngine(icons, config);
+  const results = engine.search(query);
 
   return results.map((result) => ({
     icon: result.item,
-    score: result.score ?? 0,
+    score: result.score,
   }));
 }
 
@@ -83,90 +72,6 @@ export function filterIcons(query: string, icons: Icon[], options?: SearchOption
 }
 
 /**
- * Get search highlights for matched text
- * Returns character indices to highlight
- */
-export function getSearchHighlights(
-  query: string,
-  text: string,
-  options?: SearchOptions
-): Array<[number, number]> {
-  if (!query.trim() || !text) {
-    return [];
-  }
-
-  const fuse = new Fuse([text], {
-    threshold: options?.threshold ?? 0.3,
-    includeMatches: true,
-    ignoreLocation: true,
-  });
-
-  const result = fuse.search(query)[0];
-  if (!result?.matches) {
-    return [];
-  }
-
-  const highlights: Array<[number, number]> = [];
-  for (const match of result.matches) {
-    if (match.indices) {
-      highlights.push(...match.indices);
-    }
-  }
-
-  return highlights;
-}
-
-/**
- * Highlight search query in text
- * Returns text with <mark> tags around matches
- */
-export function highlightMatches(query: string, text: string, options?: SearchOptions): string {
-  const highlights = getSearchHighlights(query, text, options);
-  if (highlights.length === 0) {
-    return text;
-  }
-
-  // Sort highlights by start index
-  const sorted = [...highlights].sort((a, b) => a[0] - b[0]);
-
-  // Build highlighted text
-  let result = "";
-  let lastIndex = 0;
-
-  for (const [start, end] of sorted) {
-    // Add text before highlight
-    result += text.slice(lastIndex, start);
-    // Add highlighted text
-    result += `<mark>${text.slice(start, end + 1)}</mark>`;
-    lastIndex = end + 1;
-  }
-
-  // Add remaining text
-  result += text.slice(lastIndex);
-
-  return result;
-}
-
-// ============================================================================
-// Search Scoring
-// ============================================================================
-
-/**
- * Calculate relevance score for icon
- * Lower score = better match
- */
-export function calculateRelevance(icon: Icon, query: string, options?: SearchOptions): number {
-  if (!query.trim()) {
-    return 0;
-  }
-
-  const fuse = createSearchEngine([icon], options);
-  const results = fuse.search(query);
-
-  return results[0]?.score ?? 1;
-}
-
-/**
  * Sort icons by search relevance
  */
 export function sortByRelevance(icons: Icon[], query: string, options?: SearchOptions): Icon[] {
@@ -175,15 +80,8 @@ export function sortByRelevance(icons: Icon[], query: string, options?: SearchOp
   }
 
   const results = searchIcons(query, icons, options);
-  return results.map((r) => ({
-    ...r.icon,
-    searchScore: r.score,
-  }));
+  return results.map((r) => r.icon);
 }
-
-// ============================================================================
-// Search Suggestions
-// ============================================================================
 
 /**
  * Get search suggestions based on partial query
@@ -193,15 +91,11 @@ export function getSearchSuggestions(query: string, icons: Icon[], limit: number
     return [];
   }
 
-  const results = searchIcons(query, icons, { threshold: 0.4 });
-  const suggestions = new Set<string>();
+  const config: SearchConfig<Icon> = { ...DEFAULT_CONFIG, threshold: 0.4, limit: limit * 2 };
+  const engine = createEngine(icons, config);
+  const suggestions = engine.suggest(query, limit);
 
-  for (const result of results) {
-    if (suggestions.size >= limit) break;
-    suggestions.add(result.icon.label);
-  }
-
-  return Array.from(suggestions);
+  return suggestions.map((s) => s.text);
 }
 
 /**
@@ -212,9 +106,42 @@ export function matchesQuery(icon: Icon, query: string, options?: SearchOptions)
     return true;
   }
 
-  const score = calculateRelevance(icon, query, options);
+  const results = searchIcons(query, [icon], options);
   const threshold = options?.threshold ?? 0.3;
 
-  return score <= threshold;
+  return results.length > 0 && results[0].score <= threshold;
 }
 
+// ============================================================================
+// Deprecated Functions (for backward compatibility)
+// ============================================================================
+
+/**
+ * @deprecated Use searchIcons instead
+ * Legacy function for creating search engine
+ */
+export function createSearchEngine(icons: Icon[], options?: SearchOptions) {
+  const config: SearchConfig<Icon> = {
+    ...DEFAULT_CONFIG,
+    threshold: options?.threshold ?? DEFAULT_CONFIG.threshold,
+  };
+  return createEngine(icons, config);
+}
+
+/**
+ * @deprecated Import from @/features/search instead
+ */
+export { highlight as highlightMatches } from "../../search/features/highlight";
+
+/**
+ * @deprecated Import from @/features/search instead
+ */
+export { highlight as getSearchHighlights } from "../../search/features/highlight";
+
+/**
+ * @deprecated Use searchIcons instead
+ */
+export function calculateRelevance(icon: Icon, query: string, options?: SearchOptions): number {
+  const results = searchIcons(query, [icon], options);
+  return results[0]?.score ?? 1;
+}
