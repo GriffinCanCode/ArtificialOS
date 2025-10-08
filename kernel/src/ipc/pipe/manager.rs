@@ -9,6 +9,7 @@ use super::pipe::Pipe;
 use super::types::{
     PipeError, PipeStats, DEFAULT_PIPE_CAPACITY, MAX_PIPES_PER_PROCESS, MAX_PIPE_CAPACITY,
 };
+use crate::core::sync::WaitQueue;
 use crate::core::types::{Pid, Size};
 use crate::core::{ShardManager, WorkloadProfile};
 use crate::memory::MemoryManager;
@@ -26,6 +27,7 @@ use std::sync::Arc;
 /// - Cache-line aligned to prevent false sharing of atomic ID counter
 /// - Lock-free queue for ID recycling (hot path optimization)
 /// - next_id wrapped in Arc to ensure ID uniqueness across clones (prevents collision bug)
+/// - Futex-based wait/notify for efficient blocking I/O (zero CPU spinning on Linux)
 #[repr(C, align(64))]
 pub struct PipeManager {
     pipes: Arc<DashMap<PipeId, Pipe, RandomState>>,
@@ -35,6 +37,8 @@ pub struct PipeManager {
     memory_manager: MemoryManager,
     // Lock-free queue for ID recycling (prevents ID exhaustion)
     free_ids: Arc<SegQueue<PipeId>>,
+    // Wait queue for blocking I/O (futex on Linux, condvar elsewhere)
+    wait_queue: Arc<WaitQueue<PipeId>>,
     // Observability collector
     collector: Option<Arc<Collector>>,
 }
@@ -42,7 +46,7 @@ pub struct PipeManager {
 impl PipeManager {
     pub fn new(memory_manager: MemoryManager) -> Self {
         info!(
-            "Pipe manager initialized with lock-free ID recycling (capacity: {})",
+            "Pipe manager initialized with lock-free ID recycling and futex-based wait/notify (capacity: {})",
             DEFAULT_PIPE_CAPACITY
         );
         Self {
@@ -60,6 +64,8 @@ impl PipeManager {
             )),
             memory_manager,
             free_ids: Arc::new(SegQueue::new()),
+            // Use long_wait config for pipe I/O (typically 1-30s waits, futex optimal)
+            wait_queue: Arc::new(WaitQueue::long_wait()),
             collector: None,
         }
     }
@@ -73,6 +79,16 @@ impl PipeManager {
     /// Set collector after construction
     pub fn set_collector(&mut self, collector: Arc<Collector>) {
         self.collector = Some(collector);
+    }
+
+    /// Get the wait queue for external blocking operations
+    ///
+    /// # Usage
+    ///
+    /// Used by `TimeoutPipeOps` and other wrappers to implement blocking I/O with timeouts.
+    /// The PipeManager will automatically wake waiters when data/space becomes available.
+    pub fn wait_queue(&self) -> Arc<WaitQueue<PipeId>> {
+        Arc::clone(&self.wait_queue)
     }
 
     pub fn create(
@@ -196,6 +212,11 @@ impl PipeManager {
             );
         }
 
+        // CRITICAL FIX: Wake readers waiting for data
+        // Uses futex on Linux (zero CPU spinning), condvar elsewhere
+        drop(pipe); // Release lock before wake to reduce contention
+        self.wait_queue.wake_one(pipe_id);
+
         Ok(written)
     }
 
@@ -236,6 +257,10 @@ impl PipeManager {
             );
         }
 
+        // CRITICAL FIX: Wake writers waiting for space
+        // Uses futex on Linux (zero CPU spinning), condvar elsewhere
+        drop(pipe); // Release lock before wake to reduce contention
+        self.wait_queue.wake_one(pipe_id);
         Ok(data)
     }
 
@@ -254,6 +279,10 @@ impl PipeManager {
         pipe.closed = true;
 
         info!("Closed pipe {} by PID {}", pipe_id, pid);
+
+        // Wake all waiters on close (they should check closed flag and return EOF/error)
+        drop(pipe); // Release lock before wake
+        self.wait_queue.wake_all(pipe_id);
 
         Ok(())
     }
@@ -362,6 +391,7 @@ impl Clone for PipeManager {
             process_pipes: Arc::clone(&self.process_pipes),
             memory_manager: self.memory_manager.clone(),
             free_ids: Arc::clone(&self.free_ids),
+            wait_queue: Arc::clone(&self.wait_queue), // Share wait queue across clones
             collector: self.collector.as_ref().map(Arc::clone),
         }
     }

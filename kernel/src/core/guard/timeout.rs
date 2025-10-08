@@ -91,6 +91,68 @@ impl TimeoutPolicy {
         }
     }
 
+    /// Select optimal WaitQueue strategy based on timeout policy
+    ///
+    /// # Strategy Selection
+    ///
+    /// - **Lock**: `SpinWait` - Low latency required (1-100ms), adaptive spinning optimal
+    /// - **IPC**: `Auto` (Futex on Linux, Condvar elsewhere) - Balanced performance for 1-30s waits
+    /// - **IO**: `Auto` - Long waits (5-300s), futex/condvar best
+    /// - **Task**: `Auto` - Very long waits (10s-1h), futex/condvar best
+    /// - **Custom/None**: `Auto` - Let platform choose optimal strategy
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use crate::core::sync::{WaitQueue, SyncConfig};
+    /// use crate::core::guard::TimeoutPolicy;
+    ///
+    /// let policy = TimeoutPolicy::default_lock();
+    /// let mut config = SyncConfig::default();
+    /// policy.configure_wait_strategy(&mut config);
+    ///
+    /// let queue = WaitQueue::<u64>::new(config);
+    /// ```
+    pub fn wait_strategy_type(&self) -> crate::core::sync::StrategyType {
+        use crate::core::sync::StrategyType;
+        match self {
+            Self::Lock(_) => StrategyType::SpinWait, // Low-latency spinning for short waits
+            Self::Ipc(_) => StrategyType::Auto,      // Futex (Linux) or condvar
+            Self::Io(_) => StrategyType::Auto,       // Futex (Linux) or condvar
+            Self::Task(_) => StrategyType::Auto,     // Futex (Linux) or condvar
+            Self::Custom(_) | Self::None => StrategyType::Auto, // Platform optimal
+        }
+    }
+
+    /// Configure a SyncConfig based on this timeout policy
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let policy = TimeoutPolicy::default_lock();
+    /// let config = policy.sync_config();
+    /// let queue = WaitQueue::<u64>::new(config);
+    /// ```
+    pub fn sync_config(&self) -> crate::core::sync::SyncConfig {
+        use crate::core::sync::SyncConfig;
+
+        let strategy = self.wait_strategy_type();
+        match self {
+            Self::Lock(d) => SyncConfig {
+                strategy,
+                spin_duration: (*d).min(Duration::from_micros(50)), // Cap spin at 50µs
+                max_spins: 500,
+            },
+            Self::Ipc(_) | Self::Io(_) | Self::Task(_) | Self::Custom(_) | Self::None => {
+                SyncConfig {
+                    strategy,
+                    spin_duration: Duration::from_micros(10), // Minimal spinning for long waits
+                    max_spins: 100,
+                }
+            }
+        }
+    }
+
     /// Check if this timeout has expired
     pub fn is_expired(&self, start: Instant) -> bool {
         match self.duration() {

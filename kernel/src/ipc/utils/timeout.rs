@@ -21,10 +21,15 @@ pub struct TimeoutPipeOps {
 
 impl TimeoutPipeOps {
     /// Create new timeout-aware pipe operations
+    ///
+    /// # Performance
+    ///
+    /// Uses the PipeManager's shared wait queue for optimal coordination.
+    /// The manager will automatically wake this wrapper when data/space becomes available.
     pub fn new(manager: Arc<PipeManager>) -> Self {
         Self {
+            wait_queue: manager.wait_queue(), // ✅ Use shared wait queue from manager
             manager,
-            wait_queue: Arc::new(WaitQueue::with_defaults()),
         }
     }
 
@@ -127,6 +132,12 @@ impl TimeoutPipeOps {
     }
 
     /// Notify waiters that pipe has data/space available
+    ///
+    /// # Note
+    ///
+    /// This method is now redundant - the PipeManager automatically wakes waiters
+    /// after successful read/write operations. Kept for backward compatibility.
+    #[deprecated(note = "PipeManager now automatically wakes waiters. This call is redundant.")]
     pub fn notify(&self, pipe_id: PipeId) {
         self.wait_queue.wake_all(pipe_id);
     }
@@ -213,6 +224,11 @@ impl TimeoutQueueOps {
     }
 
     /// Notify waiters that a message is available
+    ///
+    /// # Usage
+    ///
+    /// Should be called after successful send operations. Unlike pipes,
+    /// QueueManager doesn't auto-notify, so this call is still necessary.
     pub fn notify(&self, queue_id: QueueId) {
         self.wait_queue.wake_all(queue_id);
     }
@@ -253,9 +269,9 @@ mod tests {
 
         let pipe_id = pipe_manager.create(1, 2, None).unwrap();
 
-        // Write data
+        // Write data - PipeManager will automatically wake readers
         pipe_manager.write(pipe_id, 2, b"hello").unwrap();
-        timeout_ops.notify(pipe_id);
+        // No need to call timeout_ops.notify() - PipeManager does it automatically
 
         // Read should succeed
         let timeout = TimeoutPolicy::Ipc(Duration::from_secs(1));
