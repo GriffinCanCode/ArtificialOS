@@ -12,4 +12,5 @@ mod syscall;
 pub use errors::SyscallError;
 pub use process_types::{ProcessOutput, SystemInfo};
 pub use results::SyscallResult;
+pub use syscall::search::SearchResult;
 pub use syscall::Syscall;

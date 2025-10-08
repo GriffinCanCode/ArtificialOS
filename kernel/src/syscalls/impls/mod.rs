@@ -25,6 +25,7 @@ pub mod mmap;
 pub mod network;
 pub mod process;
 pub mod scheduler;
+pub mod search;
 pub mod signals;
 pub mod system;
 pub mod time;
