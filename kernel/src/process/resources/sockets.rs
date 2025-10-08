@@ -24,8 +24,10 @@ impl ResourceCleanup for SocketResource {
 
         CleanupStats {
             resources_freed: count,
-            bytes_freed: 0, // Sockets don't track byte size
+            bytes_freed: 0,
             errors_encountered: 0,
+            cleanup_duration_micros: 0,
+            by_type: std::collections::HashMap::new(),
         }
     }
 

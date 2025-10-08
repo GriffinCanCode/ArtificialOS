@@ -14,8 +14,8 @@ use tokio::sync::broadcast;
 use tracing::info;
 
 use ai_os_kernel::process::resources::{
-    MappingResource, ResourceOrchestrator, RingResource, SignalResource, SocketResource,
-    TaskResource,
+    FdResource, IpcResource, MappingResource, MemoryResource, ResourceOrchestrator,
+    RingResource, SignalResource, SocketResource, TaskResource,
 };
 use ai_os_kernel::{
     init_simd, init_tracing, AsyncTaskManager, IPCManager, IoUringExecutor, IoUringManager,
@@ -147,23 +147,34 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let async_task_manager = AsyncTaskManager::new(syscall_executor.clone());
 
     // Build comprehensive resource cleanup orchestrator
-    info!("Building comprehensive resource cleanup orchestrator...");
+    // Resources are registered in dependency order (LIFO cleanup - first registered = last cleaned)
+    info!("Building unified resource cleanup orchestrator...");
     let resource_orchestrator = ResourceOrchestrator::new()
-        .register(MappingResource::new(mmap_manager))
-        .register(TaskResource::new(async_task_manager))
+        .register(MemoryResource::new(memory_manager.clone()))       // Freed last
+        .register(MappingResource::new(mmap_manager))                // Depends on memory
+        .register(IpcResource::new(ipc_manager.clone()))             // Message queues, pipes, shm
+        .register(TaskResource::new(async_task_manager))             // Async tasks
         .register(
             RingResource::new()
                 .with_zerocopy(zerocopy_ipc)
                 .with_iouring(iouring_manager),
         )
-        .register(SignalResource::new(signal_manager))
+        .register(SignalResource::new(signal_manager))               // Signal handlers
         .register(SocketResource::new(
             syscall_executor.socket_manager().clone(),
-        ));
+        ))                                                            // Network sockets
+        .register(FdResource::new(syscall_executor.fd_manager().clone())); // Freed first
+
+    // Validate comprehensive coverage
+    resource_orchestrator.validate_coverage(&[
+        "memory", "ipc", "mappings", "async_tasks", "rings",
+        "signals", "sockets", "file_descriptors"
+    ]);
 
     info!(
-        "Resource orchestrator initialized with {} resource types",
-        resource_orchestrator.resource_count()
+        "Resource orchestrator initialized with {} types: {:?}",
+        resource_orchestrator.resource_count(),
+        resource_orchestrator.registered_types()
     );
 
     // Build process manager with comprehensive cleanup

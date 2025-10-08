@@ -728,6 +728,7 @@ message KernelEvent {
     ProcessTerminatedEvent process_terminated = 11;
     SyscallExecutedEvent syscall_executed = 12;
     PermissionDeniedEvent permission_denied = 13;
+    ResourceCleanupEvent resource_cleanup = 14;
   }
 }
 
@@ -751,6 +752,20 @@ message PermissionDeniedEvent {
   uint32 pid = 1;
   string syscall_type = 2;
   string reason = 3;
+}
+
+message ResourceCleanupEvent {
+  uint32 pid = 1;
+  uint64 resources_freed = 2;
+  uint64 bytes_freed = 3;
+  uint64 cleanup_duration_us = 4;
+  repeated ResourceTypeCleanup by_type = 5;
+  repeated string errors = 6;
+}
+
+message ResourceTypeCleanup {
+  string resource_type = 1;
+  uint64 count = 2;
 }
 
 // ============================================================================

@@ -26,6 +26,8 @@ impl ResourceCleanup for MappingResource {
             resources_freed: count,
             bytes_freed: bytes,
             errors_encountered: 0,
+            cleanup_duration_micros: 0,
+            by_type: std::collections::HashMap::new(),
         }
     }
 

@@ -27,6 +27,8 @@ impl ResourceCleanup for ZeroCopyResource {
             resources_freed: count,
             bytes_freed: bytes,
             errors_encountered: 0,
+            cleanup_duration_micros: 0,
+            by_type: std::collections::HashMap::new(),
         }
     }
 
@@ -58,6 +60,8 @@ impl ResourceCleanup for IoUringResource {
             resources_freed: count,
             bytes_freed: 0,
             errors_encountered: 0,
+            cleanup_duration_micros: 0,
+            by_type: std::collections::HashMap::new(),
         }
     }
 

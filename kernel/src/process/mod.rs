@@ -4,6 +4,7 @@
  */
 
 pub mod atomic_stats;
+pub mod budget;
 mod cleanup;
 pub mod executor;
 pub mod lifecycle;
@@ -23,6 +24,7 @@ mod validation;
 pub use types::*;
 
 // Re-export implementations
+pub use budget::{ResourceBudget, ResourceTracker, ResourceUsage};
 pub use executor::ProcessExecutor as ProcessExecutorImpl;
 pub use lifecycle::{LifecycleRegistry, ProcessInitConfig};
 pub use manager::ProcessManager as ProcessManagerImpl;

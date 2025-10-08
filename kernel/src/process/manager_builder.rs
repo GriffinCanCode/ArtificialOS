@@ -12,6 +12,7 @@ use super::scheduler_task::SchedulerTask;
 use super::types::SchedulingPolicy;
 use crate::ipc::IPCManager;
 use crate::memory::MemoryManager;
+use crate::monitoring::Collector;
 use crate::process::executor::ProcessExecutor;
 use crate::security::LimitManager;
 use ahash::RandomState;
@@ -29,8 +30,9 @@ pub struct ProcessManagerBuilder {
     ipc_manager: Option<IPCManager>,
     scheduler_policy: Option<SchedulingPolicy>,
     fd_manager: Option<crate::syscalls::fd::FdManager>,
-    resource_orchestrator: Option<ResourceOrchestrator>,
+    resource_orchestrator: ResourceOrchestrator,
     signal_manager: Option<Arc<crate::signals::SignalManagerImpl>>,
+    collector: Option<Arc<Collector>>,
 }
 
 impl ProcessManagerBuilder {
@@ -43,8 +45,9 @@ impl ProcessManagerBuilder {
             ipc_manager: None,
             scheduler_policy: None,
             fd_manager: None,
-            resource_orchestrator: None,
+            resource_orchestrator: ResourceOrchestrator::new(),
             signal_manager: None,
+            collector: None,
         }
     }
 
@@ -86,13 +89,19 @@ impl ProcessManagerBuilder {
 
     /// Add resource orchestrator for comprehensive cleanup
     pub fn with_resource_orchestrator(mut self, orchestrator: ResourceOrchestrator) -> Self {
-        self.resource_orchestrator = Some(orchestrator);
+        self.resource_orchestrator = orchestrator;
         self
     }
 
     /// Add signal manager for lifecycle initialization
     pub fn with_signal_manager(mut self, signal_manager: Arc<crate::signals::SignalManagerImpl>) -> Self {
         self.signal_manager = Some(signal_manager);
+        self
+    }
+
+    /// Add observability collector for event streaming
+    pub fn with_collector(mut self, collector: Arc<Collector>) -> Self {
+        self.collector = Some(collector);
         self
     }
 
@@ -108,6 +117,36 @@ impl ProcessManagerBuilder {
             LimitManager::new().ok()
         } else {
             None
+        };
+
+        // Auto-register resources if orchestrator is empty
+        let orchestrator = if self.resource_orchestrator.resource_count() == 0 {
+            let mut orch = self.resource_orchestrator;
+
+            // Register memory if available
+            if let Some(ref mem_mgr) = self.memory_manager {
+                orch = orch.register(
+                    super::resources::MemoryResource::new(mem_mgr.clone())
+                );
+            }
+
+            // Register IPC if available
+            if let Some(ref ipc_mgr) = self.ipc_manager {
+                orch = orch.register(
+                    super::resources::IpcResource::new(ipc_mgr.clone())
+                );
+            }
+
+            // Register FD if available
+            if let Some(ref fd_mgr) = self.fd_manager {
+                orch = orch.register(
+                    super::resources::FdResource::new(fd_mgr.clone())
+                );
+            }
+
+            orch
+        } else {
+            self.resource_orchestrator
         };
 
         let scheduler = self
@@ -156,8 +195,8 @@ impl ProcessManagerBuilder {
         if self.fd_manager.is_some() {
             features.push("FD-cleanup");
         }
-        if self.resource_orchestrator.is_some() {
-            features.push("comprehensive-cleanup");
+        if orchestrator.resource_count() > 0 {
+            features.push("unified-resource-cleanup");
         }
 
         // Build lifecycle registry if we have relevant managers
@@ -206,7 +245,7 @@ impl ProcessManagerBuilder {
             scheduler_task,
             preemption,
             fd_manager: self.fd_manager,
-            resource_orchestrator: self.resource_orchestrator,
+            resource_orchestrator: orchestrator,
             // Use 64 shards for child_counts (moderate contention)
             child_counts: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
                 0,
@@ -214,6 +253,7 @@ impl ProcessManagerBuilder {
                 64,
             )),
             lifecycle,
+            collector: self.collector,
         }
     }
 }

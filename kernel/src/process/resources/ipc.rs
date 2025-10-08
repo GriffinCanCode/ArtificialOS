@@ -1,26 +1,26 @@
 /*!
- * Async Task Resource Cleanup
- * Per-process async task tracking and cleanup
+ * IPC Resource Cleanup
+ * Per-process IPC tracking and cleanup
  */
 
 use super::{CleanupStats, ResourceCleanup};
-use crate::api::execution::AsyncTaskManager;
 use crate::core::types::Pid;
+use crate::ipc::IPCManager;
 
-/// Async task resource cleanup wrapper
-pub struct TaskResource {
-    manager: AsyncTaskManager,
+/// IPC resource cleanup wrapper
+pub struct IpcResource {
+    manager: IPCManager,
 }
 
-impl TaskResource {
-    pub fn new(manager: AsyncTaskManager) -> Self {
+impl IpcResource {
+    pub fn new(manager: IPCManager) -> Self {
         Self { manager }
     }
 }
 
-impl ResourceCleanup for TaskResource {
+impl ResourceCleanup for IpcResource {
     fn cleanup(&self, pid: Pid) -> CleanupStats {
-        let count = self.manager.cleanup_process_tasks(pid);
+        let count = self.manager.clear_process_queue(pid);
 
         CleanupStats {
             resources_freed: count,
@@ -32,10 +32,10 @@ impl ResourceCleanup for TaskResource {
     }
 
     fn resource_type(&self) -> &'static str {
-        "async_tasks"
+        "ipc"
     }
 
     fn has_resources(&self, pid: Pid) -> bool {
-        self.manager.has_process_tasks(pid)
+        self.manager.has_messages(pid)
     }
 }

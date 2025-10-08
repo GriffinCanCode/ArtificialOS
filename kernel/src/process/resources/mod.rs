@@ -4,21 +4,27 @@
  */
 
 mod fds;
+mod ipc;
 mod mappings;
+mod memory;
 mod rings;
 mod signals;
 mod sockets;
 mod tasks;
 
 pub use fds::FdResource;
+pub use ipc::IpcResource;
 pub use mappings::MappingResource;
+pub use memory::MemoryResource;
 pub use rings::{IoUringResource, RingResource, ZeroCopyResource};
 pub use signals::SignalResource;
 pub use sockets::SocketResource;
 pub use tasks::TaskResource;
 
 use crate::core::types::Pid;
+use std::collections::HashMap;
 use std::fmt;
+use std::time::Instant;
 
 /// Resource cleanup statistics
 #[derive(Debug, Clone, Default)]
@@ -26,13 +32,34 @@ pub struct CleanupStats {
     pub resources_freed: usize,
     pub bytes_freed: usize,
     pub errors_encountered: usize,
+    pub cleanup_duration_micros: u64,
+    pub by_type: HashMap<String, usize>,
 }
 
 impl CleanupStats {
+    /// Create new stats with timing
+    #[inline]
+    pub fn with_timing<F>(f: F) -> Self
+    where
+        F: FnOnce() -> Self,
+    {
+        let start = Instant::now();
+        let mut stats = f();
+        stats.cleanup_duration_micros = start.elapsed().as_micros() as u64;
+        stats
+    }
+
+    /// Merge another stats into this one
     fn merge(&mut self, other: CleanupStats) {
         self.resources_freed += other.resources_freed;
         self.bytes_freed += other.bytes_freed;
         self.errors_encountered += other.errors_encountered;
+        self.cleanup_duration_micros += other.cleanup_duration_micros;
+
+        // Merge per-type counts
+        for (type_name, count) in other.by_type {
+            *self.by_type.entry(type_name).or_insert(0) += count;
+        }
     }
 }
 
@@ -75,18 +102,28 @@ impl ResourceOrchestrator {
     /// Resources are cleaned up in reverse registration order to handle
     /// dependencies (e.g., close sockets before freeing memory).
     pub fn cleanup_process(&self, pid: Pid) -> CleanupResult {
+        let overall_start = Instant::now();
         let mut total_stats = CleanupStats::default();
         let mut errors = Vec::new();
 
         // Cleanup in reverse order (LIFO)
         for resource in self.resources.iter().rev() {
             if resource.has_resources(pid) {
-                let stats = resource.cleanup(pid);
+                let start = Instant::now();
+                let mut stats = resource.cleanup(pid);
+                stats.cleanup_duration_micros = start.elapsed().as_micros() as u64;
 
-                // Save values before merging cuz merge is dumb
+                // Track per-type counts
+                let resource_type = resource.resource_type();
+                stats.by_type.insert(
+                    resource_type.to_string(),
+                    stats.resources_freed,
+                );
+
+                // Save values before merging
                 let resources_freed = stats.resources_freed;
                 let errors_encountered = stats.errors_encountered;
-                let resource_type = resource.resource_type();
+                let duration_micros = stats.cleanup_duration_micros;
 
                 if errors_encountered > 0 {
                     errors.push(format!(
@@ -98,13 +135,16 @@ impl ResourceOrchestrator {
                 total_stats.merge(stats);
 
                 log::info!(
-                    "Cleaned {} resources for PID {} (type: {})",
+                    "Cleaned {} resources for PID {} (type: {}, took {}μs)",
                     resources_freed,
                     pid,
-                    resource_type
+                    resource_type,
+                    duration_micros
                 );
             }
         }
+
+        total_stats.cleanup_duration_micros = overall_start.elapsed().as_micros() as u64;
 
         CleanupResult {
             pid,
@@ -116,6 +156,34 @@ impl ResourceOrchestrator {
     /// Get count of registered resource types
     pub fn resource_count(&self) -> usize {
         self.resources.len()
+    }
+
+    /// Validate that expected resource types are registered
+    ///
+    /// Warns if critical resource types are missing to detect potential leaks
+    pub fn validate_coverage(&self, expected_types: &[&str]) {
+        let registered: std::collections::HashSet<_> = self
+            .resources
+            .iter()
+            .map(|r| r.resource_type())
+            .collect();
+
+        for expected in expected_types {
+            if !registered.contains(expected) {
+                log::warn!(
+                    "Resource type '{}' not registered - potential leak source!",
+                    expected
+                );
+            }
+        }
+    }
+
+    /// Get list of registered resource types
+    pub fn registered_types(&self) -> Vec<&'static str> {
+        self.resources
+            .iter()
+            .map(|r| r.resource_type())
+            .collect()
     }
 }
 
@@ -174,6 +242,8 @@ mod tests {
                 resources_freed: 1,
                 bytes_freed: 100,
                 errors_encountered: 0,
+                cleanup_duration_micros: 0,
+                by_type: HashMap::new(),
             }
         }
 

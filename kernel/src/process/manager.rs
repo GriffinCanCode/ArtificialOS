@@ -14,6 +14,7 @@ use super::types::{ExecutionConfig, ProcessInfo, ProcessState};
 use crate::core::types::{Pid, Priority};
 use crate::ipc::IPCManager;
 use crate::memory::MemoryManager;
+use crate::monitoring::Collector;
 use crate::process::executor::ProcessExecutor;
 use crate::security::LimitManager;
 use ahash::RandomState;
@@ -43,12 +44,14 @@ pub struct ProcessManager {
     pub(super) scheduler_task: Option<Arc<SchedulerTask>>,
     pub(super) preemption: Option<Arc<PreemptionController>>,
     pub(super) fd_manager: Option<crate::syscalls::fd::FdManager>,
-    // Comprehensive resource cleanup orchestrator
-    pub(super) resource_orchestrator: Option<ResourceOrchestrator>,
+    // Comprehensive resource cleanup orchestrator (required)
+    pub(super) resource_orchestrator: ResourceOrchestrator,
     // Track child processes per parent PID for limit enforcement
     pub(super) child_counts: Arc<DashMap<Pid, u32, RandomState>>,
     // Lifecycle hook coordinator (prevents race conditions during initialization)
     pub(super) lifecycle: Option<LifecycleRegistry>,
+    // Observability collector for event streaming
+    pub(super) collector: Option<Arc<Collector>>,
 }
 
 impl ProcessManager {
@@ -71,7 +74,7 @@ impl ProcessManager {
             scheduler_task: None,
             preemption: None,
             fd_manager: None,
-            resource_orchestrator: None,
+            resource_orchestrator: ResourceOrchestrator::new(),
             // Use 64 shards for child_counts (moderate contention)
             child_counts: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
                 0,
@@ -79,6 +82,7 @@ impl ProcessManager {
                 64,
             )),
             lifecycle: None,
+            collector: None,
         }
     }
 
@@ -180,6 +184,11 @@ impl ProcessManager {
             if self.lifecycle.is_some() { "initialized" } else { "lazy" }
         );
 
+        // Emit observability event
+        if let Some(ref collector) = self.collector {
+            collector.process_created(pid, name.clone(), priority);
+        }
+
         // Add to scheduler if available (only Ready processes can be scheduled)
         if let Some(ref scheduler) = self.scheduler {
             scheduler.read().add(pid, priority);
@@ -203,24 +212,45 @@ impl ProcessManager {
         if let Some((_, process)) = self.processes.remove(&pid) {
             info!("Terminating process: PID {}", pid);
 
-            // Core cleanup (OS process, memory, IPC, scheduler)
-            cleanup::cleanup_os_process(&process, pid, &self.executor, &self.limit_manager);
-            cleanup::cleanup_memory(pid, &self.memory_manager);
-            cleanup::cleanup_ipc(pid, &self.ipc_manager);
-            cleanup::cleanup_scheduler(pid, &self.scheduler);
-            cleanup::cleanup_preemption(pid, &self.preemption);
-            cleanup::cleanup_file_descriptors(pid, &self.fd_manager);
-
-            // Lifecycle cleanup (signals, zero-copy rings, FD table state)
-            // This runs before comprehensive cleanup to ensure proper ordering
-            if let Some(ref lifecycle) = self.lifecycle {
-                lifecycle.cleanup_process(pid);
+            // Emit observability event
+            if let Some(ref collector) = self.collector {
+                collector.process_terminated(pid, None);
             }
 
-            // Comprehensive resource cleanup (sockets, signals, rings, tasks, mappings)
-            // Note: Some resources may be cleaned twice (once by lifecycle, once here)
-            // This is intentional for defense-in-depth - second cleanup is a no-op
-            cleanup::cleanup_comprehensive(pid, &self.resource_orchestrator);
+            // Cleanup OS process and resource limits first
+            cleanup::cleanup_os_process(&process, pid, &self.executor, &self.limit_manager);
+
+            // Remove from scheduler
+            cleanup::cleanup_scheduler(pid, &self.scheduler);
+
+            // Notify preemption controller
+            cleanup::cleanup_preemption(pid, &self.preemption);
+
+            // Unified resource cleanup - handles all resource types in proper order
+            // Resources cleaned: memory, IPC, FDs, sockets, signals, rings, tasks, mappings
+            let result = self.resource_orchestrator.cleanup_process(pid);
+
+            if result.has_freed_resources() {
+                info!("{}", result);
+            }
+
+            if !result.is_success() {
+                for error in &result.errors {
+                    log::warn!("Cleanup error for PID {}: {}", pid, error);
+                }
+            }
+
+            // Emit observability events for monitoring
+            if let Some(ref collector) = self.collector {
+                collector.resource_cleanup(
+                    pid,
+                    result.stats.resources_freed,
+                    result.stats.bytes_freed,
+                    result.stats.cleanup_duration_micros,
+                    result.stats.by_type.clone(),
+                    result.errors.clone(),
+                );
+            }
 
             true
         } else {
@@ -306,9 +336,10 @@ impl Clone for ProcessManager {
             scheduler_task: self.scheduler_task.clone(),
             preemption: self.preemption.clone(),
             fd_manager: self.fd_manager.clone(),
-            resource_orchestrator: None, // Resource orchestrator is not Clone
+            resource_orchestrator: ResourceOrchestrator::new(), // Create new empty orchestrator for clone
             child_counts: Arc::clone(&self.child_counts),
             lifecycle: self.lifecycle.clone(),
+            collector: self.collector.clone(),
         }
     }
 }

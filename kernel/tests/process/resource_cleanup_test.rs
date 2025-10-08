@@ -38,6 +38,8 @@ impl ResourceCleanup for MockResource {
             resources_freed: 5,
             bytes_freed: 1024,
             errors_encountered: 0,
+            cleanup_duration_micros: 0,
+            by_type: std::collections::HashMap::new(),
         }
     }
 
@@ -148,6 +150,8 @@ fn test_orchestrator_handles_errors() {
                 resources_freed: 0,
                 bytes_freed: 0,
                 errors_encountered: 3,
+                cleanup_duration_micros: 0,
+                by_type: std::collections::HashMap::new(),
             }
         }
 
@@ -237,4 +241,45 @@ fn test_resource_count() {
         .register(MockResource::new("r3", true));
 
     assert_eq!(orchestrator.resource_count(), 3);
+}
+
+#[test]
+fn test_registered_types() {
+    let orchestrator = ResourceOrchestrator::new()
+        .register(MockResource::new("memory", true))
+        .register(MockResource::new("sockets", true))
+        .register(MockResource::new("fds", true));
+
+    let types = orchestrator.registered_types();
+    assert_eq!(types.len(), 3);
+    assert!(types.contains(&"memory"));
+    assert!(types.contains(&"sockets"));
+    assert!(types.contains(&"fds"));
+}
+
+#[test]
+fn test_validation_coverage() {
+    let orchestrator = ResourceOrchestrator::new()
+        .register(MockResource::new("memory", true))
+        .register(MockResource::new("sockets", true));
+
+    // This will log warnings for missing "fds" and "ipc"
+    orchestrator.validate_coverage(&["memory", "sockets", "fds", "ipc"]);
+
+    // No panic - validation is non-fatal
+    assert_eq!(orchestrator.resource_count(), 2);
+}
+
+#[test]
+fn test_cleanup_timing() {
+    let resource = Arc::new(MockResource::new("timed", true));
+    let orchestrator = ResourceOrchestrator::new().register(resource);
+
+    let result = orchestrator.cleanup_process(1);
+
+    // Should have timing information
+    assert!(result.stats.cleanup_duration_micros > 0);
+
+    // Should have per-type breakdown
+    assert_eq!(result.stats.by_type.get("timed"), Some(&5));
 }

@@ -222,24 +222,18 @@ impl LifecycleRegistry {
         Ok(())
     }
 
-    /// Cleanup all process resources in reverse dependency order
+    /// Cleanup lifecycle-managed process resources
     ///
-    /// This runs during process termination to ensure clean shutdown.
+    /// This runs during process termination for lifecycle-specific cleanup.
+    /// Most resource cleanup is now handled by ResourceOrchestrator.
+    ///
     /// Hooks execute in reverse order:
-    /// 1. FD table cleanup
-    /// 2. Signal state cleanup
-    /// 3. Zero-copy ring cleanup
+    /// 1. Signal state cleanup
+    /// 2. Zero-copy ring cleanup
     pub fn cleanup_process(&self, pid: Pid) -> usize {
-        debug!("Cleaning up process {} with lifecycle hooks", pid);
+        debug!("Cleaning up process {} lifecycle resources", pid);
 
         let mut cleaned_count = 0;
-
-        // Hook 1: FD cleanup (happens in FdManager::cleanup_process_fds)
-        // This is already handled by ResourceOrchestrator, but we track it
-        if self.fd_manager.is_some() {
-            // Cleanup happens elsewhere, just track it
-            debug!("FD cleanup scheduled for PID {}", pid);
-        }
 
         // Hook 2: Signal cleanup
         if let Some(ref signal_mgr) = self.signal_manager {
