@@ -4,7 +4,7 @@
  */
 
 use crate::core::types::Pid;
-use crate::syscalls::SyscallExecutor;
+use crate::syscalls::SyscallExecutorWithIpc;
 use std::path::PathBuf;
 use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -14,11 +14,11 @@ const DEFAULT_CHUNK_SIZE: usize = 64 * 1024; // 64KB
 #[derive(Clone)]
 pub struct StreamingManager {
     #[allow(dead_code)]
-    executor: SyscallExecutor,
+    executor: SyscallExecutorWithIpc,
 }
 
 impl StreamingManager {
-    pub fn new(executor: SyscallExecutor) -> Self {
+    pub fn new(executor: SyscallExecutorWithIpc) -> Self {
         Self { executor }
     }
 

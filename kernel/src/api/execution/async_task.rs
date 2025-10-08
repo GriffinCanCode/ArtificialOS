@@ -12,7 +12,7 @@
 
 use crate::core::guard::AsyncTaskGuard;
 use crate::core::types::Pid;
-use crate::syscalls::{Syscall, SyscallExecutor, SyscallResult};
+use crate::syscalls::{Syscall, SyscallExecutorWithIpc, SyscallResult};
 use dashmap::DashMap;
 use log::warn;
 use parking_lot::Mutex;
@@ -59,7 +59,7 @@ pub struct AsyncTaskManager {
     tasks: Arc<DashMap<String, Task>>,
     /// Track which tasks belong to which process (HashSet for O(1) removal)
     process_tasks: Arc<DashMap<Pid, HashSet<String>>>,
-    executor: SyscallExecutor,
+    executor: SyscallExecutorWithIpc,
     /// TTL for completed tasks before automatic cleanup
     task_ttl: Duration,
     /// Handle to background cleanup task (shared across clones)
@@ -67,11 +67,11 @@ pub struct AsyncTaskManager {
 }
 
 impl AsyncTaskManager {
-    pub fn new(executor: SyscallExecutor) -> Self {
+    pub fn new(executor: SyscallExecutorWithIpc) -> Self {
         Self::with_ttl(executor, DEFAULT_TASK_TTL)
     }
 
-    pub fn with_ttl(executor: SyscallExecutor, task_ttl: Duration) -> Self {
+    pub fn with_ttl(executor: SyscallExecutorWithIpc, task_ttl: Duration) -> Self {
         let (shutdown_tx, shutdown_rx) = oneshot::channel();
         let shutdown_initiated = Arc::new(AtomicBool::new(false));
 
@@ -509,7 +509,7 @@ impl AsyncTaskManager {
     /// ```no_run
     /// # use ai_os_kernel::api::execution::async_task::AsyncTaskManager;
     /// # use ai_os_kernel::syscalls::SyscallExecutor;
-    /// # async fn example(executor: SyscallExecutor) {
+    /// # async fn example(executor: SyscallExecutorWithIpc) {
     /// let manager = AsyncTaskManager::new(executor);
     /// // ... use manager ...
     /// manager.shutdown().await;

@@ -20,7 +20,7 @@ use ai_os_kernel::process::resources::{
 use ai_os_kernel::{
     init_simd, init_tracing, AsyncTaskManager, IPCManager, IoUringExecutor, IoUringManager,
     LocalFS, MemFS, MemoryManager, MmapManager, MountManager, ProcessManager, SandboxManager,
-    SchedulingPolicy as Policy, SignalManagerImpl, SyscallExecutor, ZeroCopyIpc,
+    SchedulingPolicy as Policy, SignalManagerImpl, SyscallExecutorWithIpc, ZeroCopyIpc,
 };
 use std::sync::Arc;
 
@@ -128,7 +128,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mmap_manager = MmapManager::with_vfs(Arc::new(vfs.clone()));
 
     info!("Initializing syscall executor with IPC, VFS, and mmap support...");
-    let syscall_executor = SyscallExecutor::with_ipc_direct(
+    let syscall_executor = SyscallExecutorWithIpc::with_ipc_direct(
         sandbox_manager.clone(),
         ipc_manager.pipes().clone(),
         ipc_manager.shm().clone(),

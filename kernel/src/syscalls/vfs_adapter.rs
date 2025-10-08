@@ -15,10 +15,10 @@ use std::path::Path;
 
 use crate::vfs::{FileSystem, VfsError};
 
-use super::executor::SyscallExecutor;
+use super::executor::SyscallExecutorWithIpc;
 use super::types::SyscallResult;
 
-impl SyscallExecutor {
+impl SyscallExecutorWithIpc {
     /// Read file using VFS if available, otherwise use std::fs
     /// Can block on slow storage (NFS, USB, slow disks)
     pub(super) fn vfs_read(&self, pid: Pid, path: &Path) -> SyscallResult {
@@ -42,7 +42,7 @@ impl SyscallExecutor {
         }
 
         // Try VFS first with timeout
-        if let Some(ref vfs) = self.vfs {
+        if let Some(ref vfs) = self.optional.vfs {
             let vfs_clone = vfs.clone();
             let path_clone = path.to_path_buf();
 
@@ -152,7 +152,7 @@ impl SyscallExecutor {
         let data_len = data.len();
 
         // Try VFS first with timeout
-        if let Some(ref vfs) = self.vfs {
+        if let Some(ref vfs) = self.optional.vfs {
             let vfs_clone = vfs.clone();
             let path_clone = path.to_path_buf();
             let data_clone = data.to_vec();
@@ -238,7 +238,7 @@ impl SyscallExecutor {
         }
 
         // Try VFS first with timeout
-        if let Some(ref vfs) = self.vfs {
+        if let Some(ref vfs) = self.optional.vfs {
             let vfs_clone = vfs.clone();
             let path_clone = path.to_path_buf();
 
@@ -317,7 +317,7 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let (exists, method) = if let Some(ref vfs) = self.vfs {
+        let (exists, method) = if let Some(ref vfs) = self.optional.vfs {
             (vfs.exists(path), "vfs")
         } else {
             (path.exists(), "std::fs")
@@ -349,7 +349,7 @@ impl SyscallExecutor {
         }
 
         // Try VFS first with timeout
-        if let Some(ref vfs) = self.vfs {
+        if let Some(ref vfs) = self.optional.vfs {
             let vfs_clone = vfs.clone();
             let path_clone = path.to_path_buf();
 
@@ -430,7 +430,7 @@ impl SyscallExecutor {
         }
 
         // Try VFS first with timeout
-        if let Some(ref vfs) = self.vfs {
+        if let Some(ref vfs) = self.optional.vfs {
             let vfs_clone = vfs.clone();
             let path_clone = path.to_path_buf();
 
@@ -511,7 +511,7 @@ impl SyscallExecutor {
         }
 
         // Try VFS first with timeout
-        if let Some(ref vfs) = self.vfs {
+        if let Some(ref vfs) = self.optional.vfs {
             let vfs_clone = vfs.clone();
             let path_clone = path.to_path_buf();
 

@@ -4,18 +4,18 @@
  */
 
 use crate::core::types::Pid;
-use crate::syscalls::executor::SyscallExecutor;
+use crate::syscalls::executor::SyscallExecutorWithIpc;
 use crate::syscalls::handler::SyscallHandler;
 use crate::syscalls::types::{Syscall, SyscallResult};
 
 /// Handler for IPC syscalls
 pub struct IpcHandler {
-    executor: SyscallExecutor,
+    executor: SyscallExecutorWithIpc,
 }
 
 impl IpcHandler {
     #[inline]
-    pub fn new(executor: SyscallExecutor) -> Self {
+    pub fn new(executor: SyscallExecutorWithIpc) -> Self {
         Self { executor }
     }
 }

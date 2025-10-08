@@ -135,7 +135,7 @@ pub use signals::{
 pub use syscalls::{
     FileDescriptorSyscalls, FileSystemSyscalls, IpcSyscalls, JitManager, JitStats, MemorySyscalls,
     NetworkSyscalls, ProcessSyscalls, SchedulerSyscalls, SignalSyscalls, Syscall, SyscallError,
-    SyscallExecutor, SyscallExecutorTrait, SyscallPattern, SyscallResult, SystemInfoSyscalls,
+    SyscallExecutorWithIpc, SyscallExecutorTrait, SyscallPattern, SyscallResult, SystemInfoSyscalls,
     TimeSyscalls,
 };
 

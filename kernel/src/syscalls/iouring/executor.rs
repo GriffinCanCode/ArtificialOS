@@ -6,18 +6,18 @@
 use super::completion::SyscallCompletionStatus;
 use super::ring::SyscallCompletionRing;
 use super::submission::SyscallOpType;
-use crate::syscalls::SyscallExecutor;
+use crate::syscalls::SyscallExecutorWithIpc;
 use std::sync::Arc;
 use tracing::{debug, error};
 
 /// Executor for io_uring-style syscall operations
 pub struct IoUringExecutor {
-    syscall_executor: SyscallExecutor,
+    syscall_executor: SyscallExecutorWithIpc,
 }
 
 impl IoUringExecutor {
     /// Create a new executor
-    pub fn new(syscall_executor: SyscallExecutor) -> Self {
+    pub fn new(syscall_executor: SyscallExecutorWithIpc) -> Self {
         Self { syscall_executor }
     }
 

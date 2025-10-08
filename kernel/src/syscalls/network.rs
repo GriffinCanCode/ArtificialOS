@@ -18,7 +18,7 @@ use std::net::{TcpListener, TcpStream, UdpSocket};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 
-use super::executor::SyscallExecutor;
+use super::executor::SyscallExecutorWithIpc;
 use super::types::SyscallResult;
 
 /// Unified socket abstraction - eliminates need for separate collections per type
@@ -220,7 +220,7 @@ impl Clone for SocketManager {
     }
 }
 
-impl SyscallExecutor {
+impl SyscallExecutorWithIpc {
     pub(super) fn socket(
         &self,
         pid: Pid,

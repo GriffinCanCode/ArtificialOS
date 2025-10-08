@@ -11,10 +11,10 @@ use crate::signals::{
 };
 use log::{error, info};
 
-use super::executor::SyscallExecutor;
+use super::executor::SyscallExecutorWithIpc;
 use super::types::SyscallResult;
 
-impl SyscallExecutor {
+impl SyscallExecutorWithIpc {
     /// Send signal to a process
     pub(super) fn send_signal(&self, pid: Pid, target_pid: Pid, signal: u32) -> SyscallResult {
         // Check permission using centralized manager
@@ -26,7 +26,7 @@ impl SyscallExecutor {
         }
 
         // Get signal manager
-        let signal_manager = match &self.signal_manager {
+        let signal_manager = match &self.optional.signal_manager {
             Some(mgr) => mgr,
             None => {
                 error!("Signal manager not available");
@@ -66,7 +66,7 @@ impl SyscallExecutor {
         signal: u32,
         handler_id: u64,
     ) -> SyscallResult {
-        let signal_manager = match &self.signal_manager {
+        let signal_manager = match &self.optional.signal_manager {
             Some(mgr) => mgr,
             None => return SyscallResult::error("Signal manager not available"),
         };
@@ -90,7 +90,7 @@ impl SyscallExecutor {
 
     /// Block signal
     pub(super) fn block_signal(&self, pid: Pid, signal: u32) -> SyscallResult {
-        let signal_manager = match &self.signal_manager {
+        let signal_manager = match &self.optional.signal_manager {
             Some(mgr) => mgr,
             None => return SyscallResult::error("Signal manager not available"),
         };
@@ -111,7 +111,7 @@ impl SyscallExecutor {
 
     /// Unblock signal
     pub(super) fn unblock_signal(&self, pid: Pid, signal: u32) -> SyscallResult {
-        let signal_manager = match &self.signal_manager {
+        let signal_manager = match &self.optional.signal_manager {
             Some(mgr) => mgr,
             None => return SyscallResult::error("Signal manager not available"),
         };
@@ -132,7 +132,7 @@ impl SyscallExecutor {
 
     /// Get pending signals
     pub(super) fn get_pending_signals(&self, pid: Pid) -> SyscallResult {
-        let signal_manager = match &self.signal_manager {
+        let signal_manager = match &self.optional.signal_manager {
             Some(mgr) => mgr,
             None => return SyscallResult::error("Signal manager not available"),
         };
@@ -151,7 +151,7 @@ impl SyscallExecutor {
 
     /// Get signal statistics
     pub(super) fn get_signal_stats(&self, _pid: Pid) -> SyscallResult {
-        let signal_manager = match &self.signal_manager {
+        let signal_manager = match &self.optional.signal_manager {
             Some(mgr) => mgr,
             None => return SyscallResult::error("Signal manager not available"),
         };
@@ -175,7 +175,7 @@ impl SyscallExecutor {
         signals: &[u32],
         _timeout_ms: Option<u64>,
     ) -> SyscallResult {
-        let signal_manager = match &self.signal_manager {
+        let signal_manager = match &self.optional.signal_manager {
             Some(mgr) => mgr,
             None => return SyscallResult::error("Signal manager not available"),
         };
@@ -203,7 +203,7 @@ impl SyscallExecutor {
 
     /// Get signal state
     pub(super) fn get_signal_state(&self, pid: Pid, target_pid: Option<Pid>) -> SyscallResult {
-        let signal_manager = match &self.signal_manager {
+        let signal_manager = match &self.optional.signal_manager {
             Some(mgr) => mgr,
             None => return SyscallResult::error("Signal manager not available"),
         };

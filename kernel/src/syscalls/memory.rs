@@ -12,10 +12,10 @@ use log::{error, info, warn};
 
 use crate::memory::types::ProcessMemoryStats;
 
-use super::executor::SyscallExecutor;
+use super::executor::SyscallExecutorWithIpc;
 use super::types::SyscallResult;
 
-impl SyscallExecutor {
+impl SyscallExecutorWithIpc {
     pub(super) fn get_memory_stats(&self, pid: Pid) -> SyscallResult {
         // NOTE: SyscallGuard not needed here - executor already provides comprehensive
         // syscall tracing via span_syscall() and collector.syscall_exit()
@@ -34,7 +34,7 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let memory_manager = match &self.memory_manager {
+        let memory_manager = match &self.optional.memory_manager {
             Some(mm) => mm,
             None => return SyscallResult::error("Memory manager not available"),
         };
@@ -62,7 +62,7 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let memory_manager = match &self.memory_manager {
+        let memory_manager = match &self.optional.memory_manager {
             Some(mm) => mm,
             None => return SyscallResult::error("Memory manager not available"),
         };
@@ -104,7 +104,7 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let memory_manager = match &self.memory_manager {
+        let memory_manager = match &self.optional.memory_manager {
             Some(mm) => mm,
             None => return SyscallResult::error("Memory manager not available"),
         };

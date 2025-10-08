@@ -6,11 +6,11 @@
 use crate::core::types::Pid;
 use crate::core::{bincode, json};
 use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
-use crate::syscalls::executor::SyscallExecutor;
+use crate::syscalls::executor::SyscallExecutorWithIpc;
 use crate::syscalls::types::SyscallResult;
 use log::{error, info};
 
-impl SyscallExecutor {
+impl SyscallExecutorWithIpc {
     pub(crate) fn create_shm(&self, pid: Pid, size: usize) -> SyscallResult {
         let request =
             PermissionRequest::new(pid, Resource::IpcChannel { channel_id: 0 }, Action::Create);
@@ -20,10 +20,8 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let shm_manager = match &self.shm_manager {
-            Some(sm) => sm,
-            None => return SyscallResult::error("Shared memory manager not available"),
-        };
+        // Direct access - no Option check!
+        let shm_manager = &self.ipc.shm_manager;
 
         match shm_manager.create(size, pid) {
             Ok(segment_id) => {
@@ -60,10 +58,8 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let shm_manager = match &self.shm_manager {
-            Some(sm) => sm,
-            None => return SyscallResult::error("Shared memory manager not available"),
-        };
+        // Direct access - no Option check!
+        let shm_manager = &self.ipc.shm_manager;
 
         match shm_manager.attach(segment_id, pid, read_only) {
             Ok(_) => {
@@ -81,10 +77,8 @@ impl SyscallExecutor {
     }
 
     pub(crate) fn detach_shm(&self, pid: Pid, segment_id: u32) -> SyscallResult {
-        let shm_manager = match &self.shm_manager {
-            Some(sm) => sm,
-            None => return SyscallResult::error("Shared memory manager not available"),
-        };
+        // Direct access - no Option check!
+        let shm_manager = &self.ipc.shm_manager;
 
         match shm_manager.detach(segment_id, pid) {
             Ok(_) => {
@@ -118,10 +112,8 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let shm_manager = match &self.shm_manager {
-            Some(sm) => sm,
-            None => return SyscallResult::error("Shared memory manager not available"),
-        };
+        // Direct access - no Option check!
+        let shm_manager = &self.ipc.shm_manager;
 
         match shm_manager.write(segment_id, pid, offset, data) {
             Ok(_) => {
@@ -161,10 +153,8 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let shm_manager = match &self.shm_manager {
-            Some(sm) => sm,
-            None => return SyscallResult::error("Shared memory manager not available"),
-        };
+        // Direct access - no Option check!
+        let shm_manager = &self.ipc.shm_manager;
 
         match shm_manager.read(segment_id, pid, offset, size) {
             Ok(data) => {
@@ -185,10 +175,8 @@ impl SyscallExecutor {
     }
 
     pub(crate) fn destroy_shm(&self, pid: Pid, segment_id: u32) -> SyscallResult {
-        let shm_manager = match &self.shm_manager {
-            Some(sm) => sm,
-            None => return SyscallResult::error("Shared memory manager not available"),
-        };
+        // Direct access - no Option check!
+        let shm_manager = &self.ipc.shm_manager;
 
         match shm_manager.destroy(segment_id, pid) {
             Ok(_) => {
@@ -203,10 +191,8 @@ impl SyscallExecutor {
     }
 
     pub(crate) fn shm_stats(&self, pid: Pid, segment_id: u32) -> SyscallResult {
-        let shm_manager = match &self.shm_manager {
-            Some(sm) => sm,
-            None => return SyscallResult::error("Shared memory manager not available"),
-        };
+        // Direct access - no Option check!
+        let shm_manager = &self.ipc.shm_manager;
 
         match shm_manager.stats(segment_id) {
             Ok(stats) => match bincode::to_vec(&stats) {

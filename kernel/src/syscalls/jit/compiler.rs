@@ -5,7 +5,7 @@
 
 use super::types::*;
 use crate::core::types::Pid;
-use crate::syscalls::executor::SyscallExecutor;
+use crate::syscalls::executor::SyscallExecutorWithIpc;
 use crate::syscalls::types::{Syscall, SyscallResult};
 use std::sync::Arc;
 use tracing::debug;
@@ -13,12 +13,12 @@ use tracing::debug;
 /// JIT compiler that generates optimized syscall handlers
 pub struct JitCompiler {
     /// Reference to the syscall executor for calling real implementations
-    executor: Arc<SyscallExecutor>,
+    executor: Arc<SyscallExecutorWithIpc>,
 }
 
 impl JitCompiler {
     /// Create a new JIT compiler with a reference to the syscall executor
-    pub fn new(executor: Arc<SyscallExecutor>) -> Self {
+    pub fn new(executor: Arc<SyscallExecutorWithIpc>) -> Self {
         Self { executor }
     }
 

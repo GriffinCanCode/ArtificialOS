@@ -22,7 +22,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 
-use super::executor::SyscallExecutor;
+use super::executor::SyscallExecutorWithIpc;
 use super::handle::FileHandle;
 use super::types::SyscallResult;
 
@@ -184,7 +184,7 @@ impl Clone for FdManager {
     }
 }
 
-impl SyscallExecutor {
+impl SyscallExecutorWithIpc {
     pub(super) fn open(&self, pid: Pid, path: &PathBuf, flags: u32, mode: u32) -> SyscallResult {
         let span = span_operation("fd_open");
         let _guard = span.enter();
@@ -235,7 +235,7 @@ impl SyscallExecutor {
         }
 
         // Try VFS first for unified file handle
-        if let Some(ref vfs) = self.vfs {
+        if let Some(ref vfs) = self.optional.vfs {
             let vfs_flags = OpenFlags::from_posix(flags);
             let vfs_mode = OpenMode::new(mode);
 

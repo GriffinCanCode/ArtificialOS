@@ -11,7 +11,7 @@ use tracing::{info, instrument};
 use crate::monitoring::span_grpc;
 use crate::process::ProcessManagerImpl as ProcessManager;
 use crate::security::SandboxManager;
-use crate::syscalls::SyscallExecutor;
+use crate::syscalls::SyscallExecutorWithIpc;
 
 use crate::api::conversions::{proto_to_syscall_full, syscall_result_to_proto};
 use crate::api::execution::{
@@ -33,7 +33,7 @@ use kernel_proto::*;
 
 /// gRPC service implementation
 pub struct KernelServiceImpl {
-    syscall_executor: SyscallExecutor,
+    syscall_executor: SyscallExecutorWithIpc,
     process_manager: ProcessManager,
     sandbox_manager: SandboxManager,
     async_manager: AsyncTaskManager,
@@ -44,7 +44,7 @@ pub struct KernelServiceImpl {
 
 impl KernelServiceImpl {
     pub fn new(
-        syscall_executor: SyscallExecutor,
+        syscall_executor: SyscallExecutorWithIpc,
         process_manager: ProcessManager,
         sandbox_manager: SandboxManager,
     ) -> Self {
@@ -237,7 +237,7 @@ impl KernelService for KernelServiceImpl {
 /// gRPC Server wrapper that implements ServerLifecycle trait
 pub struct GrpcServer {
     config: ServerConfig,
-    syscall_executor: SyscallExecutor,
+    syscall_executor: SyscallExecutorWithIpc,
     process_manager: ProcessManager,
     sandbox_manager: SandboxManager,
     running: Arc<std::sync::atomic::AtomicBool>,
@@ -246,7 +246,7 @@ pub struct GrpcServer {
 impl GrpcServer {
     pub fn new(
         config: ServerConfig,
-        syscall_executor: SyscallExecutor,
+        syscall_executor: SyscallExecutorWithIpc,
         process_manager: ProcessManager,
         sandbox_manager: SandboxManager,
     ) -> Self {
@@ -324,7 +324,7 @@ impl ServerLifecycle for GrpcServer {
 /// Start the gRPC server (legacy function for backward compatibility)
 pub async fn start_grpc_server(
     addr: std::net::SocketAddr,
-    syscall_executor: SyscallExecutor,
+    syscall_executor: SyscallExecutorWithIpc,
     process_manager: ProcessManager,
     sandbox_manager: SandboxManager,
 ) -> Result<(), Box<dyn std::error::Error>> {

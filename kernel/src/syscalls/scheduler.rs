@@ -9,10 +9,10 @@ use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource}
 use crate::scheduler::{PriorityControl, SchedulerControl, SchedulerPolicy, SchedulerStats};
 use log::{error, info};
 
-use super::executor::SyscallExecutor;
+use super::executor::SyscallExecutorWithIpc;
 use super::types::SyscallResult;
 
-impl SyscallExecutor {
+impl SyscallExecutorWithIpc {
     /// Schedule next process (internal implementation)
     pub(super) fn schedule_next(&self, pid: Pid) -> SyscallResult {
         let request = PermissionRequest::new(
@@ -30,7 +30,7 @@ impl SyscallExecutor {
 
         info!("Schedule next syscall requested by PID {}", pid);
 
-        let process_manager = match &self.process_manager {
+        let process_manager = match &self.optional.process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };
@@ -52,7 +52,7 @@ impl SyscallExecutor {
     pub(super) fn yield_process(&self, pid: Pid) -> SyscallResult {
         info!("Process {} yielding CPU", pid);
 
-        let process_manager = match &self.process_manager {
+        let process_manager = match &self.optional.process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };
@@ -87,7 +87,7 @@ impl SyscallExecutor {
 
         info!("Get current scheduled process requested by PID {}", pid);
 
-        let process_manager = match &self.process_manager {
+        let process_manager = match &self.optional.process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };
@@ -134,7 +134,7 @@ impl SyscallExecutor {
 
         info!("PID {} changing scheduling policy to {:?}", pid, policy);
 
-        let process_manager = match &self.process_manager {
+        let process_manager = match &self.optional.process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };
@@ -163,7 +163,7 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let process_manager = match &self.process_manager {
+        let process_manager = match &self.optional.process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };
@@ -211,7 +211,7 @@ impl SyscallExecutor {
             pid, quantum_micros
         );
 
-        let process_manager = match &self.process_manager {
+        let process_manager = match &self.optional.process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };
@@ -243,7 +243,7 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let process_manager = match &self.process_manager {
+        let process_manager = match &self.optional.process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };
@@ -278,7 +278,7 @@ impl SyscallExecutor {
 
         info!("PID {} requested scheduler statistics", pid);
 
-        let process_manager = match &self.process_manager {
+        let process_manager = match &self.optional.process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };
@@ -305,7 +305,7 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let process_manager = match &self.process_manager {
+        let process_manager = match &self.optional.process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };
@@ -346,7 +346,7 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let process_manager = match &self.process_manager {
+        let process_manager = match &self.optional.process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };
@@ -378,7 +378,7 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let process_manager = match &self.process_manager {
+        let process_manager = match &self.optional.process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };
@@ -412,7 +412,7 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let process_manager = match &self.process_manager {
+        let process_manager = match &self.optional.process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };
@@ -438,7 +438,7 @@ impl SyscallExecutor {
 }
 
 // Implement trait interfaces by delegating to internal methods
-impl SchedulerControl for SyscallExecutor {
+impl SchedulerControl for SyscallExecutorWithIpc {
     fn schedule_next(&self, pid: Pid) -> SyscallResult {
         self.schedule_next(pid)
     }
@@ -452,7 +452,7 @@ impl SchedulerControl for SyscallExecutor {
     }
 }
 
-impl SchedulerPolicy for SyscallExecutor {
+impl SchedulerPolicy for SyscallExecutorWithIpc {
     fn set_scheduling_policy(&self, pid: Pid, policy: &str) -> SyscallResult {
         self.set_scheduling_policy(pid, policy)
     }
@@ -470,7 +470,7 @@ impl SchedulerPolicy for SyscallExecutor {
     }
 }
 
-impl SchedulerStats for SyscallExecutor {
+impl SchedulerStats for SyscallExecutorWithIpc {
     fn get_scheduler_stats(&self, pid: Pid) -> SyscallResult {
         self.get_scheduler_stats(pid)
     }
@@ -484,7 +484,7 @@ impl SchedulerStats for SyscallExecutor {
     }
 }
 
-impl PriorityControl for SyscallExecutor {
+impl PriorityControl for SyscallExecutorWithIpc {
     fn boost_priority(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
         self.boost_priority(pid, target_pid)
     }

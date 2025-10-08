@@ -13,10 +13,10 @@ use std::process::Command;
 
 use crate::security::{ResourceLimitProvider, SandboxProvider};
 
-use super::executor::SyscallExecutor;
+use super::executor::SyscallExecutorWithIpc;
 use super::types::{ProcessOutput, SyscallResult};
 
-impl SyscallExecutor {
+impl SyscallExecutorWithIpc {
     pub(super) fn spawn_process(&self, pid: Pid, command: &str, args: &[String]) -> SyscallResult {
         let span = span_operation("process_spawn");
         let _guard = span.enter();
@@ -131,7 +131,7 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let process_manager = match &self.process_manager {
+        let process_manager = match &self.optional.process_manager {
             Some(pm) => pm,
             None => {
                 span.record_error("Process manager not available");
@@ -178,7 +178,7 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let process_manager = match &self.process_manager {
+        let process_manager = match &self.optional.process_manager {
             Some(pm) => pm,
             None => {
                 span.record_error("Process manager not available");
@@ -216,7 +216,7 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let process_manager = match &self.process_manager {
+        let process_manager = match &self.optional.process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };
@@ -242,7 +242,7 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let process_manager = match &self.process_manager {
+        let process_manager = match &self.optional.process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };
@@ -271,7 +271,7 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let process_manager = match &self.process_manager {
+        let process_manager = match &self.optional.process_manager {
             Some(pm) => pm,
             None => return SyscallResult::error("Process manager not available"),
         };
@@ -311,7 +311,7 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let process_manager = match &self.process_manager {
+        let process_manager = match &self.optional.process_manager {
             Some(pm) => pm,
             None => {
                 span.record_error("Process manager not available");

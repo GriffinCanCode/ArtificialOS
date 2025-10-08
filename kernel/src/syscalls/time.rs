@@ -10,10 +10,10 @@ use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource}
 use log::info;
 use std::time::Duration;
 
-use super::executor::{SyscallExecutor, SYSTEM_START};
+use super::executor::{SyscallExecutorWithIpc, SYSTEM_START};
 use super::types::SyscallResult;
 
-impl SyscallExecutor {
+impl SyscallExecutorWithIpc {
     pub(super) fn sleep(&self, pid: Pid, duration_ms: u64) -> SyscallResult {
         // Check permission using centralized manager
         let request = PermissionRequest::new(

@@ -1,6 +1,6 @@
 /*!
- * Syscall Executor
- * Central executor for all syscalls with sandboxing
+ * Syscall Executor with TypeState Pattern
+ * Eliminates runtime Option checks through compile-time state enforcement
  */
 
 use crate::core::types::Pid;
@@ -18,86 +18,104 @@ use super::types::{Syscall, SyscallResult};
 /// Global system start time for uptime tracking
 pub static SYSTEM_START: OnceLock<Instant> = OnceLock::new();
 
-/// System call executor
-///
-/// # Performance
-/// - Cache-line aligned for optimal performance in hot syscall paths
-#[repr(C, align(64))]
+// ============================================================================
+// TypeState Pattern - Simplified Design
+// ============================================================================
+// The TypeState pattern is implemented by having separate types:
+// - Basic executors can be created without IPC (not exposed publicly)
+// - SyscallExecutorWithIpc is the full-featured public executor
+
+// ============================================================================
+// Manager Groupings (Avoid Option anti-pattern)
+// ============================================================================
+
+/// IPC managers bundled together (always present when IPC is enabled)
 #[derive(Clone)]
-pub struct SyscallExecutor {
-    pub(super) sandbox_manager: SandboxManager,
-    pub(super) permission_manager: PermissionManager,
-    pub(super) pipe_manager: Option<crate::ipc::PipeManager>,
-    pub(super) shm_manager: Option<crate::ipc::ShmManager>,
-    pub(super) queue_manager: Option<crate::ipc::QueueManager>,
-    pub(super) mmap_manager: Option<crate::ipc::MmapManager>,
+pub struct IpcManagers {
+    pub(super) pipe_manager: crate::ipc::PipeManager,
+    pub(super) shm_manager: crate::ipc::ShmManager,
+    pub(super) queue_manager: Option<crate::ipc::QueueManager>, // Truly optional feature
+    pub(super) mmap_manager: Option<crate::ipc::MmapManager>,   // Truly optional feature
+}
+
+/// Optional feature managers (legitimately optional)
+#[derive(Clone)]
+pub struct OptionalManagers {
     pub(super) process_manager: Option<crate::process::ProcessManagerImpl>,
     pub(super) memory_manager: Option<crate::memory::MemoryManager>,
     pub(super) signal_manager: Option<crate::signals::SignalManagerImpl>,
     pub(super) vfs: Option<crate::vfs::MountManager>,
     pub(super) metrics: Option<Arc<MetricsCollector>>,
     pub(super) collector: Option<Arc<Collector>>,
-    pub(super) fd_manager: super::fd::FdManager,
-    pub(super) socket_manager: super::network::SocketManager,
-    handler_registry: SyscallHandlerRegistry,
-    pub(super) timeout_executor: super::timeout_executor::TimeoutExecutor,
-    pub(super) timeout_config: super::timeout_config::SyscallTimeoutConfig,
 }
 
-impl SyscallExecutor {
-    pub fn new(sandbox_manager: SandboxManager) -> Self {
-        // Initialize system start time
-        SYSTEM_START.get_or_init(Instant::now);
-
-        let permission_manager = PermissionManager::new(sandbox_manager.clone());
-        info!("Syscall executor initialized with centralized permissions");
-
-        let mut executor = Self {
-            sandbox_manager,
-            permission_manager,
-            pipe_manager: None,
-            shm_manager: None,
-            queue_manager: None,
-            mmap_manager: None,
+impl Default for OptionalManagers {
+    fn default() -> Self {
+        Self {
             process_manager: None,
             memory_manager: None,
             signal_manager: None,
             vfs: None,
             metrics: None,
             collector: None,
-            fd_manager: super::fd::FdManager::new(),
-            socket_manager: super::network::SocketManager::new(),
-            handler_registry: SyscallHandlerRegistry::new(),
-            timeout_executor: super::timeout_executor::TimeoutExecutor::disabled(),
-            timeout_config: super::timeout_config::SyscallTimeoutConfig::new(),
-        };
-
-        executor.handler_registry = Self::build_handler_registry(&executor);
-        executor
-    }
-
-    pub fn with_metrics(mut self, metrics: Arc<MetricsCollector>) -> Self {
-        self.metrics = Some(metrics);
-        self
-    }
-
-    pub fn with_collector(mut self, collector: Arc<Collector>) -> Self {
-        self.collector = Some(collector.clone());
-        // Enable timeout executor with observability
-        if self.timeout_config.enabled {
-            use crate::monitoring::TimeoutObserver;
-            let observer = Arc::new(TimeoutObserver::new(collector));
-            self.timeout_executor = super::timeout_executor::TimeoutExecutor::new(Some(observer));
         }
-        self
     }
+}
 
-    /// Get reference to socket manager (for resource cleanup orchestrator)
-    pub fn socket_manager(&self) -> &super::network::SocketManager {
-        &self.socket_manager
+
+// ============================================================================
+// Specialized Executor with IPC
+// ============================================================================
+
+/// Executor with IPC managers (no Option checks needed!)
+#[repr(C, align(64))]
+pub struct SyscallExecutorWithIpc {
+    // Core managers (always present)
+    pub(super) sandbox_manager: SandboxManager,
+    pub(super) permission_manager: PermissionManager,
+    pub(super) fd_manager: super::fd::FdManager,
+    pub(super) socket_manager: super::network::SocketManager,
+    pub(super) timeout_executor: super::timeout_executor::TimeoutExecutor,
+    pub(super) timeout_config: super::timeout_config::SyscallTimeoutConfig,
+
+    // Handler registry
+    handler_registry: SyscallHandlerRegistry,
+
+    // IPC managers (GUARANTEED present, no Option!)
+    pub(super) ipc: IpcManagers,
+
+    // Optional managers
+    pub(super) optional: OptionalManagers,
+}
+
+// ============================================================================
+// Clone implementation
+// ============================================================================
+
+impl Clone for SyscallExecutorWithIpc {
+    fn clone(&self) -> Self {
+        Self {
+            sandbox_manager: self.sandbox_manager.clone(),
+            permission_manager: self.permission_manager.clone(),
+            fd_manager: self.fd_manager.clone(),
+            socket_manager: self.socket_manager.clone(),
+            timeout_executor: self.timeout_executor.clone(),
+            timeout_config: self.timeout_config.clone(),
+            handler_registry: self.handler_registry.clone(),
+            ipc: self.ipc.clone(),
+            optional: self.optional.clone(),
+        }
     }
+}
 
-    pub fn with_ipc(
+
+// ============================================================================
+// IPC-Enabled Executor - Construction and Builders
+// ============================================================================
+
+impl SyscallExecutorWithIpc {
+    /// Create executor directly with IPC support (alternative constructor)
+    pub fn with_ipc_direct(
         sandbox_manager: SandboxManager,
         pipe_manager: crate::ipc::PipeManager,
         shm_manager: crate::ipc::ShmManager,
@@ -106,37 +124,109 @@ impl SyscallExecutor {
         SYSTEM_START.get_or_init(Instant::now);
 
         let permission_manager = PermissionManager::new(sandbox_manager.clone());
-        info!("Syscall executor initialized with IPC support and centralized permissions");
+        info!("Syscall executor initialized with IPC support");
 
-        let mut executor = Self {
+        let executor = Self {
             sandbox_manager,
             permission_manager,
-            pipe_manager: Some(pipe_manager),
-            shm_manager: Some(shm_manager),
-            queue_manager: None,
-            mmap_manager: None,
-            process_manager: None,
-            memory_manager: None,
-            signal_manager: None,
-            vfs: None,
-            metrics: None,
-            collector: None,
             fd_manager: super::fd::FdManager::new(),
             socket_manager: super::network::SocketManager::new(),
-            handler_registry: SyscallHandlerRegistry::new(),
             timeout_executor: super::timeout_executor::TimeoutExecutor::disabled(),
             timeout_config: super::timeout_config::SyscallTimeoutConfig::new(),
+            handler_registry: SyscallHandlerRegistry::new(),
+            ipc: IpcManagers {
+                pipe_manager,
+                shm_manager,
+                queue_manager: None,
+                mmap_manager: None,
+            },
+            optional: OptionalManagers::default(),
         };
 
-        executor.handler_registry = Self::build_handler_registry(&executor);
-        info!("Generic timeout executor ready for all blocking operations");
         executor
     }
 
+    /// Create executor with full features (legacy compatibility)
+    pub fn with_full_features(
+        sandbox_manager: SandboxManager,
+        pipe_manager: crate::ipc::PipeManager,
+        shm_manager: crate::ipc::ShmManager,
+        process_manager: crate::process::ProcessManagerImpl,
+        memory_manager: crate::memory::MemoryManager,
+    ) -> Self {
+        SYSTEM_START.get_or_init(Instant::now);
+
+        let permission_manager = PermissionManager::new(sandbox_manager.clone());
+        info!("Syscall executor initialized with full features");
+
+        Self {
+            sandbox_manager,
+            permission_manager,
+            fd_manager: super::fd::FdManager::new(),
+            socket_manager: super::network::SocketManager::new(),
+            timeout_executor: super::timeout_executor::TimeoutExecutor::disabled(),
+            timeout_config: super::timeout_config::SyscallTimeoutConfig::default(),
+            handler_registry: SyscallHandlerRegistry::new(),
+            ipc: IpcManagers {
+                pipe_manager,
+                shm_manager,
+                queue_manager: None,
+                mmap_manager: None,
+            },
+            optional: OptionalManagers {
+                process_manager: Some(process_manager),
+                memory_manager: Some(memory_manager),
+                signal_manager: None,
+                vfs: None,
+                metrics: None,
+                collector: None,
+            },
+        }
+    }
+
+    /// Add queue manager support
     pub fn with_queues(mut self, queue_manager: crate::ipc::QueueManager) -> Self {
-        self.queue_manager = Some(queue_manager);
-        info!("Queue support enabled for syscall executor (using generic timeout executor)");
-        self.handler_registry = Self::build_handler_registry(&self);
+        self.ipc.queue_manager = Some(queue_manager);
+        info!("Queue support enabled");
+        self
+    }
+
+    /// Add mmap manager support
+    pub fn with_mmap(mut self, mmap_manager: crate::ipc::MmapManager) -> Self {
+        self.ipc.mmap_manager = Some(mmap_manager);
+        info!("Mmap support enabled");
+        self
+    }
+
+    /// Set VFS mount manager
+    pub fn with_vfs(mut self, vfs: crate::vfs::MountManager) -> Self {
+        self.optional.vfs = Some(vfs);
+        info!("VFS enabled");
+        self
+    }
+
+    /// Add signal manager support
+    pub fn with_signals(mut self, signal_manager: crate::signals::SignalManagerImpl) -> Self {
+        self.optional.signal_manager = Some(signal_manager);
+        info!("Signal support enabled");
+        self
+    }
+
+    /// Add metrics collector
+    pub fn with_metrics(mut self, metrics: Arc<MetricsCollector>) -> Self {
+        self.optional.metrics = Some(metrics);
+        self
+    }
+
+    /// Add observability collector
+    pub fn with_collector(mut self, collector: Arc<Collector>) -> Self {
+        self.optional.collector = Some(collector.clone());
+        // Enable timeout executor with observability
+        if self.timeout_config.enabled {
+            use crate::monitoring::TimeoutObserver;
+            let observer = Arc::new(TimeoutObserver::new(collector));
+            self.timeout_executor = super::timeout_executor::TimeoutExecutor::new(Some(observer));
+        }
         self
     }
 
@@ -147,69 +237,10 @@ impl SyscallExecutor {
         self
     }
 
-    /// Get timeout configuration
-    pub fn timeout_config(&self) -> &super::timeout_config::SyscallTimeoutConfig {
-        &self.timeout_config
-    }
-
-    /// Add signal manager support
-    pub fn with_signals(mut self, signal_manager: crate::signals::SignalManagerImpl) -> Self {
-        self.signal_manager = Some(signal_manager);
-        info!("Signal support enabled for syscall executor");
+    /// Finalize executor with handler registry
+    pub fn build(mut self) -> Self {
         self.handler_registry = Self::build_handler_registry(&self);
-        self
-    }
-
-    pub fn with_full_features(
-        sandbox_manager: SandboxManager,
-        pipe_manager: crate::ipc::PipeManager,
-        shm_manager: crate::ipc::ShmManager,
-        process_manager: crate::process::ProcessManagerImpl,
-        memory_manager: crate::memory::MemoryManager,
-    ) -> Self {
-        // Initialize system start time
-        SYSTEM_START.get_or_init(Instant::now);
-
-        let permission_manager = PermissionManager::new(sandbox_manager.clone());
-        info!("Syscall executor initialized with full features and centralized permissions");
-
-        let mut executor = Self {
-            sandbox_manager,
-            permission_manager,
-            pipe_manager: Some(pipe_manager),
-            shm_manager: Some(shm_manager),
-            queue_manager: None,
-            mmap_manager: None,
-            process_manager: Some(process_manager),
-            memory_manager: Some(memory_manager),
-            signal_manager: None,
-            vfs: None,
-            metrics: None,
-            collector: None,
-            fd_manager: super::fd::FdManager::new(),
-            socket_manager: super::network::SocketManager::new(),
-            handler_registry: SyscallHandlerRegistry::new(),
-            timeout_executor: super::timeout_executor::TimeoutExecutor::disabled(),
-            timeout_config: super::timeout_config::SyscallTimeoutConfig::default(),
-        };
-
-        executor.handler_registry = Self::build_handler_registry(&executor);
-        executor
-    }
-
-    /// Set VFS mount manager
-    pub fn with_vfs(mut self, vfs: crate::vfs::MountManager) -> Self {
-        self.vfs = Some(vfs);
-        info!("VFS enabled for syscall executor");
-        self.handler_registry = Self::build_handler_registry(&self);
-        self
-    }
-
-    /// Add mmap manager support (requires VFS)
-    pub fn with_mmap(mut self, mmap_manager: crate::ipc::MmapManager) -> Self {
-        self.mmap_manager = Some(mmap_manager);
-        info!("Mmap support enabled for syscall executor");
-        self.handler_registry = Self::build_handler_registry(&self);
+        info!("Syscall executor built with handler registry");
         self
     }
 
@@ -228,14 +259,29 @@ impl SyscallExecutor {
             .register(Arc::new(NetworkHandler::new(executor.clone())))
             .register(Arc::new(FileDescriptorHandler::new(executor.clone())))
     }
+}
 
-    /// Get a reference to the file descriptor manager
+// ============================================================================
+// Common Methods
+// ============================================================================
+
+impl SyscallExecutorWithIpc {
+    /// Get reference to socket manager
+    pub fn socket_manager(&self) -> &super::network::SocketManager {
+        &self.socket_manager
+    }
+
+    /// Get reference to file descriptor manager
     pub fn fd_manager(&self) -> &super::fd::FdManager {
         &self.fd_manager
     }
 
+    /// Get timeout configuration
+    pub fn timeout_config(&self) -> &super::timeout_config::SyscallTimeoutConfig {
+        &self.timeout_config
+    }
+
     /// Execute a system call with sandboxing
-    /// Uses handler registry for low cognitive complexity dispatch
     pub fn execute(&self, pid: Pid, syscall: Syscall) -> SyscallResult {
         // Create a rich structured span for this syscall
         let syscall_name = syscall.name();
@@ -265,13 +311,13 @@ impl SyscallExecutor {
             });
 
         // Emit observability event
-        if let Some(ref collector) = self.collector {
+        if let Some(ref collector) = self.optional.collector {
             let duration_us = start.elapsed().as_micros() as u64;
             let success = matches!(result, SyscallResult::Success { .. });
             collector.syscall_exit(pid, syscall_name.to_string(), duration_us, success);
         }
 
-        // Record result in span for structured tracing
+        // Record result in span
         match &result {
             SyscallResult::Success { data } => {
                 span.record_result(true);

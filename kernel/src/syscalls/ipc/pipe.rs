@@ -6,12 +6,12 @@
 use crate::core::types::Pid;
 use crate::core::{bincode, json};
 use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
-use crate::syscalls::executor::SyscallExecutor;
+use crate::syscalls::executor::SyscallExecutorWithIpc;
 use crate::syscalls::types::SyscallResult;
 use crate::syscalls::TimeoutError;
 use log::{error, info};
 
-impl SyscallExecutor {
+impl SyscallExecutorWithIpc {
     pub(crate) fn create_pipe(
         &self,
         pid: Pid,
@@ -31,10 +31,8 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let pipe_manager = match &self.pipe_manager {
-            Some(pm) => pm,
-            None => return SyscallResult::error("Pipe manager not available"),
-        };
+        // Direct access - no Option check! Guaranteed by typestate
+        let pipe_manager = &self.ipc.pipe_manager;
 
         match pipe_manager.create(reader_pid, writer_pid, capacity) {
             Ok(pipe_id) => {
@@ -69,10 +67,8 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let pipe_manager = match &self.pipe_manager {
-            Some(pm) => pm,
-            None => return SyscallResult::error("Pipe manager not available"),
-        };
+        // Direct access - no Option check!
+        let pipe_manager = &self.ipc.pipe_manager;
 
         // Use generic timeout executor for all blocking operations
         use crate::ipc::pipe::PipeError;
@@ -119,10 +115,8 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let pipe_manager = match &self.pipe_manager {
-            Some(pm) => pm,
-            None => return SyscallResult::error("Pipe manager not available"),
-        };
+        // Direct access - no Option check!
+        let pipe_manager = &self.ipc.pipe_manager;
 
         // Use generic timeout executor for all blocking operations
         use crate::ipc::pipe::PipeError;
@@ -150,10 +144,8 @@ impl SyscallExecutor {
     }
 
     pub(crate) fn close_pipe(&self, pid: Pid, pipe_id: u32) -> SyscallResult {
-        let pipe_manager = match &self.pipe_manager {
-            Some(pm) => pm,
-            None => return SyscallResult::error("Pipe manager not available"),
-        };
+        // Direct access - no Option check!
+        let pipe_manager = &self.ipc.pipe_manager;
 
         match pipe_manager.close(pipe_id, pid) {
             Ok(_) => {
@@ -168,10 +160,8 @@ impl SyscallExecutor {
     }
 
     pub(crate) fn destroy_pipe(&self, pid: Pid, pipe_id: u32) -> SyscallResult {
-        let pipe_manager = match &self.pipe_manager {
-            Some(pm) => pm,
-            None => return SyscallResult::error("Pipe manager not available"),
-        };
+        // Direct access - no Option check!
+        let pipe_manager = &self.ipc.pipe_manager;
 
         match pipe_manager.destroy(pipe_id) {
             Ok(_) => {
@@ -186,10 +176,8 @@ impl SyscallExecutor {
     }
 
     pub(crate) fn pipe_stats(&self, pid: Pid, pipe_id: u32) -> SyscallResult {
-        let pipe_manager = match &self.pipe_manager {
-            Some(pm) => pm,
-            None => return SyscallResult::error("Pipe manager not available"),
-        };
+        // Direct access - no Option check!
+        let pipe_manager = &self.ipc.pipe_manager;
 
         match pipe_manager.stats(pipe_id) {
             Ok(stats) => match bincode::to_vec(&stats) {

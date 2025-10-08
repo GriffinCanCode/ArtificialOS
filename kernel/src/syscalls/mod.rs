@@ -28,7 +28,7 @@ mod types_ext; // Syscall type extensions for tracing
 mod vfs_adapter;
 
 // Re-export public API
-pub use executor::SyscallExecutor;
+pub use executor::SyscallExecutorWithIpc;
 pub use fd::FdManager;
 pub use handler::{SyscallHandler, SyscallHandlerRegistry};
 pub use iouring::{

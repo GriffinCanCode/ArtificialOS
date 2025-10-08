@@ -12,11 +12,11 @@ use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource}
 use log::{error, info, trace, warn};
 use prost::bytes;
 
-use super::executor::SyscallExecutor;
+use super::executor::SyscallExecutorWithIpc;
 use super::types::{SyscallResult, SystemInfo};
 use super::TimeoutError;
 
-impl SyscallExecutor {
+impl SyscallExecutorWithIpc {
     pub(super) fn get_system_info(&self, pid: Pid) -> SyscallResult {
         let span = span_operation("get_system_info");
         let _guard = span.enter();

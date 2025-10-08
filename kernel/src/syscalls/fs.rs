@@ -17,10 +17,10 @@ use std::path::PathBuf;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
-use super::executor::SyscallExecutor;
+use super::executor::SyscallExecutorWithIpc;
 use super::types::SyscallResult;
 
-impl SyscallExecutor {
+impl SyscallExecutorWithIpc {
     pub(super) fn read_file(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
         self.vfs_read(pid, path)
     }

@@ -4,16 +4,16 @@
  */
 
 use crate::core::types::Pid;
-use crate::syscalls::{Syscall, SyscallExecutor, SyscallResult};
+use crate::syscalls::{Syscall, SyscallExecutorWithIpc, SyscallResult};
 use futures::future::join_all;
 
 #[derive(Clone)]
 pub struct BatchExecutor {
-    executor: SyscallExecutor,
+    executor: SyscallExecutorWithIpc,
 }
 
 impl BatchExecutor {
-    pub fn new(executor: SyscallExecutor) -> Self {
+    pub fn new(executor: SyscallExecutorWithIpc) -> Self {
         Self { executor }
     }
 
