@@ -5,7 +5,7 @@
 
 use super::file_type::FileType;
 use super::permissions::Permissions;
-use crate::core::serde::{is_default, is_zero_u64, serde_as, system_time_micros};
+use crate::core::serialization::serde::{is_default, is_zero_u64, serde_as, system_time_micros};
 use serde::{Deserialize, Serialize};
 use std::time::SystemTime;
 

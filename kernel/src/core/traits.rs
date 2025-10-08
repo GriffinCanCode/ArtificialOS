@@ -159,7 +159,7 @@ pub trait Statistics {
 pub trait BincodeSerializable: Serialize + DeserializeOwned + Send + Sync {
     /// Serialize to binary format using bincode
     fn to_bincode(&self) -> std::result::Result<Vec<u8>, String> {
-        crate::core::bincode::to_vec(self)
+        crate::core::serialization::bincode::to_vec(self)
             .map_err(|e| format!("Bincode serialization failed: {}", e))
     }
 
@@ -168,13 +168,13 @@ pub trait BincodeSerializable: Serialize + DeserializeOwned + Send + Sync {
     where
         Self: Sized,
     {
-        crate::core::bincode::from_slice(bytes)
+        crate::core::serialization::bincode::from_slice(bytes)
             .map_err(|e| format!("Bincode deserialization failed: {}", e))
     }
 
     /// Get the serialized size without actually serializing
     fn bincode_size(&self) -> std::result::Result<u64, String> {
-        crate::core::bincode::serialized_size(self)
+        crate::core::serialization::bincode::serialized_size(self)
             .map_err(|e| format!("Failed to calculate bincode size: {}", e))
     }
 }

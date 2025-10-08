@@ -4,7 +4,7 @@
  */
 
 use crate::core::types::Pid;
-use crate::core::{bincode, json};
+use crate::core::serialization::{bincode, json};
 use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
 use crate::syscalls::executor::SyscallExecutorWithIpc;
 use crate::syscalls::types::SyscallResult;

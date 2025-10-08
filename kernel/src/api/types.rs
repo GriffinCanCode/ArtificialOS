@@ -3,7 +3,7 @@
  * Common types for kernel API layer
  */
 
-use crate::core::serde::{is_zero_u64, is_zero_usize};
+use crate::core::serialization::serde::{is_zero_u64, is_zero_usize};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 

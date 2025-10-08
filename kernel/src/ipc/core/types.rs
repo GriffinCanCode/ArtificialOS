@@ -3,7 +3,7 @@
  * Common types for inter-process communication
  */
 
-use crate::core::serde::{is_zero_u64, is_zero_usize};
+use crate::core::serialization::serde::{is_zero_u64, is_zero_usize};
 use crate::core::types::{Pid, Timestamp};
 use miette::Diagnostic;
 use serde::{Deserialize, Serialize};
@@ -158,14 +158,14 @@ impl Message {
     /// Use this for kernel-to-kernel IPC where the data doesn't need to be human-readable.
     #[must_use = "serialization can fail and must be handled"]
     pub fn to_bincode_bytes(&self) -> Result<Vec<u8>, String> {
-        crate::core::bincode::to_vec(self)
+        crate::core::serialization::bincode::to_vec(self)
             .map_err(|e| format!("Failed to serialize message with bincode: {}", e))
     }
 
     /// Deserialize from bincode format
     #[must_use = "deserialization can fail and must be handled"]
     pub fn from_bincode_bytes(bytes: &[u8]) -> Result<Self, String> {
-        crate::core::bincode::from_slice(bytes)
+        crate::core::serialization::bincode::from_slice(bytes)
             .map_err(|e| format!("Failed to deserialize message with bincode: {}", e))
     }
 }

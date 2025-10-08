@@ -5,7 +5,7 @@
 
 use super::super::types::{QueueId, QueueType};
 use crate::core::limits;
-use crate::core::serde::{is_false, is_zero_usize, system_time_micros};
+use crate::core::serialization::serde::{is_false, is_zero_usize, system_time_micros};
 use crate::core::types::{Pid, Size};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
@@ -33,7 +33,7 @@ pub struct QueueMessage {
     /// Length of data stored at data_address
     #[serde(skip_serializing_if = "is_zero_usize")]
     pub data_length: usize,
-    #[serde(skip_serializing_if = "crate::core::serde::is_default")]
+    #[serde(skip_serializing_if = "crate::core::serialization::serde::is_default")]
     pub priority: u8,
     #[serde(with = "system_time_micros")]
     pub timestamp: SystemTime,
@@ -79,13 +79,13 @@ impl QueueMessage {
     /// Note: data_address is skipped in JSON serialization but included in bincode
     /// since it's needed for internal operations.
     pub fn to_bincode_bytes(&self) -> Result<Vec<u8>, String> {
-        crate::core::bincode::to_vec(self)
+        crate::core::serialization::bincode::to_vec(self)
             .map_err(|e| format!("Failed to serialize queue message with bincode: {}", e))
     }
 
     /// Deserialize metadata from bincode format
     pub fn from_bincode_bytes(bytes: &[u8]) -> Result<Self, String> {
-        crate::core::bincode::from_slice(bytes)
+        crate::core::serialization::bincode::from_slice(bytes)
             .map_err(|e| format!("Failed to deserialize queue message with bincode: {}", e))
     }
 }

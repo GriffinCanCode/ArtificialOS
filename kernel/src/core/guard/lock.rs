@@ -206,7 +206,9 @@ impl<T: Send + 'static> LockGuard<T, Locked> {
     /// Returns a guard that allows mutable access
     #[inline]
     pub fn access_mut(&self) -> StdMutexGuard<'_, T> {
-        self.data.lock().expect("Lock poisoned during mutable access")
+        self.data
+            .lock()
+            .expect("Lock poisoned during mutable access")
     }
 
     /// Release the lock, transitioning to Unlocked state
@@ -289,7 +291,6 @@ impl<T: Send + 'static, S: LockState> Recoverable for LockGuard<T, S> {
         self.poison_reason = Some(reason);
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -387,8 +388,8 @@ mod tests {
 
     #[test]
     fn test_lock_guard_timeout_expires() {
-        use std::time::Duration;
         use std::thread;
+        use std::time::Duration;
 
         let guard1 = LockGuard::new(100);
         let data = guard1.data.clone();
@@ -413,10 +414,12 @@ mod tests {
             // Should timeout
             assert!(result.is_err());
             match result.err().unwrap() {
-                GuardError::Timeout { .. } => {},
+                GuardError::Timeout { .. } => {}
                 _ => panic!("Expected timeout error"),
             }
-        }).join().unwrap();
+        })
+        .join()
+        .unwrap();
 
         drop(_real_lock);
     }

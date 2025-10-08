@@ -3,7 +3,7 @@
  * File-backed shared memory operations
  */
 
-use crate::core::bincode;
+use crate::core::serialization::bincode;
 use crate::core::types::Pid;
 use crate::ipc::{MapFlags, ProtFlags};
 use crate::permissions::{PermissionChecker, PermissionRequest};

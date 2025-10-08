@@ -3,7 +3,7 @@
  * Unified flat system call type with organized module structure
  */
 
-use crate::core::serde::skip_serializing_none;
+use crate::core::serialization::serde::skip_serializing_none;
 use crate::core::types::{Fd, Pid, Priority, Size, SockFd};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;

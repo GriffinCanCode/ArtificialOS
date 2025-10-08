@@ -5,7 +5,7 @@
 
 use super::super::types::{IpcError, PipeId};
 use crate::core::limits;
-use crate::core::serde::{is_false, is_zero_usize};
+use crate::core::serialization::serde::{is_false, is_zero_usize};
 use crate::core::types::{Pid, Size};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -108,13 +108,13 @@ impl PipeStats {
     ///
     /// This provides better performance than JSON for pipe metadata transfers.
     pub fn to_bincode_bytes(&self) -> Result<Vec<u8>, String> {
-        crate::core::bincode::to_vec(self)
+        crate::core::serialization::bincode::to_vec(self)
             .map_err(|e| format!("Failed to serialize pipe stats with bincode: {}", e))
     }
 
     /// Deserialize from bincode format
     pub fn from_bincode_bytes(bytes: &[u8]) -> Result<Self, String> {
-        crate::core::bincode::from_slice(bytes)
+        crate::core::serialization::bincode::from_slice(bytes)
             .map_err(|e| format!("Failed to deserialize pipe stats with bincode: {}", e))
     }
 }

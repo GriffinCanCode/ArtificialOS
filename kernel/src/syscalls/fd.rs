@@ -5,7 +5,7 @@
 */
 
 use crate::core::guard::FdGuard;
-use crate::core::json;
+use crate::core::serialization::json;
 use crate::core::types::Pid;
 use crate::monitoring::span_operation;
 use crate::permissions::{PermissionChecker, PermissionRequest};
@@ -101,7 +101,8 @@ impl FdManager {
             pid,
             path,
             move |cleanup_pid, cleanup_fd| {
-                manager.close_fd_internal(cleanup_pid, cleanup_fd)
+                manager
+                    .close_fd_internal(cleanup_pid, cleanup_fd)
                     .map_err(|e| format!("{}", e))
             },
             None, // No collector for now
@@ -244,30 +245,32 @@ impl SyscallExecutorWithIpc {
                     // Use FdGuard for automatic cleanup on error (panic-safe)
                     let handle = Arc::new(FileHandle::from_vfs(vfs_file));
                     let path_str = path.to_string_lossy().to_string();
-                    let fd_guard = self.fd_manager.allocate_fd_guard(pid, handle, Some(path_str));
+                    let fd_guard = self
+                        .fd_manager
+                        .allocate_fd_guard(pid, handle, Some(path_str));
                     let fd = fd_guard.fd();
 
-                info!(
-                    "PID {} opened {:?} via VFS with FD {}, flags: 0x{:x}",
-                    pid, path, fd, flags
-                );
-                span.record("fd", &format!("{}", fd));
-                span.record("method", "vfs");
-                span.record_result(true);
+                    info!(
+                        "PID {} opened {:?} via VFS with FD {}, flags: 0x{:x}",
+                        pid, path, fd, flags
+                    );
+                    span.record("fd", &format!("{}", fd));
+                    span.record("method", "vfs");
+                    span.record_result(true);
 
-                return match json::to_vec(&serde_json::json!({ "fd": fd })) {
-                    Ok(data) => {
-                        // Success - release guard without cleanup (FD stays open)
-                        std::mem::forget(fd_guard);
-                        SyscallResult::success_with_data(data)
-                    }
-                    Err(e) => {
-                        // FdGuard auto-closes on drop - no manual cleanup needed!
-                        warn!("Failed to serialize open result: {}", e);
-                        span.record_error("Serialization failed");
-                        SyscallResult::error("Internal serialization error")
-                    }
-                };
+                    return match json::to_vec(&serde_json::json!({ "fd": fd })) {
+                        Ok(data) => {
+                            // Success - release guard without cleanup (FD stays open)
+                            std::mem::forget(fd_guard);
+                            SyscallResult::success_with_data(data)
+                        }
+                        Err(e) => {
+                            // FdGuard auto-closes on drop - no manual cleanup needed!
+                            warn!("Failed to serialize open result: {}", e);
+                            span.record_error("Serialization failed");
+                            SyscallResult::error("Internal serialization error")
+                        }
+                    };
                 }
                 Err(e) => {
                     warn!(
@@ -321,7 +324,9 @@ impl SyscallExecutorWithIpc {
                 // Use FdGuard for automatic cleanup on error (panic-safe)
                 let handle = Arc::new(FileHandle::from_std(file));
                 let path_str = path.to_string_lossy().to_string();
-                let fd_guard = self.fd_manager.allocate_fd_guard(pid, handle, Some(path_str));
+                let fd_guard = self
+                    .fd_manager
+                    .allocate_fd_guard(pid, handle, Some(path_str));
                 let fd = fd_guard.fd();
 
                 info!(
@@ -394,7 +399,10 @@ impl SyscallExecutorWithIpc {
                     "PID {} exceeded FD limit during dup: {}/{} file descriptors",
                     pid, current_fd_count, limits.max_file_descriptors
                 );
-                span.record_error(&format!("FD limit exceeded: {}/{}", current_fd_count, limits.max_file_descriptors));
+                span.record_error(&format!(
+                    "FD limit exceeded: {}/{}",
+                    current_fd_count, limits.max_file_descriptors
+                ));
                 return SyscallResult::permission_denied(format!(
                     "File descriptor limit exceeded: {}/{} FDs open",
                     current_fd_count, limits.max_file_descriptors

@@ -97,7 +97,9 @@ impl<T: Send + 'static> AsyncTaskGuard<T> {
     /// Await the task result
     pub async fn await_result(mut self) -> GuardResult<T> {
         if let Some(handle) = self.handle.take() {
-            handle.await.map_err(|e| GuardError::OperationFailed(format!("Task join error: {:?}", e)))
+            handle
+                .await
+                .map_err(|e| GuardError::OperationFailed(format!("Task join error: {:?}", e)))
         } else {
             Err(GuardError::AlreadyReleased)
         }
@@ -113,12 +115,16 @@ impl<T: Send + 'static> AsyncTaskGuard<T> {
             match timeout.duration() {
                 None => {
                     // No timeout, just await
-                    handle.await.map_err(|e| GuardError::OperationFailed(format!("Task join error: {:?}", e)))
+                    handle.await.map_err(|e| {
+                        GuardError::OperationFailed(format!("Task join error: {:?}", e))
+                    })
                 }
                 Some(duration) => {
                     let start = Instant::now();
                     match tokio::time::timeout(duration, handle).await {
-                        Ok(result) => result.map_err(|e| GuardError::OperationFailed(format!("Task join error: {:?}", e))),
+                        Ok(result) => result.map_err(|e| {
+                            GuardError::OperationFailed(format!("Task join error: {:?}", e))
+                        }),
                         Err(_) => Err(GuardError::Timeout {
                             resource_type: "async_task",
                             category: timeout.category(),
@@ -271,7 +277,7 @@ mod tests {
 
         assert!(result.is_err());
         match result.err().unwrap() {
-            GuardError::Timeout { .. } => {},
+            GuardError::Timeout { .. } => {}
             _ => panic!("Expected timeout error"),
         }
     }

@@ -3,7 +3,7 @@
  * Common types for memory management
  */
 
-use crate::core::serde::{is_default, is_none, is_zero_usize};
+use crate::core::serialization::serde::{is_default, is_none, is_zero_usize};
 use crate::core::types::{Address, Pid, Size};
 use miette::Diagnostic;
 use serde::{Deserialize, Serialize};

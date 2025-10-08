@@ -3,7 +3,7 @@
  * Common types for security and sandboxing
  */
 
-use crate::core::serde::{is_empty_vec, is_none, is_zero_u64, is_zero_usize};
+use crate::core::serialization::serde::{is_empty_vec, is_none, is_zero_u64, is_zero_usize};
 use crate::core::types::{Pid, ResourceLimits};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;

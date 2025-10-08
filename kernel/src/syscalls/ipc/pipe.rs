@@ -4,7 +4,7 @@
  */
 
 use crate::core::types::Pid;
-use crate::core::{bincode, json};
+use crate::core::serialization::{bincode, json};
 use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
 use crate::syscalls::executor::SyscallExecutorWithIpc;
 use crate::syscalls::types::SyscallResult;
@@ -91,7 +91,10 @@ impl SyscallExecutorWithIpc {
                 }
             }
             Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
-                error!("Pipe write timed out for PID {}, pipe {} after {}ms", pid, pipe_id, elapsed_ms);
+                error!(
+                    "Pipe write timed out for PID {}, pipe {} after {}ms",
+                    pid, pipe_id, elapsed_ms
+                );
                 SyscallResult::error("Pipe write timed out")
             }
             Err(TimeoutError::Operation(e)) => {
@@ -129,11 +132,19 @@ impl SyscallExecutorWithIpc {
 
         match result {
             Ok(data) => {
-                info!("PID {} read {} bytes from pipe {}", pid, data.len(), pipe_id);
+                info!(
+                    "PID {} read {} bytes from pipe {}",
+                    pid,
+                    data.len(),
+                    pipe_id
+                );
                 SyscallResult::success_with_data(data)
             }
             Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
-                error!("Pipe read timed out for PID {}, pipe {} after {}ms", pid, pipe_id, elapsed_ms);
+                error!(
+                    "Pipe read timed out for PID {}, pipe {} after {}ms",
+                    pid, pipe_id, elapsed_ms
+                );
                 SyscallResult::error("Pipe read timed out")
             }
             Err(TimeoutError::Operation(e)) => {

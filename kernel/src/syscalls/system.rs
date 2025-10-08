@@ -4,7 +4,7 @@
 * System information and environment operations
 */
 
-use crate::core::json;
+use crate::core::serialization::json;
 use crate::core::types::Pid;
 use crate::monitoring::span_operation;
 use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
@@ -37,7 +37,12 @@ impl SyscallExecutorWithIpc {
         }
 
         let info = SystemInfo::current();
-        trace!("System info: os={}, arch={}, family={}", info.os, info.arch, info.family);
+        trace!(
+            "System info: os={}, arch={}, family={}",
+            info.os,
+            info.arch,
+            info.family
+        );
 
         info!("PID {} retrieved system info", pid);
         span.record_result(true);
@@ -177,22 +182,23 @@ impl SyscallExecutorWithIpc {
         // Use timeout executor for consistent timeout handling and observability
         // HTTP requests can hang on slow networks, DNS resolution, or unresponsive servers
         let url_clone = url.to_string();
-        let result: Result<(reqwest::StatusCode, bytes::Bytes), TimeoutError<reqwest::Error>> = self.timeout_executor.execute_with_deadline(
-            || {
-                // Create client without timeout (we handle timeout at executor level)
-                let client = reqwest::blocking::Client::builder()
-                    .user_agent("ai-os-kernel/0.1.0")
-                    .build()?;
+        let result: Result<(reqwest::StatusCode, bytes::Bytes), TimeoutError<reqwest::Error>> =
+            self.timeout_executor.execute_with_deadline(
+                || {
+                    // Create client without timeout (we handle timeout at executor level)
+                    let client = reqwest::blocking::Client::builder()
+                        .user_agent("ai-os-kernel/0.1.0")
+                        .build()?;
 
-                let response = client.get(&url_clone).send()?;
-                let status = response.status();
-                let body = response.bytes()?;
+                    let response = client.get(&url_clone).send()?;
+                    let status = response.status();
+                    let body = response.bytes()?;
 
-                Ok((status, body))
-            },
-            self.timeout_config.network,
-            "http_request",
-        );
+                    Ok((status, body))
+                },
+                self.timeout_config.network,
+                "http_request",
+            );
 
         match result {
             Ok((status, body)) => {

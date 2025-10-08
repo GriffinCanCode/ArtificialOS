@@ -163,11 +163,15 @@ impl Observable for IpcGuard {
                     value: 1.0,
                     labels: vec![
                         ("pid".to_string(), self.pid.to_string()),
-                        ("resource_type".to_string(), self.resource_type.as_str().to_string()),
+                        (
+                            "resource_type".to_string(),
+                            self.resource_type.as_str().to_string(),
+                        ),
                         ("resource_id".to_string(), self.resource_id.to_string()),
                     ],
                 },
-            ).with_pid(self.pid);
+            )
+            .with_pid(self.pid);
             collector.emit(event);
         }
     }
@@ -182,12 +186,16 @@ impl Observable for IpcGuard {
                     value: 1.0,
                     labels: vec![
                         ("pid".to_string(), self.pid.to_string()),
-                        ("resource_type".to_string(), self.resource_type.as_str().to_string()),
+                        (
+                            "resource_type".to_string(),
+                            self.resource_type.as_str().to_string(),
+                        ),
                         ("resource_id".to_string(), self.resource_id.to_string()),
                         ("operation".to_string(), operation.to_string()),
                     ],
                 },
-            ).with_pid(self.pid);
+            )
+            .with_pid(self.pid);
             collector.emit(event);
         }
     }
@@ -203,12 +211,16 @@ impl Observable for IpcGuard {
                     value: lifetime as f64,
                     labels: vec![
                         ("pid".to_string(), self.pid.to_string()),
-                        ("resource_type".to_string(), self.resource_type.as_str().to_string()),
+                        (
+                            "resource_type".to_string(),
+                            self.resource_type.as_str().to_string(),
+                        ),
                         ("resource_id".to_string(), self.resource_id.to_string()),
                         ("lifetime_micros".to_string(), lifetime.to_string()),
                     ],
                 },
-            ).with_pid(self.pid);
+            )
+            .with_pid(self.pid);
             collector.emit(event);
         }
     }
@@ -223,12 +235,16 @@ impl Observable for IpcGuard {
                     value: 1.0,
                     labels: vec![
                         ("pid".to_string(), self.pid.to_string()),
-                        ("resource_type".to_string(), self.resource_type.as_str().to_string()),
+                        (
+                            "resource_type".to_string(),
+                            self.resource_type.as_str().to_string(),
+                        ),
                         ("resource_id".to_string(), self.resource_id.to_string()),
                         ("error".to_string(), error.to_string()),
                     ],
                 },
-            ).with_pid(self.pid);
+            )
+            .with_pid(self.pid);
             collector.emit(event);
         }
     }
@@ -286,21 +302,24 @@ impl IpcGuardRef {
 
     /// Get resource ID
     pub fn resource_id(&self) -> u64 {
-        self.inner.lock()
+        self.inner
+            .lock()
             .expect("ipc guard lock poisoned - ipc state corrupted")
             .resource_id
     }
 
     /// Get resource type
     pub fn resource_type_kind(&self) -> IpcResourceType {
-        self.inner.lock()
+        self.inner
+            .lock()
             .expect("ipc guard lock poisoned - ipc state corrupted")
             .resource_type
     }
 
     /// Get process ID
     pub fn pid(&self) -> Pid {
-        self.inner.lock()
+        self.inner
+            .lock()
             .expect("ipc guard lock poisoned - ipc state corrupted")
             .pid
     }
@@ -316,13 +335,16 @@ impl Guard for IpcGuardRef {
     }
 
     fn is_active(&self) -> bool {
-        self.inner.lock()
+        self.inner
+            .lock()
             .expect("ipc guard lock poisoned - ipc state corrupted")
             .active
     }
 
     fn release(&mut self) -> GuardResult<()> {
-        let mut state = self.inner.lock()
+        let mut state = self
+            .inner
+            .lock()
             .expect("ipc guard lock poisoned - ipc state corrupted");
         if !state.active {
             return Err(GuardError::AlreadyReleased);

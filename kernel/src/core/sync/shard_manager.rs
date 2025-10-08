@@ -159,4 +159,3 @@ mod tests {
         assert_eq!(cache1, cache2);
     }
 }
-

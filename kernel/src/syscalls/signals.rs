@@ -3,7 +3,7 @@
  * Syscall interface for signal operations
  */
 
-use crate::core::json;
+use crate::core::serialization::json;
 use crate::core::types::Pid;
 use crate::permissions::{PermissionChecker, PermissionRequest};
 use crate::signals::{

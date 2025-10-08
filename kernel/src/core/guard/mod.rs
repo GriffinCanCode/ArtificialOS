@@ -57,7 +57,9 @@ pub use lock::{LockGuard, LockState, Locked, Unlocked};
 pub use memory::{MemoryGuard, MemoryGuardRef};
 pub use observe::ObservableGuard;
 pub use syscall::SyscallGuard;
-pub use timeout::{TimeoutAcquire, TimeoutConfig, TimeoutContext, TimeoutPolicy, TimeoutPolicyExt, TimeoutWait};
+pub use timeout::{
+    TimeoutAcquire, TimeoutConfig, TimeoutContext, TimeoutPolicy, TimeoutPolicyExt, TimeoutWait,
+};
 pub use traits::{Guard, GuardDrop, GuardRef, Observable, Recoverable};
 pub use transaction::{Operation, TransactionGuard, TransactionState};
 pub use typed::{TypedGuard, TypedState};

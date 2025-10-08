@@ -4,7 +4,7 @@
 * Socket operations for TCP/UDP networking
 */
 
-use crate::core::json;
+use crate::core::serialization::json;
 use crate::core::types::Pid;
 use crate::monitoring::span_operation;
 use crate::permissions::{PermissionChecker, PermissionRequest};
@@ -155,7 +155,10 @@ impl SocketManager {
             }
         }
 
-        info!("Cleaned up {}/{} sockets for PID {}", closed_count, socket_count, pid);
+        info!(
+            "Cleaned up {}/{} sockets for PID {}",
+            closed_count, socket_count, pid
+        );
         span.record("closed_count", &format!("{}", closed_count));
         span.record_result(true);
         closed_count
@@ -239,13 +242,21 @@ impl SyscallExecutorWithIpc {
         use crate::security::ResourceLimitProvider;
         if let Some(limits) = self.sandbox_manager.get_limits(pid) {
             let current_socket_count = self.socket_manager.get_socket_count(pid);
-            trace!("PID {} has {}/{} sockets open", pid, current_socket_count, limits.max_file_descriptors);
+            trace!(
+                "PID {} has {}/{} sockets open",
+                pid,
+                current_socket_count,
+                limits.max_file_descriptors
+            );
             if current_socket_count >= limits.max_file_descriptors {
                 error!(
                     "PID {} exceeded socket limit: {}/{} sockets",
                     pid, current_socket_count, limits.max_file_descriptors
                 );
-                span.record_error(&format!("Socket limit exceeded: {}/{}", current_socket_count, limits.max_file_descriptors));
+                span.record_error(&format!(
+                    "Socket limit exceeded: {}/{}",
+                    current_socket_count, limits.max_file_descriptors
+                ));
                 return SyscallResult::permission_denied(format!(
                     "Socket limit exceeded: {}/{} sockets open",
                     current_socket_count, limits.max_file_descriptors
@@ -490,7 +501,10 @@ impl SyscallExecutorWithIpc {
                 }
             }
             Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
-                error!("Accept timed out for PID {}, socket {} after {}ms", pid, sockfd, elapsed_ms);
+                error!(
+                    "Accept timed out for PID {}, socket {} after {}ms",
+                    pid, sockfd, elapsed_ms
+                );
                 span.record_error(&format!("Timeout after {}ms", elapsed_ms));
                 SyscallResult::error("Accept timed out")
             }
@@ -551,7 +565,10 @@ impl SyscallExecutorWithIpc {
                 SyscallResult::success()
             }
             Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
-                error!("Connect timed out for PID {}, socket {} to {} after {}ms", pid, sockfd, address, elapsed_ms);
+                error!(
+                    "Connect timed out for PID {}, socket {} to {} after {}ms",
+                    pid, sockfd, address, elapsed_ms
+                );
                 span.record_error(&format!("Timeout after {}ms", elapsed_ms));
                 SyscallResult::error("Connect timed out")
             }
@@ -607,7 +624,10 @@ impl SyscallExecutorWithIpc {
 
         match result {
             Ok(bytes_sent) => {
-                info!("PID {} sent {} bytes on TCP socket {}", pid, bytes_sent, sockfd);
+                info!(
+                    "PID {} sent {} bytes on TCP socket {}",
+                    pid, bytes_sent, sockfd
+                );
                 span.record("bytes_sent", &format!("{}", bytes_sent));
                 span.record_result(true);
                 match json::to_vec(&serde_json::json!({ "bytes_sent": bytes_sent })) {
@@ -620,7 +640,10 @@ impl SyscallExecutorWithIpc {
                 }
             }
             Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
-                error!("Send timed out for PID {}, socket {} after {}ms", pid, sockfd, elapsed_ms);
+                error!(
+                    "Send timed out for PID {}, socket {} after {}ms",
+                    pid, sockfd, elapsed_ms
+                );
                 span.record_error(&format!("Timeout after {}ms", elapsed_ms));
                 SyscallResult::error("Send timed out")
             }
@@ -693,13 +716,21 @@ impl SyscallExecutorWithIpc {
 
         match result {
             Ok(buffer) => {
-                info!("PID {} received {} bytes on TCP socket {}", pid, buffer.len(), sockfd);
+                info!(
+                    "PID {} received {} bytes on TCP socket {}",
+                    pid,
+                    buffer.len(),
+                    sockfd
+                );
                 span.record("bytes_received", &format!("{}", buffer.len()));
                 span.record_result(true);
                 SyscallResult::success_with_data(buffer)
             }
             Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
-                error!("Recv timed out for PID {}, socket {} after {}ms", pid, sockfd, elapsed_ms);
+                error!(
+                    "Recv timed out for PID {}, socket {} after {}ms",
+                    pid, sockfd, elapsed_ms
+                );
                 span.record_error(&format!("Timeout after {}ms", elapsed_ms));
                 SyscallResult::error("Recv timed out")
             }
@@ -868,7 +899,10 @@ impl SyscallExecutorWithIpc {
             self.socket_manager.free_fds.push(sockfd);
 
             let type_name = socket.type_name();
-            info!("PID {} closed {} socket {} (recycled FD)", pid, type_name, sockfd);
+            info!(
+                "PID {} closed {} socket {} (recycled FD)",
+                pid, type_name, sockfd
+            );
             span.record("socket_type", type_name);
             span.record_result(true);
             SyscallResult::success()

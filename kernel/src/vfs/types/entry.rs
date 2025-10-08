@@ -5,7 +5,7 @@
 
 use super::errors::VfsError;
 use super::file_type::FileType;
-use crate::core::serde::is_default;
+use crate::core::serialization::serde::is_default;
 use serde::{Deserialize, Deserializer, Serialize};
 
 /// Directory entry with type-safe construction and validation

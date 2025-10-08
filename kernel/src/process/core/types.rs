@@ -165,9 +165,9 @@ impl ProcessInfo {
 #[serde(rename_all = "snake_case")]
 pub struct ExecutionConfig {
     pub command: String,
-    #[serde(skip_serializing_if = "crate::core::serde::is_empty_vec")]
+    #[serde(skip_serializing_if = "crate::core::serialization::serde::is_empty_vec")]
     pub args: Vec<String>,
-    #[serde(skip_serializing_if = "crate::core::serde::is_empty_vec")]
+    #[serde(skip_serializing_if = "crate::core::serialization::serde::is_empty_vec")]
     pub env_vars: Vec<(String, String)>,
     #[serde(skip_serializing_if = "is_none")]
     pub working_dir: Option<String>,
@@ -348,9 +348,9 @@ pub struct ProcessResources {
     pub memory_bytes: usize,
     #[serde(skip_serializing_if = "is_zero_u64")]
     pub cpu_time_micros: u64,
-    #[serde(skip_serializing_if = "crate::core::serde::is_default")]
+    #[serde(skip_serializing_if = "crate::core::serialization::serde::is_default")]
     pub open_files: u32,
-    #[serde(skip_serializing_if = "crate::core::serde::is_default")]
+    #[serde(skip_serializing_if = "crate::core::serialization::serde::is_default")]
     pub child_processes: u32,
 }
 

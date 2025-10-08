@@ -3,8 +3,8 @@
  * Handle message queue creation, send, receive, and pub/sub
  */
 
-use crate::core::bincode;
-use crate::core::json;
+use crate::core::serialization::bincode;
+use crate::core::serialization::json;
 use crate::core::types::Pid;
 use crate::monitoring::span_operation;
 use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
@@ -183,48 +183,51 @@ impl SyscallExecutorWithIpc {
             Ok(msg) => {
                 // Read message data from MemoryManager
                 match queue_manager.read_message_data(&msg) {
-                        Ok(data) => {
-                            info!(
-                                "PID {} received {} bytes from queue {}",
-                                pid,
-                                data.len(),
-                                queue_id
-                            );
-                            span.record("bytes_received", &format!("{}", data.len()));
-                            span.record_result(true);
+                    Ok(data) => {
+                        info!(
+                            "PID {} received {} bytes from queue {}",
+                            pid,
+                            data.len(),
+                            queue_id
+                        );
+                        span.record("bytes_received", &format!("{}", data.len()));
+                        span.record_result(true);
 
-                            #[derive(serde::Serialize)]
-                            struct MessageResponse {
-                                id: u64,
-                                from: u32,
-                                data: Vec<u8>,
-                                priority: u8,
-                            }
-
-                            let response = MessageResponse {
-                                id: msg.id,
-                                from: msg.from,
-                                data,
-                                priority: msg.priority,
-                            };
-
-                            match bincode::serialize_ipc_message(&response) {
-                                Ok(serialized) => SyscallResult::success_with_data(serialized),
-                                Err(e) => {
-                                    error!("Failed to serialize message: {}", e);
-                                    SyscallResult::error("Serialization failed")
-                                }
-                            }
+                        #[derive(serde::Serialize)]
+                        struct MessageResponse {
+                            id: u64,
+                            from: u32,
+                            data: Vec<u8>,
+                            priority: u8,
                         }
-                        Err(e) => {
-                            error!("Failed to read message data: {}", e);
-                            span.record_error(&format!("Read failed: {}", e));
-                            SyscallResult::error(format!("Read failed: {}", e))
+
+                        let response = MessageResponse {
+                            id: msg.id,
+                            from: msg.from,
+                            data,
+                            priority: msg.priority,
+                        };
+
+                        match bincode::serialize_ipc_message(&response) {
+                            Ok(serialized) => SyscallResult::success_with_data(serialized),
+                            Err(e) => {
+                                error!("Failed to serialize message: {}", e);
+                                SyscallResult::error("Serialization failed")
+                            }
                         }
                     }
+                    Err(e) => {
+                        error!("Failed to read message data: {}", e);
+                        span.record_error(&format!("Read failed: {}", e));
+                        SyscallResult::error(format!("Read failed: {}", e))
+                    }
                 }
+            }
             Err(super::super::TimeoutError::Timeout { elapsed_ms, .. }) => {
-                error!("Queue receive timed out for PID {}, queue {} after {}ms", pid, queue_id, elapsed_ms);
+                error!(
+                    "Queue receive timed out for PID {}, queue {} after {}ms",
+                    pid, queue_id, elapsed_ms
+                );
                 span.record_error(&format!("Timeout after {}ms", elapsed_ms));
                 SyscallResult::error("Queue receive timed out")
             }

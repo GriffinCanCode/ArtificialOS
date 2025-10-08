@@ -5,7 +5,7 @@
 
 use super::errors::VfsError;
 use super::permissions::Permissions;
-use crate::core::serde::{is_default, is_false};
+use crate::core::serialization::serde::{is_default, is_false};
 use serde::{Deserialize, Serialize};
 
 /// File open flags with optimized serialization (skips false values)

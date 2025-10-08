@@ -4,9 +4,9 @@
 * File and directory operations
 */
 
-use crate::core::json;
+use crate::core::serialization::json;
 use crate::core::types::Pid;
-use crate::core::{TransactionGuard, Operation};
+use crate::core::{Operation, TransactionGuard};
 use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
 use crate::syscalls::TimeoutError;
 
@@ -71,7 +71,12 @@ impl SyscallExecutorWithIpc {
                 let size = metadata.len();
                 let is_dir = metadata.is_dir();
 
-                trace!("File stat - size: {}, is_dir: {}, mode: {}", size, is_dir, mode);
+                trace!(
+                    "File stat - size: {}, is_dir: {}, mode: {}",
+                    size,
+                    is_dir,
+                    mode
+                );
 
                 let file_info = serde_json::json!({
                     "name": path.file_name().and_then(|n| n.to_str()).unwrap_or(""),
@@ -97,7 +102,10 @@ impl SyscallExecutorWithIpc {
                 }
             }
             Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
-                error!("File stat timed out for {:?} after {}ms (slow storage?)", path, elapsed_ms);
+                error!(
+                    "File stat timed out for {:?} after {}ms (slow storage?)",
+                    path, elapsed_ms
+                );
                 SyscallResult::error(format!("Timeout after {}ms", elapsed_ms))
             }
             Err(super::TimeoutError::Operation(e)) => {
@@ -148,10 +156,12 @@ impl SyscallExecutorWithIpc {
             },
         );
 
-        transaction.add_operation(Operation::new(
-            "move",
-            format!("{:?} -> {:?}", source, destination).into_bytes(),
-        )).ok();
+        transaction
+            .add_operation(Operation::new(
+                "move",
+                format!("{:?} -> {:?}", source, destination).into_bytes(),
+            ))
+            .ok();
 
         // Use timeout executor - rename can block on slow/cross-filesystem operations
         let src_clone = source.clone();
@@ -169,11 +179,17 @@ impl SyscallExecutorWithIpc {
                 SyscallResult::success()
             }
             Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
-                error!("Move timed out for {:?} -> {:?} after {}ms (slow storage?)", source, destination, elapsed_ms);
+                error!(
+                    "Move timed out for {:?} -> {:?} after {}ms (slow storage?)",
+                    source, destination, elapsed_ms
+                );
                 SyscallResult::error(format!("Timeout after {}ms", elapsed_ms))
             }
             Err(super::TimeoutError::Operation(e)) => {
-                error!("Failed to move file {:?} -> {:?}: {}", source, destination, e);
+                error!(
+                    "Failed to move file {:?} -> {:?}: {}",
+                    source, destination, e
+                );
                 SyscallResult::error(format!("Move failed: {}", e))
             }
         }
@@ -218,10 +234,12 @@ impl SyscallExecutorWithIpc {
             },
         );
 
-        transaction.add_operation(Operation::new(
-            "copy",
-            format!("{:?} -> {:?}", source, destination).into_bytes(),
-        )).ok();
+        transaction
+            .add_operation(Operation::new(
+                "copy",
+                format!("{:?} -> {:?}", source, destination).into_bytes(),
+            ))
+            .ok();
 
         // Use timeout executor - copy can block on slow storage, especially for large files
         let src_clone = source.clone();
@@ -234,16 +252,25 @@ impl SyscallExecutorWithIpc {
 
         match result {
             Ok(bytes) => {
-                info!("PID {} copied file: {:?} -> {:?} ({} bytes)", pid, source, destination, bytes);
+                info!(
+                    "PID {} copied file: {:?} -> {:?} ({} bytes)",
+                    pid, source, destination, bytes
+                );
                 transaction.commit().ok();
                 SyscallResult::success()
             }
             Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
-                error!("Copy timed out for {:?} -> {:?} after {}ms (slow storage or large file?)", source, destination, elapsed_ms);
+                error!(
+                    "Copy timed out for {:?} -> {:?} after {}ms (slow storage or large file?)",
+                    source, destination, elapsed_ms
+                );
                 SyscallResult::error(format!("Timeout after {}ms", elapsed_ms))
             }
             Err(super::TimeoutError::Operation(e)) => {
-                error!("Failed to copy file {:?} -> {:?}: {}", source, destination, e);
+                error!(
+                    "Failed to copy file {:?} -> {:?}: {}",
+                    source, destination, e
+                );
                 SyscallResult::error(format!("Copy failed: {}", e))
             }
         }
@@ -334,22 +361,25 @@ impl SyscallExecutorWithIpc {
             },
         );
 
-        transaction.add_operation(Operation::new(
-            "truncate",
-            format!("{:?} to {} bytes", path, size).into_bytes(),
-        )).ok();
+        transaction
+            .add_operation(Operation::new(
+                "truncate",
+                format!("{:?} to {} bytes", path, size).into_bytes(),
+            ))
+            .ok();
 
         // Use timeout executor - truncate can block on slow storage
         let path_clone = path.clone();
-        let result: Result<(), TimeoutError<std::io::Error>> = self.timeout_executor.execute_with_deadline(
-            || {
-                let file = fs::OpenOptions::new().write(true).open(&path_clone)?;
-                file.set_len(size)?;
-                Ok(())
-            },
-            self.timeout_config.file_io,
-            "file_truncate",
-        );
+        let result: Result<(), TimeoutError<std::io::Error>> =
+            self.timeout_executor.execute_with_deadline(
+                || {
+                    let file = fs::OpenOptions::new().write(true).open(&path_clone)?;
+                    file.set_len(size)?;
+                    Ok(())
+                },
+                self.timeout_config.file_io,
+                "file_truncate",
+            );
 
         match result {
             Ok(()) => {
@@ -358,7 +388,10 @@ impl SyscallExecutorWithIpc {
                 SyscallResult::success()
             }
             Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
-                error!("Truncate timed out for {:?} after {}ms (slow storage?)", path, elapsed_ms);
+                error!(
+                    "Truncate timed out for {:?} after {}ms (slow storage?)",
+                    path, elapsed_ms
+                );
                 SyscallResult::error(format!("Timeout after {}ms", elapsed_ms))
             }
             Err(TimeoutError::Operation(e)) => {

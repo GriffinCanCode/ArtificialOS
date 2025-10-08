@@ -85,7 +85,9 @@ impl TimeoutPolicy {
     pub fn duration(&self) -> Option<Duration> {
         match self {
             Self::None => None,
-            Self::Lock(d) | Self::Ipc(d) | Self::Io(d) | Self::Task(d) | Self::Custom(d) => Some(*d),
+            Self::Lock(d) | Self::Ipc(d) | Self::Io(d) | Self::Task(d) | Self::Custom(d) => {
+                Some(*d)
+            }
         }
     }
 
@@ -288,7 +290,12 @@ impl TimeoutContext {
 /// Extension to GuardError for timeouts
 impl GuardError {
     /// Create a timeout error
-    pub fn timeout(resource_type: &'static str, category: &'static str, elapsed: Duration, timeout: Option<Duration>) -> Self {
+    pub fn timeout(
+        resource_type: &'static str,
+        category: &'static str,
+        elapsed: Duration,
+        timeout: Option<Duration>,
+    ) -> Self {
         Self::Timeout {
             resource_type,
             category,
@@ -329,10 +336,22 @@ mod tests {
 
     #[test]
     fn test_timeout_policy_defaults() {
-        assert_eq!(TimeoutPolicy::default_lock(), TimeoutPolicy::Lock(Duration::from_millis(50)));
-        assert_eq!(TimeoutPolicy::default_ipc(), TimeoutPolicy::Ipc(Duration::from_secs(10)));
-        assert_eq!(TimeoutPolicy::default_io(), TimeoutPolicy::Io(Duration::from_secs(30)));
-        assert_eq!(TimeoutPolicy::default_task(), TimeoutPolicy::Task(Duration::from_secs(60)));
+        assert_eq!(
+            TimeoutPolicy::default_lock(),
+            TimeoutPolicy::Lock(Duration::from_millis(50))
+        );
+        assert_eq!(
+            TimeoutPolicy::default_ipc(),
+            TimeoutPolicy::Ipc(Duration::from_secs(10))
+        );
+        assert_eq!(
+            TimeoutPolicy::default_io(),
+            TimeoutPolicy::Io(Duration::from_secs(30))
+        );
+        assert_eq!(
+            TimeoutPolicy::default_task(),
+            TimeoutPolicy::Task(Duration::from_secs(60))
+        );
     }
 
     #[test]
@@ -366,8 +385,14 @@ mod tests {
             .with_lock_timeout(Duration::from_millis(100))
             .with_ipc_timeout(Duration::from_secs(5));
 
-        assert_eq!(config.lock_timeout(), TimeoutPolicy::Lock(Duration::from_millis(100)));
-        assert_eq!(config.ipc_timeout(), TimeoutPolicy::Ipc(Duration::from_secs(5)));
+        assert_eq!(
+            config.lock_timeout(),
+            TimeoutPolicy::Lock(Duration::from_millis(100))
+        );
+        assert_eq!(
+            config.ipc_timeout(),
+            TimeoutPolicy::Ipc(Duration::from_secs(5))
+        );
     }
 
     #[test]

@@ -3,7 +3,7 @@
  * Syscall interface for scheduler operations
  */
 
-use crate::core::json;
+use crate::core::serialization::json;
 use crate::core::types::Pid;
 use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
 use crate::scheduler::{PriorityControl, SchedulerControl, SchedulerPolicy, SchedulerStats};

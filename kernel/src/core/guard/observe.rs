@@ -86,8 +86,14 @@ impl<G: Guard> Observable for ObservableGuard<G> {
                 name: format!("{}_created", self.inner.resource_type()),
                 value: 1.0,
                 labels: vec![
-                    ("resource_type".to_string(), self.inner.resource_type().to_string()),
-                    ("creation_time".to_string(), format!("{:?}", self.inner.metadata().creation_time)),
+                    (
+                        "resource_type".to_string(),
+                        self.inner.resource_type().to_string(),
+                    ),
+                    (
+                        "creation_time".to_string(),
+                        format!("{:?}", self.inner.metadata().creation_time),
+                    ),
                 ],
             },
         );
@@ -102,7 +108,10 @@ impl<G: Guard> Observable for ObservableGuard<G> {
                 name: format!("{}_used", self.inner.resource_type()),
                 value: 1.0,
                 labels: vec![
-                    ("resource_type".to_string(), self.inner.resource_type().to_string()),
+                    (
+                        "resource_type".to_string(),
+                        self.inner.resource_type().to_string(),
+                    ),
                     ("operation".to_string(), operation.to_string()),
                 ],
             },
@@ -119,7 +128,10 @@ impl<G: Guard> Observable for ObservableGuard<G> {
                 name: format!("{}_dropped", self.inner.resource_type()),
                 value: lifetime as f64,
                 labels: vec![
-                    ("resource_type".to_string(), self.inner.resource_type().to_string()),
+                    (
+                        "resource_type".to_string(),
+                        self.inner.resource_type().to_string(),
+                    ),
                     ("lifetime_micros".to_string(), lifetime.to_string()),
                 ],
             },
@@ -135,7 +147,10 @@ impl<G: Guard> Observable for ObservableGuard<G> {
                 name: format!("{}_error", self.inner.resource_type()),
                 value: 1.0,
                 labels: vec![
-                    ("resource_type".to_string(), self.inner.resource_type().to_string()),
+                    (
+                        "resource_type".to_string(),
+                        self.inner.resource_type().to_string(),
+                    ),
                     ("error".to_string(), error.to_string()),
                 ],
             },

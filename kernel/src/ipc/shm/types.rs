@@ -5,7 +5,7 @@
 
 use super::super::types::{IpcError, ShmId};
 use crate::core::limits;
-use crate::core::serde::{is_empty_vec, is_zero_usize};
+use crate::core::serialization::serde::{is_empty_vec, is_zero_usize};
 use crate::core::types::{Pid, Size};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -107,13 +107,13 @@ impl ShmStats {
     ///
     /// This provides better performance than JSON for shared memory metadata.
     pub fn to_bincode_bytes(&self) -> Result<Vec<u8>, String> {
-        crate::core::bincode::to_vec(self)
+        crate::core::serialization::bincode::to_vec(self)
             .map_err(|e| format!("Failed to serialize shm stats with bincode: {}", e))
     }
 
     /// Deserialize from bincode format
     pub fn from_bincode_bytes(bytes: &[u8]) -> Result<Self, String> {
-        crate::core::bincode::from_slice(bytes)
+        crate::core::serialization::bincode::from_slice(bytes)
             .map_err(|e| format!("Failed to deserialize shm stats with bincode: {}", e))
     }
 }

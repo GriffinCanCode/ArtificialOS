@@ -4,7 +4,7 @@
 * Routes filesystem syscalls through VFS when available
 */
 
-use crate::core::json;
+use crate::core::serialization::json;
 use crate::core::types::Pid;
 use crate::monitoring::span_operation;
 use crate::permissions::{PermissionChecker, PermissionRequest};
@@ -102,7 +102,10 @@ impl SyscallExecutorWithIpc {
             Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
                 error!("Read timed out for {:?} after {}ms", path, elapsed_ms);
                 span.record_error(&format!("Timeout after {}ms", elapsed_ms));
-                SyscallResult::error(format!("Read timed out after {}ms (slow storage?)", elapsed_ms))
+                SyscallResult::error(format!(
+                    "Read timed out after {}ms (slow storage?)",
+                    elapsed_ms
+                ))
             }
             Err(super::TimeoutError::Operation(e)) => {
                 error!("Read failed for {:?}: {}", path, e);
@@ -210,7 +213,10 @@ impl SyscallExecutorWithIpc {
             Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
                 error!("Write timed out for {:?} after {}ms", path, elapsed_ms);
                 span.record_error(&format!("Timeout after {}ms", elapsed_ms));
-                SyscallResult::error(format!("Write timed out after {}ms (slow storage?)", elapsed_ms))
+                SyscallResult::error(format!(
+                    "Write timed out after {}ms (slow storage?)",
+                    elapsed_ms
+                ))
             }
             Err(super::TimeoutError::Operation(e)) => {
                 error!("Write failed for {:?}: {}", path, e);
@@ -291,7 +297,10 @@ impl SyscallExecutorWithIpc {
             Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
                 error!("Delete timed out for {:?} after {}ms", path, elapsed_ms);
                 span.record_error(&format!("Timeout after {}ms", elapsed_ms));
-                SyscallResult::error(format!("Delete timed out after {}ms (slow storage?)", elapsed_ms))
+                SyscallResult::error(format!(
+                    "Delete timed out after {}ms (slow storage?)",
+                    elapsed_ms
+                ))
             }
             Err(super::TimeoutError::Operation(e)) => {
                 error!("Delete failed for {:?}: {}", path, e);
@@ -400,9 +409,15 @@ impl SyscallExecutorWithIpc {
                 SyscallResult::success()
             }
             Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
-                error!("Create directory timed out for {:?} after {}ms", path, elapsed_ms);
+                error!(
+                    "Create directory timed out for {:?} after {}ms",
+                    path, elapsed_ms
+                );
                 span.record_error(&format!("Timeout after {}ms", elapsed_ms));
-                SyscallResult::error(format!("Mkdir timed out after {}ms (slow storage?)", elapsed_ms))
+                SyscallResult::error(format!(
+                    "Mkdir timed out after {}ms (slow storage?)",
+                    elapsed_ms
+                ))
             }
             Err(super::TimeoutError::Operation(e)) => {
                 error!("Create directory failed for {:?}: {}", path, e);
@@ -481,9 +496,15 @@ impl SyscallExecutorWithIpc {
                 SyscallResult::success()
             }
             Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
-                error!("Remove directory timed out for {:?} after {}ms", path, elapsed_ms);
+                error!(
+                    "Remove directory timed out for {:?} after {}ms",
+                    path, elapsed_ms
+                );
                 span.record_error(&format!("Timeout after {}ms", elapsed_ms));
-                SyscallResult::error(format!("Remove directory timed out after {}ms (slow storage or large directory?)", elapsed_ms))
+                SyscallResult::error(format!(
+                    "Remove directory timed out after {}ms (slow storage or large directory?)",
+                    elapsed_ms
+                ))
             }
             Err(super::TimeoutError::Operation(e)) => {
                 error!("Remove directory failed for {:?}: {}", path, e);
@@ -626,9 +647,15 @@ impl SyscallExecutorWithIpc {
                 }
             }
             Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
-                error!("List directory timed out for {:?} after {}ms", path, elapsed_ms);
+                error!(
+                    "List directory timed out for {:?} after {}ms",
+                    path, elapsed_ms
+                );
                 span.record_error(&format!("Timeout after {}ms", elapsed_ms));
-                SyscallResult::error(format!("List directory timed out after {}ms (slow storage or large directory?)", elapsed_ms))
+                SyscallResult::error(format!(
+                    "List directory timed out after {}ms (slow storage or large directory?)",
+                    elapsed_ms
+                ))
             }
             Err(super::TimeoutError::Operation(e)) => {
                 error!("List directory failed for {:?}: {}", path, e);

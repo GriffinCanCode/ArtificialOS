@@ -113,7 +113,12 @@ impl GuardDrop for FdGuard {
     fn on_drop(&mut self) {
         if self.active {
             if let Err(e) = self.release() {
-                log::error!("FD guard drop failed for PID {}, FD {}: {}", self.pid, self.fd, e);
+                log::error!(
+                    "FD guard drop failed for PID {}, FD {}: {}",
+                    self.pid,
+                    self.fd,
+                    e
+                );
                 self.emit_error(&e);
             }
         }
@@ -140,7 +145,8 @@ impl Observable for FdGuard {
                     value: 1.0,
                     labels,
                 },
-            ).with_pid(self.pid);
+            )
+            .with_pid(self.pid);
             collector.emit(event);
         }
     }
@@ -159,7 +165,8 @@ impl Observable for FdGuard {
                         ("operation".to_string(), operation.to_string()),
                     ],
                 },
-            ).with_pid(self.pid);
+            )
+            .with_pid(self.pid);
             collector.emit(event);
         }
     }
@@ -179,7 +186,8 @@ impl Observable for FdGuard {
                         ("lifetime_micros".to_string(), lifetime.to_string()),
                     ],
                 },
-            ).with_pid(self.pid);
+            )
+            .with_pid(self.pid);
             collector.emit(event);
         }
     }
@@ -198,7 +206,8 @@ impl Observable for FdGuard {
                         ("error".to_string(), error.to_string()),
                     ],
                 },
-            ).with_pid(self.pid);
+            )
+            .with_pid(self.pid);
             collector.emit(event);
         }
     }

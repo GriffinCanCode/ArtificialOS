@@ -4,7 +4,7 @@
 * Memory management and garbage collection
 */
 
-use crate::core::json;
+use crate::core::serialization::json;
 use crate::core::types::Pid;
 use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
 
@@ -113,7 +113,10 @@ impl SyscallExecutorWithIpc {
             Some(target) => {
                 // Targeted GC for specific process
                 let freed = memory_manager.free_process_memory(target);
-                info!("PID {} triggered targeted GC for PID {}, freed {} bytes", pid, target, freed);
+                info!(
+                    "PID {} triggered targeted GC for PID {}, freed {} bytes",
+                    pid, target, freed
+                );
 
                 match json::to_vec(&serde_json::json!({
                     "freed_bytes": freed,

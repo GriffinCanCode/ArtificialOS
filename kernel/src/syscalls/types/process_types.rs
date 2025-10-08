@@ -3,7 +3,7 @@
  * Defines helper structures for process and system information
  */
 
-use crate::core::serde::{is_empty_string, skip_serializing_none};
+use crate::core::serialization::serde::{is_empty_string, skip_serializing_none};
 use serde::{Deserialize, Serialize};
 
 /// Process execution output

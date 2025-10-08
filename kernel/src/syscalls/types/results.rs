@@ -4,7 +4,7 @@
  */
 
 use super::errors::SyscallError;
-use crate::core::serde::skip_serializing_none;
+use crate::core::serialization::serde::skip_serializing_none;
 use serde::{Deserialize, Serialize};
 
 /// System call result with modern serde patterns

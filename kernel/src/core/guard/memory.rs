@@ -140,7 +140,8 @@ impl Observable for MemoryGuard {
                     size: self.size,
                     region_id: self.address as u64,
                 },
-            ).with_pid(self.pid);
+            )
+            .with_pid(self.pid);
             collector.emit(event);
         }
     }
@@ -159,7 +160,8 @@ impl Observable for MemoryGuard {
                         ("operation".to_string(), operation.to_string()),
                     ],
                 },
-            ).with_pid(self.pid);
+            )
+            .with_pid(self.pid);
             collector.emit(event);
         }
     }
@@ -174,7 +176,8 @@ impl Observable for MemoryGuard {
                     size: self.size,
                     region_id: self.address as u64,
                 },
-            ).with_pid(self.pid);
+            )
+            .with_pid(self.pid);
             collector.emit(event);
         }
     }
@@ -193,7 +196,8 @@ impl Observable for MemoryGuard {
                         ("error".to_string(), error.to_string()),
                     ],
                 },
-            ).with_pid(self.pid);
+            )
+            .with_pid(self.pid);
             collector.emit(event);
         }
     }
@@ -253,21 +257,24 @@ impl MemoryGuardRef {
 
     /// Get memory address
     pub fn address(&self) -> Address {
-        self.inner.lock()
+        self.inner
+            .lock()
             .expect("memory guard lock poisoned - memory state corrupted")
             .address
     }
 
     /// Get allocation size
     pub fn size(&self) -> Size {
-        self.inner.lock()
+        self.inner
+            .lock()
             .expect("memory guard lock poisoned - memory state corrupted")
             .size
     }
 
     /// Get process ID
     pub fn pid(&self) -> Pid {
-        self.inner.lock()
+        self.inner
+            .lock()
             .expect("memory guard lock poisoned - memory state corrupted")
             .pid
     }
@@ -283,13 +290,16 @@ impl Guard for MemoryGuardRef {
     }
 
     fn is_active(&self) -> bool {
-        self.inner.lock()
+        self.inner
+            .lock()
             .expect("memory guard lock poisoned - memory state corrupted")
             .active
     }
 
     fn release(&mut self) -> GuardResult<()> {
-        let mut state = self.inner.lock()
+        let mut state = self
+            .inner
+            .lock()
             .expect("memory guard lock poisoned - memory state corrupted");
         if !state.active {
             return Err(GuardError::AlreadyReleased);

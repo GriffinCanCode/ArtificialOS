@@ -50,7 +50,8 @@ impl SyscallGuard {
                 name: syscall_name.to_string(),
                 args_hash: 0,
             },
-        ).with_pid(pid);
+        )
+        .with_pid(pid);
         collector.emit(event);
 
         Self {
@@ -105,7 +106,8 @@ impl SyscallGuard {
                 duration_us: duration_micros,
                 result: result_enum,
             },
-        ).with_pid(self.pid);
+        )
+        .with_pid(self.pid);
 
         self.collector.emit(event);
     }
@@ -153,7 +155,8 @@ impl Drop for SyscallGuard {
                     duration_us: duration_micros,
                     result: crate::monitoring::SyscallResult::Success,
                 },
-            ).with_pid(self.pid);
+            )
+            .with_pid(self.pid);
 
             self.collector.emit(event);
         }

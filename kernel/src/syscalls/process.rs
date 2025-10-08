@@ -4,7 +4,7 @@
 * Process management and control
 */
 
-use crate::core::json;
+use crate::core::serialization::json;
 use crate::core::types::{Pid, Priority};
 use crate::monitoring::span_operation;
 use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
@@ -328,7 +328,10 @@ impl SyscallExecutorWithIpc {
             self.timeout_config.process_wait
         };
 
-        span.record("timeout_ms", &format!("{:?}", timeout.duration().map(|d| d.as_millis())));
+        span.record(
+            "timeout_ms",
+            &format!("{:?}", timeout.duration().map(|d| d.as_millis())),
+        );
 
         // Define error type for process wait
         #[derive(Debug)]
@@ -365,7 +368,10 @@ impl SyscallExecutorWithIpc {
 
         match result {
             Ok(()) => {
-                info!("PID {} successfully waited for PID {} completion", pid, target_pid);
+                info!(
+                    "PID {} successfully waited for PID {} completion",
+                    pid, target_pid
+                );
                 span.record_result(true);
                 SyscallResult::success()
             }

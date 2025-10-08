@@ -3,7 +3,7 @@
  * Lightweight performance metrics collector
  */
 
-use crate::core::serde::is_zero_u64;
+use crate::core::serialization::serde::is_zero_u64;
 use crate::core::{ShardManager, WorkloadProfile};
 use ahash::RandomState;
 use dashmap::DashMap;
