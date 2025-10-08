@@ -313,7 +313,12 @@ impl SignalHandlerRegistry for SignalManagerImpl {
             .get_mut(&pid)
             .ok_or(SignalError::ProcessNotFound(pid))?;
 
-        if proc.handlers.remove(&signal).is_some() {
+        if let Some(action) = proc.handlers.remove(&signal) {
+            // Cleanup callback from registry if it was a handler callback
+            if let SignalAction::Handler(handler_id) = action {
+                self.callbacks.unregister(handler_id);
+            }
+
             let mut stats = self.stats.write();
             stats.handlers_registered = stats.handlers_registered.saturating_sub(1);
             drop(stats);
@@ -339,13 +344,27 @@ impl SignalHandlerRegistry for SignalManagerImpl {
             .ok_or(SignalError::ProcessNotFound(pid))?;
 
         let count = proc.handlers.len();
+
+        // Cleanup callback handlers from registry to prevent leak
+        let mut callback_ids_cleaned = 0;
+        for action in proc.handlers.values() {
+            if let SignalAction::Handler(handler_id) = action {
+                if self.callbacks.unregister(*handler_id) {
+                    callback_ids_cleaned += 1;
+                }
+            }
+        }
+
         proc.handlers.clear();
 
         let mut stats = self.stats.write();
         stats.handlers_registered = stats.handlers_registered.saturating_sub(count);
         drop(stats);
 
-        info!("Reset all handlers for PID {}", pid);
+        info!(
+            "Reset all handlers for PID {} ({} callbacks cleaned)",
+            pid, callback_ids_cleaned
+        );
         Ok(())
     }
 }
@@ -487,13 +506,24 @@ impl SignalStateManager for SignalManagerImpl {
             let pending_count = proc.pending.len();
             let handler_count = proc.handlers.len();
 
+            // Extract and cleanup handler IDs from CallbackRegistry to prevent leak
+            // Zero-overhead: only iterate handlers during cleanup (infrequent operation)
+            let mut callback_ids_cleaned = 0;
+            for action in proc.handlers.values() {
+                if let SignalAction::Handler(handler_id) = action {
+                    if self.callbacks.unregister(*handler_id) {
+                        callback_ids_cleaned += 1;
+                    }
+                }
+            }
+
             let mut stats = self.stats.write();
             stats.pending_signals = stats.pending_signals.saturating_sub(pending_count);
             stats.handlers_registered = stats.handlers_registered.saturating_sub(handler_count);
 
             info!(
-                "Cleaned up signal state for PID {} ({} pending, {} handlers)",
-                pid, pending_count, handler_count
+                "Cleaned up signal state for PID {} ({} pending, {} handlers, {} callbacks)",
+                pid, pending_count, handler_count, callback_ids_cleaned
             );
         }
 

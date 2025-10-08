@@ -938,6 +938,150 @@ fn test_handler_execution_failure() {
     assert!(delivered <= 1);
 }
 
+#[test]
+fn test_callback_cleanup_on_process_termination() {
+    // Test that callbacks are properly cleaned up from CallbackRegistry
+    // when a process terminates to prevent memory leaks
+    let manager = SignalManagerImpl::new();
+    let pid: Pid = 1;
+
+    manager.initialize_process(pid).unwrap();
+
+    let callbacks = manager.callbacks();
+
+    // Register multiple callbacks
+    let handler_id1 = callbacks.register(|_, _| Ok(()));
+    let handler_id2 = callbacks.register(|_, _| Ok(()));
+    let handler_id3 = callbacks.register(|_, _| Ok(()));
+
+    // Verify callbacks exist in registry
+    assert!(callbacks.exists(handler_id1));
+    assert!(callbacks.exists(handler_id2));
+    assert!(callbacks.exists(handler_id3));
+    assert_eq!(callbacks.count(), 3);
+
+    // Register handlers that use these callbacks
+    manager
+        .register_handler(pid, Signal::SIGUSR1, SignalAction::Handler(handler_id1))
+        .unwrap();
+    manager
+        .register_handler(pid, Signal::SIGUSR2, SignalAction::Handler(handler_id2))
+        .unwrap();
+    manager
+        .register_handler(pid, Signal::SIGTERM, SignalAction::Handler(handler_id3))
+        .unwrap();
+
+    // Cleanup process (simulating process termination)
+    assert!(manager.cleanup_process(pid).is_ok());
+
+    // Verify all callbacks were removed from registry
+    assert!(!callbacks.exists(handler_id1));
+    assert!(!callbacks.exists(handler_id2));
+    assert!(!callbacks.exists(handler_id3));
+    assert_eq!(callbacks.count(), 0);
+}
+
+#[test]
+fn test_callback_cleanup_on_handler_reset() {
+    // Test that callbacks are cleaned up when reset_handlers() is called
+    let manager = SignalManagerImpl::new();
+    let pid: Pid = 1;
+
+    manager.initialize_process(pid).unwrap();
+
+    let callbacks = manager.callbacks();
+
+    let handler_id1 = callbacks.register(|_, _| Ok(()));
+    let handler_id2 = callbacks.register(|_, _| Ok(()));
+
+    assert_eq!(callbacks.count(), 2);
+
+    manager
+        .register_handler(pid, Signal::SIGUSR1, SignalAction::Handler(handler_id1))
+        .unwrap();
+    manager
+        .register_handler(pid, Signal::SIGUSR2, SignalAction::Handler(handler_id2))
+        .unwrap();
+
+    // Reset all handlers
+    manager.reset_handlers(pid).unwrap();
+
+    // Verify callbacks were removed
+    assert!(!callbacks.exists(handler_id1));
+    assert!(!callbacks.exists(handler_id2));
+    assert_eq!(callbacks.count(), 0);
+}
+
+#[test]
+fn test_callback_cleanup_on_individual_unregister() {
+    // Test that individual callback is cleaned up when a specific handler is unregistered
+    let manager = SignalManagerImpl::new();
+    let pid: Pid = 1;
+
+    manager.initialize_process(pid).unwrap();
+
+    let callbacks = manager.callbacks();
+
+    let handler_id1 = callbacks.register(|_, _| Ok(()));
+    let handler_id2 = callbacks.register(|_, _| Ok(()));
+
+    assert_eq!(callbacks.count(), 2);
+
+    manager
+        .register_handler(pid, Signal::SIGUSR1, SignalAction::Handler(handler_id1))
+        .unwrap();
+    manager
+        .register_handler(pid, Signal::SIGUSR2, SignalAction::Handler(handler_id2))
+        .unwrap();
+
+    // Unregister only one handler
+    manager.unregister_handler(pid, Signal::SIGUSR1).unwrap();
+
+    // First callback should be removed, second should remain
+    assert!(!callbacks.exists(handler_id1));
+    assert!(callbacks.exists(handler_id2));
+    assert_eq!(callbacks.count(), 1);
+
+    // Unregister second handler
+    manager.unregister_handler(pid, Signal::SIGUSR2).unwrap();
+
+    // Both callbacks should now be removed
+    assert!(!callbacks.exists(handler_id2));
+    assert_eq!(callbacks.count(), 0);
+}
+
+#[test]
+fn test_no_callback_cleanup_for_non_handler_actions() {
+    // Test that cleanup doesn't affect non-Handler SignalActions
+    let manager = SignalManagerImpl::new();
+    let pid: Pid = 1;
+
+    manager.initialize_process(pid).unwrap();
+
+    let callbacks = manager.callbacks();
+
+    // Register a callback but also register non-handler actions
+    let handler_id = callbacks.register(|_, _| Ok(()));
+    assert_eq!(callbacks.count(), 1);
+
+    manager
+        .register_handler(pid, Signal::SIGUSR1, SignalAction::Handler(handler_id))
+        .unwrap();
+    manager
+        .register_handler(pid, Signal::SIGUSR2, SignalAction::Ignore)
+        .unwrap();
+    manager
+        .register_handler(pid, Signal::SIGTERM, SignalAction::Terminate)
+        .unwrap();
+
+    // Cleanup process
+    manager.cleanup_process(pid).unwrap();
+
+    // Only the handler callback should be removed
+    assert!(!callbacks.exists(handler_id));
+    assert_eq!(callbacks.count(), 0);
+}
+
 // ----------------------------------------------------------------------------
 // 5. Automatic Delivery Hook Tests
 // ----------------------------------------------------------------------------
