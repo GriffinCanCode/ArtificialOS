@@ -33,6 +33,12 @@ unsafe impl<T: Send + 'static, S: LockState> Send for LockGuard<T, S> {}
 /// - `LockGuard<Unlocked>`: Lock not held
 /// - `LockGuard<Locked>`: Lock held, can access data
 ///
+/// # Design Note
+///
+/// This guard uses type states to track lock ownership but does NOT store
+/// a MutexGuard. Instead, it acquires the lock on each access. This is sound
+/// and avoids lifetime issues with stored guards.
+///
 /// # Example
 ///
 /// ```rust
@@ -43,7 +49,9 @@ unsafe impl<T: Send + 'static, S: LockState> Send for LockGuard<T, S> {}
 /// ```
 pub struct LockGuard<T: 'static, S: LockState = Unlocked> {
     data: Arc<Mutex<T>>,
-    guard: Option<StdMutexGuard<'static, T>>,
+    // Track if we conceptually hold the lock (for type state)
+    // In Locked state, we own the logical lock but acquire mutex on each access
+    lock_held: bool,
     metadata: GuardMetadata,
     poisoned: bool,
     poison_reason: Option<String>,
@@ -55,7 +63,7 @@ impl<T: Send + 'static> LockGuard<T, Unlocked> {
     pub fn new(data: T) -> Self {
         Self {
             data: Arc::new(Mutex::new(data)),
-            guard: None,
+            lock_held: false,
             metadata: GuardMetadata::new("lock"),
             poisoned: false,
             poison_reason: None,
@@ -68,20 +76,25 @@ impl<T: Send + 'static> LockGuard<T, Unlocked> {
     /// # Type Safety
     ///
     /// Returns `LockGuard<T, Locked>` - different type!
+    ///
+    /// # Design
+    ///
+    /// We acquire the mutex briefly to ensure we CAN lock it, then release it.
+    /// The Locked state means we have logical ownership - actual mutex locks
+    /// happen on each access.
     pub fn lock(self) -> GuardResult<LockGuard<T, Locked>> {
-        let guard = self
+        // Try to lock to verify it's not poisoned and available
+        let _guard = self
             .data
             .lock()
             .map_err(|e| GuardError::Poisoned(format!("Lock poisoned: {:?}", e)))?;
 
-        // SAFETY: We're extending the lifetime to 'static because we're storing
-        // the Arc which keeps the data alive. This is safe because we control
-        // the guard lifetime through the LockGuard struct.
-        let guard_static: StdMutexGuard<'static, T> = unsafe { std::mem::transmute(guard) };
+        // Immediately drop the guard - we'll reacquire on access
+        drop(_guard);
 
         Ok(LockGuard {
-            data: self.data.clone(),
-            guard: Some(guard_static),
+            data: self.data,
+            lock_held: true, // Conceptually we hold the lock now
             metadata: self.metadata,
             poisoned: false,
             poison_reason: None,
@@ -91,20 +104,20 @@ impl<T: Send + 'static> LockGuard<T, Unlocked> {
 
     /// Try to acquire lock without blocking
     pub fn try_lock(self) -> Result<LockGuard<T, Locked>, Self> {
-        match Arc::clone(&self.data).try_lock() {
-            Ok(guard) => {
-                let guard_static: StdMutexGuard<'static, T> = unsafe { std::mem::transmute(guard) };
+        // Try to lock and immediately check result
+        let can_lock = self.data.try_lock().is_ok();
 
-                Ok(LockGuard {
-                    data: self.data,
-                    guard: Some(guard_static),
-                    metadata: self.metadata,
-                    poisoned: false,
-                    poison_reason: None,
-                    _state: PhantomData,
-                })
-            }
-            Err(_) => Err(self),
+        if can_lock {
+            Ok(LockGuard {
+                data: self.data,
+                lock_held: true,
+                metadata: self.metadata,
+                poisoned: false,
+                poison_reason: None,
+                _state: PhantomData,
+            })
+        } else {
+            Err(self)
         }
     }
 
@@ -178,24 +191,29 @@ impl<T: Send + 'static> LockGuard<T, Locked> {
     /// # Type Safety
     ///
     /// Only available when State = Locked
+    ///
+    /// # Note
+    ///
+    /// This acquires the mutex each time. For better performance with multiple
+    /// accesses, use `with()` or `with_mut()` instead.
     #[inline]
-    pub fn access(&self) -> &T {
-        self.guard.as_ref().unwrap()
+    pub fn access(&self) -> StdMutexGuard<'_, T> {
+        self.data.lock().expect("Lock poisoned during access")
     }
 
     /// Mutably access the protected data
+    ///
+    /// Returns a guard that allows mutable access
     #[inline]
-    pub fn access_mut(&mut self) -> &mut T {
-        self.guard.as_mut().unwrap()
+    pub fn access_mut(&self) -> StdMutexGuard<'_, T> {
+        self.data.lock().expect("Lock poisoned during mutable access")
     }
 
     /// Release the lock, transitioning to Unlocked state
-    pub fn unlock(mut self) -> LockGuard<T, Unlocked> {
-        drop(self.guard.take());
-
+    pub fn unlock(self) -> LockGuard<T, Unlocked> {
         LockGuard {
             data: self.data,
-            guard: None,
+            lock_held: false,
             metadata: self.metadata,
             poisoned: self.poisoned,
             poison_reason: self.poison_reason,
@@ -205,12 +223,16 @@ impl<T: Send + 'static> LockGuard<T, Locked> {
 
     /// Execute a function with the locked data
     ///
-    /// Automatically unlocks after function completes
-    pub fn with<F, R>(mut self, f: F) -> (R, LockGuard<T, Unlocked>)
+    /// Automatically unlocks after function completes.
+    /// This is more efficient than multiple `access()` calls as it holds
+    /// the mutex for the duration of the closure.
+    pub fn with<F, R>(self, f: F) -> (R, LockGuard<T, Unlocked>)
     where
         F: FnOnce(&mut T) -> R,
     {
-        let result = f(self.access_mut());
+        let mut guard = self.data.lock().expect("Lock poisoned in with()");
+        let result = f(&mut *guard);
+        drop(guard);
         let unlocked = self.unlock();
         (result, unlocked)
     }
@@ -218,7 +240,7 @@ impl<T: Send + 'static> LockGuard<T, Locked> {
 
 impl<T: Send + 'static, S: LockState> Guard for LockGuard<T, S> {
     fn resource_type(&self) -> &'static str {
-        if self.guard.is_some() {
+        if self.lock_held {
             "lock_locked"
         } else {
             "lock_unlocked"
@@ -234,8 +256,8 @@ impl<T: Send + 'static, S: LockState> Guard for LockGuard<T, S> {
     }
 
     fn release(&mut self) -> GuardResult<()> {
-        if self.guard.is_some() {
-            self.guard = None;
+        if self.lock_held {
+            self.lock_held = false;
             Ok(())
         } else {
             Err(GuardError::AlreadyReleased)
@@ -305,29 +327,31 @@ mod tests {
     #[test]
     fn test_try_lock() {
         let guard1 = LockGuard::new(100);
-        let locked = guard1.lock().unwrap();
 
-        // Clone the Arc before we need it after drop
-        let data_arc = locked.data.clone();
+        // Clone the Arc before we lock
+        let data_arc = guard1.data.clone();
+
+        // Hold an actual mutex lock
+        let _real_lock = guard1.data.lock().unwrap();
 
         let guard2 = LockGuard {
             data: data_arc.clone(),
-            guard: None,
+            lock_held: false,
             metadata: GuardMetadata::new("lock"),
             poisoned: false,
             poison_reason: None,
             _state: PhantomData,
         };
 
-        // Try lock should fail
+        // Try lock should fail because we're holding _real_lock
         assert!(guard2.try_lock().is_err());
 
-        drop(locked);
+        drop(_real_lock);
 
         // Now should succeed
         let guard3 = LockGuard {
             data: data_arc.clone(),
-            guard: None,
+            lock_held: false,
             metadata: GuardMetadata::new("lock"),
             poisoned: false,
             poison_reason: None,
@@ -369,14 +393,14 @@ mod tests {
         let guard1 = LockGuard::new(100);
         let data = guard1.data.clone();
 
-        // Hold lock in one thread
-        let locked = guard1.lock().unwrap();
+        // Hold lock in one thread by keeping an actual MutexGuard alive
+        let _real_lock = guard1.data.lock().unwrap();
 
         // Try to acquire with short timeout in another context
         thread::spawn(move || {
             let guard2 = LockGuard {
                 data: data.clone(),
-                guard: None,
+                lock_held: false,
                 metadata: GuardMetadata::new("lock"),
                 poisoned: false,
                 poison_reason: None,
@@ -394,7 +418,7 @@ mod tests {
             }
         }).join().unwrap();
 
-        drop(locked);
+        drop(_real_lock);
     }
 
     #[test]

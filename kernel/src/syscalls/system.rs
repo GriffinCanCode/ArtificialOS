@@ -10,9 +10,11 @@ use crate::monitoring::span_operation;
 use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
 
 use log::{error, info, trace, warn};
+use prost::bytes;
 
 use super::executor::SyscallExecutor;
 use super::types::{SyscallResult, SystemInfo};
+use super::TimeoutError;
 
 impl SyscallExecutor {
     pub(super) fn get_system_info(&self, pid: Pid) -> SyscallResult {
@@ -172,53 +174,53 @@ impl SyscallExecutor {
 
         span.record("host", &host);
 
-        // Use reqwest for robust HTTP/HTTPS support with timeouts, connection pooling,
-        // redirect handling, and compression support
-        match reqwest::blocking::Client::builder()
-            .timeout(std::time::Duration::from_secs(30))
-            .user_agent("ai-os-kernel/0.1.0")
-            .build()
-        {
-            Ok(client) => match client.get(url).send() {
-                Ok(response) => {
-                    let status = response.status();
+        // Use timeout executor for consistent timeout handling and observability
+        // HTTP requests can hang on slow networks, DNS resolution, or unresponsive servers
+        let url_clone = url.to_string();
+        let result: Result<(reqwest::StatusCode, bytes::Bytes), TimeoutError<reqwest::Error>> = self.timeout_executor.execute_with_deadline(
+            || {
+                // Create client without timeout (we handle timeout at executor level)
+                let client = reqwest::blocking::Client::builder()
+                    .user_agent("ai-os-kernel/0.1.0")
+                    .build()?;
 
-                    if !status.is_success() {
-                        warn!("PID {} received HTTP {} for {}", pid, status.as_u16(), url);
-                        span.record("status_code", &format!("{}", status.as_u16()));
-                    }
+                let response = client.get(&url_clone).send()?;
+                let status = response.status();
+                let body = response.bytes()?;
 
-                    match response.bytes() {
-                        Ok(body) => {
-                            info!(
-                                "PID {} fetched {} ({} bytes, status: {})",
-                                pid,
-                                url,
-                                body.len(),
-                                status.as_u16()
-                            );
-                            span.record("bytes_received", &format!("{}", body.len()));
-                            span.record("status_code", &format!("{}", status.as_u16()));
-                            span.record_result(true);
-                            SyscallResult::success_with_data(body.to_vec())
-                        }
-                        Err(e) => {
-                            error!("Failed to read response body from {}: {}", url, e);
-                            span.record_error(&format!("Failed to read response body: {}", e));
-                            SyscallResult::error(format!("Failed to read response body: {}", e))
-                        }
-                    }
-                }
-                Err(e) => {
-                    error!("Failed to fetch {}: {}", url, e);
-                    span.record_error(&format!("Network request failed: {}", e));
-                    SyscallResult::error(format!("Network request failed: {}", e))
-                }
+                Ok((status, body))
             },
-            Err(e) => {
-                error!("Failed to create HTTP client: {}", e);
-                span.record_error(&format!("Failed to create HTTP client: {}", e));
-                SyscallResult::error(format!("Failed to create HTTP client: {}", e))
+            self.timeout_config.network,
+            "http_request",
+        );
+
+        match result {
+            Ok((status, body)) => {
+                if !status.is_success() {
+                    warn!("PID {} received HTTP {} for {}", pid, status.as_u16(), url);
+                }
+
+                info!(
+                    "PID {} fetched {} ({} bytes, status: {})",
+                    pid,
+                    url,
+                    body.len(),
+                    status.as_u16()
+                );
+                span.record("bytes_received", &format!("{}", body.len()));
+                span.record("status_code", &format!("{}", status.as_u16()));
+                span.record_result(true);
+                SyscallResult::success_with_data(body.to_vec())
+            }
+            Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
+                error!("HTTP request timed out for {} after {}ms (slow network or unresponsive server?)", url, elapsed_ms);
+                span.record_error(&format!("Timeout after {}ms", elapsed_ms));
+                SyscallResult::error(format!("Network request timed out after {}ms", elapsed_ms))
+            }
+            Err(TimeoutError::Operation(e)) => {
+                error!("Failed to fetch {}: {}", url, e);
+                span.record_error(&format!("Network request failed: {}", e));
+                SyscallResult::error(format!("Network request failed: {}", e))
             }
         }
     }

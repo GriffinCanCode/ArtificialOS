@@ -299,7 +299,8 @@ mod tests {
 
     #[test]
     fn test_retry_then_success() {
-        let executor = TimeoutExecutor::disabled();
+        // Use enabled executor with no timeout to allow retries
+        let executor = TimeoutExecutor::new(None);
         let counter = Arc::new(AtomicU32::new(0));
         let counter_clone = counter.clone();
 
