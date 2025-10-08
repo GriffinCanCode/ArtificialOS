@@ -46,7 +46,7 @@ I built AgentOS because I was frustrated. Not with any particular technology, bu
 
 ## The Core Innovation: Observability Was Never An Afterthought
 
-Here's what makes AgentOS different — and I say this having studied how Linux, Fuchsia, and others approached this problem — observability isn't bolted on. It's woven into the fabric from day one. Every major subsystem emits events through a unified collector, and I spent an embarrassing amount of time making this both sophisticated and fast:
+Here's what makes AgentOS different — and I say this having studied how Linux, Fuchsia, and others approached this problem — observability isn't bolted on. It's woven into the fabric from day one. Every major subsystem emits events through a unified collector, and I spent time making this both sophisticated and fast:
 
 ### Dual-Layer Observability System
 
@@ -101,8 +101,6 @@ Every major operation emits observable events:
 - `SandboxManager` → permission checks and denials
 - `ProcessManager` → creation/termination with resource stats
 - `TimeoutExecutor` → timeout events with retry counts
-
-And I'll say it — this is genuinely better than most production systems. Linux added observability piecemeal over decades (ftrace, then perf, then eBPF). Fuchsia has structured tracing but bolted it on later. I had the luxury of designing it in from the start, and that architectural decision cascades through everything.
 
 ---
 
@@ -1018,118 +1016,6 @@ curl http://localhost:8000/health
 # WebSocket test (after starting backend)
 wscat -c ws://localhost:8000/stream
 ```
-
-## Performance Characteristics — Where I Obsessed Over Microseconds
-
-I'll be honest: I spent an embarrassing amount of time optimizing things that probably didn't need optimization. But the result is a system that's genuinely fast across every layer.
-
-### Backend Performance (Go) — Why I Chose Speed
-
-- **Request Handling**: 5-10x faster than equivalent Python FastAPI implementation (I benchmarked it)
-- **Concurrency**: True parallel processing with goroutines; handles multiple apps simultaneously without breaking a sweat
-- **Memory**: Efficient allocation with Go's garbage collector (though I still miss Rust's no-GC approach)
-- **Type Safety**: Compile-time type checking prevents entire classes of runtime errors (saved me countless hours)
-- **gRPC Efficiency**: Binary Protocol Buffers with HTTP/2 multiplexing — because JSON over REST is so 2015
-
-### AI Service Performance (Python)
-- **Template Generation**: Sub-100ms for predefined app patterns
-- **LLM Inference**: Google Gemini API with cloud-based optimization (optional)
-- **Streaming**: Token-level streaming for real-time user feedback
-- **Caching**: LRU cache for frequently requested UI specifications
-- **Model**: gemini-2.0-flash-exp for fast, high-quality responses when LLM is enabled
-
-### Kernel Performance (Rust) — The Microoptimization Rabbit Hole
-
-This is where I went deep. Too deep, probably. But when you're building a kernel, every nanosecond matters when it's multiplied by millions of operations. Here's where I spent my nights:
-
-**1. Timeout Infrastructure (7.5x speedup) — My Proudest Optimization**
-- Adaptive backoff: spin hints (16 retries) → yield (100 retries) → microsleep
-- Pre-computed deadlines (calculate once, not every iteration)
-- Batch time checks (every 8 iterations, not every iteration)
-- Cold path marking (`#[cold]` for timeouts) for better CPU branch prediction
-- Benchmark: 5 retries went from 615ns → 82ns
-
-**2. Sharded Slot Pattern (I Studied Linux Futexes for This)**
-- 512 fixed parking slots, power-of-2 for fast modulo (SLOT_MASK) — because bit masking is faster than modulo
-- O(1) lookup, zero allocations, stable addresses
-- Cache-line aligned (`#[repr(C, align(64))]`) — false sharing is the enemy
-- Before: 2-3 allocations per wait, tests hanging indefinitely (frustrating)
-- After: Zero allocations, tests pass <100ms (extremely satisfying)
-
-**3. Lock-Free Data Structures (Because Locks Are Slow)**
-- SPSC pipes: Lock-free ring buffers with SIMD batching — single producer, single consumer is the happy path
-- MPMC queues: DashMap with tuned shard counts (128/64/32 based on contention profiling I did with criterion)
-- Event streams: 65,536-slot ring, ~50ns per event (power-of-2 sizing for fast indexing)
-- io_uring queues: Lock-free submission/completion — borrowed the idea from io_uring, adapted for userspace
-- Batch SIMD copy first (64 bytes at once), then push atomically (64x fewer atomic ops — this matters)
-
-**4. Permission Caching (The Hot Path Optimization)**
-- Cache-line aligned (`#[repr(C, align(64))]`) — again, false sharing is the enemy
-- LRU eviction when full
-- TTL-based expiry (5 seconds default) — security vs performance tradeoff
-- Per-PID invalidation on policy changes — can't have stale security decisions
-- 10-100x speedup on hot path (nanoseconds vs microseconds) — this is checked on EVERY filesystem operation
-
-**5. Fast Random for Sampling (The rand Crate Was Too Slow)**
-- Xorshift RNG (2-3 CPU cycles) instead of `rand` crate — when you need "random enough" not "cryptographically secure"
-- Thread-local state for zero contention
-- Used for adaptive sampling decisions — millions of times per second
-
-**6. Memory Allocation**
-- Segregated free lists: 12 power-of-2 buckets (64B-4KB), 15 linear buckets (8KB-64KB)
-- O(1) for common case (small/medium allocations)
-- Block splitting + periodic coalescing
-- Address recycling via free lists
-- ID recycling to prevent u32 exhaustion (4.3B IDs at 1 alloc/μs = 71 min without recycling)
-
-**7. JIT Syscall Compilation (eBPF-Inspired)**
-- Hot path detection (>100 calls triggers compilation) — if it's called frequently, optimize it
-- Pattern-based optimizations: inlining, fast paths, eliminate bounds checks
-- Compiled handler caching per pattern — compile once, use many times
-- Background compilation loop (checks every 5 seconds) — don't block the hot path to optimize the hot path
-
-**8. Observability Overhead**
-- Adaptive sampling maintains <2% CPU overhead automatically
-- Lock-free event emission (~50ns)
-- Zero-copy event data where possible
-- Welford's algorithm: O(1) memory, streaming statistics
-
-**9. Syscall Execution**
-- Modular handler dispatch
-- Optional JIT fast paths
-- io_uring async for I/O-bound operations
-- Timeout infrastructure for all blocking ops
-- **95+ syscalls** fully implemented across 13 categories
-- **Streaming support** for large file operations (configurable chunk sizes, memory efficient)
-- **Async execution** for long-running syscalls (task tracking, progress, cancellation)
-- **Batch execution** for bulk operations (parallel or sequential modes, single RPC)
-
-**10. IPC Throughput**
-- Pipes: 64KB lock-free SPSC buffers with SIMD batching
-- Shared Memory: Zero-copy transfers, 100MB/segment, 500MB global
-- Async Queues: FIFO/Priority/PubSub with 100MB global limit
-- Zero-copy IPC: io_uring semantics for ring-based transfers
-- mmap: Memory-mapped file I/O with msync
-
-**11. Scheduler**
-- CFS-inspired with O(1) location index for fast lookup
-- Virtual runtime tracking prevents starvation
-- 3 policies: round-robin, priority, fair (CFS)
-- Preemptive scheduling with time quantum
-- Dynamic policy switching without losing processes
-
-**12. Network Namespace Isolation**
-- Linux: True network namespaces with veth pairs, bridge networking, NAT
-- macOS: Packet filter rules with pfctl
-- Simulation: Fallback capability-based restrictions
-- 4 isolation modes: Full, Private (with NAT), Shared, Bridged
-
-**13. Resource Cleanup**
-- Unified trait-based orchestrator
-- Dependency-aware LIFO ordering (close sockets before freeing memory)
-- Comprehensive per-type statistics
-- Coverage validation to detect leaks
-- Better architecture than Linux's scattered `do_exit()` approach
 
 ### Frontend Performance (TypeScript/React)
 - **Tool Execution**: Sub-10ms local tool execution
