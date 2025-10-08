@@ -13,7 +13,6 @@ use thiserror::Error;
 ///
 /// # Must Use
 /// Signal operations can fail and must be handled to prevent undefined behavior
-#[must_use = "signal operations can fail and must be handled"]
 pub type SignalResult<T> = Result<T, SignalError>;
 
 /// Signal errors

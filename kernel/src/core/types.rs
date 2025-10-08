@@ -36,7 +36,6 @@ pub type Signal = u32;
 ///
 /// # Must Use
 /// This Result type must be used - ignoring errors can lead to undefined behavior
-#[must_use = "kernel operations can fail and must be handled"]
 pub type KernelResult<T> = Result<T, super::errors::KernelError>;
 
 /// System information

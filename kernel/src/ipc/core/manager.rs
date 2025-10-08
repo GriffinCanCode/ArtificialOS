@@ -13,8 +13,8 @@ use crate::ipc::queue::QueueManager;
 use crate::ipc::shm::ShmManager;
 use crate::ipc::zerocopy::ZeroCopyIpc;
 use crate::memory::MemoryManager;
-use dashmap::DashMap;
 use ahash::RandomState;
+use dashmap::DashMap;
 use log::info;
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -135,8 +135,6 @@ impl IPCManager {
     pub fn receive_message(&self, pid: Pid) -> Option<Message> {
         if let Some(mut queue) = self.message_queues.get_mut(&pid) {
             if let Some(message) = queue.pop_front() {
-                let message_size = message.size();
-
                 // Deallocate memory through MemoryManager (integrated tracking)
                 // Note: We can't store the address in Message, so we rely on MemoryManager's
                 // process cleanup to reclaim this memory when the process terminates

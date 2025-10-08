@@ -13,7 +13,6 @@ use thiserror::Error;
 ///
 /// # Must Use
 /// IPC operations can fail and must be handled to prevent resource leaks
-#[must_use = "IPC operations can fail and must be handled"]
 pub type IpcResult<T> = Result<T, IpcError>;
 
 /// Unified IPC error type with miette diagnostics

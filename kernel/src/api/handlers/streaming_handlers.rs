@@ -2,12 +2,12 @@
  * Streaming-related gRPC handler implementations
  */
 
-use tonic::{Request, Response, Status};
-use tracing::info;
+use crate::api::execution::StreamingManager;
+use crate::api::server::grpc_server::kernel_proto::*;
 use crate::process::ProcessManagerImpl as ProcessManager;
 use crate::security::SandboxManager;
-use crate::api::server::grpc_server::kernel_proto::*;
-use crate::api::execution::StreamingManager;
+use tonic::{Request, Response, Status};
+use tracing::info;
 
 pub async fn handle_stream_events(
     process_manager: &ProcessManager,
@@ -62,16 +62,14 @@ pub async fn handle_stream_events(
 
             // Emit syscall execution events (based on scheduler activity)
             if event_types.is_empty() || event_types.contains(&"syscall_executed".to_string()) {
-                if let Some(stats) = process_manager.get_scheduler_stats() {
+                if let Some(_stats) = process_manager.get_scheduler_stats() {
                     let event = KernelEvent {
                         timestamp,
-                        event: Some(kernel_event::Event::SyscallExecuted(
-                            SyscallExecutedEvent {
-                                pid: 0,
-                                syscall_type: "schedule_next".to_string(),
-                                success: true,
-                            },
-                        )),
+                        event: Some(kernel_event::Event::SyscallExecuted(SyscallExecutedEvent {
+                            pid: 0,
+                            syscall_type: "schedule_next".to_string(),
+                            success: true,
+                        })),
                     };
 
                     if tx.send(Ok(event)).await.is_err() {
@@ -82,8 +80,7 @@ pub async fn handle_stream_events(
             }
 
             // Emit permission denied events (based on sandbox stats)
-            if event_types.is_empty() || event_types.contains(&"permission_denied".to_string())
-            {
+            if event_types.is_empty() || event_types.contains(&"permission_denied".to_string()) {
                 use crate::security::traits::SandboxProvider;
                 let sandbox_stats = sandbox_manager.stats();
                 if sandbox_stats.permission_denials > 0 {
@@ -118,7 +115,10 @@ pub async fn handle_stream_events(
 pub async fn handle_stream_syscall(
     streaming_manager: &StreamingManager,
     request: Request<tonic::Streaming<StreamSyscallRequest>>,
-) -> Result<Response<tokio_stream::wrappers::ReceiverStream<Result<StreamSyscallChunk, Status>>>, Status> {
+) -> Result<
+    Response<tokio_stream::wrappers::ReceiverStream<Result<StreamSyscallChunk, Status>>>,
+    Status,
+> {
     let mut stream = request.into_inner();
     let (tx, rx) = tokio::sync::mpsc::channel(100);
     let streaming_manager = streaming_manager.clone();

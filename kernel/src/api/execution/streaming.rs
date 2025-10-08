@@ -23,7 +23,7 @@ impl StreamingManager {
 
     pub async fn stream_file_read(
         &self,
-        pid: Pid,
+        _pid: Pid,
         path: PathBuf,
         chunk_size: Option<u32>,
     ) -> Result<impl futures::Stream<Item = Result<Vec<u8>, String>>, String> {
@@ -53,7 +53,7 @@ impl StreamingManager {
 
     pub async fn stream_file_write(
         &self,
-        pid: Pid,
+        _pid: Pid,
         path: PathBuf,
         data_stream: impl futures::Stream<Item = Vec<u8>>,
     ) -> Result<u64, String> {

@@ -10,7 +10,6 @@ use thiserror::Error;
 ///
 /// # Must Use
 /// VFS operations can fail and must be handled to prevent data loss
-#[must_use = "VFS operations can fail and must be handled"]
 pub type VfsResult<T> = Result<T, VfsError>;
 
 /// VFS errors with structured, type-safe error handling

@@ -6,14 +6,12 @@
 use crate::core::json;
 use crate::core::types::Pid;
 use crate::permissions::{PermissionChecker, PermissionRequest};
-use crate::security::Capability;
 use crate::signals::{
     Signal, SignalAction, SignalDelivery, SignalHandlerRegistry, SignalMasking, SignalQueue,
 };
 use log::{error, info};
 
 use super::executor::SyscallExecutor;
-use super::traits::SignalSyscalls;
 use super::types::SyscallResult;
 
 impl SyscallExecutor {
@@ -62,7 +60,12 @@ impl SyscallExecutor {
     }
 
     /// Register signal handler
-    pub(super) fn register_signal_handler(&self, pid: Pid, signal: u32, handler_id: u64) -> SyscallResult {
+    pub(super) fn register_signal_handler(
+        &self,
+        pid: Pid,
+        signal: u32,
+        handler_id: u64,
+    ) -> SyscallResult {
         let signal_manager = match &self.signal_manager {
             Some(mgr) => mgr,
             None => return SyscallResult::error("Signal manager not available"),
@@ -166,7 +169,12 @@ impl SyscallExecutor {
     }
 
     /// Wait for signal
-    pub(super) fn wait_for_signal(&self, pid: Pid, signals: &[u32], _timeout_ms: Option<u64>) -> SyscallResult {
+    pub(super) fn wait_for_signal(
+        &self,
+        pid: Pid,
+        signals: &[u32],
+        _timeout_ms: Option<u64>,
+    ) -> SyscallResult {
         let signal_manager = match &self.signal_manager {
             Some(mgr) => mgr,
             None => return SyscallResult::error("Signal manager not available"),
@@ -216,7 +224,10 @@ impl SyscallExecutor {
             },
             None => {
                 info!("No signal state found for PID {}", query_pid);
-                SyscallResult::error(format!("Process {} not found or has no signal state", query_pid))
+                SyscallResult::error(format!(
+                    "Process {} not found or has no signal state",
+                    query_pid
+                ))
             }
         }
     }

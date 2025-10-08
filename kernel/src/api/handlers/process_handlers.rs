@@ -2,15 +2,18 @@
  * Process-related gRPC handler implementations
  */
 
+use crate::api::server::grpc_server::kernel_proto::*;
+use crate::monitoring::span_grpc;
+use crate::process::ProcessManagerImpl as ProcessManager;
+use crate::security::traits::SandboxProvider;
+use crate::security::{SandboxConfig, SandboxManager};
 use tonic::{Request, Response, Status};
 use tracing::{info, instrument};
-use crate::monitoring::{span_grpc, GrpcSpan};
-use crate::process::ProcessManagerImpl as ProcessManager;
-use crate::security::{SandboxConfig, SandboxManager};
-use crate::security::traits::SandboxProvider;
-use crate::api::server::grpc_server::kernel_proto::*;
 
-#[instrument(skip(process_manager, sandbox_manager, request), fields(process_name, priority, sandbox_level, trace_id))]
+#[instrument(
+    skip(process_manager, sandbox_manager, request),
+    fields(process_name, priority, sandbox_level, trace_id)
+)]
 pub async fn handle_create_process(
     process_manager: &ProcessManager,
     sandbox_manager: &SandboxManager,

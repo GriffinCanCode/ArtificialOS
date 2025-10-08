@@ -2,17 +2,17 @@
  * Async operation handler implementations
  */
 
-use tonic::{Request, Response, Status};
-use tracing::{info, warn, instrument};
-use crate::monitoring::{span_grpc, GrpcSpan};
-use crate::api::server::grpc_server::kernel_proto::*;
-use crate::api::execution::{
-    AsyncTaskManager, BatchExecutor, TaskStatus,
-    IoUringManager, SyscallSubmissionEntry, SyscallOpType,
-};
 use crate::api::conversions::{proto_to_syscall_simple, syscall_result_to_proto};
-use crate::syscalls::{SyscallResult, Syscall};
+use crate::api::execution::{
+    AsyncTaskManager, BatchExecutor, IoUringManager, SyscallOpType, SyscallSubmissionEntry,
+    TaskStatus,
+};
+use crate::api::server::grpc_server::kernel_proto::*;
+use crate::monitoring::span_grpc;
+use crate::syscalls::{Syscall, SyscallResult};
 use std::sync::Arc;
+use tonic::{Request, Response, Status};
+use tracing::{info, instrument, warn};
 
 #[instrument(skip(async_manager, request), fields(pid, task_id, trace_id))]
 pub async fn handle_execute_syscall_async(
@@ -143,9 +143,7 @@ pub async fn handle_execute_syscall_batch(
             Err(e) => {
                 return Ok(Response::new(BatchSyscallResponse {
                     responses: vec![SyscallResponse {
-                        result: Some(syscall_response::Result::Error(ErrorResult {
-                            message: e,
-                        })),
+                        result: Some(syscall_response::Result::Error(ErrorResult { message: e })),
                     }],
                     success_count: 0,
                     failure_count: 1,
@@ -254,9 +252,12 @@ pub async fn handle_execute_syscall_iouring(
 /// Get io_uring operation status
 ///
 /// Supports both io_uring task IDs (iouring_<seq>) and regular async task IDs
-#[instrument(skip(iouring_manager, async_manager, request), fields(task_id, trace_id))]
+#[instrument(
+    skip(_iouring_manager, async_manager, request),
+    fields(task_id, trace_id)
+)]
 pub async fn handle_get_iouring_status(
-    iouring_manager: &Arc<IoUringManager>,
+    _iouring_manager: &Arc<IoUringManager>,
     async_manager: &AsyncTaskManager,
     request: Request<AsyncStatusRequest>,
 ) -> Result<Response<AsyncStatusResponse>, Status> {
@@ -274,14 +275,14 @@ pub async fn handle_get_iouring_status(
 
     // Check if this is an io_uring task
     if let Some(seq_str) = task_id.strip_prefix("iouring_") {
-        if let Ok(seq) = seq_str.parse::<u64>() {
+        if let Ok(_seq) = seq_str.parse::<u64>() {
             // Parse PID from context or assume it's in task_id
             // For now, try to reap completions and find this sequence
             // In production, we'd need better tracking
 
             // This is a simplified version - in production we'd track pid->seq mappings
             return Err(Status::unimplemented(
-                "io_uring status check requires PID tracking - use reap_completions"
+                "io_uring status check requires PID tracking - use reap_completions",
             ));
         }
     }
@@ -337,7 +338,10 @@ pub async fn handle_reap_iouring_completions(
                 count,
             }))
         }
-        Err(e) => Err(Status::internal(format!("Failed to reap completions: {}", e))),
+        Err(e) => Err(Status::internal(format!(
+            "Failed to reap completions: {}",
+            e
+        ))),
     }
 }
 
@@ -371,10 +375,7 @@ pub async fn handle_submit_iouring_batch(
         let syscall = match proto_to_syscall_simple(&syscall_req) {
             Ok(s) => s,
             Err(e) => {
-                return Err(Status::invalid_argument(format!(
-                    "Invalid syscall: {}",
-                    e
-                )));
+                return Err(Status::invalid_argument(format!("Invalid syscall: {}", e)));
             }
         };
 
@@ -384,12 +385,12 @@ pub async fn handle_submit_iouring_batch(
                 entries.push(entry);
             } else {
                 return Err(Status::invalid_argument(
-                    "Batch contains non-I/O operations"
+                    "Batch contains non-I/O operations",
                 ));
             }
         } else {
             return Err(Status::invalid_argument(
-                "Batch contains operations not suitable for io_uring"
+                "Batch contains operations not suitable for io_uring",
             ));
         }
     }
@@ -414,9 +415,7 @@ pub async fn handle_submit_iouring_batch(
 fn syscall_to_iouring_op(syscall: &Syscall) -> Option<SyscallOpType> {
     match syscall {
         // File I/O
-        Syscall::ReadFile { path } => Some(SyscallOpType::ReadFile {
-            path: path.clone(),
-        }),
+        Syscall::ReadFile { path } => Some(SyscallOpType::ReadFile { path: path.clone() }),
         Syscall::WriteFile { path, data } => Some(SyscallOpType::WriteFile {
             path: path.clone(),
             data: data.clone(),
@@ -429,12 +428,20 @@ fn syscall_to_iouring_op(syscall: &Syscall) -> Option<SyscallOpType> {
         Syscall::Close { fd } => Some(SyscallOpType::Close { fd: *fd }),
 
         // Network I/O
-        Syscall::Send { sockfd, data, flags } => Some(SyscallOpType::Send {
+        Syscall::Send {
+            sockfd,
+            data,
+            flags,
+        } => Some(SyscallOpType::Send {
             sockfd: *sockfd,
             data: data.clone(),
             flags: *flags,
         }),
-        Syscall::Recv { sockfd, size, flags } => Some(SyscallOpType::Recv {
+        Syscall::Recv {
+            sockfd,
+            size,
+            flags,
+        } => Some(SyscallOpType::Recv {
             sockfd: *sockfd,
             size: *size,
             flags: *flags,
@@ -455,7 +462,11 @@ fn syscall_to_iouring_op(syscall: &Syscall) -> Option<SyscallOpType> {
             address: address.clone(),
             flags: *flags,
         }),
-        Syscall::RecvFrom { sockfd, size, flags } => Some(SyscallOpType::RecvFrom {
+        Syscall::RecvFrom {
+            sockfd,
+            size,
+            flags,
+        } => Some(SyscallOpType::RecvFrom {
             sockfd: *sockfd,
             size: *size,
             flags: *flags,

@@ -3,28 +3,25 @@
  * Exposes kernel syscalls to AI service via gRPC
  */
 
-use tracing::{info, instrument};
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use tonic::{transport::Server, Request, Response, Status};
+use tracing::{info, instrument};
 
-use crate::monitoring::{span_grpc, GrpcSpan};
+use crate::monitoring::span_grpc;
 use crate::process::ProcessManagerImpl as ProcessManager;
-use crate::security::{SandboxManager};
-use crate::syscalls::{Syscall, SyscallExecutor, SyscallResult};
+use crate::security::SandboxManager;
+use crate::syscalls::SyscallExecutor;
 
+use crate::api::conversions::{proto_to_syscall_full, syscall_result_to_proto};
 use crate::api::execution::{
-    AsyncTaskManager, BatchExecutor, StreamingManager,
-    IoUringExecutor, IoUringManager,
+    AsyncTaskManager, BatchExecutor, IoUringExecutor, IoUringManager, StreamingManager,
+};
+use crate::api::handlers::{
+    async_handlers, process_handlers, sandbox_handlers, scheduler_handlers, streaming_handlers,
 };
 use crate::api::traits::ServerLifecycle;
 use crate::api::types::{ApiError, ApiResult, ServerConfig};
-use crate::api::conversions::{proto_to_syscall_full, syscall_result_to_proto};
-use crate::api::handlers::{
-    process_handlers, sandbox_handlers, scheduler_handlers,
-    streaming_handlers, async_handlers,
-};
 
 // Include generated protobuf code
 pub mod kernel_proto {
@@ -127,7 +124,12 @@ impl KernelService for KernelServiceImpl {
         &self,
         request: Request<CreateProcessRequest>,
     ) -> Result<Response<CreateProcessResponse>, Status> {
-        process_handlers::handle_create_process(&self.process_manager, &self.sandbox_manager, request).await
+        process_handlers::handle_create_process(
+            &self.process_manager,
+            &self.sandbox_manager,
+            request,
+        )
+        .await
     }
 
     async fn update_sandbox(
@@ -141,7 +143,12 @@ impl KernelService for KernelServiceImpl {
         &self,
         request: Request<EventStreamRequest>,
     ) -> Result<Response<Self::StreamEventsStream>, Status> {
-        streaming_handlers::handle_stream_events(&self.process_manager, &self.sandbox_manager, request).await
+        streaming_handlers::handle_stream_events(
+            &self.process_manager,
+            &self.sandbox_manager,
+            request,
+        )
+        .await
     }
 
     async fn schedule_next(

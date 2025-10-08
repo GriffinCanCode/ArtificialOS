@@ -7,7 +7,7 @@
 
 use super::condvar::CondvarWait;
 use super::traits::{WaitStrategy, WakeResult};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicBool;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -100,7 +100,6 @@ where
         let start = Instant::now();
 
         // Spin first
-        let woken = AtomicBool::new(false);
         self.spin(|| {
             // Check timeout
             if let Some(timeout) = timeout {
@@ -156,7 +155,7 @@ mod tests {
         let elapsed = start.elapsed();
 
         assert!(!result); // Should timeout
-        // Should be close to timeout (allowing some overhead)
+                          // Should be close to timeout (allowing some overhead)
         assert!(elapsed >= Duration::from_millis(50));
         assert!(elapsed < Duration::from_millis(100));
     }
@@ -166,15 +165,16 @@ mod tests {
         let sw = Arc::new(SpinWait::<u64>::with_defaults());
         let sw_clone = sw.clone();
 
-        let handle = thread::spawn(move || {
-            sw_clone.wait(42, Some(Duration::from_secs(1)))
-        });
+        let handle = thread::spawn(move || sw_clone.wait(42, Some(Duration::from_secs(1))));
 
         // Give thread time to start waiting
         thread::sleep(Duration::from_millis(100));
 
         let result = sw.wake_one(42);
-        assert!(matches!(result, WakeResult::Woken(_) | WakeResult::NoWaiters));
+        assert!(matches!(
+            result,
+            WakeResult::Woken(_) | WakeResult::NoWaiters
+        ));
 
         handle.join().unwrap();
     }

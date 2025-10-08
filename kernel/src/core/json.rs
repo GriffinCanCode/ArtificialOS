@@ -4,7 +4,6 @@
  */
 
 use serde::{de::DeserializeOwned, Serialize};
-use std::io::Write;
 
 /// Threshold for using SIMD-JSON (1KB)
 /// Below this size, use serde_json for simplicity
@@ -33,8 +32,7 @@ pub enum JsonError {
 #[inline]
 pub fn to_vec<T: Serialize>(value: &T) -> JsonResult<Vec<u8>> {
     // First serialize with serde_json to get size
-    let json = serde_json::to_vec(value)
-        .map_err(|e| JsonError::Serialization(e.to_string()))?;
+    let json = serde_json::to_vec(value).map_err(|e| JsonError::Serialization(e.to_string()))?;
 
     // For large payloads, re-serialize with simd-json for speed
     if json.len() > SIMD_THRESHOLD {
@@ -50,8 +48,7 @@ pub fn to_vec<T: Serialize>(value: &T) -> JsonResult<Vec<u8>> {
 /// we use serde_json which is already highly optimized.
 #[inline]
 pub fn to_vec_simd<T: Serialize>(value: &T) -> JsonResult<Vec<u8>> {
-    serde_json::to_vec(value)
-        .map_err(|e| JsonError::Serialization(e.to_string()))
+    serde_json::to_vec(value).map_err(|e| JsonError::Serialization(e.to_string()))
 }
 
 /// Serialize to JSON bytes using standard serde_json
@@ -59,16 +56,14 @@ pub fn to_vec_simd<T: Serialize>(value: &T) -> JsonResult<Vec<u8>> {
 /// Use this for small payloads or when compatibility is required.
 #[inline]
 pub fn to_vec_std<T: Serialize>(value: &T) -> JsonResult<Vec<u8>> {
-    serde_json::to_vec(value)
-        .map_err(|e| JsonError::Serialization(e.to_string()))
+    serde_json::to_vec(value).map_err(|e| JsonError::Serialization(e.to_string()))
 }
 
 /// Serialize to JSON string with automatic optimization
 #[inline]
 pub fn to_string<T: Serialize>(value: &T) -> JsonResult<String> {
     let bytes = to_vec(value)?;
-    String::from_utf8(bytes)
-        .map_err(|e| JsonError::Serialization(format!("Invalid UTF-8: {}", e)))
+    String::from_utf8(bytes).map_err(|e| JsonError::Serialization(format!("Invalid UTF-8: {}", e)))
 }
 
 /// Serialize to pretty-printed JSON string
@@ -76,8 +71,7 @@ pub fn to_string<T: Serialize>(value: &T) -> JsonResult<String> {
 /// Always uses serde_json as pretty-printing is for debugging.
 #[inline]
 pub fn to_string_pretty<T: Serialize>(value: &T) -> JsonResult<String> {
-    serde_json::to_string_pretty(value)
-        .map_err(|e| JsonError::Serialization(e.to_string()))
+    serde_json::to_string_pretty(value).map_err(|e| JsonError::Serialization(e.to_string()))
 }
 
 // ============================================================================
@@ -105,8 +99,7 @@ pub fn from_slice<T: DeserializeOwned>(bytes: &[u8]) -> JsonResult<T> {
 pub fn from_slice_simd<T: DeserializeOwned>(bytes: &[u8]) -> JsonResult<T> {
     // simd-json requires mutable bytes for in-place parsing
     let mut mutable_bytes = bytes.to_vec();
-    simd_json::from_slice(&mut mutable_bytes)
-        .map_err(|e| JsonError::Deserialization(e.to_string()))
+    simd_json::from_slice(&mut mutable_bytes).map_err(|e| JsonError::Deserialization(e.to_string()))
 }
 
 /// Deserialize from mutable JSON bytes using SIMD (zero-copy when possible)
@@ -114,15 +107,13 @@ pub fn from_slice_simd<T: DeserializeOwned>(bytes: &[u8]) -> JsonResult<T> {
 /// Most efficient for large payloads when you own the data.
 #[inline]
 pub fn from_slice_mut_simd<T: DeserializeOwned>(bytes: &mut [u8]) -> JsonResult<T> {
-    simd_json::from_slice(bytes)
-        .map_err(|e| JsonError::Deserialization(e.to_string()))
+    simd_json::from_slice(bytes).map_err(|e| JsonError::Deserialization(e.to_string()))
 }
 
 /// Deserialize from JSON bytes using standard serde_json
 #[inline]
 pub fn from_slice_std<T: DeserializeOwned>(bytes: &[u8]) -> JsonResult<T> {
-    serde_json::from_slice(bytes)
-        .map_err(|e| JsonError::Deserialization(e.to_string()))
+    serde_json::from_slice(bytes).map_err(|e| JsonError::Deserialization(e.to_string()))
 }
 
 /// Deserialize from JSON string with automatic optimization

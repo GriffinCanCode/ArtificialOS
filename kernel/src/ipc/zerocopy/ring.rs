@@ -3,14 +3,14 @@
  * Core ring structure inspired by io_uring
  */
 
-use super::submission::{SubmissionQueue, SubmissionEntry};
-use super::completion::{CompletionQueue, CompletionEntry, CompletionStatus};
+use super::completion::{CompletionEntry, CompletionQueue, CompletionStatus};
+use super::submission::{SubmissionEntry, SubmissionQueue};
 use super::ZeroCopyError;
-use crate::core::types::{Pid, Size, Address};
-use crate::core::sync::{WaitQueue, SyncConfig};
+use crate::core::sync::WaitQueue;
+use crate::core::types::{Address, Pid, Size};
 use parking_lot::RwLock;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
 /// Zero-copy ring with submission and completion queues
@@ -147,4 +147,3 @@ pub struct RingStatistics {
     pub submissions: u64,
     pub completions: u64,
 }
-

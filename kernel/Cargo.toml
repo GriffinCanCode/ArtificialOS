@@ -3,6 +3,11 @@ name = "ai-os-kernel"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = []
+nightly = []
+tokio = []
+
 [lib]
 name = "ai_os_kernel"
 path = "src/lib.rs"

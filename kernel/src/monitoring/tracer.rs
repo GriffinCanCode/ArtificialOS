@@ -10,14 +10,11 @@
  * - Performance metrics embedded in traces
  */
 
-use tracing::{debug, error, info, warn, span, Level, Span};
-use tracing_subscriber::{
-    fmt::format::FmtSpan,
-    layer::SubscriberExt,
-    util::SubscriberInitExt,
-    EnvFilter,
-};
 use std::time::Instant;
+use tracing::{debug, info, span, warn, Level, Span};
+use tracing_subscriber::{
+    fmt::format::FmtSpan, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter,
+};
 use uuid::Uuid;
 
 /// Initialize structured tracing with enhanced features
@@ -26,8 +23,7 @@ use uuid::Uuid;
 /// - RUST_LOG: Set log level (default: info)
 /// - KERNEL_TRACE_JSON: Enable JSON output (default: false)
 pub fn init_tracing() {
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("info"));
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
 
     // Check if JSON output is requested
     let use_json = std::env::var("KERNEL_TRACE_JSON")
@@ -49,7 +45,7 @@ pub fn init_tracing() {
                     .with_file(true)
                     .with_current_span(true)
                     .with_span_list(true)
-                    .with_span_events(FmtSpan::FULL)
+                    .with_span_events(FmtSpan::FULL),
             )
             .init();
         info!("Structured tracing initialized with JSON output and full span events");
@@ -64,7 +60,7 @@ pub fn init_tracing() {
                     .with_line_number(true)
                     .with_file(true)
                     .with_span_events(FmtSpan::CLOSE)
-                    .compact()
+                    .compact(),
             )
             .init();
         info!("Structured tracing initialized with context propagation");
@@ -104,11 +100,7 @@ impl SyscallSpan {
         );
 
         let _entered = span.enter();
-        debug!(
-            syscall = syscall_name,
-            pid = pid,
-            "syscall started"
-        );
+        debug!(syscall = syscall_name, pid = pid, "syscall started");
         drop(_entered);
 
         Self {
@@ -131,7 +123,8 @@ impl SyscallSpan {
 
     /// Record the syscall result
     pub fn record_result(&self, success: bool) {
-        self._span.record("result", if success { "success" } else { "error" });
+        self._span
+            .record("result", if success { "success" } else { "error" });
     }
 
     /// Record an error
@@ -244,7 +237,8 @@ impl OperationSpan {
 
     /// Record the operation result
     pub fn record_result(&self, success: bool) {
-        self._span.record("result", if success { "success" } else { "error" });
+        self._span
+            .record("result", if success { "success" } else { "error" });
     }
 
     /// Record an error

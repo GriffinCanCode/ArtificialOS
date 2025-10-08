@@ -13,7 +13,6 @@ use thiserror::Error;
 ///
 /// # Must Use
 /// Memory operations can fail and must be handled to prevent memory leaks
-#[must_use = "memory operations can fail and must be handled"]
 pub type MemoryResult<T> = Result<T, MemoryError>;
 
 /// Memory errors with miette diagnostics
@@ -71,7 +70,9 @@ pub enum MemoryError {
     #[diagnostic(
         code(memory::protection_violation),
         severity(Error),
-        help("Attempted to access memory without proper permissions. Check read/write permissions.")
+        help(
+            "Attempted to access memory without proper permissions. Check read/write permissions."
+        )
     )]
     ProtectionViolation(String),
 }

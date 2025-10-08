@@ -6,8 +6,8 @@
 use super::traits::*;
 use super::types::*;
 use crate::core::types::Pid;
-use dashmap::DashMap;
 use ahash::RandomState;
+use dashmap::DashMap;
 use parking_lot::RwLock;
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -128,7 +128,6 @@ impl EbpfProvider for SimulationEbpfProvider {
 
     fn stats(&self) -> EbpfStats {
         let counts = self.event_count.read();
-        let events = self.events.read();
 
         EbpfStats {
             programs_loaded: self.programs.len(),

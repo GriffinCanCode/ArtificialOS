@@ -6,7 +6,6 @@
 use super::types::*;
 use crate::core::types::Pid;
 use crate::syscalls::executor::SyscallExecutor;
-use crate::syscalls::traits::*;
 use crate::syscalls::types::{Syscall, SyscallResult};
 use std::sync::Arc;
 use tracing::debug;
@@ -144,26 +143,18 @@ impl JitCompiler {
             SyscallPattern::FileOp(FileOpType::Open) => {
                 debug!("Generating optimized Open handler");
 
-                Ok(Box::new(move |pid: Pid, syscall: &Syscall| {
-                    match syscall {
-                        Syscall::Open { path, flags, mode } => {
-                            executor.open(pid, path, *flags, *mode)
-                        }
-                        _ => SyscallResult::error("Syscall pattern mismatch"),
-                    }
+                Ok(Box::new(move |pid: Pid, syscall: &Syscall| match syscall {
+                    Syscall::Open { path, flags, mode } => executor.open(pid, path, *flags, *mode),
+                    _ => SyscallResult::error("Syscall pattern mismatch"),
                 }))
             }
 
             SyscallPattern::FileOp(FileOpType::Close) => {
                 debug!("Generating optimized Close handler");
 
-                Ok(Box::new(move |pid: Pid, syscall: &Syscall| {
-                    match syscall {
-                        Syscall::Close { fd } => {
-                            executor.close_fd(pid, *fd)
-                        }
-                        _ => SyscallResult::error("Syscall pattern mismatch"),
-                    }
+                Ok(Box::new(move |pid: Pid, syscall: &Syscall| match syscall {
+                    Syscall::Close { fd } => executor.close_fd(pid, *fd),
+                    _ => SyscallResult::error("Syscall pattern mismatch"),
                 }))
             }
 
@@ -188,13 +179,13 @@ impl JitCompiler {
             SyscallPattern::IpcOp(IpcOpType::PipeCreate) => {
                 debug!("Generating optimized PipeCreate handler");
 
-                Ok(Box::new(move |pid: Pid, syscall: &Syscall| {
-                    match syscall {
-                        Syscall::CreatePipe { reader_pid, writer_pid, capacity } => {
-                            executor.create_pipe(pid, *reader_pid, *writer_pid, *capacity)
-                        }
-                        _ => SyscallResult::error("Syscall pattern mismatch"),
-                    }
+                Ok(Box::new(move |pid: Pid, syscall: &Syscall| match syscall {
+                    Syscall::CreatePipe {
+                        reader_pid,
+                        writer_pid,
+                        capacity,
+                    } => executor.create_pipe(pid, *reader_pid, *writer_pid, *capacity),
+                    _ => SyscallResult::error("Syscall pattern mismatch"),
                 }))
             }
 
@@ -237,13 +228,13 @@ impl JitCompiler {
             SyscallPattern::IpcOp(IpcOpType::QueueSend) => {
                 debug!("Generating optimized QueueSend handler");
 
-                Ok(Box::new(move |pid: Pid, syscall: &Syscall| {
-                    match syscall {
-                        Syscall::SendQueue { queue_id, data, priority } => {
-                            executor.send_queue(pid, *queue_id, data, *priority)
-                        }
-                        _ => SyscallResult::error("Syscall pattern mismatch"),
-                    }
+                Ok(Box::new(move |pid: Pid, syscall: &Syscall| match syscall {
+                    Syscall::SendQueue {
+                        queue_id,
+                        data,
+                        priority,
+                    } => executor.send_queue(pid, *queue_id, data, *priority),
+                    _ => SyscallResult::error("Syscall pattern mismatch"),
                 }))
             }
 
@@ -268,26 +259,22 @@ impl JitCompiler {
             SyscallPattern::NetworkOp(NetworkOpType::Socket) => {
                 debug!("Generating optimized Socket handler");
 
-                Ok(Box::new(move |pid: Pid, syscall: &Syscall| {
-                    match syscall {
-                        Syscall::Socket { domain, socket_type, protocol } => {
-                            executor.socket(pid, *domain, *socket_type, *protocol)
-                        }
-                        _ => SyscallResult::error("Syscall pattern mismatch"),
-                    }
+                Ok(Box::new(move |pid: Pid, syscall: &Syscall| match syscall {
+                    Syscall::Socket {
+                        domain,
+                        socket_type,
+                        protocol,
+                    } => executor.socket(pid, *domain, *socket_type, *protocol),
+                    _ => SyscallResult::error("Syscall pattern mismatch"),
                 }))
             }
 
             SyscallPattern::NetworkOp(NetworkOpType::Connect) => {
                 debug!("Generating optimized Connect handler");
 
-                Ok(Box::new(move |pid: Pid, syscall: &Syscall| {
-                    match syscall {
-                        Syscall::Connect { sockfd, address } => {
-                            executor.connect(pid, *sockfd, address)
-                        }
-                        _ => SyscallResult::error("Syscall pattern mismatch"),
-                    }
+                Ok(Box::new(move |pid: Pid, syscall: &Syscall| match syscall {
+                    Syscall::Connect { sockfd, address } => executor.connect(pid, *sockfd, address),
+                    _ => SyscallResult::error("Syscall pattern mismatch"),
                 }))
             }
 
@@ -296,7 +283,11 @@ impl JitCompiler {
 
                 Ok(Box::new(move |pid: Pid, syscall: &Syscall| {
                     match syscall {
-                        Syscall::Send { sockfd, data, flags } => {
+                        Syscall::Send {
+                            sockfd,
+                            data,
+                            flags,
+                        } => {
                             if use_fast_path {
                                 // Fast path for network sends
                                 executor.send(pid, *sockfd, data, *flags)
@@ -314,7 +305,11 @@ impl JitCompiler {
 
                 Ok(Box::new(move |pid: Pid, syscall: &Syscall| {
                     match syscall {
-                        Syscall::Recv { sockfd, size, flags } => {
+                        Syscall::Recv {
+                            sockfd,
+                            size,
+                            flags,
+                        } => {
                             if use_fast_path {
                                 // Fast path for network receives
                                 executor.recv(pid, *sockfd, *size, *flags)
@@ -330,26 +325,24 @@ impl JitCompiler {
             SyscallPattern::MemoryOp(MemoryOpType::Mmap) => {
                 debug!("Generating optimized Mmap handler");
 
-                Ok(Box::new(move |pid: Pid, syscall: &Syscall| {
-                    match syscall {
-                        Syscall::Mmap { path, offset, length, prot, shared } => {
-                            executor.mmap(pid, path, *length, *offset, *prot, *shared)
-                        }
-                        _ => SyscallResult::error("Syscall pattern mismatch"),
-                    }
+                Ok(Box::new(move |pid: Pid, syscall: &Syscall| match syscall {
+                    Syscall::Mmap {
+                        path,
+                        offset,
+                        length,
+                        prot,
+                        shared,
+                    } => executor.mmap(pid, path, *length, *offset, *prot, *shared),
+                    _ => SyscallResult::error("Syscall pattern mismatch"),
                 }))
             }
 
             SyscallPattern::MemoryOp(MemoryOpType::Munmap) => {
                 debug!("Generating optimized Munmap handler");
 
-                Ok(Box::new(move |pid: Pid, syscall: &Syscall| {
-                    match syscall {
-                        Syscall::Munmap { mmap_id } => {
-                            executor.munmap(pid, *mmap_id)
-                        }
-                        _ => SyscallResult::error("Syscall pattern mismatch"),
-                    }
+                Ok(Box::new(move |pid: Pid, syscall: &Syscall| match syscall {
+                    Syscall::Munmap { mmap_id } => executor.munmap(pid, *mmap_id),
+                    _ => SyscallResult::error("Syscall pattern mismatch"),
                 }))
             }
 

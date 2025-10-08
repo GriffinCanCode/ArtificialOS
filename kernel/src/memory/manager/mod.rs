@@ -44,7 +44,7 @@ use ahash::RandomState;
 use dashmap::DashMap;
 use free_list::SegregatedFreeList;
 use log::info;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 use tracking::ProcessMemoryTracking;
 
@@ -82,7 +82,11 @@ impl MemoryManager {
         Self {
             // Use 128 shards for blocks - high contention data structure (default is 64)
             // More shards = better concurrent access performance. Using ahash hasher.
-            blocks: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 128)),
+            blocks: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
+                0,
+                RandomState::new(),
+                128,
+            )),
             next_address: Arc::new(AtomicU64::new(0)),
             total_memory: total,
             used_memory: Arc::new(AtomicU64::new(0)),
@@ -91,9 +95,17 @@ impl MemoryManager {
             gc_threshold: 1000,
             deallocated_count: Arc::new(AtomicU64::new(0)),
             // Use 64 shards for process tracking (moderate contention). Using ahash hasher.
-            process_tracking: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 64)),
+            process_tracking: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
+                0,
+                RandomState::new(),
+                64,
+            )),
             // Use 128 shards for memory storage - high I/O contention. Using ahash hasher.
-            memory_storage: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 128)),
+            memory_storage: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
+                0,
+                RandomState::new(),
+                128,
+            )),
             free_list: Arc::new(Mutex::new(SegregatedFreeList::new())),
         }
     }

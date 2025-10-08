@@ -15,7 +15,6 @@ use std::net::{TcpListener, TcpStream, UdpSocket};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 
-use crate::security::{Capability, NetworkRule};
 
 use super::executor::SyscallExecutor;
 use super::types::SyscallResult;
@@ -116,8 +115,14 @@ impl SyscallExecutor {
         protocol: u32,
     ) -> SyscallResult {
         // Check network capability via permission manager
-        use crate::permissions::{Resource, Action};
-        let request = PermissionRequest::new(pid, Resource::System { name: "network".to_string() }, Action::Create);
+        use crate::permissions::{Action, Resource};
+        let request = PermissionRequest::new(
+            pid,
+            Resource::System {
+                name: "network".to_string(),
+            },
+            Action::Create,
+        );
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -151,7 +156,7 @@ impl SyscallExecutor {
 
     pub(super) fn bind(&self, pid: Pid, sockfd: u32, address: &str) -> SyscallResult {
         // Parse host:port from address and check bind permission
-        use crate::permissions::{Resource, Action};
+        use crate::permissions::{Action, Resource};
         let parts: Vec<&str> = address.split(':').collect();
         let host = parts.get(0).unwrap_or(&"").to_string();
         let port = parts.get(1).and_then(|p| p.parse::<u16>().ok());
@@ -192,8 +197,14 @@ impl SyscallExecutor {
 
     pub(super) fn listen(&self, pid: Pid, sockfd: u32, backlog: u32) -> SyscallResult {
         // Listen requires network access (socket already bound)
-        use crate::permissions::{Resource, Action};
-        let request = PermissionRequest::new(pid, Resource::System { name: "network".to_string() }, Action::Bind);
+        use crate::permissions::{Action, Resource};
+        let request = PermissionRequest::new(
+            pid,
+            Resource::System {
+                name: "network".to_string(),
+            },
+            Action::Bind,
+        );
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -214,8 +225,14 @@ impl SyscallExecutor {
 
     pub(super) fn accept(&self, pid: Pid, sockfd: u32) -> SyscallResult {
         // Accept requires network access
-        use crate::permissions::{Resource, Action};
-        let request = PermissionRequest::new(pid, Resource::System { name: "network".to_string() }, Action::Receive);
+        use crate::permissions::{Action, Resource};
+        let request = PermissionRequest::new(
+            pid,
+            Resource::System {
+                name: "network".to_string(),
+            },
+            Action::Receive,
+        );
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
@@ -285,7 +302,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn send(&self, pid: Pid, sockfd: u32, data: &[u8], flags: u32) -> SyscallResult {
+    pub(super) fn send(&self, pid: Pid, sockfd: u32, data: &[u8], _flags: u32) -> SyscallResult {
         // Send on existing connection - permissions already checked at connect/accept time
         // Could add additional check here if needed
 
@@ -319,7 +336,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn recv(&self, pid: Pid, sockfd: u32, size: usize, flags: u32) -> SyscallResult {
+    pub(super) fn recv(&self, pid: Pid, sockfd: u32, size: usize, _flags: u32) -> SyscallResult {
         // Receive on existing connection - permissions already checked at connect/accept time
         // Could add additional check here if needed
 
@@ -353,7 +370,7 @@ impl SyscallExecutor {
         sockfd: u32,
         data: &[u8],
         address: &str,
-        flags: u32,
+        _flags: u32,
     ) -> SyscallResult {
         // Parse host:port from address and check network access
         let parts: Vec<&str> = address.split(':').collect();
@@ -395,7 +412,7 @@ impl SyscallExecutor {
         }
     }
 
-    pub(super) fn recvfrom(&self, pid: Pid, sockfd: u32, size: usize, flags: u32) -> SyscallResult {
+    pub(super) fn recvfrom(&self, pid: Pid, sockfd: u32, size: usize, _flags: u32) -> SyscallResult {
         // Receive on UDP socket - permissions should be checked at bind time
         // Could add additional check here if needed
 
@@ -459,7 +476,7 @@ impl SyscallExecutor {
         sockfd: u32,
         level: u32,
         optname: u32,
-        optval: &[u8],
+        _optval: &[u8],
     ) -> SyscallResult {
         // Socket options on existing socket - permissions checked at creation time
 
