@@ -116,19 +116,19 @@ impl Query {
             match agg_type {
                 AggregationType::CountByCategory => {
                     let agg = Self::count_by_category(&filtered);
-                    aggregations.insert("by_category".to_string(), agg);
+                    aggregations.insert("by_category".into(), agg);
                 }
                 AggregationType::CountBySeverity => {
                     let agg = Self::count_by_severity(&filtered);
-                    aggregations.insert("by_severity".to_string(), agg);
+                    aggregations.insert("by_severity".into(), agg);
                 }
                 AggregationType::CountByPid => {
                     let agg = Self::count_by_pid(&filtered);
-                    aggregations.insert("by_pid".to_string(), agg);
+                    aggregations.insert("by_pid".into(), agg);
                 }
                 AggregationType::DurationStats => {
                     let agg = Self::duration_stats(&filtered);
-                    aggregations.insert("duration_stats".to_string(), agg);
+                    aggregations.insert("duration_stats".into(), agg);
                 }
                 AggregationType::CustomGroupBy(field) => {
                     let agg = Self::group_by_field(&filtered, field);
@@ -223,7 +223,7 @@ impl Query {
                     .pid
                     .map(|p| p.to_string())
                     .unwrap_or_else(|| "none".to_string().into()),
-                _ => "unknown".to_string(),
+                _ => "unknown".into(),
             };
 
             *counts.entry(key).or_insert(0) += 1;
@@ -343,7 +343,7 @@ mod tests {
                 Severity::Info,
                 Category::Process,
                 Payload::ProcessCreated {
-                    name: "test".to_string(),
+                    name: "test".into(),
                     priority: 5,
                 },
             )
@@ -361,7 +361,7 @@ mod tests {
                 Severity::Error,
                 Category::Syscall,
                 Payload::SyscallExit {
-                    name: "read".to_string(),
+                    name: "read".into(),
                     duration_us: 1500,
                     result: crate::monitoring::events::SyscallResult::Error,
                 },
@@ -415,7 +415,7 @@ mod tests {
                 Severity::Info,
                 Category::Process,
                 Payload::ProcessCreated {
-                    name: "test".to_string(),
+                    name: "test".into(),
                     priority: 5,
                 },
             )

@@ -39,22 +39,28 @@ impl SignalManagerImpl {
         info!("Signal manager initialized");
         Self {
             // CPU-topology-aware shard counts for optimal concurrent performance
-            processes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
-                0,
-                RandomState::new(),
-                ShardManager::shards(WorkloadProfile::HighContention), // signal delivery: high contention
-            ).into()),
+            processes: Arc::new(
+                DashMap::with_capacity_and_hasher_and_shard_amount(
+                    0,
+                    RandomState::new(),
+                    ShardManager::shards(WorkloadProfile::HighContention), // signal delivery: high contention
+                )
+                .into(),
+            ),
             handler: Arc::new(SignalHandler::new(callbacks.clone().into())),
             callbacks,
             next_handler_id: Arc::new(AtomicU64::new(1)),
-            stats: Arc::new(RwLock::new(SignalStats {
-                total_signals_sent: 0,
-                total_signals_delivered: 0,
-                total_signals_blocked: 0,
-                total_signals_queued: 0,
-                pending_signals: 0,
-                handlers_registered: 0,
-            }).into()),
+            stats: Arc::new(
+                RwLock::new(SignalStats {
+                    total_signals_sent: 0,
+                    total_signals_delivered: 0,
+                    total_signals_blocked: 0,
+                    total_signals_queued: 0,
+                    pending_signals: 0,
+                    handlers_registered: 0,
+                })
+                .into(),
+            ),
         }
     }
 
@@ -285,10 +291,9 @@ impl SignalHandlerRegistry for SignalManagerImpl {
     fn register_handler(&self, pid: Pid, signal: Signal, action: SignalAction) -> SignalResult<()> {
         // Cannot catch or ignore SIGKILL or SIGSTOP
         if !signal.can_catch() {
-            return Err(SignalError::PermissionDenied(format!(
-                "Signal {:?} cannot be caught",
-                signal
-            ).into()));
+            return Err(SignalError::PermissionDenied(
+                format!("Signal {:?} cannot be caught", signal).into(),
+            ));
         }
 
         let mut proc = self
@@ -375,10 +380,9 @@ impl SignalHandlerRegistry for SignalManagerImpl {
 impl SignalMasking for SignalManagerImpl {
     fn block_signal(&self, pid: Pid, signal: Signal) -> SignalResult<()> {
         if !signal.can_catch() {
-            return Err(SignalError::PermissionDenied(format!(
-                "Signal {:?} cannot be blocked",
-                signal
-            ).into()));
+            return Err(SignalError::PermissionDenied(
+                format!("Signal {:?} cannot be blocked", signal).into(),
+            ));
         }
 
         let mut proc = self
@@ -425,10 +429,9 @@ impl SignalMasking for SignalManagerImpl {
         // Validate signals can be blocked
         for signal in &signals {
             if !signal.can_catch() {
-                return Err(SignalError::PermissionDenied(format!(
-                    "Signal {:?} cannot be blocked",
-                    signal
-                ).into()));
+                return Err(SignalError::PermissionDenied(
+                    format!("Signal {:?} cannot be blocked", signal).into(),
+                ));
             }
         }
 
@@ -486,16 +489,19 @@ impl SignalStateManager for SignalManagerImpl {
             pid: proc.pid,
             pending_signals: proc.pending.iter().map(|ps| ps.signal.clone()).collect(),
             blocked_signals: proc.blocked.iter().copied().collect(),
-            handlers: proc.handlers.iter().map(|(s, a)| (*s, a.clone().into())).collect(),
+            handlers: proc
+                .handlers
+                .iter()
+                .map(|(s, a)| (*s, a.clone().into()))
+                .collect(),
         })
     }
 
     fn initialize_process(&self, pid: Pid) -> SignalResult<()> {
         if self.processes.contains_key(&pid) {
-            return Err(SignalError::OperationFailed(format!(
-                "Process {} already initialized",
-                pid
-            ).into()));
+            return Err(SignalError::OperationFailed(
+                format!("Process {} already initialized", pid).into(),
+            ));
         }
 
         self.processes.insert(pid, ProcessSignals::new(pid));

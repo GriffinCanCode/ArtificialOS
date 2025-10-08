@@ -54,16 +54,21 @@ struct EventStats {
 impl EventCollector {
     pub fn new() -> Self {
         Self {
-            history: Arc::new(RwLock::new(VecDeque::with_capacity(MAX_EVENT_HISTORY).into())),
+            history: Arc::new(RwLock::new(
+                VecDeque::with_capacity(MAX_EVENT_HISTORY).into(),
+            )),
             subscriptions: Arc::new(StripedMap::new(32).into()),
-            stats: Arc::new(RwLock::new(EventStats {
-                syscall_events: 0,
-                network_events: 0,
-                file_events: 0,
-                total_events: 0,
-                events_per_sec: 0.0,
-                last_update: std::time::Instant::now(),
-            }).into()),
+            stats: Arc::new(
+                RwLock::new(EventStats {
+                    syscall_events: 0,
+                    network_events: 0,
+                    file_events: 0,
+                    total_events: 0,
+                    events_per_sec: 0.0,
+                    last_update: std::time::Instant::now(),
+                })
+                .into(),
+            ),
         }
     }
 
@@ -130,7 +135,7 @@ impl EventCollector {
         self.subscriptions
             .remove(&subscription_id.to_string())
             .ok_or_else(|| EbpfError::InvalidFilter {
-                reason: format!("Subscription {} not found", subscription_id),
+                reason: format!("Subscription {} not found", subscription_id).into(),
             })?;
         Ok(())
     }

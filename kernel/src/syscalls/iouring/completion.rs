@@ -124,7 +124,7 @@ impl SyscallCompletionEntry {
     /// Create an error completion
     pub fn error(seq: u64, error: String, user_data: u64) -> Self {
         let result = SyscallResult::Error {
-            message: error.clone(),
+            message: error.clone().into(),
         };
         Self::new(
             seq,
@@ -137,7 +137,7 @@ impl SyscallCompletionEntry {
     /// Create a cancelled completion
     pub fn cancelled(seq: u64, user_data: u64) -> Self {
         let result = SyscallResult::Error {
-            message: "Operation cancelled".to_string(),
+            message: "Operation cancelled".into(),
         };
         Self::new(seq, SyscallCompletionStatus::Cancelled, result, user_data)
     }

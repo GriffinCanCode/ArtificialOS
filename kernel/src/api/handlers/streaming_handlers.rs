@@ -45,10 +45,13 @@ pub async fn handle_stream_events(
                     // Limit to 5 for demo
                     let event = KernelEvent {
                         timestamp,
-                        event: Some(kernel_event::Event::ProcessCreated(ProcessCreatedEvent {
-                            pid: proc.pid,
-                            name: proc.name.to_string(),
-                        }).into()),
+                        event: Some(
+                            kernel_event::Event::ProcessCreated(ProcessCreatedEvent {
+                                pid: proc.pid,
+                                name: proc.name.to_string(),
+                            })
+                            .into(),
+                        ),
                     };
 
                     if tx.send(Ok(event)).await.is_err() {
@@ -62,11 +65,14 @@ pub async fn handle_stream_events(
                 if let Some(_stats) = process_manager.get_scheduler_stats() {
                     let event = KernelEvent {
                         timestamp,
-                        event: Some(kernel_event::Event::SyscallExecuted(SyscallExecutedEvent {
-                            pid: 0,
-                            syscall_type: "schedule_next".to_string(),
-                            success: true,
-                        }).into()),
+                        event: Some(
+                            kernel_event::Event::SyscallExecuted(SyscallExecutedEvent {
+                                pid: 0,
+                                syscall_type: "schedule_next".to_string(),
+                                success: true,
+                            })
+                            .into(),
+                        ),
                     };
 
                     if tx.send(Ok(event)).await.is_err() {
@@ -82,13 +88,14 @@ pub async fn handle_stream_events(
                 if sandbox_stats.permission_denials > 0 {
                     let event = KernelEvent {
                         timestamp,
-                        event: Some(kernel_event::Event::PermissionDenied(
-                            PermissionDeniedEvent {
+                        event: Some(
+                            kernel_event::Event::PermissionDenied(PermissionDeniedEvent {
                                 pid: 0,
                                 syscall_type: "unknown".to_string(),
                                 reason: "Capability check failed".to_string(),
-                            },
-                        ).into()),
+                            })
+                            .into(),
+                        ),
                     };
 
                     if tx.send(Ok(event)).await.is_err() {
@@ -103,9 +110,9 @@ pub async fn handle_stream_events(
         }
     });
 
-    Ok(Response::new(tokio_stream::wrappers::ReceiverStream::new(
-        rx,
-    ).into()))
+    Ok(Response::new(
+        tokio_stream::wrappers::ReceiverStream::new(rx).into(),
+    ))
 }
 
 pub async fn handle_stream_syscall(
@@ -169,7 +176,7 @@ pub async fn handle_stream_syscall(
         }
     });
 
-    Ok(Response::new(tokio_stream::wrappers::ReceiverStream::new(
-        rx,
-    ).into()))
+    Ok(Response::new(
+        tokio_stream::wrappers::ReceiverStream::new(rx).into(),
+    ))
 }

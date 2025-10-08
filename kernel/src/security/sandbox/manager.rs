@@ -30,16 +30,22 @@ impl SandboxManager {
         info!("Sandbox manager initialized");
         Self {
             // CPU-topology-aware shard counts for optimal concurrent performance
-            sandboxes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
-                0,
-                RandomState::new(),
-                ShardManager::shards(WorkloadProfile::MediumContention), // sandboxes: moderate access
-            ).into()),
-            spawned_counts: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
-                0,
-                RandomState::new(),
-                ShardManager::shards(WorkloadProfile::LowContention), // spawn counts: infrequent access
-            ).into()),
+            sandboxes: Arc::new(
+                DashMap::with_capacity_and_hasher_and_shard_amount(
+                    0,
+                    RandomState::new(),
+                    ShardManager::shards(WorkloadProfile::MediumContention), // sandboxes: moderate access
+                )
+                .into(),
+            ),
+            spawned_counts: Arc::new(
+                DashMap::with_capacity_and_hasher_and_shard_amount(
+                    0,
+                    RandomState::new(),
+                    ShardManager::shards(WorkloadProfile::LowContention), // spawn counts: infrequent access
+                )
+                .into(),
+            ),
             namespace_manager: None,
             collector: None,
         }
@@ -69,16 +75,22 @@ impl SandboxManager {
         );
         Self {
             // CPU-topology-aware shard counts for optimal concurrent performance
-            sandboxes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
-                0,
-                RandomState::new(),
-                ShardManager::shards(WorkloadProfile::MediumContention), // sandboxes: moderate access
-            ).into()),
-            spawned_counts: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
-                0,
-                RandomState::new(),
-                ShardManager::shards(WorkloadProfile::LowContention), // spawn counts: infrequent access
-            ).into()),
+            sandboxes: Arc::new(
+                DashMap::with_capacity_and_hasher_and_shard_amount(
+                    0,
+                    RandomState::new(),
+                    ShardManager::shards(WorkloadProfile::MediumContention), // sandboxes: moderate access
+                )
+                .into(),
+            ),
+            spawned_counts: Arc::new(
+                DashMap::with_capacity_and_hasher_and_shard_amount(
+                    0,
+                    RandomState::new(),
+                    ShardManager::shards(WorkloadProfile::LowContention), // spawn counts: infrequent access
+                )
+                .into(),
+            ),
             namespace_manager: Some(ns_manager),
             collector: None,
         }
@@ -148,8 +160,8 @@ impl SandboxManager {
                             Severity::Warn,
                             Category::Security,
                             Payload::PermissionDenied {
-                                operation: format!("capability:{:?}", cap),
-                                required: format!("{:?}", cap),
+                                operation: format!("capability:{:?}", cap).into(),
+                                required: format!("{:?}", cap).into(),
                             },
                         )
                         .with_pid(pid),
@@ -178,8 +190,8 @@ impl SandboxManager {
                             Severity::Warn,
                             Category::Security,
                             Payload::PermissionDenied {
-                                operation: format!("path_access:{}", path.display()),
-                                required: format!("path:{}", path.display()),
+                                operation: format!("path_access:{}", path.display()).into(),
+                                required: format!("path:{}", path.display()).into(),
                             },
                         )
                         .with_pid(pid),

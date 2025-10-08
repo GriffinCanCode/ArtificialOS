@@ -34,7 +34,13 @@ impl ZeroCopyRing {
             ring_size: sq_size + cq_size,
             submission_queue: Arc::new(RwLock::new(SubmissionQueue::new(sq_size).into())),
             completion_queue: Arc::new(RwLock::new(CompletionQueue::new(cq_size).into())),
-            stats: Arc::new(SeqlockStats::new(RingCounters { submissions: 0, completions: 0 }).into()),
+            stats: Arc::new(
+                SeqlockStats::new(RingCounters {
+                    submissions: 0,
+                    completions: 0,
+                })
+                .into(),
+            ),
             // Use long_wait config since IPC operations may take a while
             wait_queue: WaitQueue::long_wait(),
         }

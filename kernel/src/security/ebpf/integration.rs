@@ -75,25 +75,25 @@ impl IntegratedEbpfMonitor {
     fn load_default_programs(&self) -> EbpfResult<()> {
         let programs = vec![
             ProgramConfig {
-                name: "syscall_entry".to_string(),
+                name: "syscall_entry".into(),
                 program_type: ProgramType::SyscallEntry,
                 auto_attach: true,
                 enabled: true,
             },
             ProgramConfig {
-                name: "syscall_exit".to_string(),
+                name: "syscall_exit".into(),
                 program_type: ProgramType::SyscallExit,
                 auto_attach: true,
                 enabled: true,
             },
             ProgramConfig {
-                name: "network_socket".to_string(),
+                name: "network_socket".into(),
                 program_type: ProgramType::NetworkSocket,
                 auto_attach: true,
                 enabled: true,
             },
             ProgramConfig {
-                name: "file_ops".to_string(),
+                name: "file_ops".into(),
                 program_type: ProgramType::FileOps,
                 auto_attach: true,
                 enabled: true,
@@ -138,7 +138,7 @@ impl IntegratedEbpfMonitor {
             if !sandbox.check_permission(pid, &Capability::WriteFile(None)) {
                 // Block write syscall
                 self.ebpf.add_filter(SyscallFilter {
-                    id: format!("sandbox_block_write_{}", pid),
+                    id: format!("sandbox_block_write_{}", pid).into(),
                     pid: Some(pid),
                     syscall_nrs: Some(vec![1]), // write
                     action: FilterAction::Deny,
@@ -153,7 +153,7 @@ impl IntegratedEbpfMonitor {
             if !sandbox.check_permission(pid, &network_cap) {
                 // Block network syscalls
                 self.ebpf.add_filter(SyscallFilter {
-                    id: format!("sandbox_block_network_{}", pid),
+                    id: format!("sandbox_block_network_{}", pid).into(),
                     pid: Some(pid),
                     syscall_nrs: Some(vec![41, 42, 43, 44, 45]), // socket, connect, accept, sendto, recvfrom
                     action: FilterAction::Deny,

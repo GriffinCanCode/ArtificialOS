@@ -21,7 +21,8 @@ impl MemFS {
 
             match self.nodes.get(&path).map(|n| n.clone()) {
                 Some(Node::Directory { children, .. }) => {
-                    let mut entries = bumpalo::collections::Vec::with_capacity_in(children.len(), arena);
+                    let mut entries =
+                        bumpalo::collections::Vec::with_capacity_in(children.len(), arena);
                     let children_vec: Vec<_> = children.iter().collect();
 
                     for (i, (name, child_path)) in children_vec.iter().enumerate() {
@@ -30,12 +31,17 @@ impl MemFS {
                         }
 
                         if let Some(node) = self.nodes.get(*child_path) {
-                            entries.push(Entry::new_unchecked((*name).clone(), node.file_type().into()));
+                            entries.push(Entry::new_unchecked(
+                                (*name).clone(),
+                                node.file_type().into(),
+                            ));
                         }
                     }
                     Ok(entries.into_iter().collect())
                 }
-                Some(Node::File { .. }) => Err(VfsError::NotADirectory(path.display().to_string().into())),
+                Some(Node::File { .. }) => {
+                    Err(VfsError::NotADirectory(path.display().to_string().into()))
+                }
                 None => Err(VfsError::NotFound(path.display().to_string().into())),
             }
         })
@@ -50,10 +56,10 @@ impl MemFS {
                 if let Node::Directory { permissions, .. } = parent_node.value() {
                     // Check if parent directory is writable (owner write permission)
                     if permissions.mode & 0o200 == 0 {
-                        return Err(VfsError::PermissionDenied(format!(
-                            "parent directory is readonly: {}",
-                            parent_path.display()
-                        ).into()));
+                        return Err(VfsError::PermissionDenied(
+                            format!("parent directory is readonly: {}", parent_path.display())
+                                .into(),
+                        ));
                     }
                 }
             }
@@ -108,10 +114,10 @@ impl MemFS {
             if let Some(parent_node) = self.nodes.get(&parent_path) {
                 if let Node::Directory { permissions, .. } = parent_node.value() {
                     if permissions.mode & 0o200 == 0 {
-                        return Err(VfsError::PermissionDenied(format!(
-                            "parent directory is readonly: {}",
-                            parent_path.display()
-                        ).into()));
+                        return Err(VfsError::PermissionDenied(
+                            format!("parent directory is readonly: {}", parent_path.display())
+                                .into(),
+                        ));
                     }
                 }
             }
@@ -120,7 +126,9 @@ impl MemFS {
         match self.nodes.get(&path).map(|n| n.clone()) {
             Some(Node::Directory { children, .. }) => {
                 if !children.is_empty() {
-                    return Err(VfsError::InvalidArgument("directory not empty".to_string().into()));
+                    return Err(VfsError::InvalidArgument(
+                        "directory not empty".to_string().into(),
+                    ));
                 }
 
                 self.nodes.remove(&path);
@@ -133,7 +141,9 @@ impl MemFS {
 
                 Ok(())
             }
-            Some(Node::File { .. }) => Err(VfsError::NotADirectory(path.display().to_string().into())),
+            Some(Node::File { .. }) => {
+                Err(VfsError::NotADirectory(path.display().to_string().into()))
+            }
             None => Err(VfsError::NotFound(path.display().to_string().into())),
         }
     }

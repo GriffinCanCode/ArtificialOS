@@ -3,6 +3,7 @@
  * Centralized error handling with thiserror, miette, and serde support
  */
 
+use crate::core::data_structures::InlineString;
 use miette::Diagnostic;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -32,35 +33,35 @@ pub enum ProcessError {
         code(process::creation_failed),
         help("Check system resources and permissions. View logs for details.")
     )]
-    CreationFailed(String),
+    CreationFailed(InlineString),
 
     #[error("Memory allocation failed: {0}")]
     #[diagnostic(
         code(process::memory_allocation_failed),
         help("System may be low on memory. Consider freeing resources.")
     )]
-    MemoryAllocationFailed(String),
+    MemoryAllocationFailed(InlineString),
 
     #[error("Invalid process state: {0}")]
     #[diagnostic(
         code(process::invalid_state),
         help("Operation cannot be performed in current process state.")
     )]
-    InvalidState(String),
+    InvalidState(InlineString),
 
     #[error("Process limit reached: {0}")]
     #[diagnostic(
         code(process::limit_reached),
         help("Maximum number of processes reached. Terminate unused processes.")
     )]
-    LimitReached(String),
+    LimitReached(InlineString),
 
     #[error("Permission denied: {0}")]
     #[diagnostic(
         code(process::permission_denied),
         help("Insufficient permissions to perform this operation.")
     )]
-    PermissionDenied(String),
+    PermissionDenied(InlineString),
 }
 
 // Allow conversion from MemoryError to ProcessError
@@ -86,35 +87,35 @@ pub enum SchedulerError {
         code(scheduler::queue_full),
         help("Too many processes in scheduler queue. Wait for processes to complete.")
     )]
-    QueueFull(String),
+    QueueFull(InlineString),
 
     #[error("Invalid scheduling policy: {0}")]
     #[diagnostic(
         code(scheduler::invalid_policy),
         help("Use RoundRobin, Priority, or Fair scheduling policy.")
     )]
-    InvalidPolicy(String),
+    InvalidPolicy(InlineString),
 
     #[error("Cannot schedule: {0}")]
     #[diagnostic(
         code(scheduler::scheduling_failed),
         help("Scheduling operation failed. Check system state and resources.")
     )]
-    SchedulingFailed(String),
+    SchedulingFailed(InlineString),
 
     #[error("Priority out of range: {0}")]
     #[diagnostic(
         code(scheduler::invalid_priority),
         help("Priority must be between 0 and 255.")
     )]
-    InvalidPriority(String),
+    InvalidPriority(InlineString),
 
     #[error("Deadlock detected: {0}")]
     #[diagnostic(
         code(scheduler::deadlock_detected),
         help("Circular dependency detected between processes. Review process dependencies.")
     )]
-    DeadlockDetected(String),
+    DeadlockDetected(InlineString),
 }
 
 /// Unified kernel error type with miette diagnostics
@@ -151,54 +152,54 @@ pub enum KernelError {
         code(kernel::internal_error),
         help("An unexpected internal error occurred. Please report this issue.")
     )]
-    Internal(String),
+    Internal(InlineString),
 
     #[error("I/O error: {0}")]
     #[diagnostic(
         code(kernel::io_error),
         help("Filesystem or I/O operation failed. Check file permissions and disk space.")
     )]
-    Io(String),
+    Io(InlineString),
 
     #[error("Configuration error: {0}")]
     #[diagnostic(
         code(kernel::configuration_error),
         help("Invalid configuration. Review configuration parameters.")
     )]
-    Configuration(String),
+    Configuration(InlineString),
 
     #[error("Not supported: {0}")]
     #[diagnostic(
         code(kernel::not_supported),
         help("This operation is not supported on this platform or configuration.")
     )]
-    NotSupported(String),
+    NotSupported(InlineString),
 
     #[error("Timeout: {0}")]
     #[diagnostic(
         code(kernel::timeout),
         help("Operation exceeded timeout limit. Try increasing timeout or check system load.")
     )]
-    Timeout(String),
+    Timeout(InlineString),
 }
 
 // Implement conversion from std::io::Error
 impl From<std::io::Error> for KernelError {
     fn from(err: std::io::Error) -> Self {
-        KernelError::Io(err.to_string())
+        KernelError::Io(err.to_string().into())
     }
 }
 
 // Implement conversion from String for convenience
 impl From<String> for KernelError {
     fn from(msg: String) -> Self {
-        KernelError::Internal(msg)
+        KernelError::Internal(msg.into())
     }
 }
 
 impl From<&str> for KernelError {
     fn from(msg: &str) -> Self {
-        KernelError::Internal(msg.to_string())
+        KernelError::Internal(msg.into())
     }
 }
 
@@ -206,41 +207,45 @@ impl From<&str> for KernelError {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub struct SerializableError {
-    pub error_type: String,
-    pub message: String,
+    pub error_type: InlineString,
+    pub message: InlineString,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub details: Option<String>,
+    pub details: Option<InlineString>,
 }
 
 impl SerializableError {
     /// Create a new serializable error
-    pub fn new(error_type: String, message: String) -> Self {
+    pub fn new(error_type: impl Into<InlineString>, message: impl Into<InlineString>) -> Self {
         Self {
-            error_type,
-            message,
+            error_type: error_type.into(),
+            message: message.into(),
             details: None,
         }
     }
 
     /// Create a new serializable error with details
-    pub fn with_details(error_type: String, message: String, details: String) -> Self {
+    pub fn with_details(
+        error_type: impl Into<InlineString>,
+        message: impl Into<InlineString>,
+        details: impl Into<InlineString>,
+    ) -> Self {
         Self {
-            error_type,
-            message,
-            details: Some(details),
+            error_type: error_type.into(),
+            message: message.into(),
+            details: Some(details.into()),
         }
     }
 }
 
 impl From<ProcessError> for SerializableError {
     fn from(err: ProcessError) -> Self {
-        SerializableError::new("process_error".to_string(), err.to_string())
+        SerializableError::new("process_error", err.to_string())
     }
 }
 
 impl From<SchedulerError> for SerializableError {
     fn from(err: SchedulerError) -> Self {
-        SerializableError::new("scheduler_error".to_string(), err.to_string())
+        SerializableError::new("scheduler_error", err.to_string())
     }
 }
 
@@ -259,7 +264,7 @@ impl From<KernelError> for SerializableError {
             KernelError::NotSupported(_) => "not_supported",
             KernelError::Timeout(_) => "timeout",
         };
-        SerializableError::new(error_type.to_string(), err.to_string())
+        SerializableError::new(error_type, err.to_string())
     }
 }
 
@@ -283,7 +288,7 @@ mod tests {
 
     #[test]
     fn test_scheduler_error_serialization() {
-        let error = SchedulerError::QueueFull("limit reached".to_string());
+        let error = SchedulerError::QueueFull("limit reached".into());
         let json = serde_json::to_string(&error).unwrap();
         let deserialized: SchedulerError = serde_json::from_str(&json).unwrap();
         assert_eq!(error, deserialized);
@@ -291,7 +296,7 @@ mod tests {
 
     #[test]
     fn test_serializable_error_creation() {
-        let error = SerializableError::new("test_error".to_string(), "test message".to_string());
+        let error = SerializableError::new("test_error", "test message");
         assert_eq!(error.error_type, "test_error");
         assert_eq!(error.message, "test message");
         assert_eq!(error.details, None);
@@ -299,12 +304,11 @@ mod tests {
 
     #[test]
     fn test_serializable_error_with_details() {
-        let error = SerializableError::with_details(
-            "test_error".to_string(),
-            "test message".to_string(),
-            "extra info".to_string(),
+        let error = SerializableError::with_details("test_error", "test message", "extra info");
+        assert_eq!(
+            error.details.as_ref().map(|s| s.as_str()),
+            Some("extra info")
         );
-        assert_eq!(error.details, Some("extra info".to_string().into()));
     }
 
     #[test]
@@ -316,7 +320,7 @@ mod tests {
 
     #[test]
     fn test_kernel_error_display() {
-        let error = KernelError::Internal("test error".to_string());
+        let error = KernelError::Internal("test error".into());
         assert_eq!(error.to_string(), "Internal error: test error");
     }
 

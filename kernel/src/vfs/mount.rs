@@ -96,10 +96,9 @@ impl MountManager {
         let mount_path = self.normalize_path(&mount_path.into());
 
         if self.mounts.contains_key(&mount_path) {
-            return Err(VfsError::AlreadyExists(format!(
-                "mount point already exists: {}",
-                mount_path.display()
-            ).into()));
+            return Err(VfsError::AlreadyExists(
+                format!("mount point already exists: {}", mount_path.display()).into(),
+            ));
         }
 
         self.mounts
@@ -123,10 +122,9 @@ impl MountManager {
         let mount_path = self.normalize_path(mount_path.as_ref());
 
         if self.mounts.remove(&mount_path).is_none() {
-            return Err(VfsError::NotFound(format!(
-                "mount point not found: {}",
-                mount_path.display()
-            ).into()));
+            return Err(VfsError::NotFound(
+                format!("mount point not found: {}", mount_path.display()).into(),
+            ));
         }
 
         let mut order = self.mount_order.write();
@@ -146,10 +144,13 @@ impl MountManager {
             for mount_path in order.iter() {
                 if path.starts_with(mount_path) {
                     let entry = self.mounts.get(mount_path).ok_or_else(|| {
-                            VfsError::NotFound(format!(
-                            "mount point was removed concurrently: {}",
-                            mount_path.display()
-                        ).into())
+                        VfsError::NotFound(
+                            format!(
+                                "mount point was removed concurrently: {}",
+                                mount_path.display()
+                            )
+                            .into(),
+                        )
                     })?;
 
                     let fs = entry.fs.clone();
@@ -165,10 +166,9 @@ impl MountManager {
                 }
             }
 
-            Err(VfsError::NotFound(format!(
-                "no filesystem mounted for path: {}",
-                path.display()
-            ).into()))
+            Err(VfsError::NotFound(
+                format!("no filesystem mounted for path: {}", path.display()).into(),
+            ))
         })
     }
 
@@ -194,7 +194,12 @@ impl MountManager {
     pub fn list_mounts(&self) -> Vec<(PathBuf, String)> {
         self.mounts
             .iter()
-            .map(|entry| (entry.key().clone(), entry.value().fs.name().to_string().into()))
+            .map(|entry| {
+                (
+                    entry.key().clone(),
+                    entry.value().fs.name().to_string().into(),
+                )
+            })
             .collect()
     }
 
@@ -518,7 +523,11 @@ mod tests {
 
         let mounts = mgr.list_mounts();
         assert_eq!(mounts.len(), 2);
-        assert!(mounts.iter().any(|(p, _)| p == &PathBuf::from("/data").into()));
-        assert!(mounts.iter().any(|(p, _)| p == &PathBuf::from("/tmp").into()));
+        assert!(mounts
+            .iter()
+            .any(|(p, _)| p == &PathBuf::from("/data").into()));
+        assert!(mounts
+            .iter()
+            .any(|(p, _)| p == &PathBuf::from("/tmp").into()));
     }
 }

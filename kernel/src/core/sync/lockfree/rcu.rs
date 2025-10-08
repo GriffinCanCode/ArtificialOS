@@ -191,7 +191,9 @@ mod tests {
 
     #[test]
     fn test_concurrent_reads() {
-        let cell = Arc::new(RcuCell::new(HashMap::from([("key1", 100), ("key2", 200)]).into()));
+        let cell = Arc::new(RcuCell::new(
+            HashMap::from([("key1", 100), ("key2", 200)]).into(),
+        ));
 
         let mut handles = vec![];
 

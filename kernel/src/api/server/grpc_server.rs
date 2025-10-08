@@ -279,12 +279,12 @@ impl ServerLifecycle for GrpcServer {
             // Configure server with settings from ServerConfig
             Server::builder()
                 .timeout(Duration::from_secs(self.config.timeout_secs))
-                .http2_keepalive_interval(Some(Duration::from_secs(
-                    self.config.keepalive_interval_secs,
-                ).into()))
-                .http2_keepalive_timeout(Some(Duration::from_secs(
-                    self.config.keepalive_timeout_secs,
-                ).into()))
+                .http2_keepalive_interval(Some(
+                    Duration::from_secs(self.config.keepalive_interval_secs).into(),
+                ))
+                .http2_keepalive_timeout(Some(
+                    Duration::from_secs(self.config.keepalive_timeout_secs).into(),
+                ))
                 .http2_adaptive_window(Some(true))
                 .tcp_nodelay(true)
                 .add_service(KernelServiceServer::new(service))

@@ -92,7 +92,9 @@ impl Pipe {
             if self.closed {
                 return Ok(Vec::new()); // EOF
             }
-            return Err(PipeError::WouldBlock("No data available".to_string().into()));
+            return Err(PipeError::WouldBlock(
+                "No data available".to_string().into(),
+            ));
         }
 
         // Lock-free read - zero contention in SPSC pattern

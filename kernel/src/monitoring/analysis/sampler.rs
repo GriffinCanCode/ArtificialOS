@@ -41,7 +41,10 @@ impl Sampler {
     pub fn new() -> Self {
         Self {
             rate: Arc::new(AtomicU8::new(100).into()),
-            counters: SeqlockStats::new(SamplerCounters { evaluated: 0, accepted: 0 }),
+            counters: SeqlockStats::new(SamplerCounters {
+                evaluated: 0,
+                accepted: 0,
+            }),
             overhead_pct: Arc::new(AtomicU8::new(0).into()),
             category_rates: [
                 Arc::new(AtomicU8::new(100).into()),
@@ -157,7 +160,10 @@ impl Sampler {
 
     /// Reset statistics
     pub fn reset(&self) {
-        self.counters.replace(SamplerCounters { evaluated: 0, accepted: 0 });
+        self.counters.replace(SamplerCounters {
+            evaluated: 0,
+            accepted: 0,
+        });
     }
 
     /// Fast random number generator (xorshift)

@@ -182,50 +182,50 @@ impl SyscallExecutorWithIpc {
         use crate::core::memory::arena::with_arena;
 
         match result {
-            Ok(msg) => {
-                match queue_manager.read_message_data(&msg) {
-                    Ok(data) => with_arena(|arena| {
-                        info!(
-                            "PID {} received {} bytes from queue {}",
-                            pid,
-                            data.len(),
-                            queue_id
-                        );
-                        let bytes_str = arena.alloc_str(&data.len().to_string());
-                        span.record("bytes_received", bytes_str);
-                        span.record_result(true);
+            Ok(msg) => match queue_manager.read_message_data(&msg) {
+                Ok(data) => with_arena(|arena| {
+                    info!(
+                        "PID {} received {} bytes from queue {}",
+                        pid,
+                        data.len(),
+                        queue_id
+                    );
+                    let bytes_str = arena.alloc_str(&data.len().to_string());
+                    span.record("bytes_received", bytes_str);
+                    span.record_result(true);
 
-                        #[derive(serde::Serialize)]
-                        struct MessageResponse {
-                            id: u64,
-                            from: u32,
-                            data: Vec<u8>,
-                            priority: u8,
+                    #[derive(serde::Serialize)]
+                    struct MessageResponse {
+                        id: u64,
+                        from: u32,
+                        data: Vec<u8>,
+                        priority: u8,
+                    }
+
+                    let response = MessageResponse {
+                        id: msg.id,
+                        from: msg.from,
+                        data,
+                        priority: msg.priority,
+                    };
+
+                    match bincode::serialize_ipc_message(&response) {
+                        Ok(serialized) => {
+                            SyscallResult::success_with_data(serialized.to_vec().into())
                         }
-
-                        let response = MessageResponse {
-                            id: msg.id,
-                            from: msg.from,
-                            data,
-                            priority: msg.priority,
-                        };
-
-                        match bincode::serialize_ipc_message(&response) {
-                            Ok(serialized) => SyscallResult::success_with_data(serialized.to_vec().into()),
-                            Err(e) => {
-                                error!("Failed to serialize message: {}", e);
-                                SyscallResult::error("Serialization failed")
-                            }
+                        Err(e) => {
+                            error!("Failed to serialize message: {}", e);
+                            SyscallResult::error("Serialization failed")
                         }
-                    }),
-                    Err(e) => with_arena(|arena| {
-                        error!("Failed to read message data: {}", e);
-                        let err_msg = arena.alloc(format!("Read failed: {}", e));
-                        span.record_error(err_msg);
-                        SyscallResult::error(format!("Read failed: {}", e))
-                    })
-                }
-            }
+                    }
+                }),
+                Err(e) => with_arena(|arena| {
+                    error!("Failed to read message data: {}", e);
+                    let err_msg = arena.alloc(format!("Read failed: {}", e));
+                    span.record_error(err_msg);
+                    SyscallResult::error(format!("Read failed: {}", e))
+                }),
+            },
             Err(super::super::TimeoutError::Timeout { elapsed_ms, .. }) => {
                 error!(
                     "Queue receive timed out for PID {}, queue {} after {}ms",

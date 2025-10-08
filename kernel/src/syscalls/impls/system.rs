@@ -30,9 +30,7 @@ impl SyscallExecutorWithIpc {
             let name = arena.alloc_str("info");
             let request = PermissionRequest::new(
                 pid,
-                Resource::System {
-                    name: name.to_string(),
-                },
+                Resource::System { name: name.into() },
                 Action::Inspect,
             );
             let response = self.permission_manager().check(&request);
@@ -71,7 +69,7 @@ impl SyscallExecutorWithIpc {
         let request = PermissionRequest::new(
             pid,
             Resource::System {
-                name: "time".to_string(),
+                name: "time".into(),
             },
             Action::Inspect,
         );
@@ -108,13 +106,8 @@ impl SyscallExecutorWithIpc {
         span.record("pid", &format!("{}", pid));
         span.record("key", key);
 
-        let request = PermissionRequest::new(
-            pid,
-            Resource::System {
-                name: "env".to_string(),
-            },
-            Action::Read,
-        );
+        let request =
+            PermissionRequest::new(pid, Resource::System { name: "env".into() }, Action::Read);
         let response = self.permission_manager().check(&request);
 
         if !response.is_allowed() {
@@ -146,13 +139,8 @@ impl SyscallExecutorWithIpc {
         span.record("pid", &format!("{}", pid));
         span.record("key", key);
 
-        let request = PermissionRequest::new(
-            pid,
-            Resource::System {
-                name: "env".to_string(),
-            },
-            Action::Write,
-        );
+        let request =
+            PermissionRequest::new(pid, Resource::System { name: "env".into() }, Action::Write);
         let response = self.permission_manager().check_and_audit(&request);
 
         if !response.is_allowed() {
@@ -239,7 +227,10 @@ impl SyscallExecutorWithIpc {
                 Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
                     error!("HTTP request timed out for {} after {}ms (slow network or unresponsive server?)", url, elapsed_ms);
                     span.record_error(arena.alloc(format!("Timeout after {}ms", elapsed_ms)));
-                    SyscallResult::error(format!("Network request timed out after {}ms", elapsed_ms))
+                    SyscallResult::error(format!(
+                        "Network request timed out after {}ms",
+                        elapsed_ms
+                    ))
                 }
                 Err(TimeoutError::Operation(e)) => {
                     error!("Failed to fetch {}: {}", url, e);

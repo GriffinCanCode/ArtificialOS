@@ -52,13 +52,13 @@ impl TimeoutObserver {
             Severity::Warn,
             Category::Ipc,
             Payload::MetricUpdate {
-                name: "ipc_operation_timeout".to_string(),
+                name: "ipc_operation_timeout".into(),
                 value: elapsed.as_millis() as f64,
                 labels: vec![
-                    ("resource_type".to_string(), resource_type.to_string().into()),
-                    ("resource_id".to_string(), resource_id.to_string().into()),
-                    ("elapsed_ms".to_string(), elapsed.as_millis().to_string().into()),
-                    ("timeout_ms".to_string(), timeout.as_millis().to_string().into()),
+                    ("resource_type".into(), resource_type.to_string().into()),
+                    ("resource_id".into(), resource_id.to_string().into()),
+                    ("elapsed_ms".into(), elapsed.as_millis().to_string().into()),
+                    ("timeout_ms".into(), timeout.as_millis().to_string().into()),
                 ],
             },
         )
@@ -80,13 +80,13 @@ impl TimeoutObserver {
             Severity::Warn,
             Category::Resource,
             Payload::MetricUpdate {
-                name: "io_operation_timeout".to_string(),
+                name: "io_operation_timeout".into(),
                 value: elapsed.as_millis() as f64,
                 labels: vec![
-                    ("operation".to_string(), operation.to_string().into()),
-                    ("fd".to_string(), fd.to_string().into()),
-                    ("elapsed_ms".to_string(), elapsed.as_millis().to_string().into()),
-                    ("timeout_ms".to_string(), timeout.as_millis().to_string().into()),
+                    ("operation".into(), operation.to_string().into()),
+                    ("fd".into(), fd.to_string().into()),
+                    ("elapsed_ms".into(), elapsed.as_millis().to_string().into()),
+                    ("timeout_ms".into(), timeout.as_millis().to_string().into()),
                 ],
             },
         )
@@ -104,19 +104,19 @@ impl TimeoutObserver {
         timeout: Duration,
     ) {
         let mut labels = vec![
-            ("elapsed_ms".to_string(), elapsed.as_millis().to_string().into()),
-            ("timeout_ms".to_string(), timeout.as_millis().to_string().into()),
+            ("elapsed_ms".into(), elapsed.as_millis().to_string().into()),
+            ("timeout_ms".into(), timeout.as_millis().to_string().into()),
         ];
 
         if let Some(id) = task_id {
-            labels.push(("task_id".to_string(), id.to_string().into()));
+            labels.push(("task_id".into(), id.to_string().into()));
         }
 
         let mut event = Event::new(
             Severity::Warn,
             Category::Performance,
             Payload::MetricUpdate {
-                name: "async_task_timeout".to_string(),
+                name: "async_task_timeout".into(),
                 value: elapsed.as_millis() as f64,
                 labels,
             },
@@ -140,20 +140,20 @@ impl TimeoutObserver {
         timeout: Option<Duration>,
     ) {
         let mut labels = vec![
-            ("resource_type".to_string(), resource_type.to_string().into()),
-            ("category".to_string(), category.to_string().into()),
-            ("elapsed_ms".to_string(), elapsed.as_millis().to_string().into()),
+            ("resource_type".into(), resource_type.to_string().into()),
+            ("category".into(), category.to_string().into()),
+            ("elapsed_ms".into(), elapsed.as_millis().to_string().into()),
         ];
 
         if let Some(t) = timeout {
-            labels.push(("timeout_ms".to_string(), t.as_millis().to_string().into()));
+            labels.push(("timeout_ms".into(), t.as_millis().to_string().into()));
         }
 
         let mut event = Event::new(
             Severity::Warn,
             Category::Performance,
             Payload::MetricUpdate {
-                name: metric_name.to_string(),
+                name: metric_name.into(),
                 value: elapsed.as_millis() as f64,
                 labels,
             },
@@ -172,12 +172,12 @@ impl TimeoutObserver {
             Severity::Info,
             Category::Performance,
             Payload::MetricUpdate {
-                name: "timeout_summary".to_string(),
+                name: "timeout_summary".into(),
                 value: count as f64,
                 labels: vec![
-                    ("category".to_string(), category.to_string().into()),
-                    ("count".to_string(), count.to_string().into()),
-                    ("avg_elapsed_ms".to_string(), avg_elapsed_ms.to_string().into()),
+                    ("category".into(), category.to_string().into()),
+                    ("count".into(), count.to_string().into()),
+                    ("avg_elapsed_ms".into(), avg_elapsed_ms.to_string().into()),
                 ],
             },
         );

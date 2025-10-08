@@ -233,7 +233,7 @@ impl Scheduler {
                         Payload::ContextSwitch {
                             from_pid: prev_entry.pid,
                             to_pid: pid,
-                            reason: "quantum_expired".to_string(),
+                            reason: "quantum_expired".into(),
                         },
                     ));
                 }

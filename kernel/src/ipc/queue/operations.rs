@@ -34,11 +34,14 @@ impl QueueManager {
     ) -> IpcResult<()> {
         // Validate message size
         if data.len() > MAX_MESSAGE_SIZE {
-            return Err(IpcError::LimitExceeded(format!(
-                "Message size {} exceeds limit {}",
-                data.len(),
-                MAX_MESSAGE_SIZE
-            ).into()));
+            return Err(IpcError::LimitExceeded(
+                format!(
+                    "Message size {} exceeds limit {}",
+                    data.len(),
+                    MAX_MESSAGE_SIZE
+                )
+                .into(),
+            ));
         }
 
         let data_address = self.allocate_message_memory(from_pid, &data)?;
@@ -52,7 +55,9 @@ impl QueueManager {
         let data_address = self
             .memory_manager
             .allocate(data_len, from_pid)
-            .map_err(|e| IpcError::InvalidOperation(format!("Memory allocation failed: {}", e).into()))?;
+            .map_err(|e| {
+                IpcError::InvalidOperation(format!("Memory allocation failed: {}", e).into())
+            })?;
 
         if data_len > 0 {
             self.memory_manager
@@ -217,7 +222,9 @@ impl QueueManager {
     fn read_data_from_memory(&self, message: &QueueMessage) -> IpcResult<Vec<u8>> {
         self.memory_manager
             .read_bytes(message.data_address, message.data_length)
-            .map_err(|e| IpcError::InvalidOperation(format!("Failed to read message data: {}", e).into()))
+            .map_err(|e| {
+                IpcError::InvalidOperation(format!("Failed to read message data: {}", e).into())
+            })
     }
 
     /// Deallocate message memory

@@ -47,7 +47,7 @@ impl SyscallGuard {
             Severity::Debug,
             Category::Syscall,
             Payload::SyscallEnter {
-                name: syscall_name.to_string(),
+                name: syscall_name.into(),
                 args_hash: 0,
             },
         )
@@ -102,7 +102,7 @@ impl SyscallGuard {
             severity,
             Category::Syscall,
             Payload::SyscallExit {
-                name: self.syscall_name.to_string(),
+                name: self.syscall_name.into(),
                 duration_us: duration_micros,
                 result: result_enum,
             },
@@ -151,7 +151,7 @@ impl Drop for SyscallGuard {
                 Severity::Debug,
                 Category::Syscall,
                 Payload::SyscallExit {
-                    name: self.syscall_name.to_string(),
+                    name: self.syscall_name.into(),
                     duration_us: duration_micros,
                     result: crate::monitoring::SyscallResult::Success,
                 },

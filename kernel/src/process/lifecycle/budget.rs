@@ -107,42 +107,36 @@ impl ResourceUsage {
 
         if let Some(max) = budget.max_memory_bytes {
             percentages.insert(
-                "memory".to_string(),
+                "memory".into(),
                 (self.memory_bytes as f64 / max as f64) * 100.0,
             );
         }
 
         if let Some(max) = budget.max_file_descriptors {
             percentages.insert(
-                "file_descriptors".to_string(),
+                "file_descriptors".into(),
                 (self.file_descriptors as f64 / max as f64) * 100.0,
             );
         }
 
         if let Some(max) = budget.max_sockets {
-            percentages.insert(
-                "sockets".to_string(),
-                (self.sockets as f64 / max as f64) * 100.0,
-            );
+            percentages.insert("sockets".into(), (self.sockets as f64 / max as f64) * 100.0);
         }
 
         if let Some(max) = budget.max_mappings {
             percentages.insert(
-                "mappings".to_string(),
+                "mappings".into(),
                 (self.mappings as f64 / max as f64) * 100.0,
             );
         }
 
         if let Some(max) = budget.max_ipc_queues {
-            percentages.insert(
-                "ipc".to_string(),
-                (self.ipc_queues as f64 / max as f64) * 100.0,
-            );
+            percentages.insert("ipc".into(), (self.ipc_queues as f64 / max as f64) * 100.0);
         }
 
         if let Some(max) = budget.max_async_tasks {
             percentages.insert(
-                "async_tasks".to_string(),
+                "async_tasks".into(),
                 (self.async_tasks as f64 / max as f64) * 100.0,
             );
         }

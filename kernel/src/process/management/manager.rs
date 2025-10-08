@@ -58,11 +58,14 @@ impl ProcessManager {
         info!("Process manager initialized (basic)");
         Self {
             // CPU-topology-aware shard counts for optimal concurrent performance
-            processes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
-                0,
-                RandomState::new(),
-                ShardManager::shards(WorkloadProfile::HighContention), // process table: heavy concurrent access
-            ).into()),
+            processes: Arc::new(
+                DashMap::with_capacity_and_hasher_and_shard_amount(
+                    0,
+                    RandomState::new(),
+                    ShardManager::shards(WorkloadProfile::HighContention), // process table: heavy concurrent access
+                )
+                .into(),
+            ),
             next_pid: Arc::new(AtomicU32::new(1)),
             memory_manager: None,
             executor: None,
@@ -73,11 +76,14 @@ impl ProcessManager {
             preemption: None,
             fd_manager: None,
             resource_orchestrator: ResourceOrchestrator::new(),
-            child_counts: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
-                0,
-                RandomState::new(),
-                ShardManager::shards(WorkloadProfile::MediumContention), // child tracking: moderate access
-            ).into()),
+            child_counts: Arc::new(
+                DashMap::with_capacity_and_hasher_and_shard_amount(
+                    0,
+                    RandomState::new(),
+                    ShardManager::shards(WorkloadProfile::MediumContention), // child tracking: moderate access
+                )
+                .into(),
+            ),
             lifecycle: None,
             collector: None,
         }

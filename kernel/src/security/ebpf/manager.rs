@@ -354,7 +354,7 @@ mod tests {
         let manager = EbpfManagerImpl::with_simulation();
 
         let config = ProgramConfig {
-            name: "test_program".to_string(),
+            name: "test_program".into(),
             program_type: ProgramType::SyscallEntry,
             auto_attach: false,
             enabled: true,
@@ -371,7 +371,7 @@ mod tests {
         let manager = EbpfManagerImpl::with_simulation();
 
         let config = ProgramConfig {
-            name: "test_attach".to_string(),
+            name: "test_attach".into(),
             program_type: ProgramType::NetworkSocket,
             auto_attach: false,
             enabled: true,
@@ -393,7 +393,7 @@ mod tests {
         let manager = EbpfManagerImpl::with_simulation();
 
         let filter = SyscallFilter {
-            id: "filter1".to_string(),
+            id: "filter1".into(),
             pid: Some(123),
             syscall_nrs: Some(vec![1, 2, 3]),
             action: FilterAction::Deny,
@@ -415,7 +415,7 @@ mod tests {
 
         // Add deny filter
         let filter = SyscallFilter {
-            id: "deny_write".to_string(),
+            id: "deny_write".into(),
             pid: Some(123),
             syscall_nrs: Some(vec![1]), // write syscall
             action: FilterAction::Deny,

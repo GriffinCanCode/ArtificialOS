@@ -138,11 +138,14 @@ impl MmapManager {
         info!("Mmap manager initialized");
         Self {
             // CPU-topology-aware shard counts for optimal concurrent performance
-            mappings: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
-                0,
-                RandomState::new(),
-                ShardManager::shards(WorkloadProfile::LowContention), // mmap: infrequent access
-            ).into()),
+            mappings: Arc::new(
+                DashMap::with_capacity_and_hasher_and_shard_amount(
+                    0,
+                    RandomState::new(),
+                    ShardManager::shards(WorkloadProfile::LowContention), // mmap: infrequent access
+                )
+                .into(),
+            ),
             next_id: Arc::new(AtomicU32::new(1)),
             vfs: None,
         }
@@ -153,11 +156,14 @@ impl MmapManager {
         info!("Mmap manager initialized with VFS support");
         Self {
             // CPU-topology-aware shard counts for optimal concurrent performance
-            mappings: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
-                0,
-                RandomState::new(),
-                ShardManager::shards(WorkloadProfile::LowContention), // mmap: infrequent access
-            ).into()),
+            mappings: Arc::new(
+                DashMap::with_capacity_and_hasher_and_shard_amount(
+                    0,
+                    RandomState::new(),
+                    ShardManager::shards(WorkloadProfile::LowContention), // mmap: infrequent access
+                )
+                .into(),
+            ),
             next_id: Arc::new(AtomicU32::new(1)),
             vfs: Some(vfs),
         }

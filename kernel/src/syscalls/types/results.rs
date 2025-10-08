@@ -4,6 +4,7 @@
  */
 
 use super::errors::SyscallError;
+use crate::core::data_structures::InlineString;
 use crate::core::serialization::serde::skip_serializing_none;
 use serde::{Deserialize, Serialize};
 
@@ -20,12 +21,12 @@ pub enum SyscallResult {
     /// Operation failed with error message
     Error {
         /// Human-readable error message
-        message: String,
+        message: InlineString,
     },
     /// Permission denied with reason
     PermissionDenied {
         /// Reason for permission denial
-        reason: String,
+        reason: InlineString,
     },
 }
 
@@ -56,7 +57,7 @@ impl SyscallResult {
     /// Hot path - frequently called for syscall errors
     #[inline(always)]
     #[must_use]
-    pub fn error(message: impl Into<String>) -> Self {
+    pub fn error(message: impl Into<InlineString>) -> Self {
         Self::Error {
             message: message.into(),
         }
@@ -68,7 +69,7 @@ impl SyscallResult {
     /// Hot path - frequently called for permission checks
     #[inline(always)]
     #[must_use]
-    pub fn permission_denied(reason: impl Into<String>) -> Self {
+    pub fn permission_denied(reason: impl Into<InlineString>) -> Self {
         Self::PermissionDenied {
             reason: reason.into(),
         }
@@ -122,9 +123,11 @@ impl SyscallResult {
 impl From<SyscallError> for SyscallResult {
     fn from(err: SyscallError) -> Self {
         match err {
-            SyscallError::PermissionDenied(msg) => Self::PermissionDenied { reason: msg.to_string() },
+            SyscallError::PermissionDenied(msg) => Self::PermissionDenied {
+                reason: msg.to_string().into(),
+            },
             other => Self::Error {
-                message: other.to_string(),
+                message: other.to_string().into(),
             },
         }
     }

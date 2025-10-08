@@ -44,11 +44,9 @@ impl PriorityQueue {
         }
 
         if self.messages.len() >= self.capacity {
-            return Err(IpcError::LimitExceeded(format!(
-                "Queue full: {}/{}",
-                self.messages.len(),
-                self.capacity
-            ).into()));
+            return Err(IpcError::LimitExceeded(
+                format!("Queue full: {}/{}", self.messages.len(), self.capacity).into(),
+            ));
         }
 
         self.messages.push(PriorityMessage { message });

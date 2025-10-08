@@ -72,7 +72,9 @@ impl ShmManager {
 
     pub fn create(&self, size: Size, owner_pid: Pid) -> Result<ShmId, ShmError> {
         if size == 0 {
-            return Err(ShmError::InvalidSize("Size cannot be zero".to_string().into()));
+            return Err(ShmError::InvalidSize(
+                "Size cannot be zero".to_string().into(),
+            ));
         }
 
         if size > MAX_SEGMENT_SIZE {

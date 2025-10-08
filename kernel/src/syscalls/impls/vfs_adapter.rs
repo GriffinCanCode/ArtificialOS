@@ -590,8 +590,13 @@ impl SyscallExecutorWithIpc {
                             }
                             Err(e) => {
                                 error!("Failed to serialize VFS directory listing: {}", e);
-                                span.record_error(arena.alloc(format!("Serialization failed: {}", e)));
-                                return SyscallResult::error(format!("Failed to serialize directory listing: {}", e));
+                                span.record_error(
+                                    arena.alloc(format!("Serialization failed: {}", e)),
+                                );
+                                return SyscallResult::error(format!(
+                                    "Failed to serialize directory listing: {}",
+                                    e
+                                ));
                             }
                         }
                     }
@@ -625,7 +630,9 @@ impl SyscallExecutorWithIpc {
                     let mut files = bumpalo::collections::Vec::new_in(arena);
                     for entry in entries {
                         if let Ok(entry) = entry {
-                            if let (Ok(name), Ok(file_type)) = (entry.file_name().into_string(), entry.file_type()) {
+                            if let (Ok(name), Ok(file_type)) =
+                                (entry.file_name().into_string(), entry.file_type())
+                            {
                                 let is_dir = file_type.is_dir();
                                 files.push(serde_json::json!({
                                     "name": name,
@@ -657,7 +664,10 @@ impl SyscallExecutorWithIpc {
                             error!("Failed to serialize directory listing: {}", e);
                             let err_msg = arena.alloc(format!("Serialization failed: {}", e));
                             span.record_error(err_msg);
-                            SyscallResult::error(format!("Failed to serialize directory listing: {}", e))
+                            SyscallResult::error(format!(
+                                "Failed to serialize directory listing: {}",
+                                e
+                            ))
                         }
                     }
                 }
@@ -694,10 +704,10 @@ fn vfs_error_to_string(err: VfsError) -> String {
         VfsError::InvalidPath(msg) => format!("Invalid path: {}", msg),
         VfsError::IoError(msg) => format!("I/O error: {}", msg),
         VfsError::NotSupported(msg) => format!("Not supported: {}", msg),
-        VfsError::OutOfSpace => "Out of space".to_string(),
+        VfsError::OutOfSpace => "Out of space".into(),
         VfsError::InvalidArgument(msg) => format!("Invalid argument: {}", msg),
-        VfsError::FileTooLarge => "File too large".to_string(),
-        VfsError::ReadOnly => "Read-only filesystem".to_string(),
-        VfsError::CrossDevice => "Cross-device link".to_string(),
+        VfsError::FileTooLarge => "File too large".into(),
+        VfsError::ReadOnly => "Read-only filesystem".into(),
+        VfsError::CrossDevice => "Cross-device link".into(),
     }
 }

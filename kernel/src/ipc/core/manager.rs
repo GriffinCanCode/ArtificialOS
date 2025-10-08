@@ -90,21 +90,27 @@ impl IPCManager {
     pub fn send_message(&self, from: Pid, to: Pid, data: Vec<u8>) -> IpcResult<()> {
         // Validate message size
         if data.len() > MAX_MESSAGE_SIZE {
-            return Err(IpcError::LimitExceeded(format!(
-                "Message size {} exceeds limit {}",
-                data.len(),
-                MAX_MESSAGE_SIZE
-            ).into()));
+            return Err(IpcError::LimitExceeded(
+                format!(
+                    "Message size {} exceeds limit {}",
+                    data.len(),
+                    MAX_MESSAGE_SIZE
+                )
+                .into(),
+            ));
         }
 
         let mut queue = self.message_queues.entry(to).or_default();
 
         // Check per-process queue bounds
         if queue.len() >= IPC_MANAGER_QUEUE_SIZE {
-            return Err(IpcError::LimitExceeded(format!(
-                "Queue for PID {} is full ({} messages)",
-                to, IPC_MANAGER_QUEUE_SIZE
-            ).into()));
+            return Err(IpcError::LimitExceeded(
+                format!(
+                    "Queue for PID {} is full ({} messages)",
+                    to, IPC_MANAGER_QUEUE_SIZE
+                )
+                .into(),
+            ));
         }
 
         let mut message = Message::new(from, to, data);
@@ -114,7 +120,9 @@ impl IPCManager {
         let address = self
             .memory_manager
             .allocate(message_size, from)
-            .map_err(|e| IpcError::LimitExceeded(format!("Memory allocation failed: {}", e).into()))?;
+            .map_err(|e| {
+                IpcError::LimitExceeded(format!("Memory allocation failed: {}", e).into())
+            })?;
 
         // Store address for later deallocation
         message.mem_address = Some(address);

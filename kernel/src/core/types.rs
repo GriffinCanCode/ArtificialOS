@@ -294,12 +294,12 @@ mod tests {
         let config = ExecutionConfig::new("test".to_string())
             .with_arg("arg1".to_string())
             .with_arg("arg2".to_string())
-            .with_env_var("KEY".to_string(), "VALUE".to_string())
+            .with_env_var("KEY".into(), "VALUE".to_string())
             .with_working_dir("/tmp".to_string());
 
         assert_eq!(config.command, "test");
         assert_eq!(config.args, vec!["arg1", "arg2"]);
-        assert_eq!(config.env, vec![("KEY".to_string(), "VALUE".to_string())]);
+        assert_eq!(config.env, vec![("KEY".into(), "VALUE".to_string())]);
         assert_eq!(config.working_dir, Some("/tmp".to_string().into()));
     }
 

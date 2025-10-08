@@ -26,7 +26,9 @@ impl SyscallHandler for SystemHandler {
         match syscall {
             Syscall::GetSystemInfo => Some(self.executor.get_system_info(pid).into()),
             Syscall::GetCurrentTime => Some(self.executor.get_current_time(pid).into()),
-            Syscall::GetEnvironmentVar { ref key } => Some(self.executor.get_env_var(pid, key).into()),
+            Syscall::GetEnvironmentVar { ref key } => {
+                Some(self.executor.get_env_var(pid, key).into())
+            }
             Syscall::SetEnvironmentVar { ref key, ref value } => {
                 Some(self.executor.set_env_var(pid, key, value))
             }

@@ -24,7 +24,7 @@ impl SyscallExecutorWithIpc {
         let request = PermissionRequest::new(
             pid,
             Resource::System {
-                name: "memory".to_string(),
+                name: "memory".into(),
             },
             Action::Inspect,
         );
@@ -103,13 +103,8 @@ impl SyscallExecutorWithIpc {
         target_pid: Option<u32>,
     ) -> SyscallResult {
         // Check permission using centralized manager
-        let request = PermissionRequest::new(
-            pid,
-            Resource::System {
-                name: "gc".to_string(),
-            },
-            Action::Execute,
-        );
+        let request =
+            PermissionRequest::new(pid, Resource::System { name: "gc".into() }, Action::Execute);
         let response = self.permission_manager().check_and_audit(&request);
 
         if !response.is_allowed() {

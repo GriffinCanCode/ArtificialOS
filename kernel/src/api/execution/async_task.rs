@@ -226,7 +226,7 @@ impl AsyncTaskManager {
                 }
                 result = tokio::task::spawn_blocking(move || executor.execute(pid, syscall)) => {
                     result.unwrap_or_else(|e| SyscallResult::Error {
-                        message: format!("Task panic: {}", e),
+                        message: format!("Task panic: {}", e).into(),
                     })
                 }
             };
@@ -478,7 +478,7 @@ impl AsyncTaskManager {
                 }
                 result = tokio::task::spawn_blocking(move || executor.execute(pid, syscall)) => {
                     result.unwrap_or_else(|e| SyscallResult::Error {
-                        message: format!("Task panic: {}", e),
+                        message: format!("Task panic: {}", e).into(),
                     })
                 }
             };

@@ -366,7 +366,7 @@ mod tests {
     fn test_small_payload_serialization() {
         let data = TestData {
             id: 42,
-            name: "test".to_string(),
+            name: "test".into(),
             values: vec![1, 2, 3],
         };
 
@@ -379,7 +379,7 @@ mod tests {
     fn test_large_payload_serialization() {
         let data = TestData {
             id: 42,
-            name: "test".to_string(),
+            name: "test".into(),
             values: vec![0u8; 2048], // >1KB to trigger SIMD
         };
 
@@ -394,7 +394,7 @@ mod tests {
     fn test_simd_serialization() {
         let data = TestData {
             id: 42,
-            name: "test".to_string(),
+            name: "test".into(),
             values: vec![1, 2, 3, 4, 5],
         };
 
@@ -407,7 +407,7 @@ mod tests {
     fn test_std_serialization() {
         let data = TestData {
             id: 42,
-            name: "test".to_string(),
+            name: "test".into(),
             values: vec![1, 2, 3],
         };
 
@@ -420,7 +420,7 @@ mod tests {
     fn test_string_serialization() {
         let data = TestData {
             id: 42,
-            name: "test".to_string(),
+            name: "test".into(),
             values: vec![1, 2, 3],
         };
 
@@ -433,7 +433,7 @@ mod tests {
     fn test_pretty_print() {
         let data = TestData {
             id: 42,
-            name: "test".to_string(),
+            name: "test".into(),
             values: vec![1, 2, 3],
         };
 
@@ -454,7 +454,7 @@ mod tests {
     fn test_syscall_convenience_functions() {
         let data = TestData {
             id: 42,
-            name: "test".to_string(),
+            name: "test".into(),
             values: vec![0u8; 2048],
         };
 
@@ -470,12 +470,12 @@ mod tests {
         let batch = vec![
             TestData {
                 id: 1,
-                name: "file1".to_string(),
+                name: "file1".into(),
                 values: vec![1, 2, 3],
             },
             TestData {
                 id: 2,
-                name: "file2".to_string(),
+                name: "file2".into(),
                 values: vec![4, 5, 6],
             },
         ];
@@ -489,7 +489,7 @@ mod tests {
     fn test_ipc_message_serialization() {
         let message = TestData {
             id: 123,
-            name: "ipc_msg".to_string(),
+            name: "ipc_msg".into(),
             values: vec![7, 8, 9],
         };
 

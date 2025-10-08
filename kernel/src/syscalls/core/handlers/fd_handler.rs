@@ -35,7 +35,9 @@ impl SyscallHandler for FileDescriptorHandler {
             Syscall::Lseek { fd, offset, whence } => {
                 Some(self.executor.lseek(pid, *fd, *offset, *whence))
             }
-            Syscall::Fcntl { fd, cmd, arg } => Some(self.executor.fcntl(pid, *fd, *cmd, *arg).into()),
+            Syscall::Fcntl { fd, cmd, arg } => {
+                Some(self.executor.fcntl(pid, *fd, *cmd, *arg).into())
+            }
             _ => None, // Not an fd syscall
         }
     }

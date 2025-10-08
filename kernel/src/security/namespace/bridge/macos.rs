@@ -36,10 +36,9 @@ impl MacosBridgeManager {
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(NamespaceError::NetworkError(format!(
-                "Failed to create bridge: {}",
-                stderr
-            ).into()));
+            return Err(NamespaceError::NetworkError(
+                format!("Failed to create bridge: {}", stderr).into(),
+            ));
         }
 
         // The output contains the name of the created bridge (e.g., "bridge0")
@@ -53,7 +52,7 @@ impl MacosBridgeManager {
     #[cfg(not(target_os = "macos"))]
     pub async fn create_bridge(&self, _bridge_name: &str) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "macOS bridge operations not supported on this platform".to_string(),
+            "macOS bridge operations not supported on this platform".into(),
         ))
     }
 
@@ -73,10 +72,9 @@ impl MacosBridgeManager {
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(NamespaceError::NetworkError(format!(
-                "Failed to delete bridge {}: {}",
-                bridge_name, stderr
-            ).into()));
+            return Err(NamespaceError::NetworkError(
+                format!("Failed to delete bridge {}: {}", bridge_name, stderr).into(),
+            ));
         }
 
         debug!("Bridge deleted successfully");
@@ -86,7 +84,7 @@ impl MacosBridgeManager {
     #[cfg(not(target_os = "macos"))]
     pub async fn delete_bridge(&self, _bridge_name: &str) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "macOS bridge operations not supported on this platform".to_string(),
+            "macOS bridge operations not supported on this platform".into(),
         ))
     }
 
@@ -113,10 +111,13 @@ impl MacosBridgeManager {
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(NamespaceError::NetworkError(format!(
-                "Failed to attach {} to bridge {}: {}",
-                iface_name, bridge_name, stderr
-            ).into()));
+            return Err(NamespaceError::NetworkError(
+                format!(
+                    "Failed to attach {} to bridge {}: {}",
+                    iface_name, bridge_name, stderr
+                )
+                .into(),
+            ));
         }
 
         debug!("Interface attached to bridge successfully");
@@ -130,7 +131,7 @@ impl MacosBridgeManager {
         _iface_name: &str,
     ) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "macOS bridge operations not supported on this platform".to_string(),
+            "macOS bridge operations not supported on this platform".into(),
         ))
     }
 
@@ -166,7 +167,7 @@ impl MacosBridgeManager {
     #[cfg(not(target_os = "macos"))]
     pub async fn detach_interface(&self, _iface_name: &str) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "macOS bridge operations not supported on this platform".to_string(),
+            "macOS bridge operations not supported on this platform".into(),
         ))
     }
 
@@ -189,9 +190,7 @@ impl MacosBridgeManager {
             IpAddr::V4(addr) => {
                 format!("{} netmask {}", addr, Self::prefix_to_netmask(prefix_len))
             }
-            IpAddr::V6(addr) => {
-                format!("{} prefixlen {}", addr, prefix_len)
-            }
+            IpAddr::V6(addr) => format!("{} prefixlen {}", addr, prefix_len).into(),
         };
 
         let output = Command::new("ifconfig")
@@ -208,10 +207,9 @@ impl MacosBridgeManager {
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(NamespaceError::NetworkError(format!(
-                "Failed to set IP on bridge {}: {}",
-                bridge_name, stderr
-            ).into()));
+            return Err(NamespaceError::NetworkError(
+                format!("Failed to set IP on bridge {}: {}", bridge_name, stderr).into(),
+            ));
         }
 
         // Bring bridge up
@@ -239,7 +237,7 @@ impl MacosBridgeManager {
         _prefix_len: u8,
     ) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "macOS bridge operations not supported on this platform".to_string(),
+            "macOS bridge operations not supported on this platform".into(),
         ))
     }
 
@@ -279,7 +277,7 @@ impl MacosBridgeManager {
     #[cfg(not(target_os = "macos"))]
     pub async fn enable_forwarding(&self, _bridge_name: &str) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "macOS bridge operations not supported on this platform".to_string(),
+            "macOS bridge operations not supported on this platform".into(),
         ))
     }
 
@@ -293,7 +291,7 @@ impl MacosBridgeManager {
             ((mask >> 8) & 0xFF) as u8,
             (mask & 0xFF) as u8,
         ];
-        format!("{}.{}.{}.{}", octets[0], octets[1], octets[2], octets[3])
+        format!("{}.{}.{}.{}", octets[0], octets[1], octets[2], octets[3]).into()
     }
 }
 

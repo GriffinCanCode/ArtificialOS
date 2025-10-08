@@ -81,16 +81,14 @@ impl EbpfProvider for SimulationEbpfProvider {
             events_captured: 0,
             created_at: Self::current_timestamp(),
         };
-        self.programs.insert(config.name, info);
+        self.programs.insert(config.name.to_string(), info);
         Ok(())
     }
 
     fn unload_program(&self, name: &str) -> EbpfResult<()> {
         self.programs
             .remove(name)
-            .ok_or_else(|| EbpfError::ProgramNotFound {
-                name: name.to_string(),
-            })?;
+            .ok_or_else(|| EbpfError::ProgramNotFound { name: name.into() })?;
         Ok(())
     }
 
@@ -99,9 +97,7 @@ impl EbpfProvider for SimulationEbpfProvider {
             program.attached = true;
             Ok(())
         } else {
-            Err(EbpfError::ProgramNotFound {
-                name: name.to_string(),
-            })
+            Err(EbpfError::ProgramNotFound { name: name.into() })
         }
     }
 
@@ -110,9 +106,7 @@ impl EbpfProvider for SimulationEbpfProvider {
             program.attached = false;
             Ok(())
         } else {
-            Err(EbpfError::ProgramNotFound {
-                name: name.to_string(),
-            })
+            Err(EbpfError::ProgramNotFound { name: name.into() })
         }
     }
 

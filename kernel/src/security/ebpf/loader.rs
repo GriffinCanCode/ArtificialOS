@@ -31,9 +31,10 @@ impl ProgramLoader {
 
     /// Load a program
     pub fn load(&self, config: ProgramConfig) -> EbpfResult<()> {
-        if self.programs.contains_key(&config.name) {
+        let name_str = config.name.to_string();
+        if self.programs.contains_key(&name_str) {
             return Err(EbpfError::LoadFailed {
-                reason: format!("Program {} already loaded", config.name),
+                reason: format!("Program {} already loaded", config.name).into(),
             });
         }
 
@@ -47,7 +48,7 @@ impl ProgramLoader {
                 .unwrap_or(0), // Fallback to 0 if system time is before Unix epoch
         };
 
-        self.programs.insert(config.name.clone(), program);
+        self.programs.insert(config.name.to_string(), program);
         info!("Loaded eBPF program: {}", config.name);
         Ok(())
     }
@@ -58,16 +59,14 @@ impl ProgramLoader {
         if let Some(attached) = self.programs.get(&name.to_string(), |p| p.attached) {
             if attached {
                 return Err(EbpfError::LoadFailed {
-                    reason: format!("Program {} is still attached", name),
+                    reason: format!("Program {} is still attached", name).into(),
                 });
             }
         }
 
         self.programs
             .remove(&name.to_string())
-            .ok_or_else(|| EbpfError::ProgramNotFound {
-                name: name.to_string(),
-            })?;
+            .ok_or_else(|| EbpfError::ProgramNotFound { name: name.into() })?;
 
         info!("Unloaded eBPF program: {}", name);
         Ok(())
@@ -78,7 +77,7 @@ impl ProgramLoader {
         let result = self.programs.get_mut(&name.to_string(), |program| {
             if program.attached {
                 Err(EbpfError::AttachFailed {
-                    reason: format!("Program {} already attached", name),
+                    reason: format!("Program {} already attached", name).into(),
                 })
             } else {
                 program.attached = true;
@@ -92,9 +91,7 @@ impl ProgramLoader {
                 Ok(())
             }
             Some(Err(e)) => Err(e),
-            None => Err(EbpfError::ProgramNotFound {
-                name: name.to_string(),
-            }),
+            None => Err(EbpfError::ProgramNotFound { name: name.into() }),
         }
     }
 
@@ -103,7 +100,7 @@ impl ProgramLoader {
         let result = self.programs.get_mut(&name.to_string(), |program| {
             if !program.attached {
                 Err(EbpfError::DetachFailed {
-                    reason: format!("Program {} not attached", name),
+                    reason: format!("Program {} not attached", name).into(),
                 })
             } else {
                 program.attached = false;
@@ -117,9 +114,7 @@ impl ProgramLoader {
                 Ok(())
             }
             Some(Err(e)) => Err(e),
-            None => Err(EbpfError::ProgramNotFound {
-                name: name.to_string(),
-            }),
+            None => Err(EbpfError::ProgramNotFound { name: name.into() }),
         }
     }
 

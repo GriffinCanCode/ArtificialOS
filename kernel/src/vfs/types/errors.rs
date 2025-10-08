@@ -27,7 +27,9 @@ pub enum VfsError {
     AlreadyExists(#[serde(deserialize_with = "deserialize_nonempty_inline_string")] InlineString),
 
     #[error("Permission denied: {0}")]
-    PermissionDenied(#[serde(deserialize_with = "deserialize_nonempty_inline_string")] InlineString),
+    PermissionDenied(
+        #[serde(deserialize_with = "deserialize_nonempty_inline_string")] InlineString,
+    ),
 
     #[error("Not a directory: {0}")]
     NotADirectory(#[serde(deserialize_with = "deserialize_nonempty_inline_string")] InlineString),

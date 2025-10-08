@@ -18,7 +18,7 @@ impl SyscallExecutorWithIpc {
         let request = PermissionRequest::new(
             pid,
             Resource::System {
-                name: "scheduler".to_string(),
+                name: "scheduler".into(),
             },
             Action::Inspect,
         );
@@ -81,7 +81,7 @@ impl SyscallExecutorWithIpc {
         let request = PermissionRequest::new(
             pid,
             Resource::System {
-                name: "scheduler".to_string(),
+                name: "scheduler".into(),
             },
             Action::Inspect,
         );
@@ -119,7 +119,7 @@ impl SyscallExecutorWithIpc {
         let request = PermissionRequest::new(
             pid,
             Resource::System {
-                name: "scheduler".to_string(),
+                name: "scheduler".into(),
             },
             Action::Write,
         );
@@ -166,7 +166,7 @@ impl SyscallExecutorWithIpc {
         let request = PermissionRequest::new(
             pid,
             Resource::System {
-                name: "scheduler".to_string(),
+                name: "scheduler".into(),
             },
             Action::Inspect,
         );
@@ -213,7 +213,7 @@ impl SyscallExecutorWithIpc {
         let request = PermissionRequest::new(
             pid,
             Resource::System {
-                name: "scheduler".to_string(),
+                name: "scheduler".into(),
             },
             Action::Write,
         );
@@ -250,7 +250,7 @@ impl SyscallExecutorWithIpc {
         let request = PermissionRequest::new(
             pid,
             Resource::System {
-                name: "scheduler".to_string(),
+                name: "scheduler".into(),
             },
             Action::Inspect,
         );
@@ -287,7 +287,7 @@ impl SyscallExecutorWithIpc {
         let request = PermissionRequest::new(
             pid,
             Resource::System {
-                name: "scheduler".to_string(),
+                name: "scheduler".into(),
             },
             Action::Inspect,
         );
@@ -361,7 +361,7 @@ impl SyscallExecutorWithIpc {
         let request = PermissionRequest::new(
             pid,
             Resource::System {
-                name: "scheduler".to_string(),
+                name: "scheduler".into(),
             },
             Action::Inspect,
         );

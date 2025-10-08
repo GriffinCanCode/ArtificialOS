@@ -63,17 +63,23 @@ impl From<PipeError> for IpcError {
             PipeError::CapacityExceeded {
                 requested,
                 capacity,
-            } => IpcError::LimitExceeded(format!(
-                "Capacity exceeded: requested {}, capacity {}",
-                requested, capacity
-            ).into()),
-            PipeError::ProcessLimitExceeded(current, max) => {
-                IpcError::LimitExceeded(format!("Process pipe limit exceeded: {}/{}", current, max).into())
-            }
-            PipeError::GlobalMemoryExceeded(current, max) => IpcError::LimitExceeded(format!(
-                "Global pipe memory limit exceeded: {}/{} bytes",
-                current, max
-            ).into()),
+            } => IpcError::LimitExceeded(
+                format!(
+                    "Capacity exceeded: requested {}, capacity {}",
+                    requested, capacity
+                )
+                .into(),
+            ),
+            PipeError::ProcessLimitExceeded(current, max) => IpcError::LimitExceeded(
+                format!("Process pipe limit exceeded: {}/{}", current, max).into(),
+            ),
+            PipeError::GlobalMemoryExceeded(current, max) => IpcError::LimitExceeded(
+                format!(
+                    "Global pipe memory limit exceeded: {}/{} bytes",
+                    current, max
+                )
+                .into(),
+            ),
             PipeError::AllocationFailed(msg) => {
                 IpcError::InvalidOperation(format!("Memory allocation failed: {}", msg).into())
             }

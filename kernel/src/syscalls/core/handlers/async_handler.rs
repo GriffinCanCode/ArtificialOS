@@ -113,7 +113,7 @@ mod tests {
             .dispatch(
                 1,
                 &Syscall::NetworkRequest {
-                    url: "http://example.com".to_string(),
+                    url: "http://example.com".into(),
                 },
             )
             .await;

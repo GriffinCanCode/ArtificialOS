@@ -27,10 +27,7 @@ impl SchedulerPolicy {
             "round_robin" | "roundrobin" | "rr" => Ok(Self::RoundRobin),
             "priority" | "prio" => Ok(Self::Priority),
             "fair" | "cfs" => Ok(Self::Fair),
-            _ => Err(format!(
-                "Invalid policy '{}'. Valid: round_robin, priority, fair",
-                s
-            ).into()),
+            _ => Err(format!("Invalid policy '{}'. Valid: round_robin, priority, fair", s).into()),
         }
     }
 

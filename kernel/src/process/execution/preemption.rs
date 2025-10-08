@@ -170,7 +170,9 @@ mod tests {
 
     #[test]
     fn test_schedule_with_no_processes() {
-        let scheduler = Arc::new(RwLock::new(Scheduler::new(SchedulingPolicy::RoundRobin).into()));
+        let scheduler = Arc::new(RwLock::new(
+            Scheduler::new(SchedulingPolicy::RoundRobin).into(),
+        ));
         let executor = Arc::new(ProcessExecutor::new());
 
         let controller = PreemptionController::new(scheduler, executor);
@@ -179,7 +181,9 @@ mod tests {
 
     #[test]
     fn test_cleanup_process() {
-        let scheduler = Arc::new(RwLock::new(Scheduler::new(SchedulingPolicy::Priority).into()));
+        let scheduler = Arc::new(RwLock::new(
+            Scheduler::new(SchedulingPolicy::Priority).into(),
+        ));
         let executor = Arc::new(ProcessExecutor::new());
 
         let controller = PreemptionController::new(scheduler.clone(), executor);

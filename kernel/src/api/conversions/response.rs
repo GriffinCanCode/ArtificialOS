@@ -11,17 +11,28 @@ use crate::syscalls::SyscallResult;
 pub fn syscall_result_to_proto(result: SyscallResult) -> SyscallResponse {
     match result {
         SyscallResult::Success { data } => SyscallResponse {
-            result: Some(syscall_response::Result::Success(SuccessResult {
-                data: data.unwrap_or_default(),
-            }).into()),
+            result: Some(
+                syscall_response::Result::Success(SuccessResult {
+                    data: data.unwrap_or_default(),
+                })
+                .into(),
+            ),
         },
         SyscallResult::Error { message } => SyscallResponse {
-            result: Some(syscall_response::Result::Error(ErrorResult { message }).into()),
+            result: Some(
+                syscall_response::Result::Error(ErrorResult {
+                    message: message.to_string(),
+                })
+                .into(),
+            ),
         },
         SyscallResult::PermissionDenied { reason } => SyscallResponse {
-            result: Some(syscall_response::Result::PermissionDenied(
-                PermissionDeniedResult { reason },
-            ).into()),
+            result: Some(
+                syscall_response::Result::PermissionDenied(PermissionDeniedResult {
+                    reason: reason.to_string(),
+                })
+                .into(),
+            ),
         },
     }
 }

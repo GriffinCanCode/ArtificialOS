@@ -152,12 +152,12 @@ impl Observable for MemoryGuard {
                 Severity::Debug,
                 Category::Memory,
                 Payload::MetricUpdate {
-                    name: "memory_guard_used".to_string(),
+                    name: "memory_guard_used".into(),
                     value: 1.0,
                     labels: vec![
-                        ("pid".to_string(), self.pid.to_string().into()),
-                        ("address".to_string(), self.address.to_string().into()),
-                        ("operation".to_string(), operation.to_string().into()),
+                        ("pid".into(), self.pid.to_string().into()),
+                        ("address".into(), self.address.to_string().into()),
+                        ("operation".into(), operation.to_string().into()),
                     ],
                 },
             )
@@ -188,12 +188,12 @@ impl Observable for MemoryGuard {
                 Severity::Error,
                 Category::Memory,
                 Payload::MetricUpdate {
-                    name: "memory_guard_error".to_string(),
+                    name: "memory_guard_error".into(),
                     value: 1.0,
                     labels: vec![
-                        ("pid".to_string(), self.pid.to_string().into()),
-                        ("address".to_string(), self.address.to_string().into()),
-                        ("error".to_string(), error.to_string().into()),
+                        ("pid".into(), self.pid.to_string().into()),
+                        ("address".into(), self.address.to_string().into()),
+                        ("error".into(), error.to_string().into()),
                     ],
                 },
             )

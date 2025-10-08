@@ -468,7 +468,7 @@ impl ProcessAttacher for NamespaceManager {
 
         // Return dummy PID for now
         Err(NamespaceError::PlatformNotSupported(
-            "Command execution in namespace not yet implemented".to_string(),
+            "Command execution in namespace not yet implemented".into(),
         ))
     }
 }

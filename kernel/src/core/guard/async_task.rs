@@ -97,9 +97,9 @@ impl<T: Send + 'static> AsyncTaskGuard<T> {
     /// Await the task result
     pub async fn await_result(mut self) -> GuardResult<T> {
         if let Some(handle) = self.handle.take() {
-            handle
-                .await
-                .map_err(|e| GuardError::OperationFailed(format!("Task join error: {:?}", e).into()))
+            handle.await.map_err(|e| {
+                GuardError::OperationFailed(format!("Task join error: {:?}", e).into())
+            })
         } else {
             Err(GuardError::AlreadyReleased)
         }

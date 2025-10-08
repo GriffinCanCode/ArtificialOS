@@ -73,7 +73,9 @@ impl TimeoutPipeOps {
                             });
                         }
                         Err(_) => {
-                            return Err(PipeError::InvalidOperation("Wait cancelled".to_string().into()))
+                            return Err(PipeError::InvalidOperation(
+                                "Wait cancelled".to_string().into(),
+                            ))
                         }
                     }
                 }
@@ -122,7 +124,9 @@ impl TimeoutPipeOps {
                             });
                         }
                         Err(_) => {
-                            return Err(PipeError::InvalidOperation("Wait cancelled".to_string().into()))
+                            return Err(PipeError::InvalidOperation(
+                                "Wait cancelled".to_string().into(),
+                            ))
                         }
                     }
                 }
@@ -197,7 +201,9 @@ impl TimeoutQueueOps {
                             });
                         }
                         Err(_) => {
-                            return Err(IpcError::InvalidOperation("Wait cancelled".to_string().into()))
+                            return Err(IpcError::InvalidOperation(
+                                "Wait cancelled".to_string().into(),
+                            ))
                         }
                     }
                 }

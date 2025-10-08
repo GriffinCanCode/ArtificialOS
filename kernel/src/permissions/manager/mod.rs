@@ -126,8 +126,8 @@ impl PermissionManager {
                         Severity::Warn,
                         Category::Security,
                         Payload::PermissionDenied {
-                            operation: format!("{:?}", request.action),
-                            required: format!("{:?}", request.resource),
+                            operation: format!("{:?}", request.action).into(),
+                            required: format!("{:?}", request.resource).into(),
                         },
                     )
                     .with_pid(request.pid),

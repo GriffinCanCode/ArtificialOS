@@ -28,7 +28,9 @@ impl SyscallHandler for MemoryHandler {
             Syscall::GetProcessMemoryStats { target_pid } => {
                 Some(self.executor.get_process_memory_stats(pid, *target_pid))
             }
-            Syscall::TriggerGC { target_pid } => Some(self.executor.trigger_gc(pid, *target_pid).into()),
+            Syscall::TriggerGC { target_pid } => {
+                Some(self.executor.trigger_gc(pid, *target_pid).into())
+            }
             _ => None, // Not a memory syscall
         }
     }

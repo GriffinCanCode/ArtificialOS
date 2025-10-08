@@ -172,8 +172,8 @@ impl LifecycleRegistry {
                 zerocopy
                     .create_ring(pid, config.zerocopy_sq_size, config.zerocopy_cq_size)
                     .map_err(|e| LifecycleError::InitializationFailed {
-                        subsystem: "zerocopy".to_string(),
-                        reason: e.to_string(),
+                        subsystem: "zerocopy".into(),
+                        reason: e.to_string().into(),
                     })?;
                 initialized_subsystems.push("zerocopy-ring");
                 debug!("Initialized zero-copy ring for PID {}", pid);
@@ -186,8 +186,8 @@ impl LifecycleRegistry {
                 use crate::signals::SignalStateManager;
                 signal_mgr.initialize_process(pid).map_err(|e| {
                     LifecycleError::InitializationFailed {
-                        subsystem: "signals".to_string(),
-                        reason: e.to_string(),
+                        subsystem: "signals".into(),
+                        reason: e.to_string().into(),
                     }
                 })?;
                 initialized_subsystems.push("signal-state");

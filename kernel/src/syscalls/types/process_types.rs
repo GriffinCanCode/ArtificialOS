@@ -70,9 +70,9 @@ impl SystemInfo {
     #[inline]
     pub fn current() -> Self {
         Self {
-            os: std::env::consts::OS.to_string(),
-            arch: std::env::consts::ARCH.to_string(),
-            family: std::env::consts::FAMILY.to_string(),
+            os: std::env::consts::OS.into(),
+            arch: std::env::consts::ARCH.into(),
+            family: std::env::consts::FAMILY.into(),
         }
     }
 }
@@ -83,7 +83,7 @@ mod tests {
 
     #[test]
     fn test_process_output() {
-        let output = ProcessOutput::new("hello".to_string(), String::new(), 0);
+        let output = ProcessOutput::new("hello".into(), String::new(), 0);
         assert!(output.is_success());
         assert!(!output.is_empty());
 

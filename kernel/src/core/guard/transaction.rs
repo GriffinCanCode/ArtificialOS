@@ -98,7 +98,7 @@ impl TransactionGuard {
         if self.state != TransactionState::Active {
             return Err(GuardError::InvalidTransition {
                 from: format!("{:?}", self.state),
-                to: "Active".to_string(),
+                to: "Active".into(),
             });
         }
 
@@ -116,7 +116,7 @@ impl TransactionGuard {
         if self.state != TransactionState::Active {
             return Err(GuardError::InvalidTransition {
                 from: format!("{:?}", self.state),
-                to: "Active".to_string(),
+                to: "Active".into(),
             });
         }
 
@@ -140,7 +140,7 @@ impl TransactionGuard {
         if self.state != TransactionState::Active {
             return Err(GuardError::InvalidTransition {
                 from: format!("{:?}", self.state),
-                to: "Committed".to_string(),
+                to: "Committed".into(),
             });
         }
 
@@ -156,7 +156,7 @@ impl TransactionGuard {
         if self.state != TransactionState::Active {
             return Err(GuardError::InvalidTransition {
                 from: format!("{:?}", self.state),
-                to: "RolledBack".to_string(),
+                to: "RolledBack".into(),
             });
         }
 

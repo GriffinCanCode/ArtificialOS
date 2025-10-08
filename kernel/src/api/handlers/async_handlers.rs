@@ -70,9 +70,9 @@ pub async fn handle_get_async_status(
                 TaskStatus::Failed(msg) => (
                     async_status_response::Status::Failed,
                     Some(SyscallResponse {
-                        result: Some(syscall_response::Result::Error(ErrorResult {
-                            message: msg,
-                        }).into()),
+                        result: Some(
+                            syscall_response::Result::Error(ErrorResult { message: msg }).into(),
+                        ),
                     }),
                 ),
                 TaskStatus::Cancelled => (async_status_response::Status::Cancelled, None),
@@ -111,7 +111,7 @@ pub async fn handle_cancel_async(
         error: if cancelled {
             String::new()
         } else {
-            "Task not found or already completed".to_string()
+            "Task not found or already completed".to_string().into()
         },
     }))
 }
@@ -143,7 +143,9 @@ pub async fn handle_execute_syscall_batch(
             Err(e) => {
                 return Ok(Response::new(BatchSyscallResponse {
                     responses: vec![SyscallResponse {
-                        result: Some(syscall_response::Result::Error(ErrorResult { message: e }).into()),
+                        result: Some(
+                            syscall_response::Result::Error(ErrorResult { message: e }).into(),
+                        ),
                     }],
                     success_count: 0,
                     failure_count: 1,
@@ -398,12 +400,14 @@ pub async fn handle_submit_iouring_batch(
             sequences: seqs,
             accepted: true,
             error: String::new(),
-        }).into()),
+        })
+        .into()),
         Err(e) => Ok(Response::new(IoUringBatchResponse {
             sequences: vec![],
             accepted: false,
             error: format!("Batch submission failed: {}", e),
-        }).into()),
+        })
+        .into()),
     }
 }
 

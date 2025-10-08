@@ -69,7 +69,7 @@ pub fn init_tracing() {
 
 /// Generate a unique trace ID for request correlation
 pub fn generate_trace_id() -> String {
-    Uuid::new_v4().to_string()
+    Uuid::new_v4().to_string().into()
 }
 
 /// Span for syscall tracing with rich structured fields
@@ -106,7 +106,7 @@ impl SyscallSpan {
         Self {
             _span: span,
             start: Instant::now(),
-            syscall_name: syscall_name.to_string(),
+            syscall_name: syscall_name.into(),
             trace_id,
         }
     }

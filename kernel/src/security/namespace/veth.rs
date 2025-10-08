@@ -55,9 +55,7 @@ impl VethManager {
     #[cfg(target_os = "linux")]
     fn get_handle(&self) -> NamespaceResult<&Handle> {
         self.handle.as_ref().ok_or_else(|| {
-            NamespaceError::InvalidConfig(
-                "VethManager not initialized. Call init() first.".to_string(),
-            )
+            NamespaceError::InvalidConfig("VethManager not initialized. Call init() first.".into())
         })
     }
 
@@ -346,9 +344,7 @@ impl VethManager {
             std::net::IpAddr::V4(addr) => {
                 format!("{} netmask {}", addr, Self::prefix_to_netmask(prefix_len))
             }
-            std::net::IpAddr::V6(addr) => {
-                format!("{} prefixlen {}", addr, prefix_len)
-            }
+            std::net::IpAddr::V6(addr) => format!("{} prefixlen {}", addr, prefix_len).into(),
         };
 
         let output = Command::new("ifconfig")
@@ -412,7 +408,7 @@ impl VethManager {
             ((mask >> 8) & 0xFF) as u8,
             (mask & 0xFF) as u8,
         ];
-        format!("{}.{}.{}.{}", octets[0], octets[1], octets[2], octets[3])
+        format!("{}.{}.{}.{}", octets[0], octets[1], octets[2], octets[3]).into()
     }
 
     #[cfg(all(not(target_os = "linux"), not(target_os = "macos")))]
@@ -423,14 +419,14 @@ impl VethManager {
         _ns_id: &NamespaceId,
     ) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "Virtual ethernet pairs not supported on this platform".to_string(),
+            "Virtual ethernet pairs not supported on this platform".into(),
         ))
     }
 
     #[cfg(all(not(target_os = "linux"), not(target_os = "macos")))]
     pub async fn delete_pair(&self, _host_name: &str) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "Virtual ethernet pairs not supported on this platform".to_string(),
+            "Virtual ethernet pairs not supported on this platform".into(),
         ))
     }
 
@@ -442,14 +438,14 @@ impl VethManager {
         _prefix_len: u8,
     ) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "Virtual ethernet pairs not supported on this platform".to_string(),
+            "Virtual ethernet pairs not supported on this platform".into(),
         ))
     }
 
     #[cfg(all(not(target_os = "linux"), not(target_os = "macos")))]
     pub async fn set_state(&self, _iface_name: &str, _up: bool) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "Virtual ethernet pairs not supported on this platform".to_string(),
+            "Virtual ethernet pairs not supported on this platform".into(),
         ))
     }
 }

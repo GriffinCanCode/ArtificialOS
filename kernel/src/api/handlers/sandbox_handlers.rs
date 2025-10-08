@@ -53,7 +53,7 @@ pub async fn handle_update_sandbox(
         error: if success {
             String::new()
         } else {
-            "Failed to update sandbox".to_string()
+            "Failed to update sandbox".to_string().into()
         },
     };
 

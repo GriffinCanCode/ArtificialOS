@@ -30,7 +30,7 @@ impl FilterManager {
         // Check for duplicate ID
         if filters.iter().any(|f| f.id == filter.id) {
             return Err(EbpfError::InvalidFilter {
-                reason: format!("Filter {} already exists", filter.id),
+                reason: format!("Filter {} already exists", filter.id).into(),
             });
         }
 
@@ -54,7 +54,7 @@ impl FilterManager {
 
         if filters.len() == initial_len {
             return Err(EbpfError::InvalidFilter {
-                reason: format!("Filter {} not found", filter_id),
+                reason: format!("Filter {} not found", filter_id).into(),
             });
         }
 

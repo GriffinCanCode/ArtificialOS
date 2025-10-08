@@ -38,12 +38,20 @@ impl SyscallHandler for MmapHandler {
                 mmap_id,
                 offset,
                 length,
-            } => Some(self.executor.mmap_read(pid, *mmap_id, *offset, *length).into()),
+            } => Some(
+                self.executor
+                    .mmap_read(pid, *mmap_id, *offset, *length)
+                    .into(),
+            ),
             Syscall::MmapWrite {
                 mmap_id,
                 offset,
                 ref data,
-            } => Some(self.executor.mmap_write(pid, *mmap_id, *offset, data).into()),
+            } => Some(
+                self.executor
+                    .mmap_write(pid, *mmap_id, *offset, data)
+                    .into(),
+            ),
             Syscall::Msync { mmap_id } => Some(self.executor.msync(pid, *mmap_id).into()),
             Syscall::Munmap { mmap_id } => Some(self.executor.munmap(pid, *mmap_id).into()),
             Syscall::MmapStats { mmap_id } => Some(self.executor.mmap_stats(pid, *mmap_id).into()),

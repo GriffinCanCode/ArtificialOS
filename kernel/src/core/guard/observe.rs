@@ -83,16 +83,13 @@ impl<G: Guard> Observable for ObservableGuard<G> {
             Severity::Debug,
             self.category,
             Payload::MetricUpdate {
-                name: format!("{}_created", self.inner.resource_type()),
+                name: format!("{}_created", self.inner.resource_type()).into(),
                 value: 1.0,
                 labels: vec![
+                    ("resource_type".into(), self.inner.resource_type().into()),
                     (
-                        "resource_type".to_string(),
-                        self.inner.resource_type().to_string(),
-                    ),
-                    (
-                        "creation_time".to_string(),
-                        format!("{:?}", self.inner.metadata().creation_time),
+                        "creation_time".into(),
+                        format!("{:?}", self.inner.metadata().creation_time).into(),
                     ),
                 ],
             },
@@ -105,14 +102,11 @@ impl<G: Guard> Observable for ObservableGuard<G> {
             Severity::Debug,
             self.category,
             Payload::MetricUpdate {
-                name: format!("{}_used", self.inner.resource_type()),
+                name: format!("{}_used", self.inner.resource_type()).into(),
                 value: 1.0,
                 labels: vec![
-                    (
-                        "resource_type".to_string(),
-                        self.inner.resource_type().to_string(),
-                    ),
-                    ("operation".to_string(), operation.to_string().into()),
+                    ("resource_type".into(), self.inner.resource_type().into()),
+                    ("operation".into(), operation.to_string().into()),
                 ],
             },
         );
@@ -125,14 +119,11 @@ impl<G: Guard> Observable for ObservableGuard<G> {
             Severity::Debug,
             self.category,
             Payload::MetricUpdate {
-                name: format!("{}_dropped", self.inner.resource_type()),
+                name: format!("{}_dropped", self.inner.resource_type()).into(),
                 value: lifetime as f64,
                 labels: vec![
-                    (
-                        "resource_type".to_string(),
-                        self.inner.resource_type().to_string(),
-                    ),
-                    ("lifetime_micros".to_string(), lifetime.to_string().into()),
+                    ("resource_type".into(), self.inner.resource_type().into()),
+                    ("lifetime_micros".into(), lifetime.to_string().into()),
                 ],
             },
         );
@@ -144,14 +135,11 @@ impl<G: Guard> Observable for ObservableGuard<G> {
             Severity::Error,
             self.category,
             Payload::MetricUpdate {
-                name: format!("{}_error", self.inner.resource_type()),
+                name: format!("{}_error", self.inner.resource_type()).into(),
                 value: 1.0,
                 labels: vec![
-                    (
-                        "resource_type".to_string(),
-                        self.inner.resource_type().to_string(),
-                    ),
-                    ("error".to_string(), error.to_string().into()),
+                    ("resource_type".into(), self.inner.resource_type().into()),
+                    ("error".into(), error.to_string().into()),
                 ],
             },
         );

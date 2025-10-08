@@ -245,7 +245,7 @@ mod tests {
             Severity::Info,
             Category::Process,
             Payload::ProcessCreated {
-                name: "test".to_string(),
+                name: "test".into(),
                 priority: 5,
             },
         );
@@ -268,7 +268,7 @@ mod tests {
             Severity::Info,
             Category::Process,
             Payload::ProcessCreated {
-                name: "test1".to_string(),
+                name: "test1".into(),
                 priority: 5,
             },
         );
@@ -338,7 +338,7 @@ mod tests {
             Severity::Info,
             Category::Process,
             Payload::ProcessCreated {
-                name: "overflow".to_string(),
+                name: "overflow".into(),
                 priority: 5,
             },
         );

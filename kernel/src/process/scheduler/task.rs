@@ -312,7 +312,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_quantum_update() {
-        let scheduler = Arc::new(RwLock::new(Scheduler::new(SchedulingPolicy::RoundRobin).into()));
+        let scheduler = Arc::new(RwLock::new(
+            Scheduler::new(SchedulingPolicy::RoundRobin).into(),
+        ));
         let task = SchedulerTask::spawn(scheduler.clone());
 
         // Add a process
@@ -329,7 +331,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_pause_resume() {
-        let scheduler = Arc::new(RwLock::new(Scheduler::new(SchedulingPolicy::Priority).into()));
+        let scheduler = Arc::new(RwLock::new(
+            Scheduler::new(SchedulingPolicy::Priority).into(),
+        ));
         let task = SchedulerTask::spawn(scheduler.clone());
 
         scheduler.read().add(1, 5);

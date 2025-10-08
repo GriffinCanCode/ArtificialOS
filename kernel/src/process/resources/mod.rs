@@ -133,10 +133,8 @@ impl ResourceOrchestrator {
             let len = resources_vec.len();
 
             // Cleanup in reverse order (LIFO)
-            for (i, resource) in resources_vec.into_iter().enumerate() {
-                if i + 2 < len {
-                    prefetch_read(resource.as_ref() as *const _);
-                }
+            for (_i, resource) in resources_vec.into_iter().enumerate() {
+                // Note: Cannot prefetch trait objects due to unknown size at compile time
 
                 if resource.has_resources(pid) {
                     let start = Instant::now();

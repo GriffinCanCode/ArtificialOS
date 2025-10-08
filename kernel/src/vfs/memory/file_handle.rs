@@ -69,10 +69,9 @@ impl OpenFile for MemFile {
             // Check permissions before syncing
             if let Ok(metadata) = self.fs.metadata(&self.path) {
                 if metadata.permissions.is_readonly() {
-                    return Err(VfsError::PermissionDenied(format!(
-                        "file is readonly: {}",
-                        self.path.display()
-                    ).into()));
+                    return Err(VfsError::PermissionDenied(
+                        format!("file is readonly: {}", self.path.display()).into(),
+                    ));
                 }
             }
             let data = self.cursor.get_ref().clone();
@@ -89,10 +88,9 @@ impl OpenFile for MemFile {
         // Check permissions before resizing
         if let Ok(metadata) = self.fs.metadata(&self.path) {
             if metadata.permissions.is_readonly() {
-                return Err(VfsError::PermissionDenied(format!(
-                    "file is readonly: {}",
-                    self.path.display()
-                ).into()));
+                return Err(VfsError::PermissionDenied(
+                    format!("file is readonly: {}", self.path.display()).into(),
+                ));
             }
         }
         let data = self.cursor.get_mut();

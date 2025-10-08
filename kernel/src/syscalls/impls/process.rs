@@ -73,8 +73,8 @@ impl SyscallExecutorWithIpc {
 
                 info!("PID {} spawned process: {} {:?}", pid, command, args);
                 let process_output = ProcessOutput {
-                    stdout: String::from_utf8_lossy(&output.stdout).to_string(),
-                    stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+                    stdout: String::from_utf8_lossy(&output.stdout).into(),
+                    stderr: String::from_utf8_lossy(&output.stderr).into(),
                     exit_code: output.status.code().unwrap_or(-1),
                 };
 
@@ -179,7 +179,7 @@ impl SyscallExecutorWithIpc {
         let request = PermissionRequest::new(
             pid,
             Resource::System {
-                name: "processes".to_string(),
+                name: "processes".into(),
             },
             Action::List,
         );

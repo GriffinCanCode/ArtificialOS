@@ -54,11 +54,14 @@ impl MacOSEbpfProvider {
 
         Self {
             supported,
-            inner: Arc::new(RwLock::new(MacOSEbpfInner {
-                monitored_pids: HashSet::new(),
-                initialized: false,
-                dtrace_handles: None,
-            }).into()),
+            inner: Arc::new(
+                RwLock::new(MacOSEbpfInner {
+                    monitored_pids: HashSet::new(),
+                    initialized: false,
+                    dtrace_handles: None,
+                })
+                .into(),
+            ),
             loader: ProgramLoader::new(),
             filters: FilterManager::new(),
             events: EventCollector::new(),
@@ -102,7 +105,7 @@ impl EbpfProvider for MacOSEbpfProvider {
     fn load_program(&self, config: ProgramConfig) -> EbpfResult<()> {
         if !self.supported {
             return Err(EbpfError::UnsupportedPlatform {
-                platform: "macOS".to_string(),
+                platform: "macOS".into(),
             });
         }
 
@@ -131,7 +134,7 @@ impl EbpfProvider for MacOSEbpfProvider {
     fn unload_program(&self, name: &str) -> EbpfResult<()> {
         if !self.supported {
             return Err(EbpfError::UnsupportedPlatform {
-                platform: "macOS".to_string(),
+                platform: "macOS".into(),
             });
         }
 
@@ -143,7 +146,7 @@ impl EbpfProvider for MacOSEbpfProvider {
     fn attach_program(&self, name: &str) -> EbpfResult<()> {
         if !self.supported {
             return Err(EbpfError::UnsupportedPlatform {
-                platform: "macOS".to_string(),
+                platform: "macOS".into(),
             });
         }
 
@@ -161,7 +164,7 @@ impl EbpfProvider for MacOSEbpfProvider {
     fn detach_program(&self, name: &str) -> EbpfResult<()> {
         if !self.supported {
             return Err(EbpfError::UnsupportedPlatform {
-                platform: "macOS".to_string(),
+                platform: "macOS".into(),
             });
         }
 
@@ -199,7 +202,7 @@ impl SyscallFilterProvider for MacOSEbpfProvider {
     fn add_filter(&self, filter: SyscallFilter) -> EbpfResult<()> {
         if !self.supported {
             return Err(EbpfError::UnsupportedPlatform {
-                platform: "macOS".to_string(),
+                platform: "macOS".into(),
             });
         }
 
@@ -216,7 +219,7 @@ impl SyscallFilterProvider for MacOSEbpfProvider {
     fn remove_filter(&self, filter_id: &str) -> EbpfResult<()> {
         if !self.supported {
             return Err(EbpfError::UnsupportedPlatform {
-                platform: "macOS".to_string(),
+                platform: "macOS".into(),
             });
         }
 
@@ -232,7 +235,7 @@ impl SyscallFilterProvider for MacOSEbpfProvider {
     fn clear_filters(&self) -> EbpfResult<()> {
         if !self.supported {
             return Err(EbpfError::UnsupportedPlatform {
-                platform: "macOS".to_string(),
+                platform: "macOS".into(),
             });
         }
 
@@ -250,7 +253,7 @@ impl EventMonitor for MacOSEbpfProvider {
     fn subscribe_syscall(&self, callback: EventCallback) -> EbpfResult<String> {
         if !self.supported {
             return Err(EbpfError::UnsupportedPlatform {
-                platform: "macOS".to_string(),
+                platform: "macOS".into(),
             });
         }
 
@@ -262,7 +265,7 @@ impl EventMonitor for MacOSEbpfProvider {
     fn subscribe_network(&self, callback: EventCallback) -> EbpfResult<String> {
         if !self.supported {
             return Err(EbpfError::UnsupportedPlatform {
-                platform: "macOS".to_string(),
+                platform: "macOS".into(),
             });
         }
 
@@ -274,7 +277,7 @@ impl EventMonitor for MacOSEbpfProvider {
     fn subscribe_file(&self, callback: EventCallback) -> EbpfResult<String> {
         if !self.supported {
             return Err(EbpfError::UnsupportedPlatform {
-                platform: "macOS".to_string(),
+                platform: "macOS".into(),
             });
         }
 
@@ -286,7 +289,7 @@ impl EventMonitor for MacOSEbpfProvider {
     fn subscribe_all(&self, callback: EventCallback) -> EbpfResult<String> {
         if !self.supported {
             return Err(EbpfError::UnsupportedPlatform {
-                platform: "macOS".to_string(),
+                platform: "macOS".into(),
             });
         }
 
@@ -298,7 +301,7 @@ impl EventMonitor for MacOSEbpfProvider {
     fn unsubscribe(&self, subscription_id: &str) -> EbpfResult<()> {
         if !self.supported {
             return Err(EbpfError::UnsupportedPlatform {
-                platform: "macOS".to_string(),
+                platform: "macOS".into(),
             });
         }
 
@@ -320,7 +323,7 @@ impl ProcessMonitor for MacOSEbpfProvider {
     fn monitor_process(&self, pid: Pid) -> EbpfResult<()> {
         if !self.supported {
             return Err(EbpfError::UnsupportedPlatform {
-                platform: "macOS".to_string(),
+                platform: "macOS".into(),
             });
         }
 
@@ -338,7 +341,7 @@ impl ProcessMonitor for MacOSEbpfProvider {
     fn unmonitor_process(&self, pid: Pid) -> EbpfResult<()> {
         if !self.supported {
             return Err(EbpfError::UnsupportedPlatform {
-                platform: "macOS".to_string(),
+                platform: "macOS".into(),
             });
         }
 
@@ -388,7 +391,7 @@ impl EbpfManager for MacOSEbpfProvider {
     fn init(&self) -> EbpfResult<()> {
         if !self.supported {
             return Err(EbpfError::UnsupportedPlatform {
-                platform: "macOS".to_string(),
+                platform: "macOS".into(),
             });
         }
 

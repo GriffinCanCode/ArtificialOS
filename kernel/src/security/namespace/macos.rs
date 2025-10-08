@@ -3,10 +3,10 @@
  * Network filtering using pfctl and socket filters
  */
 
+use super::bridge::BridgeManager;
 use super::traits::*;
 use super::types::*;
 use super::veth::VethManager;
-use super::bridge::BridgeManager;
 use crate::core::types::Pid;
 use ahash::RandomState;
 use dashmap::DashMap;
@@ -135,8 +135,12 @@ impl MacOSNamespaceManager {
 
         // Create feth pair using VethManager (which handles feth on macOS)
         let veth_mgr = self.veth_manager.lock().await;
-        veth_mgr.create_pair(&host_feth, &ns_feth, &config.id).await?;
-        veth_mgr.set_ip(&ns_feth, iface_config.ip_addr, iface_config.prefix_len).await?;
+        veth_mgr
+            .create_pair(&host_feth, &ns_feth, &config.id)
+            .await?;
+        veth_mgr
+            .set_ip(&ns_feth, iface_config.ip_addr, iface_config.prefix_len)
+            .await?;
         veth_mgr.set_state(&ns_feth, true).await?;
 
         debug!("Private network setup complete for {}", ns_name);
@@ -156,14 +160,14 @@ impl MacOSNamespaceManager {
     #[cfg(not(target_os = "macos"))]
     fn create_macos_isolation(&self, _config: &NamespaceConfig) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "macOS network isolation not available on this platform".to_string(),
+            "macOS network isolation not available on this platform".into(),
         ))
     }
 
     #[cfg(not(target_os = "macos"))]
     fn destroy_macos_isolation(&self, _id: &NamespaceId) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "macOS network isolation not available on this platform".to_string(),
+            "macOS network isolation not available on this platform".into(),
         ))
     }
 }

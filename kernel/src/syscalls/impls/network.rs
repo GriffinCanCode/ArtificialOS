@@ -276,7 +276,7 @@ impl SyscallExecutorWithIpc {
         let request = PermissionRequest::new(
             pid,
             Resource::System {
-                name: "network".to_string(),
+                name: "network".into(),
             },
             Action::Create,
         );
@@ -390,7 +390,7 @@ impl SyscallExecutorWithIpc {
         let request = PermissionRequest::new(
             pid,
             Resource::System {
-                name: "network".to_string(),
+                name: "network".into(),
             },
             Action::Bind,
         );
@@ -434,7 +434,7 @@ impl SyscallExecutorWithIpc {
         let request = PermissionRequest::new(
             pid,
             Resource::System {
-                name: "network".to_string(),
+                name: "network".into(),
             },
             Action::Receive,
         );

@@ -51,7 +51,11 @@ impl SyscallHandler for ProcessHandler {
             Syscall::WaitProcess {
                 target_pid,
                 timeout_ms,
-            } => Some(self.executor.wait_process(pid, *target_pid, *timeout_ms).into()),
+            } => Some(
+                self.executor
+                    .wait_process(pid, *target_pid, *timeout_ms)
+                    .into(),
+            ),
             _ => None, // Not a process syscall
         }
     }

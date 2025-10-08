@@ -40,10 +40,13 @@ impl QueueManager {
     fn check_process_queue_limit(&self, owner_pid: Pid) -> IpcResult<()> {
         let count = self.process_queues.entry(owner_pid).or_default().len();
         if count >= MAX_QUEUES_PER_PROCESS {
-            return Err(IpcError::LimitExceeded(format!(
-                "Process queue limit exceeded: {}/{}",
-                count, MAX_QUEUES_PER_PROCESS
-            ).into()));
+            return Err(IpcError::LimitExceeded(
+                format!(
+                    "Process queue limit exceeded: {}/{}",
+                    count, MAX_QUEUES_PER_PROCESS
+                )
+                .into(),
+            ));
         }
         Ok(())
     }
@@ -74,7 +77,9 @@ impl QueueManager {
             QueueType::Priority => {
                 Queue::Priority(PriorityQueue::new(queue_id, owner_pid, capacity))
             }
-            QueueType::PubSub => Queue::PubSub(PubSubQueue::new(queue_id, owner_pid, capacity).into()),
+            QueueType::PubSub => {
+                Queue::PubSub(PubSubQueue::new(queue_id, owner_pid, capacity).into())
+            }
         }
     }
 

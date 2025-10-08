@@ -3,6 +3,7 @@
  * Core data structures for eBPF-based syscall filtering and monitoring
  */
 
+use crate::core::data_structures::InlineString;
 use crate::core::types::Pid;
 use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
@@ -14,25 +15,25 @@ use thiserror::Error;
 #[serde(rename_all = "snake_case", tag = "error_type")]
 pub enum EbpfError {
     #[error("Platform not supported: {platform}")]
-    UnsupportedPlatform { platform: String },
+    UnsupportedPlatform { platform: InlineString },
 
     #[error("Failed to load eBPF program: {reason}")]
-    LoadFailed { reason: String },
+    LoadFailed { reason: InlineString },
 
     #[error("Failed to attach eBPF program: {reason}")]
-    AttachFailed { reason: String },
+    AttachFailed { reason: InlineString },
 
     #[error("Failed to detach eBPF program: {reason}")]
-    DetachFailed { reason: String },
+    DetachFailed { reason: InlineString },
 
     #[error("Map operation failed: {reason}")]
-    MapError { reason: String },
+    MapError { reason: InlineString },
 
     #[error("Program not found: {name}")]
-    ProgramNotFound { name: String },
+    ProgramNotFound { name: InlineString },
 
     #[error("Filter rule invalid: {reason}")]
-    InvalidFilter { reason: String },
+    InvalidFilter { reason: InlineString },
 
     #[error("Permission denied for operation")]
     PermissionDenied,
@@ -65,7 +66,7 @@ pub struct SyscallEvent {
     /// Syscall number
     pub syscall_nr: u64,
     /// Syscall name (if resolved)
-    pub name: Option<String>,
+    pub name: Option<InlineString>,
     /// Arguments (up to 6)
     pub args: [u64; 6],
     /// Return value (for exit events)
@@ -168,7 +169,7 @@ pub enum FileOperation {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SyscallFilter {
     /// Filter ID
-    pub id: String,
+    pub id: InlineString,
     /// Process ID to filter (None = all processes)
     pub pid: Option<Pid>,
     /// Syscall numbers to filter (None = all syscalls)
@@ -197,7 +198,7 @@ pub enum FilterAction {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProgramConfig {
     /// Program name
-    pub name: String,
+    pub name: InlineString,
     /// Program type
     pub program_type: ProgramType,
     /// Auto-attach on load
@@ -247,7 +248,7 @@ pub struct EbpfStats {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProgramInfo {
     /// Program name
-    pub name: String,
+    pub name: InlineString,
     /// Program type
     pub program_type: ProgramType,
     /// Is attached

@@ -59,7 +59,7 @@ mod tests {
             Severity::Info,
             Category::Process,
             Payload::ProcessCreated {
-                name: "test".to_string(),
+                name: "test".into(),
                 priority: 5,
             },
         );

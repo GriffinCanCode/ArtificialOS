@@ -281,7 +281,9 @@ impl SyscallExecutorWithIpc {
             .register(Arc::new(MemoryHandler::new(executor.clone().into())))
             .register(Arc::new(SignalHandler::new(executor.clone().into())))
             .register(Arc::new(NetworkHandler::new(executor.clone().into())))
-            .register(Arc::new(FileDescriptorHandler::new(executor.clone().into())))
+            .register(Arc::new(FileDescriptorHandler::new(
+                executor.clone().into(),
+            )))
     }
 }
 

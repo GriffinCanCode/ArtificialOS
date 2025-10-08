@@ -55,7 +55,7 @@ impl LinuxBridgeManager {
     fn get_handle(&self) -> NamespaceResult<&Handle> {
         self.handle.as_ref().ok_or_else(|| {
             NamespaceError::InvalidConfig(
-                "BridgeManager not initialized. Call init() first.".to_string(),
+                "BridgeManager not initialized. Call init() first.".into(),
             )
         })
     }
@@ -88,7 +88,7 @@ impl LinuxBridgeManager {
     #[cfg(not(target_os = "linux"))]
     pub async fn create_bridge(&self, _bridge_name: &str) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "Linux bridge operations not supported on this platform".to_string(),
+            "Linux bridge operations not supported on this platform".into(),
         ))
     }
 
@@ -125,17 +125,16 @@ impl LinuxBridgeManager {
             debug!("Bridge deleted successfully");
             Ok(())
         } else {
-            Err(NamespaceError::NotFound(format!(
-                "Bridge {} not found",
-                bridge_name
-            ).into()))
+            Err(NamespaceError::NotFound(
+                format!("Bridge {} not found", bridge_name).into(),
+            ))
         }
     }
 
     #[cfg(not(target_os = "linux"))]
     pub async fn delete_bridge(&self, _bridge_name: &str) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "Linux bridge operations not supported on this platform".to_string(),
+            "Linux bridge operations not supported on this platform".into(),
         ))
     }
 
@@ -165,7 +164,9 @@ impl LinuxBridgeManager {
                     bridge_name, e
                 ))
             })?
-            .ok_or_else(|| NamespaceError::NotFound(format!("Bridge {} not found", bridge_name).into()))?;
+            .ok_or_else(|| {
+                NamespaceError::NotFound(format!("Bridge {} not found", bridge_name).into())
+            })?;
 
         // Get the interface index
         let mut iface_links = handle
@@ -211,7 +212,7 @@ impl LinuxBridgeManager {
         _iface_name: &str,
     ) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "Linux bridge operations not supported on this platform".to_string(),
+            "Linux bridge operations not supported on this platform".into(),
         ))
     }
 
@@ -249,17 +250,16 @@ impl LinuxBridgeManager {
             debug!("Interface detached from bridge successfully");
             Ok(())
         } else {
-            Err(NamespaceError::NotFound(format!(
-                "Interface {} not found",
-                iface_name
-            ).into()))
+            Err(NamespaceError::NotFound(
+                format!("Interface {} not found", iface_name).into(),
+            ))
         }
     }
 
     #[cfg(not(target_os = "linux"))]
     pub async fn detach_interface(&self, _iface_name: &str) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "Linux bridge operations not supported on this platform".to_string(),
+            "Linux bridge operations not supported on this platform".into(),
         ))
     }
 
@@ -318,10 +318,9 @@ impl LinuxBridgeManager {
             debug!("Bridge IP configured successfully");
             Ok(())
         } else {
-            Err(NamespaceError::NotFound(format!(
-                "Bridge {} not found",
-                bridge_name
-            ).into()))
+            Err(NamespaceError::NotFound(
+                format!("Bridge {} not found", bridge_name).into(),
+            ))
         }
     }
 
@@ -333,7 +332,7 @@ impl LinuxBridgeManager {
         _prefix_len: u8,
     ) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "Linux bridge operations not supported on this platform".to_string(),
+            "Linux bridge operations not supported on this platform".into(),
         ))
     }
 
@@ -375,7 +374,7 @@ impl LinuxBridgeManager {
     #[cfg(not(target_os = "linux"))]
     pub async fn enable_forwarding(&self, _bridge_name: &str) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "Linux bridge operations not supported on this platform".to_string(),
+            "Linux bridge operations not supported on this platform".into(),
         ))
     }
 }

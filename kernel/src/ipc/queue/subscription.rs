@@ -96,10 +96,11 @@ impl QueueManager {
             // Slow path: async wait on centralized WaitQueue
             // This uses futex on Linux (zero CPU spinning) via spawn_blocking
             let wait_queue_clone = wait_queue.clone();
-            let _ =
-                tokio::task::spawn_blocking(move || wait_queue_clone.wait(queue_id, Some(timeout).into()))
-                    .await
-                    .map_err(|e| IpcError::InvalidOperation(format!("Wait task failed: {}", e).into()))?;
+            let _ = tokio::task::spawn_blocking(move || {
+                wait_queue_clone.wait(queue_id, Some(timeout).into())
+            })
+            .await
+            .map_err(|e| IpcError::InvalidOperation(format!("Wait task failed: {}", e).into()))?;
 
             // After wake or timeout, check for message again (loop)
         }
@@ -122,9 +123,9 @@ impl QueueManager {
         match queue.value() {
             Queue::Fifo(q) => Ok(q.wait_queue.clone().into()),
             Queue::Priority(q) => Ok(q.wait_queue.clone().into()),
-            Queue::PubSub(_) => Err(IpcError::InvalidOperation(
-                "Use subscribe for PubSub queues".into(),
-            ).into()),
+            Queue::PubSub(_) => {
+                Err(IpcError::InvalidOperation("Use subscribe for PubSub queues".into()).into())
+            }
         }
     }
 

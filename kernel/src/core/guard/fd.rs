@@ -129,19 +129,19 @@ impl Observable for FdGuard {
     fn emit_created(&self) {
         if let Some(ref collector) = self.collector {
             let mut labels = vec![
-                ("pid".to_string(), self.pid.to_string().into()),
-                ("fd".to_string(), self.fd.to_string().into()),
+                ("pid".into(), self.pid.to_string().into()),
+                ("fd".into(), self.fd.to_string().into()),
             ];
 
             if let Some(ref path) = self.path {
-                labels.push(("path".to_string(), path.clone().into()));
+                labels.push(("path".into(), path.clone().into()));
             }
 
             let event = Event::new(
                 Severity::Debug,
                 Category::Resource,
                 Payload::MetricUpdate {
-                    name: "fd_opened".to_string(),
+                    name: "fd_opened".into(),
                     value: 1.0,
                     labels,
                 },
@@ -157,12 +157,12 @@ impl Observable for FdGuard {
                 Severity::Debug,
                 Category::Resource,
                 Payload::MetricUpdate {
-                    name: "fd_operation".to_string(),
+                    name: "fd_operation".into(),
                     value: 1.0,
                     labels: vec![
-                        ("pid".to_string(), self.pid.to_string().into()),
-                        ("fd".to_string(), self.fd.to_string().into()),
-                        ("operation".to_string(), operation.to_string().into()),
+                        ("pid".into(), self.pid.to_string().into()),
+                        ("fd".into(), self.fd.to_string().into()),
+                        ("operation".into(), operation.to_string().into()),
                     ],
                 },
             )
@@ -178,12 +178,12 @@ impl Observable for FdGuard {
                 Severity::Debug,
                 Category::Resource,
                 Payload::MetricUpdate {
-                    name: "fd_closed".to_string(),
+                    name: "fd_closed".into(),
                     value: lifetime as f64,
                     labels: vec![
-                        ("pid".to_string(), self.pid.to_string().into()),
-                        ("fd".to_string(), self.fd.to_string().into()),
-                        ("lifetime_micros".to_string(), lifetime.to_string().into()),
+                        ("pid".into(), self.pid.to_string().into()),
+                        ("fd".into(), self.fd.to_string().into()),
+                        ("lifetime_micros".into(), lifetime.to_string().into()),
                     ],
                 },
             )
@@ -198,12 +198,12 @@ impl Observable for FdGuard {
                 Severity::Error,
                 Category::Resource,
                 Payload::MetricUpdate {
-                    name: "fd_error".to_string(),
+                    name: "fd_error".into(),
                     value: 1.0,
                     labels: vec![
-                        ("pid".to_string(), self.pid.to_string().into()),
-                        ("fd".to_string(), self.fd.to_string().into()),
-                        ("error".to_string(), error.to_string().into()),
+                        ("pid".into(), self.pid.to_string().into()),
+                        ("fd".into(), self.fd.to_string().into()),
+                        ("error".into(), error.to_string().into()),
                     ],
                 },
             )

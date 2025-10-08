@@ -159,15 +159,12 @@ impl Observable for IpcGuard {
                 Severity::Debug,
                 Category::Ipc,
                 Payload::MetricUpdate {
-                    name: "ipc_guard_created".to_string(),
+                    name: "ipc_guard_created".into(),
                     value: 1.0,
                     labels: vec![
-                        ("pid".to_string(), self.pid.to_string().into()),
-                        (
-                            "resource_type".to_string(),
-                            self.resource_type.as_str().to_string(),
-                        ),
-                        ("resource_id".to_string(), self.resource_id.to_string().into()),
+                        ("pid".into(), self.pid.to_string().into()),
+                        ("resource_type".into(), self.resource_type.as_str().into()),
+                        ("resource_id".into(), self.resource_id.to_string().into()),
                     ],
                 },
             )
@@ -182,16 +179,13 @@ impl Observable for IpcGuard {
                 Severity::Debug,
                 Category::Ipc,
                 Payload::MetricUpdate {
-                    name: "ipc_guard_used".to_string(),
+                    name: "ipc_guard_used".into(),
                     value: 1.0,
                     labels: vec![
-                        ("pid".to_string(), self.pid.to_string().into()),
-                        (
-                            "resource_type".to_string(),
-                            self.resource_type.as_str().to_string(),
-                        ),
-                        ("resource_id".to_string(), self.resource_id.to_string().into()),
-                        ("operation".to_string(), operation.to_string().into()),
+                        ("pid".into(), self.pid.to_string().into()),
+                        ("resource_type".into(), self.resource_type.as_str().into()),
+                        ("resource_id".into(), self.resource_id.to_string().into()),
+                        ("operation".into(), operation.to_string().into()),
                     ],
                 },
             )
@@ -207,16 +201,13 @@ impl Observable for IpcGuard {
                 Severity::Debug,
                 Category::Ipc,
                 Payload::MetricUpdate {
-                    name: "ipc_guard_dropped".to_string(),
+                    name: "ipc_guard_dropped".into(),
                     value: lifetime as f64,
                     labels: vec![
-                        ("pid".to_string(), self.pid.to_string().into()),
-                        (
-                            "resource_type".to_string(),
-                            self.resource_type.as_str().to_string(),
-                        ),
-                        ("resource_id".to_string(), self.resource_id.to_string().into()),
-                        ("lifetime_micros".to_string(), lifetime.to_string().into()),
+                        ("pid".into(), self.pid.to_string().into()),
+                        ("resource_type".into(), self.resource_type.as_str().into()),
+                        ("resource_id".into(), self.resource_id.to_string().into()),
+                        ("lifetime_micros".into(), lifetime.to_string().into()),
                     ],
                 },
             )
@@ -231,16 +222,13 @@ impl Observable for IpcGuard {
                 Severity::Error,
                 Category::Ipc,
                 Payload::MetricUpdate {
-                    name: "ipc_guard_error".to_string(),
+                    name: "ipc_guard_error".into(),
                     value: 1.0,
                     labels: vec![
-                        ("pid".to_string(), self.pid.to_string().into()),
-                        (
-                            "resource_type".to_string(),
-                            self.resource_type.as_str().to_string(),
-                        ),
-                        ("resource_id".to_string(), self.resource_id.to_string().into()),
-                        ("error".to_string(), error.to_string().into()),
+                        ("pid".into(), self.pid.to_string().into()),
+                        ("resource_type".into(), self.resource_type.as_str().into()),
+                        ("resource_id".into(), self.resource_id.to_string().into()),
+                        ("error".into(), error.to_string().into()),
                     ],
                 },
             )

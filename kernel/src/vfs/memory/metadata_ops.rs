@@ -154,10 +154,9 @@ impl FileSystem for MemFS {
                 // Check file permissions
                 let metadata = self.metadata(&path)?;
                 if metadata.permissions.is_readonly() {
-                    return Err(VfsError::PermissionDenied(format!(
-                        "file is readonly: {}",
-                        path.display()
-                    ).into()));
+                    return Err(VfsError::PermissionDenied(
+                        format!("file is readonly: {}", path.display()).into(),
+                    ));
                 }
             }
         }

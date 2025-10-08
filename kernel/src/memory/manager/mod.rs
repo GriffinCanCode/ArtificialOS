@@ -93,11 +93,14 @@ impl MemoryManager {
         );
         Self {
             // CPU-topology-aware shard counts for optimal concurrent performance
-            blocks: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
-                0,
-                RandomState::new(),
-                ShardManager::shards(WorkloadProfile::HighContention), // memory blocks: heavy concurrent access
-            ).into()),
+            blocks: Arc::new(
+                DashMap::with_capacity_and_hasher_and_shard_amount(
+                    0,
+                    RandomState::new(),
+                    ShardManager::shards(WorkloadProfile::HighContention), // memory blocks: heavy concurrent access
+                )
+                .into(),
+            ),
             next_address: Arc::new(AtomicU64::new(0).into()),
             total_memory: total,
             used_memory: Arc::new(FlatCombiningCounter::new(0).into()),
@@ -105,16 +108,22 @@ impl MemoryManager {
             critical_threshold: 0.95,
             gc_threshold: 1000,
             deallocated_count: Arc::new(FlatCombiningCounter::new(0).into()),
-            process_tracking: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
-                0,
-                RandomState::new(),
-                ShardManager::shards(WorkloadProfile::MediumContention), // per-process tracking: moderate access
-            ).into()),
-            memory_storage: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
-                0,
-                RandomState::new(),
-                ShardManager::shards(WorkloadProfile::HighContention), // storage map: high I/O contention
-            ).into()),
+            process_tracking: Arc::new(
+                DashMap::with_capacity_and_hasher_and_shard_amount(
+                    0,
+                    RandomState::new(),
+                    ShardManager::shards(WorkloadProfile::MediumContention), // per-process tracking: moderate access
+                )
+                .into(),
+            ),
+            memory_storage: Arc::new(
+                DashMap::with_capacity_and_hasher_and_shard_amount(
+                    0,
+                    RandomState::new(),
+                    ShardManager::shards(WorkloadProfile::HighContention), // storage map: high I/O contention
+                )
+                .into(),
+            ),
             free_list: Arc::new(Mutex::new(SegregatedFreeList::new().into())),
             collector: None,
         }

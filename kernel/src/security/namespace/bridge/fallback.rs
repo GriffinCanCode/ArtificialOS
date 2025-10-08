@@ -24,13 +24,13 @@ impl FallbackBridgeManager {
 
     pub async fn create_bridge(&self, _bridge_name: &str) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "Network bridges not supported on this platform".to_string(),
+            "Network bridges not supported on this platform".into(),
         ))
     }
 
     pub async fn delete_bridge(&self, _bridge_name: &str) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "Network bridges not supported on this platform".to_string(),
+            "Network bridges not supported on this platform".into(),
         ))
     }
 
@@ -40,13 +40,13 @@ impl FallbackBridgeManager {
         _iface_name: &str,
     ) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "Network bridges not supported on this platform".to_string(),
+            "Network bridges not supported on this platform".into(),
         ))
     }
 
     pub async fn detach_interface(&self, _iface_name: &str) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "Network bridges not supported on this platform".to_string(),
+            "Network bridges not supported on this platform".into(),
         ))
     }
 
@@ -57,13 +57,13 @@ impl FallbackBridgeManager {
         _prefix_len: u8,
     ) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "Network bridges not supported on this platform".to_string(),
+            "Network bridges not supported on this platform".into(),
         ))
     }
 
     pub async fn enable_forwarding(&self, _bridge_name: &str) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "Network bridges not supported on this platform".to_string(),
+            "Network bridges not supported on this platform".into(),
         ))
     }
 }

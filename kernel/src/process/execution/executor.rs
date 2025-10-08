@@ -110,7 +110,7 @@ impl ProcessExecutor {
             pid,
             os_pid,
             name: name.clone(),
-            command: config.command.to_string(),
+            command: config.command.into(),
             child,
         };
 
@@ -454,7 +454,10 @@ mod tests {
                 attempt
             );
             assert!(
-                matches!(result.unwrap_err(), ProcessError::PermissionDenied(_).into()),
+                matches!(
+                    result.unwrap_err(),
+                    ProcessError::PermissionDenied(_).into()
+                ),
                 "Wrong error type for bypass attempt: {}",
                 attempt
             );

@@ -24,12 +24,18 @@ impl SyscallHandler for NetworkHandler {
     #[inline]
     fn handle(&self, pid: Pid, syscall: &Syscall) -> Option<SyscallResult> {
         match syscall {
-            Syscall::NetworkRequest { ref url } => Some(self.executor.network_request(pid, url).into()),
+            Syscall::NetworkRequest { ref url } => {
+                Some(self.executor.network_request(pid, url).into())
+            }
             Syscall::Socket {
                 domain,
                 socket_type,
                 protocol,
-            } => Some(self.executor.socket(pid, *domain, *socket_type, *protocol).into()),
+            } => Some(
+                self.executor
+                    .socket(pid, *domain, *socket_type, *protocol)
+                    .into(),
+            ),
             Syscall::Bind {
                 sockfd,
                 ref address,
@@ -57,13 +63,19 @@ impl SyscallHandler for NetworkHandler {
                 ref data,
                 ref address,
                 flags,
-            } => Some(self.executor.sendto(pid, *sockfd, data, address, *flags).into()),
+            } => Some(
+                self.executor
+                    .sendto(pid, *sockfd, data, address, *flags)
+                    .into(),
+            ),
             Syscall::RecvFrom {
                 sockfd,
                 size,
                 flags,
             } => Some(self.executor.recvfrom(pid, *sockfd, *size, *flags).into()),
-            Syscall::CloseSocket { sockfd } => Some(self.executor.close_socket(pid, *sockfd).into()),
+            Syscall::CloseSocket { sockfd } => {
+                Some(self.executor.close_socket(pid, *sockfd).into())
+            }
             Syscall::SetSockOpt {
                 sockfd,
                 level,
@@ -77,7 +89,11 @@ impl SyscallHandler for NetworkHandler {
                 sockfd,
                 level,
                 optname,
-            } => Some(self.executor.getsockopt(pid, *sockfd, *level, *optname).into()),
+            } => Some(
+                self.executor
+                    .getsockopt(pid, *sockfd, *level, *optname)
+                    .into(),
+            ),
             _ => None, // Not a network syscall
         }
     }

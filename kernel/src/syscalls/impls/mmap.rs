@@ -184,7 +184,7 @@ impl SyscallExecutorWithIpc {
         let request = PermissionRequest::new(
             pid,
             Resource::System {
-                name: "mmap".to_string(),
+                name: "mmap".into(),
             },
             Action::Inspect,
         );

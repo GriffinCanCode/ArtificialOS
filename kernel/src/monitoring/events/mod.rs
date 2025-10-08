@@ -3,6 +3,7 @@
  * Strongly-typed observability events with zero-copy semantics
  */
 
+use crate::core::data_structures::InlineString;
 use crate::core::types::Pid;
 use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
@@ -56,29 +57,29 @@ pub struct Event {
 pub enum Payload {
     // Process events
     ProcessCreated {
-        name: String,
+        name: InlineString,
         priority: u8,
     },
     ProcessTerminated {
         exit_code: Option<i32>,
     },
     ProcessStateChanged {
-        from: String,
-        to: String,
+        from: InlineString,
+        to: InlineString,
     },
 
     // Syscall events
     SyscallEnter {
-        name: String,
+        name: InlineString,
         args_hash: u64,
     },
     SyscallExit {
-        name: String,
+        name: InlineString,
         duration_us: u64,
         result: SyscallResult,
     },
     SyscallSlow {
-        name: String,
+        name: InlineString,
         duration_ms: u64,
         threshold_ms: u64,
     },
@@ -101,7 +102,7 @@ pub enum Payload {
     ContextSwitch {
         from_pid: Pid,
         to_pid: Pid,
-        reason: String,
+        reason: InlineString,
     },
     ProcessPreempted {
         quantum_remaining_us: u64,
@@ -112,16 +113,16 @@ pub enum Payload {
 
     // Network events
     ConnectionEstablished {
-        protocol: String,
+        protocol: InlineString,
         local_port: u16,
-        remote_addr: String,
+        remote_addr: InlineString,
     },
     ConnectionClosed {
         bytes_sent: u64,
         bytes_received: u64,
     },
     NetworkError {
-        error: String,
+        error: InlineString,
         retry_count: u8,
     },
 
@@ -142,25 +143,25 @@ pub enum Payload {
 
     // Security events
     PermissionDenied {
-        operation: String,
-        required: String,
+        operation: InlineString,
+        required: InlineString,
     },
     RateLimitExceeded {
         limit: u32,
         current: u32,
     },
     SecurityViolation {
-        description: String,
+        description: InlineString,
     },
 
     // Performance events
     OperationSlow {
-        operation: String,
+        operation: InlineString,
         duration_ms: u64,
         p99_ms: u64,
     },
     BudgetExceeded {
-        operation: String,
+        operation: InlineString,
         budget_ms: u64,
         actual_ms: u64,
     },
@@ -171,21 +172,21 @@ pub enum Payload {
 
     // Resource events
     ResourceExhausted {
-        resource: String,
+        resource: InlineString,
         limit: u64,
     },
     ResourceLeaked {
-        resource: String,
+        resource: InlineString,
         count: u64,
     },
     ResourceReclaimed {
-        resource: String,
+        resource: InlineString,
         count: u64,
     },
 
     // Anomaly detection
     AnomalyDetected {
-        metric: String,
+        metric: InlineString,
         value: f64,
         expected: f64,
         deviation: f64,
@@ -193,9 +194,9 @@ pub enum Payload {
 
     // Custom metric update
     MetricUpdate {
-        name: String,
+        name: InlineString,
         value: f64,
-        labels: Vec<(String, String)>,
+        labels: Vec<(InlineString, InlineString)>,
     },
 }
 
@@ -327,7 +328,7 @@ mod tests {
             Severity::Info,
             Category::Process,
             Payload::ProcessCreated {
-                name: "test".to_string(),
+                name: "test".into(),
                 priority: 5,
             },
         );

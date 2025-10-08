@@ -120,7 +120,7 @@ impl SyscallHandler for IoUringHandler {
             Ok(seq) => seq,
             Err(e) => {
                 return Some(SyscallResult::Error {
-                    message: format!("io_uring submission failed: {}", e),
+                    message: format!("io_uring submission failed: {}", e).into(),
                 });
             }
         };
@@ -130,7 +130,7 @@ impl SyscallHandler for IoUringHandler {
             match self.manager.wait_completion(pid, seq) {
                 Ok(completion) => Some(completion.result),
                 Err(e) => Some(SyscallResult::Error {
-                    message: format!("io_uring completion failed: {}", e),
+                    message: format!("io_uring completion failed: {}", e).into(),
                 }),
             }
         } else {

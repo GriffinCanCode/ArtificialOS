@@ -109,11 +109,17 @@ pub enum NetworkRule {
     /// Allow all network access
     AllowAll,
     /// Allow specific host (with optional port)
-    AllowHost { host: InlineString, port: Option<u16> },
+    AllowHost {
+        host: InlineString,
+        port: Option<u16>,
+    },
     /// Allow CIDR block
     AllowCIDR(InlineString),
     /// Block specific host
-    BlockHost { host: InlineString, port: Option<u16> },
+    BlockHost {
+        host: InlineString,
+        port: Option<u16>,
+    },
 }
 
 /// Capabilities that can be granted to sandboxed processes

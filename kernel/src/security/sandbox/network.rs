@@ -122,20 +122,32 @@ mod tests {
     #[test]
     fn test_specific_host() {
         let rules = vec![NetworkRule::AllowHost {
-            host: "example.com".to_string(),
+            host: "example.com".into(),
             port: Some(443),
         }];
-        assert!(check_network_access(&rules, "example.com", Some(443).into()));
-        assert!(!check_network_access(&rules, "example.com", Some(80).into()));
+        assert!(check_network_access(
+            &rules,
+            "example.com",
+            Some(443).into()
+        ));
+        assert!(!check_network_access(
+            &rules,
+            "example.com",
+            Some(80).into()
+        ));
     }
 
     #[test]
     fn test_wildcard_domain() {
         let rules = vec![NetworkRule::AllowHost {
-            host: "*.example.com".to_string(),
+            host: "*.example.com".into(),
             port: None,
         }];
-        assert!(check_network_access(&rules, "api.example.com", Some(443).into()));
+        assert!(check_network_access(
+            &rules,
+            "api.example.com",
+            Some(443).into()
+        ));
         assert!(!check_network_access(&rules, "other.com", Some(443).into()));
     }
 

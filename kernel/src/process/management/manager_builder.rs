@@ -134,12 +134,16 @@ impl ProcessManagerBuilder {
 
             // Register IPC if available
             if let Some(ref ipc_mgr) = self.ipc_manager {
-                orch = orch.register(crate::process::resources::IpcResource::new(ipc_mgr.clone().into()));
+                orch = orch.register(crate::process::resources::IpcResource::new(
+                    ipc_mgr.clone().into(),
+                ));
             }
 
             // Register FD if available
             if let Some(ref fd_mgr) = self.fd_manager {
-                orch = orch.register(crate::process::resources::FdResource::new(fd_mgr.clone().into()));
+                orch = orch.register(crate::process::resources::FdResource::new(
+                    fd_mgr.clone().into(),
+                ));
             }
 
             orch
@@ -153,10 +157,9 @@ impl ProcessManagerBuilder {
 
         // Create preemption controller if both scheduler and executor are available
         let preemption = match (&scheduler, &executor) {
-            (Some(sched), Some(exec)) => Some(Arc::new(PreemptionController::new(
-                Arc::clone(sched),
-                Arc::new(exec.clone().into()),
-            ).into())),
+            (Some(sched), Some(exec)) => Some(Arc::new(
+                PreemptionController::new(Arc::clone(sched), Arc::new(exec.clone().into())).into(),
+            )),
             _ => None,
         };
 
@@ -232,11 +235,14 @@ impl ProcessManagerBuilder {
 
         ProcessManager {
             // CPU-topology-aware shard counts for optimal concurrent performance
-            processes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
-                0,
-                RandomState::new(),
-                ShardManager::shards(WorkloadProfile::HighContention), // process table: heavy concurrent access
-            ).into()),
+            processes: Arc::new(
+                DashMap::with_capacity_and_hasher_and_shard_amount(
+                    0,
+                    RandomState::new(),
+                    ShardManager::shards(WorkloadProfile::HighContention), // process table: heavy concurrent access
+                )
+                .into(),
+            ),
             next_pid: Arc::new(AtomicU32::new(1)),
             memory_manager: self.memory_manager,
             executor,
@@ -247,11 +253,14 @@ impl ProcessManagerBuilder {
             preemption,
             fd_manager: self.fd_manager,
             resource_orchestrator: orchestrator,
-            child_counts: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
-                0,
-                RandomState::new(),
-                ShardManager::shards(WorkloadProfile::MediumContention), // child tracking: moderate access
-            ).into()),
+            child_counts: Arc::new(
+                DashMap::with_capacity_and_hasher_and_shard_amount(
+                    0,
+                    RandomState::new(),
+                    ShardManager::shards(WorkloadProfile::MediumContention), // child tracking: moderate access
+                )
+                .into(),
+            ),
             lifecycle,
             collector: self.collector,
         }

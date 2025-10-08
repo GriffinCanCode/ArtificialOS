@@ -3,10 +3,10 @@
  * True network isolation using Linux network namespaces
  */
 
+use super::bridge::BridgeManager;
 use super::traits::*;
 use super::types::*;
 use super::veth::VethManager;
-use super::bridge::BridgeManager;
 use crate::core::types::Pid;
 use ahash::RandomState;
 use dashmap::DashMap;
@@ -171,8 +171,12 @@ impl LinuxNamespaceManager {
 
         // Create veth pair using VethManager
         let veth_mgr = self.veth_manager.lock().await;
-        veth_mgr.create_pair(&host_veth, &ns_veth, &config.id).await?;
-        veth_mgr.set_ip(&ns_veth, iface_config.ip_addr, iface_config.prefix_len).await?;
+        veth_mgr
+            .create_pair(&host_veth, &ns_veth, &config.id)
+            .await?;
+        veth_mgr
+            .set_ip(&ns_veth, iface_config.ip_addr, iface_config.prefix_len)
+            .await?;
         veth_mgr.set_state(&ns_veth, true).await?;
         veth_mgr.set_state(&host_veth, true).await?;
 
@@ -200,11 +204,9 @@ impl LinuxNamespaceManager {
 
         // If interface config is provided, attach to bridge
         if let Some(ref iface_config) = config.interface {
-            bridge_mgr.set_bridge_ip(
-                bridge_name,
-                iface_config.ip_addr,
-                iface_config.prefix_len,
-            ).await?;
+            bridge_mgr
+                .set_bridge_ip(bridge_name, iface_config.ip_addr, iface_config.prefix_len)
+                .await?;
             bridge_mgr.enable_forwarding(bridge_name).await?;
         }
 
@@ -234,14 +236,14 @@ impl LinuxNamespaceManager {
     #[cfg(not(target_os = "linux"))]
     fn create_linux_namespace(&self, _config: &NamespaceConfig) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "Linux network namespaces not available on this platform".to_string(),
+            "Linux network namespaces not available on this platform".into(),
         ))
     }
 
     #[cfg(not(target_os = "linux"))]
     fn destroy_linux_namespace(&self, _id: &NamespaceId) -> NamespaceResult<()> {
         Err(NamespaceError::PlatformNotSupported(
-            "Linux network namespaces not available on this platform".to_string(),
+            "Linux network namespaces not available on this platform".into(),
         ))
     }
 }

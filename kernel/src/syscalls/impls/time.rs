@@ -19,7 +19,7 @@ impl SyscallExecutorWithIpc {
         let request = PermissionRequest::new(
             pid,
             Resource::System {
-                name: "time".to_string(),
+                name: "time".into(),
             },
             Action::Read,
         );
@@ -48,7 +48,7 @@ impl SyscallExecutorWithIpc {
         let request = PermissionRequest::new(
             pid,
             Resource::System {
-                name: "time".to_string(),
+                name: "time".into(),
             },
             Action::Read,
         );

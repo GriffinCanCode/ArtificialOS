@@ -30,7 +30,9 @@ impl SyscallHandler for FileSystemHandler {
             }
             Syscall::CreateFile { ref path } => Some(self.executor.create_file(pid, path).into()),
             Syscall::DeleteFile { ref path } => Some(self.executor.delete_file(pid, path).into()),
-            Syscall::ListDirectory { ref path } => Some(self.executor.list_directory(pid, path).into()),
+            Syscall::ListDirectory { ref path } => {
+                Some(self.executor.list_directory(pid, path).into())
+            }
             Syscall::FileExists { ref path } => Some(self.executor.file_exists(pid, path).into()),
             Syscall::FileStat { ref path } => Some(self.executor.file_stat(pid, path).into()),
             Syscall::MoveFile {

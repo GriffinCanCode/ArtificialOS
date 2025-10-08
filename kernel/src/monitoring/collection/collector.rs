@@ -57,7 +57,7 @@ impl Collector {
                 Severity::Warn,
                 Category::Performance,
                 Payload::AnomalyDetected {
-                    metric: anomaly.metric,
+                    metric: anomaly.metric.into(),
                     value: anomaly.value,
                     expected: anomaly.expected,
                     deviation: anomaly.deviation,
@@ -195,7 +195,10 @@ impl Collector {
             Event::new(
                 Severity::Info,
                 Category::Process,
-                Payload::ProcessCreated { name, priority },
+                Payload::ProcessCreated {
+                    name: name.into(),
+                    priority,
+                },
             )
             .with_pid(pid),
         );
@@ -235,7 +238,7 @@ impl Collector {
                 severity,
                 Category::Resource,
                 Payload::ResourceReclaimed {
-                    resource: "unified".to_string(),
+                    resource: "unified".into(),
                     count: resources_freed as u64,
                 },
             )
@@ -272,7 +275,7 @@ impl Collector {
                         Severity::Error,
                         Category::Resource,
                         Payload::ResourceLeaked {
-                            resource: "cleanup_error".to_string(),
+                            resource: "cleanup_error".into(),
                             count: 1,
                         },
                     )
@@ -295,7 +298,7 @@ impl Collector {
                 Severity::Debug,
                 Category::Syscall,
                 Payload::SyscallExit {
-                    name,
+                    name: name.into(),
                     duration_us,
                     result,
                 },
@@ -330,7 +333,7 @@ impl Collector {
             Severity::Warn,
             Category::Performance,
             Payload::OperationSlow {
-                operation,
+                operation: operation.into(),
                 duration_ms,
                 p99_ms,
             },
@@ -350,7 +353,7 @@ mod tests {
             Severity::Info,
             Category::Process,
             Payload::ProcessCreated {
-                name: "test".to_string(),
+                name: "test".into(),
                 priority: 5,
             },
         );
@@ -381,7 +384,7 @@ mod tests {
             Severity::Info,
             Category::Process,
             Payload::ProcessCreated {
-                name: "test".to_string(),
+                name: "test".into(),
                 priority: 5,
             },
         );

@@ -112,7 +112,8 @@ impl PermissionCache {
     pub fn invalidate_pid(&self, pid: Pid) {
         use crate::core::optimization::prefetch_read;
 
-        let keys: Vec<_> = self.cache
+        let keys: Vec<_> = self
+            .cache
             .iter()
             .filter_map(|entry| {
                 if entry.key().pid == pid {

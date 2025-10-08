@@ -31,7 +31,7 @@ impl IoUringExecutor {
                     SyscallCompletionStatus::Success
                 }
                 crate::syscalls::types::SyscallResult::Error { message } => {
-                    SyscallCompletionStatus::Error(message.clone())
+                    SyscallCompletionStatus::Error(message.to_string())
                 }
                 crate::syscalls::types::SyscallResult::PermissionDenied { reason } => {
                     SyscallCompletionStatus::Error(format!("Permission denied: {}", reason))
@@ -78,7 +78,7 @@ impl IoUringExecutor {
                             SyscallCompletionStatus::Success
                         }
                         crate::syscalls::types::SyscallResult::Error { message } => {
-                            SyscallCompletionStatus::Error(message.clone())
+                            SyscallCompletionStatus::Error(message.to_string())
                         }
                         crate::syscalls::types::SyscallResult::PermissionDenied { reason } => {
                             SyscallCompletionStatus::Error(format!("Permission denied: {}", reason))
@@ -155,7 +155,7 @@ impl IoUringExecutor {
                     crate::syscalls::types::SyscallResult::Error {
                         message:
                             "Direct IPC send not supported via io_uring, use SendQueue instead"
-                                .to_string(),
+                                .into(),
                     }
                 }
                 SyscallOpType::IpcRecv { size: _ } => {
@@ -164,7 +164,7 @@ impl IoUringExecutor {
                     crate::syscalls::types::SyscallResult::Error {
                         message:
                             "Direct IPC recv not supported via io_uring, use ReceiveQueue instead"
-                                .to_string(),
+                                .into(),
                     }
                 }
             }
@@ -173,7 +173,7 @@ impl IoUringExecutor {
         .unwrap_or_else(|e| {
             error!("Task execution panic: {}", e);
             crate::syscalls::types::SyscallResult::Error {
-                message: format!("Execution panic: {}", e),
+                message: format!("Execution panic: {}", e).into(),
             }
         })
     }

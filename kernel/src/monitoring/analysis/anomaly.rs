@@ -131,21 +131,21 @@ impl Detector {
                 name, duration_ms, ..
             } => Some((format!("syscall.{}.duration_ms", name), *duration_ms as f64).into()),
             Payload::MemoryAllocated { size, .. } => {
-                Some(("memory.allocation.size".to_string(), *size as f64))
+                Some(("memory.allocation.size".into(), *size as f64))
             }
             Payload::MemoryPressure { usage_pct, .. } => {
-                Some(("memory.usage_pct".to_string(), *usage_pct as f64))
+                Some(("memory.usage_pct".into(), *usage_pct as f64))
             }
             Payload::SchedulerLatency { wake_to_run_us } => {
-                Some(("scheduler.latency_us".to_string(), *wake_to_run_us as f64))
+                Some(("scheduler.latency_us".into(), *wake_to_run_us as f64))
             }
             Payload::MessageReceived { wait_time_us, .. } => {
-                Some(("ipc.message.wait_time_us".to_string(), *wait_time_us as f64))
+                Some(("ipc.message.wait_time_us".into(), *wait_time_us as f64))
             }
             Payload::CpuThrottled { usage_pct, .. } => {
-                Some(("cpu.usage_pct".to_string(), *usage_pct as f64))
+                Some(("cpu.usage_pct".into(), *usage_pct as f64))
             }
-            Payload::MetricUpdate { name, value, .. } => Some((name.clone(), *value).into()),
+            Payload::MetricUpdate { name, value, .. } => Some((name.to_string(), *value)),
             _ => None,
         }
     }
@@ -312,7 +312,7 @@ mod tests {
                 Severity::Debug,
                 Category::Syscall,
                 Payload::SyscallExit {
-                    name: "read".to_string(),
+                    name: "read".into(),
                     duration_us: 100 + i,
                     result: SyscallResult::Success,
                 },
@@ -326,7 +326,7 @@ mod tests {
             Severity::Debug,
             Category::Syscall,
             Payload::SyscallExit {
-                name: "read".to_string(),
+                name: "read".into(),
                 duration_us: 10000, // 100x normal
                 result: SyscallResult::Success,
             },
@@ -349,7 +349,7 @@ mod tests {
                 Severity::Debug,
                 Category::Syscall,
                 Payload::SyscallExit {
-                    name: "read".to_string(),
+                    name: "read".into(),
                     duration_us: 100 + i,
                     result: SyscallResult::Success,
                 },
@@ -359,7 +359,7 @@ mod tests {
                 Severity::Debug,
                 Category::Syscall,
                 Payload::SyscallExit {
-                    name: "write".to_string(),
+                    name: "write".into(),
                     duration_us: 200 + i,
                     result: SyscallResult::Success,
                 },

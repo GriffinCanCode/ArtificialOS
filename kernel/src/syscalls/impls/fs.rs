@@ -302,9 +302,7 @@ impl SyscallExecutorWithIpc {
 
         let request = PermissionRequest::new(
             pid,
-            Resource::System {
-                name: "cwd".to_string(),
-            },
+            Resource::System { name: "cwd".into() },
             Action::Inspect,
         );
         let response = self.permission_manager().check(&request);

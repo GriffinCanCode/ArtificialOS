@@ -32,9 +32,7 @@ impl MemFS {
                 Some(Node::Directory { .. }) => {
                     Err(VfsError::IsADirectory(format!("{}", path.display()).into()))
                 }
-                None => {
-                    Err(VfsError::NotFound(format!("{}", path.display()).into()))
-                }
+                None => Err(VfsError::NotFound(format!("{}", path.display()).into())),
             }
         })
     }
@@ -47,10 +45,9 @@ impl MemFS {
         let file_exists = if let Some(node) = self.nodes.get(&path) {
             if let Node::File { permissions, .. } = node.value() {
                 if permissions.is_readonly() {
-                    return Err(VfsError::PermissionDenied(format!(
-                        "file is readonly: {}",
-                        path.display()
-                    ).into()));
+                    return Err(VfsError::PermissionDenied(
+                        format!("file is readonly: {}", path.display()).into(),
+                    ));
                 }
             }
             true
@@ -64,10 +61,10 @@ impl MemFS {
                 if let Some(parent_node) = self.nodes.get(&parent_path) {
                     if let Node::Directory { permissions, .. } = parent_node.value() {
                         if permissions.mode & 0o200 == 0 {
-                            return Err(VfsError::PermissionDenied(format!(
-                                "parent directory is readonly: {}",
-                                parent_path.display()
-                            ).into()));
+                            return Err(VfsError::PermissionDenied(
+                                format!("parent directory is readonly: {}", parent_path.display())
+                                    .into(),
+                            ));
                         }
                     }
                 }
@@ -126,9 +123,9 @@ impl MemFS {
         self.nodes.insert(
             path,
             Node::File {
-                data: Arc::new(parking_lot::Mutex::new(CowMemory::new(
-                    file_data.into_vec(),
-                ).into())),
+                data: Arc::new(parking_lot::Mutex::new(
+                    CowMemory::new(file_data.into_vec()).into(),
+                )),
                 permissions: Permissions::readwrite(),
                 modified: now,
                 created: now,
@@ -151,10 +148,9 @@ impl MemFS {
         if let Some(node) = self.nodes.get(&path) {
             if let Node::File { permissions, .. } = node.value() {
                 if permissions.is_readonly() {
-                    return Err(VfsError::PermissionDenied(format!(
-                        "file is readonly: {}",
-                        path.display()
-                    ).into()));
+                    return Err(VfsError::PermissionDenied(
+                        format!("file is readonly: {}", path.display()).into(),
+                    ));
                 }
             }
         }
@@ -202,10 +198,10 @@ impl MemFS {
             if let Some(parent_node) = self.nodes.get(&parent_path) {
                 if let Node::Directory { permissions, .. } = parent_node.value() {
                     if permissions.mode & 0o200 == 0 {
-                        return Err(VfsError::PermissionDenied(format!(
-                            "parent directory is readonly: {}",
-                            parent_path.display()
-                        ).into()));
+                        return Err(VfsError::PermissionDenied(
+                            format!("parent directory is readonly: {}", parent_path.display())
+                                .into(),
+                        ));
                     }
                 }
             }
@@ -226,7 +222,9 @@ impl MemFS {
                     Ok(())
                 }
             }
-            Some(Node::Directory { .. }) => Err(VfsError::IsADirectory(path.display().to_string().into())),
+            Some(Node::Directory { .. }) => {
+                Err(VfsError::IsADirectory(path.display().to_string().into()))
+            }
             None => Err(VfsError::NotFound(path.display().to_string().into())),
         }
     }
@@ -244,10 +242,9 @@ impl MemFS {
                 data, permissions, ..
             }) => {
                 if permissions.is_readonly() {
-                    return Err(VfsError::PermissionDenied(format!(
-                        "file is readonly: {}",
-                        path.display()
-                    ).into()));
+                    return Err(VfsError::PermissionDenied(
+                        format!("file is readonly: {}", path.display()).into(),
+                    ));
                 }
                 data.lock().len()
             }

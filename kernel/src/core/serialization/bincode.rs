@@ -276,10 +276,9 @@ pub fn from_slice_compressed<T: DeserializeOwned>(bytes: &[u8]) -> BincodeResult
                 .map_err(|e| BincodeError::Decompression(e.to_string().into()))?;
             from_slice(&decompressed)
         }
-        _ => Err(BincodeError::Decompression(format!(
-            "Unknown compression flag: {:#x}",
-            compression_flag
-        ).into())),
+        _ => Err(BincodeError::Decompression(
+            format!("Unknown compression flag: {:#x}", compression_flag).into(),
+        )),
     }
 }
 

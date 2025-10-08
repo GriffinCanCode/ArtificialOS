@@ -249,9 +249,9 @@ impl SyscallExecutorWithIpc {
                     Ok(vfs_file) => {
                         let handle = Arc::new(FileHandle::from_vfs(vfs_file));
                         let path_str = path.to_string_lossy().to_string();
-                        let fd_guard = self
-                            .fd_manager()
-                            .allocate_fd_guard(pid, handle, Some(path_str));
+                        let fd_guard =
+                            self.fd_manager()
+                                .allocate_fd_guard(pid, handle, Some(path_str));
                         let fd = fd_guard.fd();
 
                         info!(

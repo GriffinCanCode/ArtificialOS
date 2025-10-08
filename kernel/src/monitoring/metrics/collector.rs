@@ -97,21 +97,18 @@ impl MetricsCollector {
         // CPU-topology-aware shard counts for optimal concurrent performance
         let shards = ShardManager::shards(WorkloadProfile::LowContention); // metrics: infrequent updates, mostly reads
         Self {
-            counters: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
-                0,
-                RandomState::new(),
-                shards,
-            ).into()),
-            gauges: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
-                0,
-                RandomState::new(),
-                shards,
-            ).into()),
-            histograms: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
-                0,
-                RandomState::new(),
-                shards,
-            ).into()),
+            counters: Arc::new(
+                DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), shards)
+                    .into(),
+            ),
+            gauges: Arc::new(
+                DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), shards)
+                    .into(),
+            ),
+            histograms: Arc::new(
+                DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), shards)
+                    .into(),
+            ),
             start_time: Instant::now(),
         }
     }
