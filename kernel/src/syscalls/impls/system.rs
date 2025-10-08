@@ -81,8 +81,11 @@ impl SyscallExecutorWithIpc {
                 info!("PID {} retrieved current time: {}", pid, timestamp);
                 span.record("timestamp", &format!("{}", timestamp));
                 span.record_result(true);
-                let data = timestamp.to_le_bytes().to_vec();
-                SyscallResult::success_with_data(data)
+                use crate::core::PooledBuffer;
+                let bytes = timestamp.to_le_bytes();
+                let mut buf = PooledBuffer::small();
+                buf.extend_from_slice(&bytes);
+                SyscallResult::success_with_data(buf.into_vec())
             }
             Err(e) => {
                 error!("System time error: {}", e);

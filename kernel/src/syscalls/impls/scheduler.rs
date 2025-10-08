@@ -38,8 +38,11 @@ impl SyscallExecutorWithIpc {
         match process_manager.schedule_next() {
             Some(next_pid) => {
                 info!("Scheduler selected next process: PID {}", next_pid);
-                let data = next_pid.to_le_bytes().to_vec();
-                SyscallResult::success_with_data(data)
+                use crate::core::PooledBuffer;
+                let bytes = next_pid.to_le_bytes();
+                let mut buf = PooledBuffer::small();
+                buf.extend_from_slice(&bytes);
+                SyscallResult::success_with_data(buf.into_vec())
             }
             None => {
                 info!("No processes available to schedule");
@@ -60,8 +63,11 @@ impl SyscallExecutorWithIpc {
         match process_manager.yield_current() {
             Some(next_pid) => {
                 info!("Process {} yielded, next process: {}", pid, next_pid);
-                let data = next_pid.to_le_bytes().to_vec();
-                SyscallResult::success_with_data(data)
+                use crate::core::PooledBuffer;
+                let bytes = next_pid.to_le_bytes();
+                let mut buf = PooledBuffer::small();
+                buf.extend_from_slice(&bytes);
+                SyscallResult::success_with_data(buf.into_vec())
             }
             None => {
                 info!("Process {} yielded, no next process", pid);
@@ -94,8 +100,11 @@ impl SyscallExecutorWithIpc {
 
         match process_manager.current_scheduled() {
             Some(current_pid) => {
-                let data = current_pid.to_le_bytes().to_vec();
-                SyscallResult::success_with_data(data)
+                use crate::core::PooledBuffer;
+                let bytes = current_pid.to_le_bytes();
+                let mut buf = PooledBuffer::small();
+                buf.extend_from_slice(&bytes);
+                SyscallResult::success_with_data(buf.into_vec())
             }
             None => SyscallResult::success(),
         }
@@ -258,7 +267,11 @@ impl SyscallExecutorWithIpc {
 
         match process_manager.get_scheduler_stats() {
             Some(stats) => {
-                let data = stats.quantum_micros.to_le_bytes().to_vec();
+                use crate::core::PooledBuffer;
+                let bytes = stats.quantum_micros.to_le_bytes();
+                let mut buf = PooledBuffer::small();
+                buf.extend_from_slice(&bytes);
+                let data = buf.into_vec();
                 info!(
                     "PID {} retrieved time quantum: {} microseconds",
                     pid, stats.quantum_micros
@@ -401,8 +414,11 @@ impl SyscallExecutorWithIpc {
                     "PID {} successfully boosted priority of PID {} to {}",
                     pid, target_pid, new_priority
                 );
-                let data = new_priority.to_le_bytes().to_vec();
-                SyscallResult::success_with_data(data)
+                use crate::core::PooledBuffer;
+                let bytes = new_priority.to_le_bytes();
+                let mut buf = PooledBuffer::small();
+                buf.extend_from_slice(&bytes);
+                SyscallResult::success_with_data(buf.into_vec())
             }
             Err(e) => {
                 info!(
@@ -435,8 +451,11 @@ impl SyscallExecutorWithIpc {
                     "PID {} successfully lowered priority of PID {} to {}",
                     pid, target_pid, new_priority
                 );
-                let data = new_priority.to_le_bytes().to_vec();
-                SyscallResult::success_with_data(data)
+                use crate::core::PooledBuffer;
+                let bytes = new_priority.to_le_bytes();
+                let mut buf = PooledBuffer::small();
+                buf.extend_from_slice(&bytes);
+                SyscallResult::success_with_data(buf.into_vec())
             }
             Err(e) => {
                 info!(

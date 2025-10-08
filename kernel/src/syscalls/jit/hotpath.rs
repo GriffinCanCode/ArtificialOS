@@ -4,6 +4,7 @@
  */
 
 use super::types::SyscallPattern;
+use crate::core::optimization::{likely, prefetch_read};
 use crate::core::types::Pid;
 use crate::syscalls::types::Syscall;
 use ahash::RandomState;
@@ -67,7 +68,7 @@ impl HotpathDetector {
         let pattern = SyscallPattern::from_syscall(syscall);
 
         if let Some(count) = self.process_counts.get(&(pid, pattern)) {
-            count.load(Ordering::Relaxed) >= HOT_THRESHOLD
+            likely(count.load(Ordering::Relaxed) >= HOT_THRESHOLD)
         } else {
             false
         }
@@ -84,9 +85,14 @@ impl HotpathDetector {
 
     /// Get all hot patterns that should be compiled
     pub fn get_hot_patterns(&self) -> Vec<SyscallPattern> {
-        let mut hot_patterns = Vec::new();
+        let mut hot_patterns = Vec::with_capacity(16);
+        let entries: Vec<_> = self.global_counts.iter().collect();
 
-        for entry in self.global_counts.iter() {
+        for (i, entry) in entries.iter().enumerate() {
+            if i + 4 < entries.len() {
+                prefetch_read(&entries[i + 4] as *const _);
+            }
+
             let pattern = entry.key();
             let count = entry.value().load(Ordering::Relaxed);
 
@@ -95,7 +101,6 @@ impl HotpathDetector {
             }
         }
 
-        // Sort by frequency (most frequent first)
         hot_patterns.sort_by_key(|pattern| {
             let count = self
                 .global_counts

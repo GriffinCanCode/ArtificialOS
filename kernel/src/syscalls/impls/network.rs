@@ -617,7 +617,10 @@ impl SyscallExecutorWithIpc {
             Other(String),
         }
 
-        let data_to_send = data.to_vec();
+        let mut data_buf = PooledBuffer::get(data.len());
+        data_buf.extend_from_slice(data);
+        let data_to_send = data_buf.into_vec();
+
         let result = self.timeout_executor().execute_with_retry(
             || {
                 if let Some(mut socket) = self.socket_manager().sockets.get_mut(&sockfd) {

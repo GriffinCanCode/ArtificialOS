@@ -49,7 +49,7 @@ impl LocalFS {
 
         // Build normalized path by processing components
         // This prevents .. from escaping the root boundary
-        let mut components = Vec::new();
+        let mut components = Vec::with_capacity(8);
 
         for component in path_to_process.components() {
             match component {

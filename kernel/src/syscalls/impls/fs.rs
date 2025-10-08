@@ -4,6 +4,7 @@
 * File and directory operations
 */
 
+use crate::core::optimization::unlikely;
 use crate::core::serialization::json;
 use crate::core::types::Pid;
 use crate::core::{Operation, TransactionGuard};
@@ -54,7 +55,7 @@ impl SyscallExecutorWithIpc {
         let request = PermissionRequest::file_read(pid, path.clone());
         let response = self.permission_manager().check(&request);
 
-        if !response.is_allowed() {
+        if unlikely(!response.is_allowed()) {
             return SyscallResult::permission_denied(response.reason());
         }
 
@@ -130,15 +131,14 @@ impl SyscallExecutorWithIpc {
         let req_src = PermissionRequest::file_delete(pid, source.clone());
         let resp_src = self.permission_manager().check_and_audit(&req_src);
 
-        if !resp_src.is_allowed() {
+        if unlikely(!resp_src.is_allowed()) {
             return SyscallResult::permission_denied(resp_src.reason());
         }
 
-        // Check permission for destination (write/create)
         let req_dst = PermissionRequest::file_create(pid, destination.clone());
         let resp_dst = self.permission_manager().check_and_audit(&req_dst);
 
-        if !resp_dst.is_allowed() {
+        if unlikely(!resp_dst.is_allowed()) {
             return SyscallResult::permission_denied(resp_dst.reason());
         }
 
@@ -161,12 +161,16 @@ impl SyscallExecutorWithIpc {
             },
         );
 
-        transaction
-            .add_operation(Operation::new(
-                "move",
-                format!("{:?} -> {:?}", source, destination).into_bytes(),
-            ))
-            .ok();
+        {
+            use crate::core::PooledBuffer;
+            let formatted = format!("{:?} -> {:?}", source, destination);
+            let bytes = formatted.as_bytes();
+            let mut buf = PooledBuffer::get(bytes.len());
+            buf.extend_from_slice(bytes);
+            transaction
+                .add_operation(Operation::new("move", buf.into_vec()))
+                .ok();
+        }
 
         // Use timeout executor - rename can block on slow/cross-filesystem operations
         let src_clone = source.clone();
@@ -239,12 +243,16 @@ impl SyscallExecutorWithIpc {
             },
         );
 
-        transaction
-            .add_operation(Operation::new(
-                "copy",
-                format!("{:?} -> {:?}", source, destination).into_bytes(),
-            ))
-            .ok();
+        {
+            use crate::core::PooledBuffer;
+            let formatted = format!("{:?} -> {:?}", source, destination);
+            let bytes = formatted.as_bytes();
+            let mut buf = PooledBuffer::get(bytes.len());
+            buf.extend_from_slice(bytes);
+            transaction
+                .add_operation(Operation::new("copy", buf.into_vec()))
+                .ok();
+        }
 
         // Use timeout executor - copy can block on slow storage, especially for large files
         let src_clone = source.clone();
@@ -290,6 +298,8 @@ impl SyscallExecutorWithIpc {
     }
 
     pub(in crate::syscalls) fn get_working_directory(&self, pid: Pid) -> SyscallResult {
+        use crate::core::PooledBuffer;
+
         let request = PermissionRequest::new(
             pid,
             Resource::System {
@@ -307,7 +317,12 @@ impl SyscallExecutorWithIpc {
             Ok(path) => {
                 info!("PID {} retrieved working directory: {:?}", pid, path);
                 match path.to_str() {
-                    Some(s) => SyscallResult::success_with_data(s.as_bytes().to_vec()),
+                    Some(s) => {
+                        let bytes = s.as_bytes();
+                        let mut buf = PooledBuffer::get(bytes.len());
+                        buf.extend_from_slice(bytes);
+                        SyscallResult::success_with_data(buf.into_vec())
+                    }
                     None => SyscallResult::error("Invalid UTF-8 in path"),
                 }
             }
@@ -375,12 +390,16 @@ impl SyscallExecutorWithIpc {
             },
         );
 
-        transaction
-            .add_operation(Operation::new(
-                "truncate",
-                format!("{:?} to {} bytes", path, size).into_bytes(),
-            ))
-            .ok();
+        {
+            use crate::core::PooledBuffer;
+            let formatted = format!("{:?} to {} bytes", path, size);
+            let bytes = formatted.as_bytes();
+            let mut buf = PooledBuffer::get(bytes.len());
+            buf.extend_from_slice(bytes);
+            transaction
+                .add_operation(Operation::new("truncate", buf.into_vec()))
+                .ok();
+        }
 
         // Use timeout executor - truncate can block on slow storage
         let path_clone = path.clone();

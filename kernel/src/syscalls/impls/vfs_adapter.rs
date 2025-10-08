@@ -163,9 +163,12 @@ impl SyscallExecutorWithIpc {
 
         // Try VFS first with timeout
         if let Some(vfs) = &self.optional().vfs {
+            use crate::core::PooledBuffer;
             let vfs_clone = vfs.clone();
             let path_clone = path.to_path_buf();
-            let data_clone = data.to_vec();
+            let mut data_buf = PooledBuffer::get(data.len());
+            data_buf.extend_from_slice(data);
+            let data_clone = data_buf.into_vec();
 
             let result = self.timeout_executor().execute_with_deadline(
                 || vfs_clone.write(&path_clone, &data_clone),
@@ -202,8 +205,11 @@ impl SyscallExecutorWithIpc {
 
         // Fallback to std::fs with timeout
         trace!("Falling back to std::fs for write");
+        use crate::core::PooledBuffer;
         let path_clone = path.to_path_buf();
-        let data_clone = data.to_vec();
+        let mut data_buf = PooledBuffer::get(data.len());
+        data_buf.extend_from_slice(data);
+        let data_clone = data_buf.into_vec();
         let result = self.timeout_executor().execute_with_deadline(
             || fs::write(&path_clone, &data_clone),
             self.timeout_config().file_io,

@@ -67,8 +67,11 @@ impl SyscallExecutorWithIpc {
             Ok(start_time) => {
                 let uptime = start_time.elapsed().as_secs();
                 info!("PID {} retrieved system uptime: {} seconds", pid, uptime);
-                let data = uptime.to_le_bytes().to_vec();
-                SyscallResult::success_with_data(data)
+                use crate::core::PooledBuffer;
+                let bytes = uptime.to_le_bytes();
+                let mut buf = PooledBuffer::small();
+                buf.extend_from_slice(&bytes);
+                SyscallResult::success_with_data(buf.into_vec())
             }
             Err(e) => SyscallResult::error(e),
         }

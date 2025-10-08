@@ -6,6 +6,7 @@
  * using z-score without storing historical data
  */
 
+use crate::core::optimization::unlikely;
 use crate::core::sync::StripedMap;
 use crate::monitoring::events::{Event, Payload};
 use std::sync::Arc;
@@ -56,19 +57,17 @@ impl Stats {
         self.variance().sqrt()
     }
 
-    /// Calculate z-score for a value
     fn z_score(&self, value: f64) -> f64 {
         let stddev = self.stddev();
-        if stddev == 0.0 {
+        if unlikely(stddev == 0.0) {
             0.0
         } else {
             (value - self.mean).abs() / stddev
         }
     }
 
-    /// Check if value is anomalous
     fn is_anomaly(&self, value: f64) -> bool {
-        if self.count < MIN_SAMPLES {
+        if unlikely(self.count < MIN_SAMPLES) {
             return false;
         }
 
@@ -173,7 +172,7 @@ impl Detector {
         cleanup_duration_micros: u64,
         by_type: &std::collections::HashMap<String, usize>,
     ) -> Vec<Anomaly> {
-        let mut anomalies = Vec::new();
+        let mut anomalies = Vec::with_capacity(8);
 
         // Helper to get current timestamp with fallback
         let current_timestamp = || -> u64 {
