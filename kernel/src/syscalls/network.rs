@@ -514,6 +514,12 @@ impl SyscallExecutor {
     }
 
     pub(super) fn connect(&self, pid: Pid, sockfd: u32, address: &str) -> SyscallResult {
+        let span = span_operation("socket_connect");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+        span.record("sockfd", &format!("{}", sockfd));
+        span.record("address", address);
+
         // Parse host:port from address and check connect permission
         let parts: Vec<&str> = address.split(':').collect();
         let host = parts.get(0).unwrap_or(&"").to_string();
@@ -523,6 +529,7 @@ impl SyscallExecutor {
         let response = self.permission_manager.check_and_audit(&request);
 
         if !response.is_allowed() {
+            span.record_error(response.reason());
             return SyscallResult::permission_denied(response.reason());
         }
 
@@ -540,20 +547,29 @@ impl SyscallExecutor {
                     .sockets
                     .insert(sockfd, Socket::TcpStream(stream));
                 info!("PID {} connected socket {} to {}", pid, sockfd, address);
+                span.record_result(true);
                 SyscallResult::success()
             }
             Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
                 error!("Connect timed out for PID {}, socket {} to {} after {}ms", pid, sockfd, address, elapsed_ms);
+                span.record_error(&format!("Timeout after {}ms", elapsed_ms));
                 SyscallResult::error("Connect timed out")
             }
             Err(super::TimeoutError::Operation(e)) => {
                 warn!("Failed to connect socket {} to {}: {}", sockfd, address, e);
+                span.record_error(&format!("Connect failed: {}", e));
                 SyscallResult::error(format!("Connect failed: {}", e))
             }
         }
     }
 
     pub(super) fn send(&self, pid: Pid, sockfd: u32, data: &[u8], _flags: u32) -> SyscallResult {
+        let span = span_operation("socket_send");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+        span.record("sockfd", &format!("{}", sockfd));
+        span.record("data_size", &format!("{}", data.len()));
+
         // Send on existing connection - permissions already checked at connect/accept time
 
         use std::io::Write;
@@ -592,35 +608,49 @@ impl SyscallExecutor {
         match result {
             Ok(bytes_sent) => {
                 info!("PID {} sent {} bytes on TCP socket {}", pid, bytes_sent, sockfd);
+                span.record("bytes_sent", &format!("{}", bytes_sent));
+                span.record_result(true);
                 match json::to_vec(&serde_json::json!({ "bytes_sent": bytes_sent })) {
                     Ok(result) => SyscallResult::success_with_data(result),
                     Err(e) => {
                         warn!("Failed to serialize send result: {}", e);
+                        span.record_error("Serialization failed");
                         SyscallResult::error("Internal serialization error")
                     }
                 }
             }
             Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
                 error!("Send timed out for PID {}, socket {} after {}ms", pid, sockfd, elapsed_ms);
+                span.record_error(&format!("Timeout after {}ms", elapsed_ms));
                 SyscallResult::error("Send timed out")
             }
             Err(super::TimeoutError::Operation(SendError::NotStream)) => {
+                span.record_error("Socket is not a TCP stream");
                 SyscallResult::error("Socket is not a TCP stream")
             }
             Err(super::TimeoutError::Operation(SendError::InvalidSocket)) => {
+                span.record_error("Invalid socket or not connected");
                 SyscallResult::error("Invalid socket or not connected")
             }
             Err(super::TimeoutError::Operation(SendError::WouldBlock)) => {
+                span.record_error("Send would block");
                 SyscallResult::error("Send would block")
             }
             Err(super::TimeoutError::Operation(SendError::Other(e))) => {
                 warn!("Send failed on socket {}: {}", sockfd, e);
+                span.record_error(&format!("Send failed: {}", e));
                 SyscallResult::error(format!("Send failed: {}", e))
             }
         }
     }
 
     pub(super) fn recv(&self, pid: Pid, sockfd: u32, size: usize, _flags: u32) -> SyscallResult {
+        let span = span_operation("socket_recv");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+        span.record("sockfd", &format!("{}", sockfd));
+        span.record("requested_size", &format!("{}", size));
+
         // Receive on existing connection - permissions already checked at connect/accept time
 
         use std::io::Read;
@@ -664,23 +694,30 @@ impl SyscallExecutor {
         match result {
             Ok(buffer) => {
                 info!("PID {} received {} bytes on TCP socket {}", pid, buffer.len(), sockfd);
+                span.record("bytes_received", &format!("{}", buffer.len()));
+                span.record_result(true);
                 SyscallResult::success_with_data(buffer)
             }
             Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
                 error!("Recv timed out for PID {}, socket {} after {}ms", pid, sockfd, elapsed_ms);
+                span.record_error(&format!("Timeout after {}ms", elapsed_ms));
                 SyscallResult::error("Recv timed out")
             }
             Err(super::TimeoutError::Operation(RecvError::NotStream)) => {
+                span.record_error("Socket is not a TCP stream");
                 SyscallResult::error("Socket is not a TCP stream")
             }
             Err(super::TimeoutError::Operation(RecvError::InvalidSocket)) => {
+                span.record_error("Invalid socket or not connected");
                 SyscallResult::error("Invalid socket or not connected")
             }
             Err(super::TimeoutError::Operation(RecvError::WouldBlock)) => {
+                span.record_error("Recv would block");
                 SyscallResult::error("Recv would block")
             }
             Err(super::TimeoutError::Operation(RecvError::Other(e))) => {
                 warn!("Recv failed on socket {}: {}", sockfd, e);
+                span.record_error(&format!("Recv failed: {}", e));
                 SyscallResult::error(format!("Recv failed: {}", e))
             }
         }
@@ -694,6 +731,13 @@ impl SyscallExecutor {
         address: &str,
         _flags: u32,
     ) -> SyscallResult {
+        let span = span_operation("socket_sendto");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+        span.record("sockfd", &format!("{}", sockfd));
+        span.record("address", address);
+        span.record("data_size", &format!("{}", data.len()));
+
         // Parse host:port from address and check network access
         let parts: Vec<&str> = address.split(':').collect();
         let host = parts.get(0).unwrap_or(&"").to_string();
@@ -703,6 +747,7 @@ impl SyscallExecutor {
         let response = self.permission_manager.check_and_audit(&request);
 
         if !response.is_allowed() {
+            span.record_error(response.reason());
             return SyscallResult::permission_denied(response.reason());
         }
 
@@ -715,24 +760,32 @@ impl SyscallExecutor {
                             "PID {} sent {} bytes to {} on UDP socket {}",
                             pid, bytes_sent, address, sockfd
                         );
+                        span.record("bytes_sent", &format!("{}", bytes_sent));
+                        span.record_result(true);
                         match json::to_vec(&serde_json::json!({
                             "bytes_sent": bytes_sent
                         })) {
                             Ok(result) => SyscallResult::success_with_data(result),
                             Err(e) => {
                                 warn!("Failed to serialize sendto result: {}", e);
+                                span.record_error("Serialization failed");
                                 SyscallResult::error("Internal serialization error")
                             }
                         }
                     }
                     Err(e) => {
                         warn!("SendTo failed on socket {}: {}", sockfd, e);
+                        span.record_error(&format!("SendTo failed: {}", e));
                         SyscallResult::error(format!("SendTo failed: {}", e))
                     }
                 },
-                _ => SyscallResult::error("Socket is not a UDP socket"),
+                _ => {
+                    span.record_error("Socket is not a UDP socket");
+                    SyscallResult::error("Socket is not a UDP socket")
+                }
             }
         } else {
+            span.record_error("Invalid UDP socket");
             SyscallResult::error("Invalid UDP socket")
         }
     }
@@ -744,6 +797,12 @@ impl SyscallExecutor {
         size: usize,
         _flags: u32,
     ) -> SyscallResult {
+        let span = span_operation("socket_recvfrom");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+        span.record("sockfd", &format!("{}", sockfd));
+        span.record("requested_size", &format!("{}", size));
+
         // Receive on UDP socket - permissions should be checked at bind time
         // Could add additional check here if needed
 
@@ -759,6 +818,9 @@ impl SyscallExecutor {
                                 "PID {} received {} bytes from {} on UDP socket {}",
                                 pid, bytes_read, addr, sockfd
                             );
+                            span.record("bytes_received", &format!("{}", bytes_read));
+                            span.record("source_address", &addr.to_string());
+                            span.record_result(true);
 
                             match json::to_vec(&serde_json::json!({
                                 "data": buffer,
@@ -767,24 +829,35 @@ impl SyscallExecutor {
                                 Ok(result) => SyscallResult::success_with_data(result),
                                 Err(e) => {
                                     warn!("Failed to serialize recvfrom result: {}", e);
+                                    span.record_error("Serialization failed");
                                     SyscallResult::error("Internal serialization error")
                                 }
                             }
                         }
                         Err(e) => {
                             warn!("RecvFrom failed on socket {}: {}", sockfd, e);
+                            span.record_error(&format!("RecvFrom failed: {}", e));
                             SyscallResult::error(format!("RecvFrom failed: {}", e))
                         }
                     }
                 }
-                _ => SyscallResult::error("Socket is not a UDP socket"),
+                _ => {
+                    span.record_error("Socket is not a UDP socket");
+                    SyscallResult::error("Socket is not a UDP socket")
+                }
             }
         } else {
+            span.record_error("Invalid UDP socket");
             SyscallResult::error("Invalid UDP socket")
         }
     }
 
     pub(super) fn close_socket(&self, pid: Pid, sockfd: u32) -> SyscallResult {
+        let span = span_operation("socket_close");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+        span.record("sockfd", &format!("{}", sockfd));
+
         // Close doesn't require permission check - closing is always allowed
 
         // Single lookup in unified collection
@@ -796,12 +869,15 @@ impl SyscallExecutor {
 
             let type_name = socket.type_name();
             info!("PID {} closed {} socket {} (recycled FD)", pid, type_name, sockfd);
+            span.record("socket_type", type_name);
+            span.record_result(true);
             SyscallResult::success()
         } else {
             warn!(
                 "PID {} attempted to close non-existent socket {}",
                 pid, sockfd
             );
+            span.record_error("Invalid socket descriptor");
             SyscallResult::error("Invalid socket descriptor")
         }
     }
@@ -814,6 +890,13 @@ impl SyscallExecutor {
         optname: u32,
         _optval: &[u8],
     ) -> SyscallResult {
+        let span = span_operation("socket_setsockopt");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+        span.record("sockfd", &format!("{}", sockfd));
+        span.record("level", &format!("{}", level));
+        span.record("optname", &format!("{}", optname));
+
         // Socket options on existing socket - permissions checked at creation time
 
         warn!(
@@ -821,6 +904,7 @@ impl SyscallExecutor {
             sockfd, level, optname
         );
         info!("PID {} set socket option on {}", pid, sockfd);
+        span.record_result(true);
         SyscallResult::success()
     }
 
@@ -831,6 +915,13 @@ impl SyscallExecutor {
         level: u32,
         optname: u32,
     ) -> SyscallResult {
+        let span = span_operation("socket_getsockopt");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+        span.record("sockfd", &format!("{}", sockfd));
+        span.record("level", &format!("{}", level));
+        span.record("optname", &format!("{}", optname));
+
         // Socket options on existing socket - permissions checked at creation time
 
         warn!(
@@ -844,11 +935,13 @@ impl SyscallExecutor {
             Ok(data) => data,
             Err(e) => {
                 warn!("Failed to serialize getsockopt result: {}", e);
+                span.record_error("Serialization failed");
                 return SyscallResult::error("Internal serialization error");
             }
         };
 
         info!("PID {} got socket option from {}", pid, sockfd);
+        span.record_result(true);
         SyscallResult::success_with_data(result)
     }
 }

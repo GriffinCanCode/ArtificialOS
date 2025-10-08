@@ -6,9 +6,10 @@
 
 use crate::core::json;
 use crate::core::types::Pid;
+use crate::monitoring::span_operation;
 use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
 
-use log::{error, info};
+use log::{error, info, trace};
 use std::fs;
 use std::path::PathBuf;
 
@@ -44,10 +45,16 @@ impl SyscallExecutor {
     }
 
     pub(super) fn file_stat(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
+        let span = span_operation("file_stat");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+        span.record("path", &format!("{:?}", path));
+
         let request = PermissionRequest::file_read(pid, path.clone());
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
+            span.record_error(response.reason());
             return SyscallResult::permission_denied(response.reason());
         }
 
@@ -58,11 +65,16 @@ impl SyscallExecutor {
                 #[cfg(not(unix))]
                 let mode = String::from("0644");
 
+                let size = metadata.len();
+                let is_dir = metadata.is_dir();
+
+                trace!("File stat - size: {}, is_dir: {}, mode: {}", size, is_dir, mode);
+
                 let file_info = serde_json::json!({
                     "name": path.file_name().and_then(|n| n.to_str()).unwrap_or(""),
                     "path": path.to_str().unwrap_or(""),
-                    "size": metadata.len(),
-                    "is_dir": metadata.is_dir(),
+                    "size": size,
+                    "is_dir": is_dir,
                     "mode": mode,
                     "modified": metadata.modified()
                         .ok()
@@ -73,16 +85,21 @@ impl SyscallExecutor {
                 });
 
                 info!("PID {} stat file: {:?}", pid, path);
+                span.record("size", &format!("{}", size));
+                span.record("is_dir", &format!("{}", is_dir));
+                span.record_result(true);
                 match json::to_vec(&file_info) {
                     Ok(json) => SyscallResult::success_with_data(json),
                     Err(e) => {
                         error!("Failed to serialize file stat: {}", e);
+                        span.record_error("Serialization failed");
                         SyscallResult::error("Failed to serialize file stat")
                     }
                 }
             }
             Err(e) => {
                 error!("Failed to stat file {:?}: {}", path, e);
+                span.record_error(&format!("Stat failed: {}", e));
                 SyscallResult::error(format!("Stat failed: {}", e))
             }
         }
@@ -94,11 +111,18 @@ impl SyscallExecutor {
         source: &PathBuf,
         destination: &PathBuf,
     ) -> SyscallResult {
+        let span = span_operation("file_move");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+        span.record("source", &format!("{:?}", source));
+        span.record("destination", &format!("{:?}", destination));
+
         // Check permission for source (read/delete)
         let req_src = PermissionRequest::file_delete(pid, source.clone());
         let resp_src = self.permission_manager.check_and_audit(&req_src);
 
         if !resp_src.is_allowed() {
+            span.record_error(&format!("Source permission denied: {}", resp_src.reason()));
             return SyscallResult::permission_denied(resp_src.reason());
         }
 
@@ -107,12 +131,14 @@ impl SyscallExecutor {
         let resp_dst = self.permission_manager.check_and_audit(&req_dst);
 
         if !resp_dst.is_allowed() {
+            span.record_error(&format!("Destination permission denied: {}", resp_dst.reason()));
             return SyscallResult::permission_denied(resp_dst.reason());
         }
 
         match fs::rename(source, destination) {
             Ok(_) => {
                 info!("PID {} moved file: {:?} -> {:?}", pid, source, destination);
+                span.record_result(true);
                 SyscallResult::success()
             }
             Err(e) => {
@@ -120,6 +146,7 @@ impl SyscallExecutor {
                     "Failed to move file {:?} -> {:?}: {}",
                     source, destination, e
                 );
+                span.record_error(&format!("Move failed: {}", e));
                 SyscallResult::error(format!("Move failed: {}", e))
             }
         }
@@ -131,11 +158,18 @@ impl SyscallExecutor {
         source: &PathBuf,
         destination: &PathBuf,
     ) -> SyscallResult {
+        let span = span_operation("file_copy");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+        span.record("source", &format!("{:?}", source));
+        span.record("destination", &format!("{:?}", destination));
+
         // Check permission for source (read)
         let req_src = PermissionRequest::file_read(pid, source.clone());
         let resp_src = self.permission_manager.check(&req_src);
 
         if !resp_src.is_allowed() {
+            span.record_error(&format!("Source permission denied: {}", resp_src.reason()));
             return SyscallResult::permission_denied(resp_src.reason());
         }
 
@@ -144,6 +178,7 @@ impl SyscallExecutor {
         let resp_dst = self.permission_manager.check_and_audit(&req_dst);
 
         if !resp_dst.is_allowed() {
+            span.record_error(&format!("Destination permission denied: {}", resp_dst.reason()));
             return SyscallResult::permission_denied(resp_dst.reason());
         }
 
@@ -153,6 +188,8 @@ impl SyscallExecutor {
                     "PID {} copied file: {:?} -> {:?} ({} bytes)",
                     pid, source, destination, bytes
                 );
+                span.record("bytes_copied", &format!("{}", bytes));
+                span.record_result(true);
                 SyscallResult::success()
             }
             Err(e) => {
@@ -160,6 +197,7 @@ impl SyscallExecutor {
                     "Failed to copy file {:?} -> {:?}: {}",
                     source, destination, e
                 );
+                span.record_error(&format!("Copy failed: {}", e));
                 SyscallResult::error(format!("Copy failed: {}", e))
             }
         }
@@ -174,6 +212,10 @@ impl SyscallExecutor {
     }
 
     pub(super) fn get_working_directory(&self, pid: Pid) -> SyscallResult {
+        let span = span_operation("get_cwd");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+
         let request = PermissionRequest::new(
             pid,
             Resource::System {
@@ -184,49 +226,71 @@ impl SyscallExecutor {
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
+            span.record_error(response.reason());
             return SyscallResult::permission_denied(response.reason());
         }
 
         match std::env::current_dir() {
             Ok(path) => {
                 info!("PID {} retrieved working directory: {:?}", pid, path);
+                span.record("cwd", &format!("{:?}", path));
+                span.record_result(true);
                 match path.to_str() {
                     Some(s) => SyscallResult::success_with_data(s.as_bytes().to_vec()),
-                    None => SyscallResult::error("Invalid UTF-8 in path"),
+                    None => {
+                        span.record_error("Invalid UTF-8 in path");
+                        SyscallResult::error("Invalid UTF-8 in path")
+                    }
                 }
             }
             Err(e) => {
                 error!("Failed to get working directory: {}", e);
+                span.record_error(&format!("Get cwd failed: {}", e));
                 SyscallResult::error(format!("Get working directory failed: {}", e))
             }
         }
     }
 
     pub(super) fn set_working_directory(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
+        let span = span_operation("set_cwd");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+        span.record("path", &format!("{:?}", path));
+
         let request = PermissionRequest::file_read(pid, path.clone());
         let response = self.permission_manager.check_and_audit(&request);
 
         if !response.is_allowed() {
+            span.record_error(response.reason());
             return SyscallResult::permission_denied(response.reason());
         }
 
         match std::env::set_current_dir(path) {
             Ok(_) => {
                 info!("PID {} set working directory: {:?}", pid, path);
+                span.record_result(true);
                 SyscallResult::success()
             }
             Err(e) => {
                 error!("Failed to set working directory {:?}: {}", path, e);
+                span.record_error(&format!("Set cwd failed: {}", e));
                 SyscallResult::error(format!("Set working directory failed: {}", e))
             }
         }
     }
 
     pub(super) fn truncate_file(&self, pid: Pid, path: &PathBuf, size: u64) -> SyscallResult {
+        let span = span_operation("file_truncate");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+        span.record("path", &format!("{:?}", path));
+        span.record("size", &format!("{}", size));
+
         let request = PermissionRequest::file_write(pid, path.clone());
         let response = self.permission_manager.check_and_audit(&request);
 
         if !response.is_allowed() {
+            span.record_error(response.reason());
             return SyscallResult::permission_denied(response.reason());
         }
 
@@ -234,15 +298,18 @@ impl SyscallExecutor {
             Ok(file) => match file.set_len(size) {
                 Ok(_) => {
                     info!("PID {} truncated file {:?} to {} bytes", pid, path, size);
+                    span.record_result(true);
                     SyscallResult::success()
                 }
                 Err(e) => {
                     error!("Failed to truncate file {:?}: {}", path, e);
+                    span.record_error(&format!("Truncate failed: {}", e));
                     SyscallResult::error(format!("Truncate failed: {}", e))
                 }
             },
             Err(e) => {
                 error!("Failed to open file {:?} for truncation: {}", path, e);
+                span.record_error(&format!("Open failed: {}", e));
                 SyscallResult::error(format!("Open failed: {}", e))
             }
         }
