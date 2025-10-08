@@ -13,6 +13,7 @@ impl Scheduler {
     }
 
     /// Get minimum virtual runtime (for fair scheduler normalization)
+    #[allow(dead_code)]
     pub(super) fn min_vruntime(&self) -> u64 {
         let policy = *self.policy.read();
         if policy != SchedulingPolicy::Fair {

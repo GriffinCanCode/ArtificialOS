@@ -25,6 +25,7 @@ pub struct EventCollector {
 
 /// Subscription information
 struct Subscription {
+    #[allow(dead_code)]
     id: String,
     event_type: SubscriptionType,
     callback: EventCallback,

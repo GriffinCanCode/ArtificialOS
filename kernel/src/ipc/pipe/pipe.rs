@@ -18,6 +18,7 @@ pub(super) struct Pipe {
     /// Lock-free ring buffer for zero-contention SPSC pipe operations
     buffer: LockFreeByteRing,
     pub capacity: Size,
+    #[allow(dead_code)]
     pub memory_manager: MemoryManager,
     pub closed: bool,
 }
@@ -60,6 +61,7 @@ impl Pipe {
         }
     }
 
+    #[allow(dead_code)]
     pub fn available_space(&self) -> Size {
         self.buffer.available_space()
     }

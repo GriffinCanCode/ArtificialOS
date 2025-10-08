@@ -34,6 +34,7 @@ impl SimulationEbpfProvider {
         }
     }
 
+    #[allow(dead_code)]
     fn add_event(&self, event: EbpfEvent) {
         let mut events = self.events.write();
         if events.len() >= 1000 {

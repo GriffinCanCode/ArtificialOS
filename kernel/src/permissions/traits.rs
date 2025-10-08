@@ -30,4 +30,5 @@ pub trait PermissionProvider: Send + Sync {
 }
 
 /// Combined interface
+#[allow(dead_code)]
 pub trait PermissionSystem: PermissionChecker + PermissionProvider + Clone + Send + Sync {}

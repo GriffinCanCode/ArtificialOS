@@ -443,6 +443,7 @@ impl SyscallExecutor {
         }
     }
 
+    #[allow(dead_code)]
     pub(super) fn fdatasync_fd(&self, pid: Pid, fd: u32) -> SyscallResult {
         // Fdatasync synchronizes file data (not metadata) to disk
 

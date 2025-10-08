@@ -20,6 +20,7 @@ pub struct EbpfManagerImpl {
 /// Platform-specific provider implementations
 #[derive(Clone)]
 enum EbpfProviderImpl {
+    #[allow(dead_code)]
     Linux(LinuxEbpfProvider),
     MacOS(MacOSEbpfProvider),
     Simulation(SimulationEbpfProvider),

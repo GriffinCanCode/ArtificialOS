@@ -12,7 +12,6 @@ use log::{info, warn};
 use std::fs;
 use std::path::Path;
 
-use crate::security::Capability;
 use crate::vfs::{FileSystem, VfsError};
 
 use super::executor::SyscallExecutor;
@@ -337,6 +336,7 @@ impl SyscallExecutor {
 }
 
 /// Convert VfsError to error message
+#[allow(dead_code)]
 fn vfs_error_to_string(err: VfsError) -> String {
     match err {
         VfsError::NotFound(msg) => format!("Not found: {}", msg),

@@ -35,6 +35,7 @@ impl Queue {
         }
     }
 
+    #[allow(dead_code)]
     pub fn len(&self) -> usize {
         match self {
             Queue::Fifo(q) => q.len(),
@@ -63,7 +64,8 @@ pub struct QueueManager {
     pub(super) next_id: Arc<AtomicU64>,
     pub(super) next_msg_id: Arc<AtomicU64>,
     pub(super) process_queues: Arc<DashMap<Pid, HashSet<QueueId>, RandomState>>,
-    pub(super) pubsub_receivers: Arc<DashMap<(QueueId, Pid), flume::Receiver<QueueMessage>, RandomState>>,
+    pub(super) pubsub_receivers:
+        Arc<DashMap<(QueueId, Pid), flume::Receiver<QueueMessage>, RandomState>>,
     pub(super) memory_manager: MemoryManager,
     pub(super) free_ids: Arc<SegQueue<QueueId>>,
 }

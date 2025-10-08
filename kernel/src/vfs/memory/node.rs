@@ -11,7 +11,7 @@ use super::super::types::{FileType, Permissions};
 
 /// In-memory filesystem node
 #[derive(Debug, Clone)]
-pub(super) enum Node {
+pub(in crate::vfs) enum Node {
     File {
         data: Vec<u8>,
         permissions: Permissions,
@@ -26,6 +26,7 @@ pub(super) enum Node {
 }
 
 impl Node {
+    #[allow(dead_code)]
     pub fn is_file(&self) -> bool {
         matches!(self, Node::File { .. })
     }

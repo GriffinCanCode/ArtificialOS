@@ -13,6 +13,7 @@ const DEFAULT_CHUNK_SIZE: usize = 64 * 1024; // 64KB
 
 #[derive(Clone)]
 pub struct StreamingManager {
+    #[allow(dead_code)]
     executor: SyscallExecutor,
 }
 

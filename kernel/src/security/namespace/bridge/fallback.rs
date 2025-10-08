@@ -8,8 +8,10 @@ use log::info;
 use std::net::IpAddr;
 
 /// Fallback bridge manager for unsupported platforms
+#[allow(dead_code)]
 pub struct FallbackBridgeManager {}
 
+#[allow(dead_code)]
 impl FallbackBridgeManager {
     pub fn new() -> Self {
         Self {}

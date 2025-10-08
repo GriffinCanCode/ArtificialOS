@@ -7,8 +7,8 @@ use super::types::ProcessInfo;
 use crate::core::types::{Pid, Priority};
 use crate::process::Scheduler;
 use crate::security::Limits;
-use dashmap::DashMap;
 use ahash::RandomState;
+use dashmap::DashMap;
 use log::info;
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -18,34 +18,34 @@ pub(super) fn priority_to_limits(priority: Priority) -> Limits {
     // Higher priority = more resources
     let (memory_bytes, max_pids, max_open_files, cpu_shares) = match priority {
         p if p >= 90 => (
-            512 * 1024 * 1024,  // 512MB
-            1000,               // 1000 pids
-            10000,              // 10000 files
-            1024,               // High CPU share
+            512 * 1024 * 1024, // 512MB
+            1000,              // 1000 pids
+            10000,             // 10000 files
+            1024,              // High CPU share
         ),
         p if p >= 70 => (
-            256 * 1024 * 1024,  // 256MB
-            500,                // 500 pids
-            5000,               // 5000 files
-            512,                // Medium-high CPU share
+            256 * 1024 * 1024, // 256MB
+            500,               // 500 pids
+            5000,              // 5000 files
+            512,               // Medium-high CPU share
         ),
         p if p >= 50 => (
-            128 * 1024 * 1024,  // 128MB
-            250,                // 250 pids
-            2000,               // 2000 files
-            256,                // Medium CPU share
+            128 * 1024 * 1024, // 128MB
+            250,               // 250 pids
+            2000,              // 2000 files
+            256,               // Medium CPU share
         ),
         p if p >= 30 => (
-            64 * 1024 * 1024,   // 64MB
-            100,                // 100 pids
-            1000,               // 1000 files
-            128,                // Low-medium CPU share
+            64 * 1024 * 1024, // 64MB
+            100,              // 100 pids
+            1000,             // 1000 files
+            128,              // Low-medium CPU share
         ),
         _ => (
-            32 * 1024 * 1024,   // 32MB
-            50,                 // 50 pids
-            500,                // 500 files
-            64,                 // Low CPU share
+            32 * 1024 * 1024, // 32MB
+            50,               // 50 pids
+            500,              // 500 files
+            64,               // Low CPU share
         ),
     };
 
@@ -58,6 +58,7 @@ pub(super) fn priority_to_limits(priority: Priority) -> Limits {
 }
 
 /// Set process priority in manager
+#[allow(dead_code)]
 pub(super) fn set_process_priority(
     processes: &Arc<DashMap<Pid, ProcessInfo, RandomState>>,
     scheduler: &Option<Arc<RwLock<Scheduler>>>,
@@ -93,6 +94,7 @@ pub(super) fn set_process_priority(
 }
 
 /// Boost process priority
+#[allow(dead_code)]
 pub(super) fn boost_process_priority(
     processes: &Arc<DashMap<Pid, ProcessInfo, RandomState>>,
     scheduler: &Option<Arc<RwLock<Scheduler>>>,
@@ -116,11 +118,15 @@ pub(super) fn boost_process_priority(
         return Err(format!("Failed to update priority for process {}", pid));
     }
 
-    info!("Boosted PID {} priority: {} -> {}", pid, current_priority, new_priority);
+    info!(
+        "Boosted PID {} priority: {} -> {}",
+        pid, current_priority, new_priority
+    );
     Ok(new_priority)
 }
 
 /// Lower process priority
+#[allow(dead_code)]
 pub(super) fn lower_process_priority(
     processes: &Arc<DashMap<Pid, ProcessInfo, RandomState>>,
     scheduler: &Option<Arc<RwLock<Scheduler>>>,
@@ -144,6 +150,9 @@ pub(super) fn lower_process_priority(
         return Err(format!("Failed to update priority for process {}", pid));
     }
 
-    info!("Lowered PID {} priority: {} -> {}", pid, current_priority, new_priority);
+    info!(
+        "Lowered PID {} priority: {} -> {}",
+        pid, current_priority, new_priority
+    );
     Ok(new_priority)
 }

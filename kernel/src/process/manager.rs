@@ -53,7 +53,11 @@ impl ProcessManager {
         info!("Process manager initialized (basic)");
         Self {
             // Use 128 shards for processes - high contention from concurrent process operations
-            processes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 128)),
+            processes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
+                0,
+                RandomState::new(),
+                128,
+            )),
             next_pid: AtomicU32::new(1),
             memory_manager: None,
             executor: None,
@@ -65,7 +69,11 @@ impl ProcessManager {
             fd_manager: None,
             resource_orchestrator: None,
             // Use 64 shards for child_counts (moderate contention)
-            child_counts: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 64)),
+            child_counts: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
+                0,
+                RandomState::new(),
+                64,
+            )),
         }
     }
 
@@ -101,7 +109,10 @@ impl ProcessManager {
 
                 match executor.spawn(pid, name.clone(), cfg) {
                     Ok(os_pid) => {
-                        info!("Spawned OS process {} for PID {} with resource limits", os_pid, pid);
+                        info!(
+                            "Spawned OS process {} for PID {} with resource limits",
+                            os_pid, pid
+                        );
 
                         // Apply cgroup limits as a fallback/supplement
                         // Cgroups provide additional controls (CPU shares) not available via rlimits
@@ -229,12 +240,14 @@ impl ProcessManager {
     }
 
     /// Increment child count for a PID
+    #[allow(dead_code)]
     pub(super) fn increment_child_count(&self, pid: Pid) {
         // Use alter() for atomic increment
         self.child_counts.alter(&pid, |_, count| count + 1);
     }
 
     /// Decrement child count for a PID
+    #[allow(dead_code)]
     pub(super) fn decrement_child_count(&self, pid: Pid) {
         // Use alter() for atomic decrement
         self.child_counts

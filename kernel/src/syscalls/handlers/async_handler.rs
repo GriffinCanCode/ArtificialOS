@@ -5,16 +5,20 @@
 
 use crate::core::types::Pid;
 use crate::syscalls::types::{Syscall, SyscallResult};
-use std::sync::Arc;
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::Arc;
 
 /// Async trait for handling individual syscalls
 /// Each syscall category can implement async handlers for I/O-bound operations
+#[allow(dead_code)]
 pub trait AsyncSyscallHandler: Send + Sync {
     /// Handle a syscall asynchronously and return the result
-    fn handle_async(&self, pid: Pid, syscall: &Syscall)
-        -> Pin<Box<dyn Future<Output = Option<SyscallResult>> + Send + '_>>;
+    fn handle_async(
+        &self,
+        pid: Pid,
+        syscall: &Syscall,
+    ) -> Pin<Box<dyn Future<Output = Option<SyscallResult>> + Send + '_>>;
 
     /// Get the name of this handler (for logging/debugging)
     fn name(&self) -> &'static str;
@@ -23,10 +27,12 @@ pub trait AsyncSyscallHandler: Send + Sync {
 /// Registry for async syscall handlers
 /// Dispatches syscalls to appropriate async handlers based on type
 #[derive(Clone)]
+#[allow(dead_code)]
 pub struct AsyncSyscallHandlerRegistry {
     handlers: Arc<Vec<Arc<dyn AsyncSyscallHandler>>>,
 }
 
+#[allow(dead_code)]
 impl AsyncSyscallHandlerRegistry {
     /// Create a new empty registry
     pub fn new() -> Self {
@@ -75,8 +81,11 @@ mod tests {
     struct TestAsyncHandler;
 
     impl AsyncSyscallHandler for TestAsyncHandler {
-        fn handle_async(&self, _pid: Pid, syscall: &Syscall)
-            -> Pin<Box<dyn Future<Output = Option<SyscallResult>> + Send + '_>> {
+        fn handle_async(
+            &self,
+            _pid: Pid,
+            syscall: &Syscall,
+        ) -> Pin<Box<dyn Future<Output = Option<SyscallResult>> + Send + '_>> {
             // Clone syscall to move into async block
             let syscall = syscall.clone();
             Box::pin(async move {
@@ -98,15 +107,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_async_handler_dispatch() {
-        let registry = AsyncSyscallHandlerRegistry::new()
-            .register(Arc::new(TestAsyncHandler));
+        let registry = AsyncSyscallHandlerRegistry::new().register(Arc::new(TestAsyncHandler));
 
-        let result = registry.dispatch(
-            1,
-            &Syscall::NetworkRequest { url: "http://example.com".to_string() }
-        ).await;
+        let result = registry
+            .dispatch(
+                1,
+                &Syscall::NetworkRequest {
+                    url: "http://example.com".to_string(),
+                },
+            )
+            .await;
 
         assert!(result.is_some());
     }
 }
-

@@ -7,7 +7,6 @@
 
 use super::condvar::CondvarWait;
 use super::traits::{WaitStrategy, WakeResult};
-use std::sync::atomic::AtomicBool;
 use std::thread;
 use std::time::{Duration, Instant};
 

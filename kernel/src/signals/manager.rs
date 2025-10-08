@@ -37,7 +37,11 @@ impl SignalManagerImpl {
         info!("Signal manager initialized");
         Self {
             // Use 128 shards for processes - high contention from signal delivery
-            processes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 128)),
+            processes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
+                0,
+                RandomState::new(),
+                128,
+            )),
             handler: Arc::new(SignalHandler::new(callbacks.clone())),
             callbacks,
             next_handler_id: Arc::new(AtomicU64::new(1)),
@@ -68,12 +72,17 @@ impl SignalManagerImpl {
 
             // Update stats
             let mut stats = self.stats.write();
-            stats.handlers_registered = stats.handlers_registered.saturating_sub(proc.handlers.len());
+            stats.handlers_registered = stats
+                .handlers_registered
+                .saturating_sub(proc.handlers.len());
             stats.pending_signals = stats.pending_signals.saturating_sub(proc.pending.len());
         }
 
         if count > 0 {
-            info!("Cleaned {} signal resources for terminated PID {}", count, pid);
+            info!(
+                "Cleaned {} signal resources for terminated PID {}",
+                count, pid
+            );
         }
 
         count
@@ -93,6 +102,7 @@ impl SignalManagerImpl {
     }
 
     /// Allocate handler ID
+    #[allow(dead_code)]
     fn next_handler_id(&self) -> u64 {
         self.next_handler_id.fetch_add(1, AtomicOrdering::SeqCst)
     }

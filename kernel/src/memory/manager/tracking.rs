@@ -11,13 +11,14 @@ use crate::core::types::Size;
 /// - Cache-line aligned to prevent false sharing in concurrent memory operations
 #[repr(C, align(64))]
 #[derive(Debug, Clone)]
-pub(super) struct ProcessMemoryTracking {
+pub(in crate::memory) struct ProcessMemoryTracking {
     pub current_bytes: Size,
     pub peak_bytes: Size,
     pub allocation_count: usize,
 }
 
 impl ProcessMemoryTracking {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
             current_bytes: 0,
@@ -26,6 +27,7 @@ impl ProcessMemoryTracking {
         }
     }
 
+    #[allow(dead_code)]
     pub fn add_allocation(&mut self, size: Size) {
         self.current_bytes += size;
         self.allocation_count += 1;
@@ -34,6 +36,7 @@ impl ProcessMemoryTracking {
         }
     }
 
+    #[allow(dead_code)]
     pub fn remove_allocation(&mut self, size: Size) {
         self.current_bytes = self.current_bytes.saturating_sub(size);
     }

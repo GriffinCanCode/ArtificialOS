@@ -65,6 +65,7 @@ impl PriorityQueue {
         self.messages.len()
     }
 
+    #[allow(dead_code)]
     pub fn is_empty(&self) -> bool {
         self.messages.is_empty()
     }

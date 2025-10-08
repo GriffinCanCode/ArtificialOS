@@ -4,7 +4,6 @@
  */
 
 use super::super::types::*;
-use log::{debug, info, warn};
 use std::net::IpAddr;
 
 #[cfg(target_os = "linux")]
@@ -17,11 +16,13 @@ use std::fs;
 use std::io::Write;
 
 /// Bridge network manager for Linux
+#[allow(dead_code)]
 pub struct LinuxBridgeManager {
     #[cfg(target_os = "linux")]
     handle: Option<Handle>,
 }
 
+#[allow(dead_code)]
 impl LinuxBridgeManager {
     pub fn new() -> Self {
         Self {

@@ -20,6 +20,7 @@ pub struct NamespaceManager {
 /// Platform-specific provider implementations
 #[derive(Clone)]
 enum NamespaceProviderImpl {
+    #[allow(dead_code)]
     Linux(LinuxNamespaceManager),
     MacOS(MacOSNamespaceManager),
     Simulation(SimulationNamespaceManager),

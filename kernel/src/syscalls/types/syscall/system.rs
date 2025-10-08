@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case", tag = "syscall")]
 #[non_exhaustive]
+#[allow(dead_code)]
 pub enum SystemSyscall {
     /// Get system information
     GetSystemInfo,

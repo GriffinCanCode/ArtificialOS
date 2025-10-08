@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 
 /// Free block for address recycling
 #[derive(Debug, Clone)]
-pub(super) struct FreeBlock {
+pub(in crate::memory) struct FreeBlock {
     pub address: Address,
     pub size: Size,
 }
@@ -23,7 +23,7 @@ pub(super) const MEDIUM_BLOCK_MAX: Size = 64 * 1024; // 64KB
 /// - Medium blocks (4KB-64KB): O(1) best-fit within size class
 /// - Large blocks (>64KB): O(log n) using BTreeMap
 #[derive(Debug)]
-pub(super) struct SegregatedFreeList {
+pub(in crate::memory) struct SegregatedFreeList {
     /// Small allocations: <4KB - most common case
     /// Bucketed by powers of 2 for cache-friendly access
     small_blocks: Vec<Vec<FreeBlock>>, // 12 buckets: 64, 128, 256, ..., 2048, 4096 bytes
@@ -40,7 +40,7 @@ pub(super) struct SegregatedFreeList {
 impl SegregatedFreeList {
     pub fn new() -> Self {
         Self {
-            small_blocks: vec![Vec::new(); 12], // 12 power-of-2 buckets
+            small_blocks: vec![Vec::new(); 12],  // 12 power-of-2 buckets
             medium_blocks: vec![Vec::new(); 15], // 15 4KB-increment buckets
             large_blocks: BTreeMap::new(),
         }
@@ -99,8 +99,8 @@ impl SegregatedFreeList {
 
         // Try medium buckets (O(1))
         if size <= MEDIUM_BLOCK_MAX {
-            let start_bucket = Self::medium_bucket_index(size.max(SMALL_BLOCK_MAX + 1))
-                .unwrap_or(0);
+            let start_bucket =
+                Self::medium_bucket_index(size.max(SMALL_BLOCK_MAX + 1)).unwrap_or(0);
             for bucket_idx in start_bucket..self.medium_blocks.len() {
                 if let Some(block) = self.medium_blocks[bucket_idx].pop() {
                     return Some(block);
@@ -111,11 +111,7 @@ impl SegregatedFreeList {
 
         // Try large blocks (O(log n) via BTreeMap)
         // Get all size buckets >= requested size
-        let large_sizes: Vec<Size> = self
-            .large_blocks
-            .range(size..)
-            .map(|(s, _)| *s)
-            .collect();
+        let large_sizes: Vec<Size> = self.large_blocks.range(size..).map(|(s, _)| *s).collect();
 
         for block_size in large_sizes {
             if let Some(blocks) = self.large_blocks.get_mut(&block_size) {

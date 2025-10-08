@@ -14,6 +14,7 @@ use std::time::{Duration, Instant};
 /// Metric types
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[allow(dead_code)]
 pub enum MetricType {
     Counter,
     Gauge,
@@ -23,6 +24,7 @@ pub enum MetricType {
 
 /// Individual metric value
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct MetricValue {
     pub name: String,
     pub value: f64,
@@ -40,6 +42,7 @@ struct Histogram {
 }
 
 impl Histogram {
+    #[allow(dead_code)]
     fn new(buckets: Vec<f64>) -> Self {
         let counts = vec![0; buckets.len()];
         Self {
@@ -92,9 +95,21 @@ impl MetricsCollector {
     pub fn new() -> Self {
         Self {
             // Use 32 shards for metrics - moderate write contention, high read contention
-            counters: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 32)),
-            gauges: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 32)),
-            histograms: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), 32)),
+            counters: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
+                0,
+                RandomState::new(),
+                32,
+            )),
+            gauges: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
+                0,
+                RandomState::new(),
+                32,
+            )),
+            histograms: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
+                0,
+                RandomState::new(),
+                32,
+            )),
             start_time: Instant::now(),
         }
     }
@@ -209,6 +224,7 @@ pub struct MetricsSnapshot {
 }
 
 /// Timer for measuring operation duration
+#[allow(dead_code)]
 pub struct Timer {
     start: Instant,
     name: String,
@@ -216,6 +232,7 @@ pub struct Timer {
 }
 
 impl Timer {
+    #[allow(dead_code)]
     pub fn new(name: String, collector: Arc<MetricsCollector>) -> Self {
         Self {
             start: Instant::now(),
@@ -224,6 +241,7 @@ impl Timer {
         }
     }
 
+    #[allow(dead_code)]
     pub fn stop(self) -> Duration {
         let duration = self.start.elapsed();
         self.collector.record_duration(&self.name, duration);

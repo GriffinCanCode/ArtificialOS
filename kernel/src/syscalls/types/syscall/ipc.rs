@@ -10,11 +10,11 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case", tag = "syscall")]
 #[non_exhaustive]
+#[allow(dead_code)]
 pub enum IpcSyscall {
     // ========================================================================
     // Pipes
     // ========================================================================
-
     /// Create pipe for IPC
     CreatePipe {
         /// Reader process ID
@@ -62,7 +62,6 @@ pub enum IpcSyscall {
     // ========================================================================
     // Shared Memory
     // ========================================================================
-
     /// Create shared memory segment
     CreateShm {
         /// Size in bytes
@@ -121,7 +120,6 @@ pub enum IpcSyscall {
     // ========================================================================
     // Memory-Mapped Files
     // ========================================================================
-
     /// Memory-map a file
     Mmap {
         /// File path to map
@@ -181,7 +179,6 @@ pub enum IpcSyscall {
     // ========================================================================
     // Message Queues
     // ========================================================================
-
     /// Create message queue
     CreateQueue {
         /// Queue type: "fifo", "priority", or "pubsub"

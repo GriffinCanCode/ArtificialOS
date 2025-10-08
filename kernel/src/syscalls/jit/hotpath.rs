@@ -6,15 +6,16 @@
 use super::types::SyscallPattern;
 use crate::core::types::Pid;
 use crate::syscalls::types::Syscall;
-use dashmap::DashMap;
 use ahash::RandomState;
-use std::sync::Arc;
+use dashmap::DashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 
 /// Threshold for considering a syscall pattern as "hot"
 const HOT_THRESHOLD: u64 = 100;
 
 /// Detection window for hot path analysis
+#[allow(dead_code)]
 const DETECTION_WINDOW: u64 = 1000;
 
 /// Hot path detector
@@ -96,7 +97,8 @@ impl HotpathDetector {
 
         // Sort by frequency (most frequent first)
         hot_patterns.sort_by_key(|pattern| {
-            let count = self.global_counts
+            let count = self
+                .global_counts
                 .get(pattern)
                 .map(|c| c.load(Ordering::Relaxed))
                 .unwrap_or(0);
@@ -178,7 +180,9 @@ mod tests {
         assert_eq!(hot_patterns.len(), 2);
 
         // Should be sorted by frequency
-        assert_eq!(hot_patterns[0], SyscallPattern::Simple(super::super::types::SimpleSyscallType::GetProcessList));
+        assert_eq!(
+            hot_patterns[0],
+            SyscallPattern::Simple(super::super::types::SimpleSyscallType::GetProcessList)
+        );
     }
 }
-
