@@ -121,9 +121,8 @@ impl ShmManager {
         );
         self.segments.insert(segment_id, segment);
 
-        // Update process segment count using alter() for atomic operation
-        self.process_segments
-            .alter(&owner_pid, |_, count| count + 1);
+        // Update process segment count using entry() for atomic operation
+        *self.process_segments.entry(owner_pid).or_insert(0) += 1;
 
         // Update global memory
         GLOBAL_SHM_MEMORY.fetch_add(size, Ordering::Release);
@@ -280,21 +279,11 @@ impl ShmManager {
             info!("Added segment ID {} to free list for recycling", segment_id);
         }
 
-        // Update process segment count using alter() for atomic operation
-        self.process_segments.alter(&owner_pid, |_, count| {
-            let new_count = count.saturating_sub(1);
-            if new_count == 0 {
-                // Return 0 to signal removal, which we'll handle by checking after
-                0
-            } else {
-                new_count
-            }
-        });
-
-        // Remove entry if count is 0
-        if let Some(entry) = self.process_segments.get(&owner_pid) {
-            if *entry.value() == 0 {
-                drop(entry);
+        // Update process segment count using get_mut() for atomic operation
+        if let Some(mut count) = self.process_segments.get_mut(&owner_pid) {
+            *count = count.saturating_sub(1);
+            if *count == 0 {
+                drop(count);
                 self.process_segments.remove(&owner_pid);
             }
         }

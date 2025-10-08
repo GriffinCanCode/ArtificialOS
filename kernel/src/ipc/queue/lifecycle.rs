@@ -11,6 +11,7 @@ use super::pubsub::PubSubQueue;
 use super::types::{QueueStats, MAX_QUEUES_PER_PROCESS};
 use crate::core::types::{Pid, Size};
 use log::{info, warn};
+use std::collections::HashSet;
 use std::sync::atomic::Ordering;
 
 impl QueueManager {
@@ -80,10 +81,10 @@ impl QueueManager {
     /// Register queue in manager
     fn register_queue(&self, queue_id: QueueId, queue: Queue, owner_pid: Pid) {
         self.queues.insert(queue_id, queue);
-        self.process_queues.alter(&owner_pid, |_, mut queues| {
-            queues.insert(queue_id);
-            queues
-        });
+        self.process_queues
+            .entry(owner_pid)
+            .or_insert_with(HashSet::new)
+            .insert(queue_id);
     }
 
     /// Close queue
@@ -175,10 +176,9 @@ impl QueueManager {
         );
 
         // Remove from process queues
-        self.process_queues.alter(&pid, |_, mut qs| {
-            qs.remove(&queue_id);
-            qs
-        });
+        if let Some(mut queues) = self.process_queues.get_mut(&pid) {
+            queues.remove(&queue_id);
+        }
 
         // Clean up PubSub receivers
         self.pubsub_receivers.retain(|(qid, _), _| *qid != queue_id);

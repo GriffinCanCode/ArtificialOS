@@ -296,14 +296,15 @@ impl ResourceLimitProvider for SandboxManager {
     }
 
     fn record_spawn(&self, pid: Pid) {
-        // Use alter() for atomic increment
-        self.spawned_counts.alter(&pid, |_, count| count + 1);
+        // Use entry() for atomic increment
+        *self.spawned_counts.entry(pid).or_insert(0) += 1;
     }
 
     fn record_termination(&self, pid: Pid) {
-        // Use alter() for atomic decrement
-        self.spawned_counts
-            .alter(&pid, |_, count| count.saturating_sub(1));
+        // Use get_mut() for atomic decrement
+        if let Some(mut count) = self.spawned_counts.get_mut(&pid) {
+            *count = count.saturating_sub(1);
+        }
     }
 
     fn get_spawn_count(&self, pid: Pid) -> u32 {

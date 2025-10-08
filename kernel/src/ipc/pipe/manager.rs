@@ -118,9 +118,9 @@ impl PipeManager {
         );
         self.pipes.insert(pipe_id, pipe);
 
-        // Update process pipe counts using alter() for atomic increment
-        self.process_pipes.alter(&reader_pid, |_, count| count + 1);
-        self.process_pipes.alter(&writer_pid, |_, count| count + 1);
+        // Update process pipe counts using entry() for atomic increment
+        *self.process_pipes.entry(reader_pid).or_insert(0) += 1;
+        *self.process_pipes.entry(writer_pid).or_insert(0) += 1;
 
         let (_, used, _) = self.memory_manager.info();
         info!(
@@ -220,34 +220,17 @@ impl PipeManager {
             pipe_id
         );
 
-        // Update process pipe counts using alter() for atomic decrement
-        self.process_pipes.alter(&reader_pid, |_, count| {
-            let new_count = count.saturating_sub(1);
-            if new_count == 0 {
-                // Signal for removal by returning 0
-                0
-            } else {
-                new_count
-            }
-        });
-        self.process_pipes.alter(&writer_pid, |_, count| {
-            let new_count = count.saturating_sub(1);
-            if new_count == 0 {
-                0
-            } else {
-                new_count
-            }
-        });
-
-        // Remove zero-count entries
-        if let Some(entry) = self.process_pipes.get(&reader_pid) {
-            if *entry.value() == 0 {
+        // Update process pipe counts using entry() for atomic decrement
+        if let Some(mut entry) = self.process_pipes.get_mut(&reader_pid) {
+            *entry = entry.saturating_sub(1);
+            if *entry == 0 {
                 drop(entry);
                 self.process_pipes.remove(&reader_pid);
             }
         }
-        if let Some(entry) = self.process_pipes.get(&writer_pid) {
-            if *entry.value() == 0 {
+        if let Some(mut entry) = self.process_pipes.get_mut(&writer_pid) {
+            *entry = entry.saturating_sub(1);
+            if *entry == 0 {
                 drop(entry);
                 self.process_pipes.remove(&writer_pid);
             }

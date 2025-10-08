@@ -88,13 +88,13 @@ impl SocketManager {
     fn track_socket(&self, pid: Pid, sockfd: u32, socket_type: SocketType) {
         self.socket_types.insert(sockfd, socket_type);
 
-        self.process_sockets.alter(&pid, |_, mut sockets| {
-            sockets.insert(sockfd);
-            sockets
-        });
+        self.process_sockets
+            .entry(pid)
+            .or_insert_with(HashSet::new)
+            .insert(sockfd);
 
-        // Atomic increment using alter() for lock-free counting
-        self.process_socket_counts.alter(&pid, |_, count| count + 1);
+        // Atomic increment using entry() for lock-free counting
+        *self.process_socket_counts.entry(pid).or_insert(0) += 1;
     }
 
     /// Untrack a socket from a process (atomic decrement, O(1) removal)
@@ -105,9 +105,10 @@ impl SocketManager {
             sockets.remove(&sockfd);
         }
 
-        // Atomic decrement using alter() for lock-free counting
-        self.process_socket_counts
-            .alter(&pid, |_, count| count.saturating_sub(1));
+        // Atomic decrement using get_mut() for lock-free counting
+        if let Some(mut count) = self.process_socket_counts.get_mut(&pid) {
+            *count = count.saturating_sub(1);
+        }
     }
 
     /// Cleanup all sockets for a terminated process

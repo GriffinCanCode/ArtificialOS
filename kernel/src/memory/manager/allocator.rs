@@ -84,15 +84,17 @@ impl MemoryManager {
 
         self.blocks.insert(address, block);
 
-        // Update per-process tracking using alter() for atomic operation
-        self.process_tracking.alter(&pid, |_, mut track| {
+        // Update per-process tracking using entry() for atomic operation
+        {
+            let mut track = self.process_tracking.entry(pid).or_insert_with(|| {
+                crate::memory::manager::tracking::ProcessMemoryTracking::new()
+            });
             track.current_bytes += size;
             track.allocation_count += 1;
             if track.current_bytes > track.peak_bytes {
                 track.peak_bytes = track.current_bytes;
             }
-            track
-        });
+        }
 
         // Log allocation with memory pressure warnings
         let used_val = used as usize + size;
