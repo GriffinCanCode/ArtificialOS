@@ -1,11 +1,21 @@
 /*!
  * Async Task Manager
  * Handles async syscall execution with progress tracking
+ *
+ * # Graceful-with-Fallback Cleanup Task Management
+ *
+ * The background cleanup task uses the same pattern as SchedulerTask:
+ * - Preferred: Call `shutdown().await` on the last clone for graceful cleanup
+ * - Fallback: Drop will abort the cleanup task if not shut down gracefully
+ * - The cleanup task runs every 5 minutes to remove expired completed tasks
  */
 
 use crate::core::types::Pid;
 use crate::syscalls::{Syscall, SyscallExecutor, SyscallResult};
 use dashmap::DashMap;
+use log::warn;
+use parking_lot::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::oneshot;
@@ -35,6 +45,13 @@ struct Task {
     completed_at: Option<Instant>,
 }
 
+/// Background cleanup task handle
+struct CleanupTaskHandle {
+    handle: Option<tokio::task::JoinHandle<()>>,
+    shutdown_tx: Option<oneshot::Sender<()>>,
+    shutdown_initiated: Arc<AtomicBool>,
+}
+
 #[derive(Clone)]
 pub struct AsyncTaskManager {
     tasks: Arc<DashMap<String, Task>>,
@@ -43,6 +60,8 @@ pub struct AsyncTaskManager {
     executor: SyscallExecutor,
     /// TTL for completed tasks before automatic cleanup
     task_ttl: Duration,
+    /// Handle to background cleanup task (shared across clones)
+    cleanup_task: Arc<Mutex<CleanupTaskHandle>>,
 }
 
 impl AsyncTaskManager {
@@ -51,66 +70,102 @@ impl AsyncTaskManager {
     }
 
     pub fn with_ttl(executor: SyscallExecutor, task_ttl: Duration) -> Self {
-        let manager = Self {
-            tasks: Arc::new(DashMap::new()),
-            process_tasks: Arc::new(DashMap::new()),
-            executor,
-            task_ttl,
-        };
+        let (shutdown_tx, shutdown_rx) = oneshot::channel();
+        let shutdown_initiated = Arc::new(AtomicBool::new(false));
+
+        let tasks = Arc::new(DashMap::new());
+        let process_tasks = Arc::new(DashMap::new());
 
         // Start background cleanup task
-        manager.start_cleanup_task();
+        let handle = Self::spawn_cleanup_task(
+            Arc::clone(&tasks),
+            Arc::clone(&process_tasks),
+            task_ttl,
+            shutdown_rx,
+        );
 
-        manager
+        let cleanup_task = Arc::new(Mutex::new(CleanupTaskHandle {
+            handle: Some(handle),
+            shutdown_tx: Some(shutdown_tx),
+            shutdown_initiated,
+        }));
+
+        Self {
+            tasks,
+            process_tasks,
+            executor,
+            task_ttl,
+            cleanup_task,
+        }
     }
 
-    /// Start background task for automatic cleanup of expired tasks
-    fn start_cleanup_task(&self) {
-        let tasks = Arc::clone(&self.tasks);
-        let process_tasks = Arc::clone(&self.process_tasks);
-        let ttl = self.task_ttl;
-
+    /// Spawn background cleanup task with graceful shutdown support
+    fn spawn_cleanup_task(
+        tasks: Arc<DashMap<String, Task>>,
+        process_tasks: Arc<DashMap<Pid, Vec<String>>>,
+        ttl: Duration,
+        mut shutdown_rx: oneshot::Receiver<()>,
+    ) -> tokio::task::JoinHandle<()> {
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(CLEANUP_INTERVAL);
+            interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
+            log::info!(
+                "AsyncTaskManager cleanup task started (interval: {:?}, TTL: {:?})",
+                CLEANUP_INTERVAL,
+                ttl
+            );
+
             loop {
-                interval.tick().await;
+                tokio::select! {
+                    // Shutdown signal received
+                    _ = &mut shutdown_rx => {
+                        log::info!("AsyncTaskManager cleanup task shutting down gracefully");
+                        break;
+                    }
 
-                let now = Instant::now();
-                let mut cleaned_count = 0;
-                let mut task_ids_to_remove = Vec::new();
+                    // Periodic cleanup tick
+                    _ = interval.tick() => {
+                        let now = Instant::now();
+                        let mut cleaned_count = 0;
+                        let mut task_ids_to_remove = Vec::new();
 
-                // First pass: identify expired tasks
-                for entry in tasks.iter() {
-                    let task_id = entry.key();
-                    let task = entry.value();
+                        // First pass: identify expired tasks
+                        for entry in tasks.iter() {
+                            let task_id = entry.key();
+                            let task = entry.value();
 
-                    if let Some(completed_at) = task.completed_at {
-                        if now.duration_since(completed_at) > ttl {
-                            task_ids_to_remove.push((task_id.clone(), task.pid));
+                            if let Some(completed_at) = task.completed_at {
+                                if now.duration_since(completed_at) > ttl {
+                                    task_ids_to_remove.push((task_id.clone(), task.pid));
+                                }
+                            }
+                        }
+
+                        // Second pass: remove expired tasks
+                        for (task_id, pid) in task_ids_to_remove {
+                            tasks.remove(&task_id);
+                            cleaned_count += 1;
+
+                            // Also remove from process_tasks
+                            if let Some(mut task_list) = process_tasks.get_mut(&pid) {
+                                task_list.retain(|id| id != &task_id);
+                            }
+                        }
+
+                        if cleaned_count > 0 {
+                            log::info!(
+                                "Background cleanup: removed {} expired async tasks (TTL: {:?})",
+                                cleaned_count,
+                                ttl
+                            );
                         }
                     }
                 }
-
-                // Second pass: remove expired tasks
-                for (task_id, pid) in task_ids_to_remove {
-                    tasks.remove(&task_id);
-                    cleaned_count += 1;
-
-                    // Also remove from process_tasks
-                    if let Some(mut task_list) = process_tasks.get_mut(&pid) {
-                        task_list.retain(|id| id != &task_id);
-                    }
-                }
-
-                if cleaned_count > 0 {
-                    log::info!(
-                        "Background cleanup: removed {} expired async tasks (TTL: {:?})",
-                        cleaned_count,
-                        ttl
-                    );
-                }
             }
-        });
+
+            log::info!("AsyncTaskManager cleanup task stopped");
+        })
     }
 
     pub fn submit(&self, pid: Pid, syscall: Syscall) -> String {
@@ -343,6 +398,72 @@ impl AsyncTaskManager {
 
         stats.total = self.tasks.len();
         stats
+    }
+
+    /// Shutdown the background cleanup task gracefully
+    ///
+    /// **Preferred shutdown method** - Call this before dropping the manager
+    /// to ensure the cleanup task terminates cleanly. This is especially
+    /// important in tests and during graceful kernel shutdown.
+    ///
+    /// Note: Because AsyncTaskManager is Clone, all clones share the same
+    /// cleanup task. Calling shutdown on any clone will stop the task for all.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use ai_os_kernel::api::execution::async_task::AsyncTaskManager;
+    /// # use ai_os_kernel::syscalls::SyscallExecutor;
+    /// # async fn example(executor: SyscallExecutor) {
+    /// let manager = AsyncTaskManager::new(executor);
+    /// // ... use manager ...
+    /// manager.shutdown().await;
+    /// # }
+    /// ```
+    pub async fn shutdown(&self) {
+        let mut cleanup_handle = self.cleanup_task.lock();
+
+        // Check if already shut down
+        if cleanup_handle.shutdown_initiated.load(Ordering::SeqCst) {
+            log::debug!("AsyncTaskManager cleanup task already shut down");
+            return;
+        }
+
+        // Mark as initiated
+        cleanup_handle.shutdown_initiated.store(true, Ordering::SeqCst);
+
+        // Send shutdown signal
+        if let Some(tx) = cleanup_handle.shutdown_tx.take() {
+            let _ = tx.send(());
+        }
+
+        // Wait for cleanup task to complete
+        if let Some(handle) = cleanup_handle.handle.take() {
+            match handle.await {
+                Ok(_) => log::info!("AsyncTaskManager cleanup task shutdown complete"),
+                Err(e) => warn!("AsyncTaskManager cleanup task shutdown error: {}", e),
+            }
+        }
+    }
+}
+
+impl Drop for CleanupTaskHandle {
+    fn drop(&mut self) {
+        // Check if graceful shutdown was initiated
+        if self.shutdown_initiated.load(Ordering::SeqCst) {
+            // Graceful shutdown path was used - nothing to do
+            return;
+        }
+
+        // Fallback path: graceful shutdown wasn't called
+        if let Some(handle) = self.handle.take() {
+            warn!(
+                "AsyncTaskManager cleanup task dropped without calling shutdown() - aborting task. \
+                 Use `manager.shutdown().await` for graceful cleanup."
+            );
+
+            // Abort the cleanup task immediately (non-blocking but forceful)
+            handle.abort();
+        }
     }
 }
 

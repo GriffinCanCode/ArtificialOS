@@ -304,3 +304,79 @@ async fn test_async_task_cancelled_task_expires() {
     assert_eq!(cleaned, 1, "Should clean 1 expired cancelled task");
     assert!(manager.get_status(&task_id).is_none());
 }
+
+#[tokio::test]
+async fn test_async_task_graceful_shutdown() {
+    let (executor, _, pid) = setup_executor();
+    let manager = AsyncTaskManager::new(executor);
+
+    // Submit some tasks
+    let _task1 = manager.submit(pid, Syscall::GetCurrentTime);
+    let _task2 = manager.submit(pid, Syscall::GetSystemInfo);
+
+    // Wait for completion
+    sleep(Duration::from_millis(100)).await;
+
+    // Graceful shutdown - should NOT trigger abort warning
+    manager.shutdown().await;
+
+    // Manager can still be used after shutdown (cleanup task stopped)
+    let stats = manager.task_stats();
+    assert_eq!(stats.completed, 2);
+}
+
+#[tokio::test]
+async fn test_async_task_shutdown_idempotent() {
+    let (executor, _, _) = setup_executor();
+    let manager = AsyncTaskManager::new(executor);
+
+    // First shutdown
+    manager.shutdown().await;
+
+    // Second shutdown should be a no-op (already shut down)
+    manager.shutdown().await;
+
+    // No panics or errors expected
+}
+
+#[tokio::test]
+async fn test_async_task_shutdown_with_clones() {
+    let (executor, _, pid) = setup_executor();
+    let manager = AsyncTaskManager::new(executor);
+    let manager_clone = manager.clone();
+
+    // Submit tasks through both manager and clone
+    let _task1 = manager.submit(pid, Syscall::GetCurrentTime);
+    let _task2 = manager_clone.submit(pid, Syscall::GetSystemInfo);
+
+    sleep(Duration::from_millis(100)).await;
+
+    // Shutdown on any clone stops the shared cleanup task
+    manager.shutdown().await;
+
+    // Both manager and clone should still work for data access
+    assert_eq!(manager.task_count(), 2);
+    assert_eq!(manager_clone.task_count(), 2);
+
+    // Second shutdown via clone should be no-op
+    manager_clone.shutdown().await;
+}
+
+#[tokio::test]
+async fn test_async_task_drop_without_shutdown_aborts() {
+    let (executor, _, pid) = setup_executor();
+
+    // Create manager in inner scope
+    {
+        let manager = AsyncTaskManager::new(executor.clone());
+        let _task = manager.submit(pid, Syscall::GetCurrentTime);
+        sleep(Duration::from_millis(50)).await;
+
+        // Drop without calling shutdown - should trigger abort warning in logs
+    } // Manager dropped here
+
+    // Give abort time to propagate
+    sleep(Duration::from_millis(50)).await;
+
+    // Test passes if no panic occurred (abort is graceful fallback)
+}
