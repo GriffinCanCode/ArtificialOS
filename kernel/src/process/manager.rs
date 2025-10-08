@@ -343,7 +343,7 @@ impl Clone for ProcessManager {
             scheduler_task: self.scheduler_task.clone(),
             preemption: self.preemption.clone(),
             fd_manager: self.fd_manager.clone(),
-            resource_orchestrator: ResourceOrchestrator::new(), // Create new empty orchestrator for clone
+            resource_orchestrator: self.resource_orchestrator.clone(), // Share orchestrator (Arc-wrapped)
             child_counts: Arc::clone(&self.child_counts),
             lifecycle: self.lifecycle.clone(),
             collector: self.collector.clone(),

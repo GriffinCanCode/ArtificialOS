@@ -79,22 +79,40 @@ pub trait ResourceCleanup: Send + Sync {
 ///
 /// Coordinates cleanup across all resource types in a well-defined order
 /// to prevent deadlocks and ensure proper resource release.
+///
+/// Uses Arc internally for safe sharing across ProcessManager clones.
+/// The orchestrator is immutable after construction, making Arc ideal.
 pub struct ResourceOrchestrator {
-    resources: Vec<Box<dyn ResourceCleanup>>,
+    resources: std::sync::Arc<Vec<Box<dyn ResourceCleanup>>>,
 }
 
 impl ResourceOrchestrator {
-    /// Create a new orchestrator with no resources bitch
+    /// Create a new orchestrator with no resources
     pub fn new() -> Self {
         Self {
-            resources: Vec::new(),
+            resources: std::sync::Arc::new(Vec::new()),
         }
     }
 
-    /// Register a resource for cleanup
-    pub fn register<R: ResourceCleanup + 'static>(mut self, resource: R) -> Self {
-        self.resources.push(Box::new(resource));
-        self
+    /// Register a resource for cleanup (builder pattern)
+    ///
+    /// Note: This consumes self and returns a new ResourceOrchestrator with
+    /// the registered resource. All registration must happen during initialization
+    /// before the orchestrator is shared/cloned.
+    pub fn register<R: ResourceCleanup + 'static>(self, resource: R) -> Self {
+        // During building phase, we should be the only owner of the Arc
+        // This is safe because registration happens during initialization
+        // before ProcessManager is created/cloned
+        let mut resources_vec = std::sync::Arc::try_unwrap(self.resources)
+            .unwrap_or_else(|_| {
+                panic!("ResourceOrchestrator::register called after being shared - registration must complete during initialization")
+            });
+
+        resources_vec.push(Box::new(resource));
+
+        Self {
+            resources: std::sync::Arc::new(resources_vec),
+        }
     }
 
     /// Execute cleanup for a terminated process
@@ -186,6 +204,14 @@ impl Default for ResourceOrchestrator {
     }
 }
 
+impl Clone for ResourceOrchestrator {
+    fn clone(&self) -> Self {
+        Self {
+            resources: std::sync::Arc::clone(&self.resources),
+        }
+    }
+}
+
 /// Result of a cleanup operation
 pub struct CleanupResult {
     pub pid: Pid,
@@ -273,5 +299,46 @@ mod tests {
         assert_eq!(result.stats.resources_freed, 2);
         assert_eq!(r1_count.load(std::sync::atomic::Ordering::SeqCst), 1);
         assert_eq!(r2_count.load(std::sync::atomic::Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn test_orchestrator_clone_preserves_resources() {
+        use std::sync::atomic::AtomicUsize;
+        use std::sync::Arc;
+
+        let r1_count = Arc::new(AtomicUsize::new(0));
+        let r2_count = Arc::new(AtomicUsize::new(0));
+
+        // Build orchestrator with resources
+        let orchestrator = ResourceOrchestrator::new()
+            .register(TestResource {
+                name: "resource1",
+                cleanup_count: r1_count.clone(),
+            })
+            .register(TestResource {
+                name: "resource2",
+                cleanup_count: r2_count.clone(),
+            });
+
+        // Clone should preserve registered resources
+        let cloned = orchestrator.clone();
+
+        // Original should still work
+        let result1 = orchestrator.cleanup_process(1);
+        assert!(result1.is_success());
+        assert_eq!(result1.stats.resources_freed, 2);
+        assert_eq!(r1_count.load(std::sync::atomic::Ordering::SeqCst), 1);
+        assert_eq!(r2_count.load(std::sync::atomic::Ordering::SeqCst), 1);
+
+        // Clone should have same cleanup capabilities
+        let result2 = cloned.cleanup_process(2);
+        assert!(result2.is_success());
+        assert_eq!(result2.stats.resources_freed, 2);
+        assert_eq!(r1_count.load(std::sync::atomic::Ordering::SeqCst), 2);
+        assert_eq!(r2_count.load(std::sync::atomic::Ordering::SeqCst), 2);
+
+        // Both should have same resource count
+        assert_eq!(orchestrator.resource_count(), 2);
+        assert_eq!(cloned.resource_count(), 2);
     }
 }
