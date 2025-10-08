@@ -20,6 +20,7 @@ mod scheduler;
 mod signals;
 mod system;
 mod time;
+mod timeout_config; // Timeout configuration for blocking syscalls
 pub mod traits;
 pub mod types;
 mod types_ext; // Syscall type extensions for tracing
@@ -35,6 +36,7 @@ pub use iouring::{
 };
 pub use jit::{JitManager, JitStats, SyscallPattern};
 pub use network::{SocketManager, SocketStats};
+pub use timeout_config::SyscallTimeoutConfig;
 pub use traits::*;
 pub use types::{ProcessOutput, Syscall, SyscallError, SyscallResult, SystemInfo};
 

@@ -44,6 +44,7 @@ mod lock;
 mod memory;
 mod observe;
 mod syscall;
+mod timeout;
 mod traits;
 mod transaction;
 mod typed;
@@ -56,6 +57,7 @@ pub use lock::{LockGuard, LockState, Locked, Unlocked};
 pub use memory::{MemoryGuard, MemoryGuardRef};
 pub use observe::ObservableGuard;
 pub use syscall::SyscallGuard;
+pub use timeout::{TimeoutAcquire, TimeoutConfig, TimeoutContext, TimeoutPolicy, TimeoutPolicyExt, TimeoutWait};
 pub use traits::{Guard, GuardDrop, GuardRef, Observable, Recoverable};
 pub use transaction::{Operation, TransactionGuard, TransactionState};
 pub use typed::{TypedGuard, TypedState};
@@ -80,6 +82,14 @@ pub enum GuardError {
 
     #[error("Operation failed: {0}")]
     OperationFailed(String),
+
+    #[error("Operation timed out: {resource_type} ({category}) after {elapsed_ms}ms (timeout: {}ms)", timeout_ms.map(|t| t.to_string()).unwrap_or_else(|| "none".to_string()))]
+    Timeout {
+        resource_type: &'static str,
+        category: &'static str,
+        elapsed_ms: u64,
+        timeout_ms: Option<u64>,
+    },
 }
 
 /// Guard metadata for observability

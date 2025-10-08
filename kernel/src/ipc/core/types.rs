@@ -66,6 +66,17 @@ pub enum IpcError {
         help("The IPC resource has been closed and can no longer be used.")
     )]
     Closed(String),
+
+    /// Operation timed out
+    #[error("IPC operation timed out after {elapsed_ms}ms (timeout: {}ms)", timeout_ms.map(|t| t.to_string()).unwrap_or_else(|| "none".to_string()))]
+    #[diagnostic(
+        code(ipc::timeout),
+        help("The IPC operation did not complete within the specified timeout. Try increasing the timeout or check for deadlocks.")
+    )]
+    Timeout {
+        elapsed_ms: u64,
+        timeout_ms: Option<u64>,
+    },
 }
 
 /// IPC channel identifier

@@ -5,9 +5,10 @@
  */
 
 use super::traits::{Guard, Recoverable};
-use super::{GuardError, GuardMetadata, GuardResult};
+use super::{GuardError, GuardMetadata, GuardResult, TimeoutPolicy};
 use std::marker::PhantomData;
 use std::sync::{Arc, Mutex, MutexGuard as StdMutexGuard};
+use std::time::Instant;
 
 /// Lock state marker traits
 pub trait LockState: Send + Sync {}
@@ -104,6 +105,69 @@ impl<T: Send + 'static> LockGuard<T, Unlocked> {
                 })
             }
             Err(_) => Err(self),
+        }
+    }
+
+    /// Acquire the lock with timeout
+    ///
+    /// # Type Safety
+    ///
+    /// Returns `LockGuard<T, Locked>` on success
+    ///
+    /// # Errors
+    ///
+    /// Returns `GuardError::Timeout` if timeout expires before acquiring lock
+    pub fn lock_timeout(self, timeout: TimeoutPolicy) -> GuardResult<LockGuard<T, Locked>> {
+        let start = Instant::now();
+
+        // Fast path: try immediate acquisition
+        match self.try_lock() {
+            Ok(locked) => return Ok(locked),
+            Err(unlocked) => {
+                // Check if we have no timeout
+                if timeout.duration().is_none() {
+                    return unlocked.lock();
+                }
+
+                // Spin-wait with backoff
+                return Self::lock_with_timeout_spin(unlocked, timeout, start);
+            }
+        }
+    }
+
+    /// Internal: lock with timeout using spin-wait strategy
+    fn lock_with_timeout_spin(
+        mut unlocked: LockGuard<T, Unlocked>,
+        timeout: TimeoutPolicy,
+        start: Instant,
+    ) -> GuardResult<LockGuard<T, Locked>> {
+        let mut backoff = 1;
+        const MAX_BACKOFF: u64 = 1000; // Max 1ms backoff
+
+        loop {
+            // Check timeout
+            if timeout.is_expired(start) {
+                return Err(GuardError::Timeout {
+                    resource_type: "lock",
+                    category: timeout.category(),
+                    elapsed_ms: start.elapsed().as_millis() as u64,
+                    timeout_ms: timeout.duration().map(|d| d.as_millis() as u64),
+                });
+            }
+
+            // Try to acquire
+            match unlocked.try_lock() {
+                Ok(locked) => return Ok(locked),
+                Err(guard) => {
+                    unlocked = guard;
+
+                    // Exponential backoff with hint::spin_loop
+                    for _ in 0..backoff {
+                        std::hint::spin_loop();
+                    }
+                    backoff = (backoff * 2).min(MAX_BACKOFF);
+                }
+            }
         }
     }
 }
@@ -243,8 +307,11 @@ mod tests {
         let guard1 = LockGuard::new(100);
         let locked = guard1.lock().unwrap();
 
+        // Clone the Arc before we need it after drop
+        let data_arc = locked.data.clone();
+
         let guard2 = LockGuard {
-            data: locked.data.clone(),
+            data: data_arc.clone(),
             guard: None,
             metadata: GuardMetadata::new("lock"),
             poisoned: false,
@@ -259,7 +326,7 @@ mod tests {
 
         // Now should succeed
         let guard3 = LockGuard {
-            data: locked.data.clone(),
+            data: data_arc.clone(),
             guard: None,
             metadata: GuardMetadata::new("lock"),
             poisoned: false,
@@ -281,5 +348,60 @@ mod tests {
 
         guard.recover().unwrap();
         assert!(!guard.is_poisoned());
+    }
+
+    #[test]
+    fn test_lock_guard_timeout_success() {
+        use std::time::Duration;
+
+        let guard = LockGuard::new(42);
+        let timeout = TimeoutPolicy::Lock(Duration::from_secs(1));
+
+        let locked = guard.lock_timeout(timeout).unwrap();
+        assert_eq!(*locked.access(), 42);
+    }
+
+    #[test]
+    fn test_lock_guard_timeout_expires() {
+        use std::time::Duration;
+        use std::sync::Arc;
+        use std::thread;
+
+        let guard1 = LockGuard::new(100);
+        let data = guard1.data.clone();
+
+        // Hold lock in one thread
+        let locked = guard1.lock().unwrap();
+
+        // Try to acquire with short timeout in another context
+        thread::spawn(move || {
+            let guard2 = LockGuard {
+                data: data.clone(),
+                guard: None,
+                metadata: GuardMetadata::new("lock"),
+                poisoned: false,
+                poison_reason: None,
+                _state: PhantomData,
+            };
+
+            let timeout = TimeoutPolicy::Lock(Duration::from_millis(10));
+            let result = guard2.lock_timeout(timeout);
+
+            // Should timeout
+            assert!(result.is_err());
+            match result.err().unwrap() {
+                GuardError::Timeout { .. } => {},
+                _ => panic!("Expected timeout error"),
+            }
+        }).join().unwrap();
+
+        drop(locked);
+    }
+
+    #[test]
+    fn test_lock_guard_no_timeout() {
+        let guard = LockGuard::new(42);
+        let locked = guard.lock_timeout(TimeoutPolicy::None).unwrap();
+        assert_eq!(*locked.access(), 42);
     }
 }

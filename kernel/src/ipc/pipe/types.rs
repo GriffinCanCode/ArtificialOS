@@ -41,6 +41,15 @@ pub enum PipeError {
 
     #[error("Memory allocation failed: {0}")]
     AllocationFailed(String),
+
+    #[error("Operation timed out after {elapsed_ms}ms (timeout: {}ms)", timeout_ms.map(|t| t.to_string()).unwrap_or_else(|| "none".to_string()))]
+    Timeout {
+        elapsed_ms: u64,
+        timeout_ms: Option<u64>,
+    },
+
+    #[error("Invalid operation: {0}")]
+    InvalidOperation(String),
 }
 
 // Convert PipeError to IpcError
@@ -68,6 +77,14 @@ impl From<PipeError> for IpcError {
             PipeError::AllocationFailed(msg) => {
                 IpcError::InvalidOperation(format!("Memory allocation failed: {}", msg))
             }
+            PipeError::Timeout {
+                elapsed_ms,
+                timeout_ms,
+            } => IpcError::Timeout {
+                elapsed_ms,
+                timeout_ms,
+            },
+            PipeError::InvalidOperation(msg) => IpcError::InvalidOperation(msg),
         }
     }
 }

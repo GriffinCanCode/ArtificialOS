@@ -115,12 +115,64 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let queue_manager = match &self.queue_manager {
-            Some(qm) => qm,
-            None => return SyscallResult::error("Queue manager not available"),
-        };
+        // Use timeout operations if enabled
+        if self.timeout_config.enabled && self.timeout_queue_ops.is_some() {
+            let timeout_ops = self.timeout_queue_ops.as_ref().unwrap();
+            match timeout_ops.receive_timeout(queue_id, pid, self.timeout_config.queue_receive) {
+                Ok(msg) => {
+                    // Read message data
+                    let queue_manager = self.queue_manager.as_ref().unwrap();
+                    match queue_manager.read_message_data(&msg) {
+                        Ok(data) => {
+                            info!(
+                                "PID {} received {} bytes from queue {} (with timeout)",
+                                pid,
+                                data.len(),
+                                queue_id
+                            );
 
-        match queue_manager.receive(queue_id, pid) {
+                            #[derive(serde::Serialize)]
+                            struct MessageResponse {
+                                id: u64,
+                                from: u32,
+                                data: Vec<u8>,
+                                priority: u8,
+                            }
+
+                            let response = MessageResponse {
+                                id: msg.id,
+                                from: msg.from,
+                                data,
+                                priority: msg.priority,
+                            };
+
+                            match bincode::serialize_ipc_message(&response) {
+                                Ok(serialized) => SyscallResult::success_with_data(serialized),
+                                Err(e) => {
+                                    error!("Failed to serialize message: {}", e);
+                                    SyscallResult::error("Serialization failed")
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            error!("Failed to read message data: {}", e);
+                            SyscallResult::error(format!("Read failed: {}", e))
+                        }
+                    }
+                }
+                Err(e) => {
+                    error!("Queue receive failed: {}", e);
+                    SyscallResult::error(format!("Receive failed: {}", e))
+                }
+            }
+        } else {
+            // Fallback to non-blocking operation
+            let queue_manager = match &self.queue_manager {
+                Some(qm) => qm,
+                None => return SyscallResult::error("Queue manager not available"),
+            };
+
+            match queue_manager.receive(queue_id, pid) {
             Ok(Some(msg)) => {
                 // Read message data from MemoryManager
                 match queue_manager.read_message_data(&msg) {
@@ -170,6 +222,7 @@ impl SyscallExecutor {
                 error!("Queue receive failed: {}", e);
                 SyscallResult::error(format!("Receive failed: {}", e))
             }
+        }
         }
     }
 

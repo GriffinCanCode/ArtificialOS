@@ -40,6 +40,7 @@ mod events;
 mod query;
 mod sampler;
 mod stream;
+mod timeout;
 
 // Distributed tracing modules
 mod metrics;
@@ -56,6 +57,9 @@ pub use anomaly::{Anomaly, Detector};
 
 // Sampling
 pub use sampler::{SampleDecision, Sampler};
+
+// Timeout observability
+pub use timeout::{TimeoutObserver, TimeoutStats};
 
 // Distributed Tracing API (complementary to Collector)
 pub use tracer::{

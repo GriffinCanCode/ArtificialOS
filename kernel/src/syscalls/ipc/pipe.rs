@@ -64,25 +64,47 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let pipe_manager = match &self.pipe_manager {
-            Some(pm) => pm,
-            None => return SyscallResult::error("Pipe manager not available"),
-        };
-
-        match pipe_manager.write(pipe_id, pid, data) {
-            Ok(written) => {
-                info!("PID {} wrote {} bytes to pipe {}", pid, written, pipe_id);
-                match json::to_vec(&written) {
-                    Ok(data) => SyscallResult::success_with_data(data),
-                    Err(e) => {
-                        error!("Failed to serialize write result: {}", e);
-                        SyscallResult::error("Serialization failed")
+        // Use timeout operations if enabled
+        if self.timeout_config.enabled && self.timeout_pipe_ops.is_some() {
+            let timeout_ops = self.timeout_pipe_ops.as_ref().unwrap();
+            match timeout_ops.write_timeout(pipe_id, pid, data, self.timeout_config.pipe_write) {
+                Ok(written) => {
+                    info!("PID {} wrote {} bytes to pipe {} (with timeout)", pid, written, pipe_id);
+                    match json::to_vec(&written) {
+                        Ok(data) => SyscallResult::success_with_data(data),
+                        Err(e) => {
+                            error!("Failed to serialize write result: {}", e);
+                            SyscallResult::error("Serialization failed")
+                        }
                     }
                 }
+                Err(e) => {
+                    error!("Pipe write failed: {}", e);
+                    SyscallResult::error(format!("Pipe write failed: {}", e))
+                }
             }
-            Err(e) => {
-                error!("Pipe write failed: {}", e);
-                SyscallResult::error(format!("Pipe write failed: {}", e))
+        } else {
+            // Fallback to non-blocking operation
+            let pipe_manager = match &self.pipe_manager {
+                Some(pm) => pm,
+                None => return SyscallResult::error("Pipe manager not available"),
+            };
+
+            match pipe_manager.write(pipe_id, pid, data) {
+                Ok(written) => {
+                    info!("PID {} wrote {} bytes to pipe {}", pid, written, pipe_id);
+                    match json::to_vec(&written) {
+                        Ok(data) => SyscallResult::success_with_data(data),
+                        Err(e) => {
+                            error!("Failed to serialize write result: {}", e);
+                            SyscallResult::error("Serialization failed")
+                        }
+                    }
+                }
+                Err(e) => {
+                    error!("Pipe write failed: {}", e);
+                    SyscallResult::error(format!("Pipe write failed: {}", e))
+                }
             }
         }
     }
@@ -101,24 +123,45 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let pipe_manager = match &self.pipe_manager {
-            Some(pm) => pm,
-            None => return SyscallResult::error("Pipe manager not available"),
-        };
-
-        match pipe_manager.read(pipe_id, pid, size) {
-            Ok(data) => {
-                info!(
-                    "PID {} read {} bytes from pipe {}",
-                    pid,
-                    data.len(),
-                    pipe_id
-                );
-                SyscallResult::success_with_data(data)
+        // Use timeout operations if enabled
+        if self.timeout_config.enabled && self.timeout_pipe_ops.is_some() {
+            let timeout_ops = self.timeout_pipe_ops.as_ref().unwrap();
+            match timeout_ops.read_timeout(pipe_id, pid, size, self.timeout_config.pipe_read) {
+                Ok(data) => {
+                    info!(
+                        "PID {} read {} bytes from pipe {} (with timeout)",
+                        pid,
+                        data.len(),
+                        pipe_id
+                    );
+                    SyscallResult::success_with_data(data)
+                }
+                Err(e) => {
+                    error!("Pipe read failed: {}", e);
+                    SyscallResult::error(format!("Pipe read failed: {}", e))
+                }
             }
-            Err(e) => {
-                error!("Pipe read failed: {}", e);
-                SyscallResult::error(format!("Pipe read failed: {}", e))
+        } else {
+            // Fallback to non-blocking operation
+            let pipe_manager = match &self.pipe_manager {
+                Some(pm) => pm,
+                None => return SyscallResult::error("Pipe manager not available"),
+            };
+
+            match pipe_manager.read(pipe_id, pid, size) {
+                Ok(data) => {
+                    info!(
+                        "PID {} read {} bytes from pipe {}",
+                        pid,
+                        data.len(),
+                        pipe_id
+                    );
+                    SyscallResult::success_with_data(data)
+                }
+                Err(e) => {
+                    error!("Pipe read failed: {}", e);
+                    SyscallResult::error(format!("Pipe read failed: {}", e))
+                }
             }
         }
     }

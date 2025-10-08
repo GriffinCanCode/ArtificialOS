@@ -5,8 +5,9 @@
  */
 
 use super::traits::{Guard, GuardDrop};
-use super::{GuardError, GuardMetadata, GuardResult};
+use super::{GuardError, GuardMetadata, GuardResult, TimeoutPolicy};
 use crate::core::types::Pid;
+use std::time::Instant;
 use tokio::task::JoinHandle;
 
 /// Async task guard with automatic cancellation
@@ -97,6 +98,36 @@ impl<T: Send + 'static> AsyncTaskGuard<T> {
     pub async fn await_result(mut self) -> GuardResult<T> {
         if let Some(handle) = self.handle.take() {
             handle.await.map_err(|e| GuardError::OperationFailed(format!("Task join error: {:?}", e)))
+        } else {
+            Err(GuardError::AlreadyReleased)
+        }
+    }
+
+    /// Await the task result with timeout
+    ///
+    /// # Errors
+    ///
+    /// Returns `GuardError::Timeout` if timeout expires before task completes
+    pub async fn await_timeout(mut self, timeout: TimeoutPolicy) -> GuardResult<T> {
+        if let Some(handle) = self.handle.take() {
+            match timeout.duration() {
+                None => {
+                    // No timeout, just await
+                    handle.await.map_err(|e| GuardError::OperationFailed(format!("Task join error: {:?}", e)))
+                }
+                Some(duration) => {
+                    let start = Instant::now();
+                    match tokio::time::timeout(duration, handle).await {
+                        Ok(result) => result.map_err(|e| GuardError::OperationFailed(format!("Task join error: {:?}", e))),
+                        Err(_) => Err(GuardError::Timeout {
+                            resource_type: "async_task",
+                            category: timeout.category(),
+                            elapsed_ms: start.elapsed().as_millis() as u64,
+                            timeout_ms: Some(duration.as_millis() as u64),
+                        }),
+                    }
+                }
+            }
         } else {
             Err(GuardError::AlreadyReleased)
         }
@@ -210,5 +241,38 @@ mod tests {
 
         sleep(Duration::from_millis(50)).await;
         assert!(completed.load(Ordering::SeqCst));
+    }
+
+    #[tokio::test]
+    async fn test_async_task_guard_timeout_success() {
+        use super::super::TimeoutPolicy;
+
+        let guard = AsyncTaskGuard::spawn(Some(1), async {
+            sleep(Duration::from_millis(10)).await;
+            42
+        });
+
+        let timeout = TimeoutPolicy::Task(Duration::from_secs(1));
+        let result = guard.await_timeout(timeout).await.unwrap();
+        assert_eq!(result, 42);
+    }
+
+    #[tokio::test]
+    async fn test_async_task_guard_timeout_expires() {
+        use super::super::{GuardError, TimeoutPolicy};
+
+        let guard = AsyncTaskGuard::spawn(Some(1), async {
+            sleep(Duration::from_secs(10)).await;
+            42
+        });
+
+        let timeout = TimeoutPolicy::Task(Duration::from_millis(50));
+        let result = guard.await_timeout(timeout).await;
+
+        assert!(result.is_err());
+        match result.err().unwrap() {
+            GuardError::Timeout { .. } => {},
+            _ => panic!("Expected timeout error"),
+        }
     }
 }
