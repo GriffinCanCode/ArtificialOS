@@ -6,12 +6,13 @@
 
 use crate::core::json;
 use crate::core::types::Pid;
+use crate::monitoring::span_operation;
 use crate::permissions::{PermissionChecker, PermissionRequest};
 
 use ahash::RandomState;
 use crossbeam_queue::SegQueue;
 use dashmap::DashMap;
-use log::{error, info, warn};
+use log::{error, info, trace, warn};
 use std::collections::HashSet;
 use std::net::{TcpListener, TcpStream, UdpSocket};
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -70,7 +71,10 @@ pub struct SocketManager {
 
 impl SocketManager {
     pub fn new() -> Self {
+        let span = span_operation("socket_manager_init");
+        let _guard = span.enter();
         info!("Socket manager initialized with unified storage and lock-free FD recycling");
+        span.record_result(true);
         Self {
             next_fd: Arc::new(AtomicU32::new(1000)), // Start socket FDs at 1000
             sockets: Arc::new(DashMap::with_hasher(RandomState::new())),
@@ -82,9 +86,12 @@ impl SocketManager {
     /// Allocate a socket FD (recycle or create new, lock-free)
     fn allocate_fd(&self) -> u32 {
         if let Some(recycled_fd) = self.free_fds.pop() {
+            trace!("Recycled FD {} for socket", recycled_fd);
             recycled_fd
         } else {
-            self.next_fd.fetch_add(1, Ordering::SeqCst)
+            let new_fd = self.next_fd.fetch_add(1, Ordering::SeqCst);
+            trace!("Allocated new FD {} for socket", new_fd);
+            new_fd
         }
     }
 
@@ -119,13 +126,21 @@ impl SocketManager {
     /// 2. Close each socket (single lookup per socket)
     /// 3. Recycle FDs for reuse
     pub fn cleanup_process_sockets(&self, pid: Pid) -> usize {
+        let span = span_operation("socket_cleanup_process");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+
         // Remove all socket FDs owned by this process (atomic operation)
         let sockets_to_close = if let Some((_, sockets)) = self.process_sockets.remove(&pid) {
             sockets
         } else {
+            trace!("No sockets to cleanup for PID {}", pid);
+            span.record("closed_count", "0");
+            span.record_result(true);
             return 0;
         };
 
+        let socket_count = sockets_to_close.len();
         let mut closed_count = 0;
         for sockfd in sockets_to_close {
             // Single lookup in unified collection (no type map needed)
@@ -133,13 +148,16 @@ impl SocketManager {
                 closed_count += 1;
                 // Socket is dropped here, closing OS resource automatically
                 let type_name = socket.type_name();
-                log::debug!("Closed {} socket FD {} for PID {}", type_name, sockfd, pid);
+                trace!("Closed {} socket FD {} for PID {}", type_name, sockfd, pid);
 
                 // Recycle FD for reuse (lock-free)
                 self.free_fds.push(sockfd);
             }
         }
 
+        info!("Cleaned up {}/{} sockets for PID {}", closed_count, socket_count, pid);
+        span.record("closed_count", &format!("{}", closed_count));
+        span.record_result(true);
         closed_count
     }
 
@@ -210,15 +228,24 @@ impl SyscallExecutor {
         socket_type: u32,
         protocol: u32,
     ) -> SyscallResult {
+        let span = span_operation("socket_create");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+        span.record("domain", &format!("{}", domain));
+        span.record("socket_type", &format!("{}", socket_type));
+        span.record("protocol", &format!("{}", protocol));
+
         // Check per-process socket limit BEFORE doing expensive operations
         use crate::security::ResourceLimitProvider;
         if let Some(limits) = self.sandbox_manager.get_limits(pid) {
             let current_socket_count = self.socket_manager.get_socket_count(pid);
+            trace!("PID {} has {}/{} sockets open", pid, current_socket_count, limits.max_file_descriptors);
             if current_socket_count >= limits.max_file_descriptors {
                 error!(
                     "PID {} exceeded socket limit: {}/{} sockets",
                     pid, current_socket_count, limits.max_file_descriptors
                 );
+                span.record_error(&format!("Socket limit exceeded: {}/{}", current_socket_count, limits.max_file_descriptors));
                 return SyscallResult::permission_denied(format!(
                     "Socket limit exceeded: {}/{} sockets open",
                     current_socket_count, limits.max_file_descriptors
@@ -238,6 +265,7 @@ impl SyscallExecutor {
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
+            span.record_error(response.reason());
             return SyscallResult::permission_denied(response.reason());
         }
 
@@ -251,6 +279,8 @@ impl SyscallExecutor {
             "PID {} allocated socket FD {} (domain={}, type={}, protocol={})",
             pid, sockfd, domain, socket_type, protocol
         );
+        span.record("sockfd", &format!("{}", sockfd));
+        span.record_result(true);
 
         match json::to_vec(&serde_json::json!({
             "sockfd": sockfd,
@@ -261,12 +291,19 @@ impl SyscallExecutor {
             Ok(data) => SyscallResult::success_with_data(data),
             Err(e) => {
                 warn!("Failed to serialize socket result: {}", e);
+                span.record_error("Serialization failed");
                 SyscallResult::error("Internal serialization error")
             }
         }
     }
 
     pub(super) fn bind(&self, pid: Pid, sockfd: u32, address: &str) -> SyscallResult {
+        let span = span_operation("socket_bind");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+        span.record("sockfd", &format!("{}", sockfd));
+        span.record("address", address);
+
         // Parse host:port from address and check bind permission
         use crate::permissions::{Action, Resource};
         let parts: Vec<&str> = address.split(':').collect();
@@ -277,6 +314,7 @@ impl SyscallExecutor {
         let response = self.permission_manager.check_and_audit(&request);
 
         if !response.is_allowed() {
+            span.record_error(response.reason());
             return SyscallResult::permission_denied(response.reason());
         }
 
@@ -287,9 +325,12 @@ impl SyscallExecutor {
                     .sockets
                     .insert(sockfd, Socket::TcpListener(listener));
                 info!("PID {} bound TCP socket {} to {}", pid, sockfd, address);
+                span.record("socket_type", "TCP");
+                span.record_result(true);
                 SyscallResult::success()
             }
             Err(e) => {
+                trace!("TCP bind failed for socket {}, trying UDP: {}", sockfd, e);
                 // Try UDP if TCP failed
                 match UdpSocket::bind(address) {
                     Ok(socket) => {
@@ -297,6 +338,8 @@ impl SyscallExecutor {
                             .sockets
                             .insert(sockfd, Socket::UdpSocket(socket));
                         info!("PID {} bound UDP socket {} to {}", pid, sockfd, address);
+                        span.record("socket_type", "UDP");
+                        span.record_result(true);
                         SyscallResult::success()
                     }
                     Err(udp_e) => {
@@ -304,6 +347,7 @@ impl SyscallExecutor {
                             "Failed to bind socket {} to {}: TCP={}, UDP={}",
                             sockfd, address, e, udp_e
                         );
+                        span.record_error(&format!("Bind failed: {}", e));
                         SyscallResult::error(format!("Bind failed: {}", e))
                     }
                 }
@@ -312,6 +356,12 @@ impl SyscallExecutor {
     }
 
     pub(super) fn listen(&self, pid: Pid, sockfd: u32, backlog: u32) -> SyscallResult {
+        let span = span_operation("socket_listen");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+        span.record("sockfd", &format!("{}", sockfd));
+        span.record("backlog", &format!("{}", backlog));
+
         // Listen requires network access (socket already bound)
         use crate::permissions::{Action, Resource};
         let request = PermissionRequest::new(
@@ -324,6 +374,7 @@ impl SyscallExecutor {
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
+            span.record_error(response.reason());
             return SyscallResult::permission_denied(response.reason());
         }
 
@@ -335,16 +386,26 @@ impl SyscallExecutor {
                         "PID {} listening on socket {} with backlog {}",
                         pid, sockfd, backlog
                     );
+                    span.record_result(true);
                     SyscallResult::success()
                 }
-                _ => SyscallResult::error("Socket not a TCP listener"),
+                _ => {
+                    span.record_error("Socket not a TCP listener");
+                    SyscallResult::error("Socket not a TCP listener")
+                }
             }
         } else {
+            span.record_error("Socket not found or not bound");
             SyscallResult::error("Socket not found or not bound")
         }
     }
 
     pub(super) fn accept(&self, pid: Pid, sockfd: u32) -> SyscallResult {
+        let span = span_operation("socket_accept");
+        let _guard = span.enter();
+        span.record("pid", &format!("{}", pid));
+        span.record("sockfd", &format!("{}", sockfd));
+
         // Accept requires network access
         use crate::permissions::{Action, Resource};
         let request = PermissionRequest::new(
@@ -357,6 +418,7 @@ impl SyscallExecutor {
         let response = self.permission_manager.check(&request);
 
         if !response.is_allowed() {
+            span.record_error(response.reason());
             return SyscallResult::permission_denied(response.reason());
         }
 
@@ -411,6 +473,9 @@ impl SyscallExecutor {
                     "PID {} accepted connection on socket {}, client FD {} from {}",
                     pid, sockfd, client_fd, addr
                 );
+                span.record("client_fd", &format!("{}", client_fd));
+                span.record("client_address", &addr.to_string());
+                span.record_result(true);
 
                 match json::to_vec(&serde_json::json!({
                     "client_fd": client_fd,
@@ -419,24 +484,30 @@ impl SyscallExecutor {
                     Ok(data) => SyscallResult::success_with_data(data),
                     Err(e) => {
                         warn!("Failed to serialize accept result: {}", e);
+                        span.record_error("Serialization failed");
                         SyscallResult::error("Internal serialization error")
                     }
                 }
             }
             Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
                 error!("Accept timed out for PID {}, socket {} after {}ms", pid, sockfd, elapsed_ms);
+                span.record_error(&format!("Timeout after {}ms", elapsed_ms));
                 SyscallResult::error("Accept timed out")
             }
             Err(super::TimeoutError::Operation(AcceptError::NotListener)) => {
+                span.record_error("Socket is not a TCP listener");
                 SyscallResult::error("Socket is not a TCP listener")
             }
             Err(super::TimeoutError::Operation(AcceptError::InvalidSocket)) => {
+                span.record_error("Invalid socket or not listening");
                 SyscallResult::error("Invalid socket or not listening")
             }
             Err(super::TimeoutError::Operation(AcceptError::NoPendingConnections)) => {
+                span.record_error("No pending connections");
                 SyscallResult::error("No pending connections")
             }
             Err(super::TimeoutError::Operation(AcceptError::Other(e))) => {
+                span.record_error(&format!("Accept failed: {}", e));
                 SyscallResult::error(format!("Accept failed: {}", e))
             }
         }
