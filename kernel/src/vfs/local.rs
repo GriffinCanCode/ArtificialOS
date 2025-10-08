@@ -36,39 +36,62 @@ impl LocalFS {
     }
 
     /// Resolve path relative to root with proper normalization
-    /// Prevents directory traversal attacks by using canonicalization
+    /// Prevents directory traversal attacks by manual component processing
+    /// This approach works for both existing and non-existing paths
     fn resolve(&self, path: &Path) -> PathBuf {
-        // First, build the path relative to root
-        let mut preliminary = self.root.clone();
-
-        // Add path components (handling relative paths)
-        if path.is_absolute() {
-            // For absolute paths, strip leading / and append to root
-            if let Ok(stripped) = path.strip_prefix("/") {
-                preliminary.push(stripped);
-            } else {
-                preliminary.push(path);
-            }
+        // Strip leading / from absolute paths
+        let path_to_process = if path.is_absolute() {
+            path.strip_prefix("/").unwrap_or(path)
         } else {
-            preliminary.push(path);
-        }
+            path
+        };
 
-        // Try to canonicalize the full path
-        // This resolves symlinks and removes . and .. components
-        if let Ok(canonical) = preliminary.canonicalize() {
-            // Ensure the canonical path is still within root
-            if let Ok(canonical_root) = self.root.canonicalize() {
-                if canonical.starts_with(&canonical_root) {
-                    return canonical;
+        // Build normalized path by processing components
+        // This prevents .. from escaping the root boundary
+        let mut components = Vec::new();
+
+        for component in path_to_process.components() {
+            match component {
+                std::path::Component::Normal(name) => {
+                    components.push(name);
+                }
+                std::path::Component::ParentDir => {
+                    // Only allow .. if we have components to pop
+                    // This prevents escaping the root
+                    if !components.is_empty() {
+                        components.pop();
+                    }
+                    // If components is empty, we're at root boundary - ignore the ..
+                }
+                std::path::Component::CurDir => {
+                    // Ignore . components
+                }
+                _ => {
+                    // Ignore other component types (Prefix on Windows, RootDir)
                 }
             }
-            // If we can't verify it's within root, fall back to safe normalization
         }
 
-        // Fallback: use battle-tested path cleaning if canonicalization fails
-        // (e.g., path doesn't exist yet). This is safe for non-existent paths
-        // where we're about to create something.
-        PathBuf::from(path_clean::clean(&preliminary))
+        // Build final path from root + normalized components
+        let mut result = self.root.clone();
+        for component in components {
+            result.push(component);
+        }
+
+        // For existing paths, verify with canonicalization as a safety check
+        if result.exists() {
+            if let Ok(canonical) = result.canonicalize() {
+                if let Ok(canonical_root) = self.root.canonicalize() {
+                    // Extra safety: verify the canonical path is within root
+                    if canonical.starts_with(&canonical_root) {
+                        return canonical;
+                    }
+                    // If not within root, use the manually normalized path
+                }
+            }
+        }
+
+        result
     }
 
     /// Check write permission
