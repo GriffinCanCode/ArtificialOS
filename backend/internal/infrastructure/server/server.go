@@ -22,6 +22,7 @@ import (
 	"github.com/GriffinCanCode/AgentOS/backend/internal/infrastructure/monitoring"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/infrastructure/tracing"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/auth"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/clipboard"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/filesystem"
 	httpProvider "github.com/GriffinCanCode/AgentOS/backend/internal/providers/http"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/ipc"
@@ -322,6 +323,14 @@ func registerProviders(registry *service.Registry, kernel *kernel.KernelClient) 
 	termProvider := terminal.NewProvider()
 	if err := registry.Register(termProvider); err != nil {
 		fmt.Printf("Warning: Failed to register terminal provider: %v\n", err)
+	}
+
+	// Clipboard provider (requires kernel)
+	if kernel != nil {
+		clipProvider := clipboard.NewProvider(kernel, storagePID)
+		if err := registry.Register(clipProvider); err != nil {
+			fmt.Printf("Warning: Failed to register clipboard provider: %v\n", err)
+		}
 	}
 
 	// IPC provider (only if kernel is available)

@@ -1,0 +1,130 @@
+.clipboard-viewer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.clipboard-viewer-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  color: #666;
+  font-style: italic;
+}
+
+.clipboard-entry {
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.clipboard-entry:hover {
+  background: #ebebeb;
+  border-color: #ccc;
+}
+
+.clipboard-entry.current {
+  border-color: #0066cc;
+  background: #e6f2ff;
+}
+
+.entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.entry-type {
+  font-weight: 600;
+  color: #0066cc;
+  text-transform: uppercase;
+}
+
+.entry-time {
+  color: #666;
+}
+
+.entry-preview {
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-size: 13px;
+  color: #333;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin-bottom: 8px;
+  padding: 8px;
+  background: white;
+  border-radius: 4px;
+}
+
+.entry-label {
+  font-size: 11px;
+  color: #888;
+  font-style: italic;
+  margin-bottom: 8px;
+}
+
+.entry-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.entry-actions button {
+  padding: 4px 12px;
+  font-size: 12px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.entry-actions button:hover {
+  background: #0052a3;
+}
+
+.entry-actions button:active {
+  background: #003d7a;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .clipboard-entry {
+    background: #2a2a2a;
+    border-color: #444;
+  }
+
+  .clipboard-entry:hover {
+    background: #333;
+    border-color: #555;
+  }
+
+  .clipboard-entry.current {
+    background: #1a3a5c;
+    border-color: #4d94ff;
+  }
+
+  .entry-preview {
+    background: #1a1a1a;
+    color: #ddd;
+  }
+
+  .entry-time,
+  .entry-label {
+    color: #aaa;
+  }
+
+  .clipboard-viewer-empty {
+    color: #aaa;
+  }
+}
+

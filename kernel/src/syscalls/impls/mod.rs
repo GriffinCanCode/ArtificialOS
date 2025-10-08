@@ -16,6 +16,7 @@
  * - vfs_adapter: VFS integration layer
  */
 
+pub mod clipboard;
 pub mod fd;
 pub mod fs;
 pub mod handle;

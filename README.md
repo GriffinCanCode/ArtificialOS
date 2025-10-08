@@ -871,7 +871,8 @@ Building a kernel means implementing syscalls. Lots of them. I didn't cut corner
 | **Memory** | 3 | get_stats, get_process_stats, trigger_gc |
 | **System Info** | 4 | get_system_info, get_env, set_env, network_request |
 | **Time** | 3 | get_current_time, sleep, get_uptime |
-| **TOTAL** | **95+** | Fully type-safe via Protocol Buffers |
+| **Clipboard** | 8 | copy, paste, history, get_entry, clear, subscribe, unsubscribe, stats |
+| **TOTAL** | **103+** | Fully type-safe via Protocol Buffers |
 
 ### Syscall Architecture
 
@@ -894,6 +895,7 @@ Handlers registered per category:
 - `MemoryHandler` - Allocation tracking and GC
 - `SystemHandler` - System info and environment
 - `TimeHandler` - Time operations
+- `ClipboardHandler` - Clipboard operations with history and subscriptions
 - `MmapHandler` - Memory-mapped file operations
 - `AsyncHandler` - Integration with AsyncTaskManager
 - `IoUringHandler` - Async completion routing
@@ -954,6 +956,7 @@ The system implements a comprehensive tool execution engine with 80+ tools acros
 **Service Tools** (Backend-integrated)
 - **Storage**: Persistent key-value store (set, get, remove, list, clear)
 - **Filesystem**: File operations (read, write, create, delete, list, move, copy)
+- **Clipboard**: System clipboard with history (copy, paste, history, clear, subscribe, unsubscribe, stats, get_entry)
 - **System**: System info and logging (info, time, log, getLogs, ping)
 - **Auth**: User authentication (register, login, logout, verify, getUser)
 

@@ -385,6 +385,37 @@ pub enum Syscall {
     GetSignalState {
         target_pid: Option<Pid>,
     },
+
+    // ========================================================================
+    // Clipboard Operations
+    // ========================================================================
+    ClipboardCopy {
+        data: Vec<u8>,
+        format: String,
+        #[serde(default)]
+        global: bool,
+    },
+    ClipboardPaste {
+        #[serde(default)]
+        global: bool,
+    },
+    ClipboardHistory {
+        #[serde(default)]
+        global: bool,
+        limit: Option<usize>,
+    },
+    ClipboardGetEntry {
+        entry_id: u64,
+    },
+    ClipboardClear {
+        #[serde(default)]
+        global: bool,
+    },
+    ClipboardSubscribe {
+        formats: Vec<String>,
+    },
+    ClipboardUnsubscribe,
+    ClipboardStats,
 }
 
 #[cfg(test)]

@@ -7,6 +7,7 @@ use super::traits::{
     AsyncQueue, IpcCleanup, IpcManager as IpcManagerTrait, MessageQueue, PipeChannel, SharedMemory,
 };
 use super::types::{IpcError, IpcResult, Message};
+use crate::core::clipboard::ClipboardManager;
 use crate::core::limits::{IPC_MANAGER_QUEUE_SIZE, MAX_MESSAGE_SIZE};
 use crate::core::types::{Pid, Size};
 use crate::ipc::pipe::PipeManager;
@@ -33,6 +34,7 @@ pub struct IPCManager {
     queue_manager: QueueManager,
     zerocopy_ipc: Option<ZeroCopyIpc>,
     memory_manager: MemoryManager,
+    pub clipboard: ClipboardManager,
 }
 
 impl IPCManager {
@@ -48,6 +50,7 @@ impl IPCManager {
             queue_manager: QueueManager::new(memory_manager.clone().into()),
             zerocopy_ipc: None,
             memory_manager,
+            clipboard: ClipboardManager::new(),
         }
     }
 
@@ -64,6 +67,7 @@ impl IPCManager {
             queue_manager: QueueManager::new(memory_manager.clone().into()),
             zerocopy_ipc: Some(ZeroCopyIpc::new(memory_manager.clone().into())),
             memory_manager,
+            clipboard: ClipboardManager::new(),
         }
     }
 
@@ -274,6 +278,9 @@ impl MessageQueue for IPCManager {
 // Implement IpcCleanup trait
 impl IpcCleanup for IPCManager {
     fn cleanup_process(&self, pid: Pid) -> Size {
+        // Cleanup clipboard for process
+        self.clipboard.cleanup(pid);
+        // Cleanup message queues
         self.clear_process_queue(pid)
     }
 

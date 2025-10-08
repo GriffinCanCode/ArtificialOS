@@ -96,6 +96,7 @@ pub struct SyscallExecutorWithIpc {
     pub(super) permission_manager: PermissionManager,
     pub(super) fd_manager: crate::syscalls::impls::fd::FdManager,
     pub(super) socket_manager: crate::syscalls::impls::network::SocketManager,
+    pub(super) clipboard_manager: crate::core::ClipboardManager,
     pub(super) timeout_executor: crate::syscalls::timeout::executor::TimeoutExecutor,
     pub(super) timeout_config: crate::syscalls::timeout::config::SyscallTimeoutConfig,
 
@@ -120,6 +121,7 @@ impl Clone for SyscallExecutorWithIpc {
             permission_manager: self.permission_manager.clone(),
             fd_manager: self.fd_manager.clone(),
             socket_manager: self.socket_manager.clone(),
+            clipboard_manager: self.clipboard_manager.clone(),
             timeout_executor: self.timeout_executor.clone(),
             timeout_config: self.timeout_config.clone(),
             handler_registry: self.handler_registry.clone(),
@@ -151,6 +153,7 @@ impl SyscallExecutorWithIpc {
             permission_manager,
             fd_manager: crate::syscalls::impls::fd::FdManager::new(),
             socket_manager: crate::syscalls::impls::network::SocketManager::new(),
+            clipboard_manager: crate::core::ClipboardManager::new(),
             timeout_executor: crate::syscalls::timeout::executor::TimeoutExecutor::disabled(),
             timeout_config: crate::syscalls::timeout::config::SyscallTimeoutConfig::new(),
             handler_registry: SyscallHandlerRegistry::new(),
@@ -184,6 +187,7 @@ impl SyscallExecutorWithIpc {
             permission_manager,
             fd_manager: crate::syscalls::impls::fd::FdManager::new(),
             socket_manager: crate::syscalls::impls::network::SocketManager::new(),
+            clipboard_manager: crate::core::ClipboardManager::new(),
             timeout_executor: crate::syscalls::timeout::executor::TimeoutExecutor::disabled(),
             timeout_config: crate::syscalls::timeout::config::SyscallTimeoutConfig::default(),
             handler_registry: SyscallHandlerRegistry::new(),
@@ -281,6 +285,7 @@ impl SyscallExecutorWithIpc {
             .register(Arc::new(MemoryHandler::new(executor.clone().into())))
             .register(Arc::new(SignalHandler::new(executor.clone().into())))
             .register(Arc::new(NetworkHandler::new(executor.clone().into())))
+            .register(Arc::new(ClipboardHandler::new(executor.clone().into())))
             .register(Arc::new(FileDescriptorHandler::new(
                 executor.clone().into(),
             )))
@@ -305,6 +310,11 @@ impl SyscallExecutorWithIpc {
     /// Get reference to file descriptor manager
     pub fn fd_manager(&self) -> &crate::syscalls::impls::fd::FdManager {
         &self.fd_manager
+    }
+
+    /// Get reference to clipboard manager
+    pub fn clipboard_manager(&self) -> &crate::core::ClipboardManager {
+        &self.clipboard_manager
     }
 
     /// Get reference to permission manager

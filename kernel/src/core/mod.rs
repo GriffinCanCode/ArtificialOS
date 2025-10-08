@@ -24,6 +24,7 @@ pub mod traits;
 pub mod types;
 
 // Modules
+pub mod clipboard;
 pub mod data_structures;
 pub mod memory;
 pub mod optimization;
@@ -83,3 +84,9 @@ pub use simd::{
 
 // Re-export CPU hints wildcard (barrier, spin_loop, etc.)
 pub use optimization::*;
+
+// Re-export clipboard
+pub use clipboard::{
+    ClipboardData, ClipboardEntry, ClipboardError, ClipboardFormat, ClipboardManager,
+    ClipboardResult, ClipboardStats, ClipboardSubscription,
+};

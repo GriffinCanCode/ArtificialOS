@@ -442,7 +442,7 @@ mod tests {
 
         assert!(matches!(
             result,
-            Err(TimeoutError::Operation(TestError::Fatal(_).into()))
+            Err(TimeoutError::Operation(TestError::Fatal(_)))
         ));
         assert_eq!(counter.load(Ordering::SeqCst), 1); // Only called once
     }
@@ -459,7 +459,7 @@ mod tests {
         );
 
         assert!(result.is_err());
-        assert!(matches!(result, Err(TimeoutError::Timeout { .. }).into()));
+        assert!(matches!(result, Err(TimeoutError::Timeout { .. })));
     }
 
     #[test]
