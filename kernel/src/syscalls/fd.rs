@@ -86,8 +86,8 @@ impl FdManager {
             .or_insert_with(HashSet::new)
             .insert(fd);
 
-        // Atomic increment using alter() for lock-free counting
-        self.process_fd_counts.alter(&pid, |_, count| count + 1);
+        // Atomic increment using entry() for lock-free counting
+        *self.process_fd_counts.entry(pid).or_insert(0) += 1;
     }
 
     /// Untrack an FD from a process (atomic decrement, O(1) removal)
@@ -96,9 +96,10 @@ impl FdManager {
             fds.remove(&fd);  // O(1) HashSet removal
         }
 
-        // Atomic decrement using alter() for lock-free counting
-        self.process_fd_counts
-            .alter(&pid, |_, count| count.saturating_sub(1));
+        // Atomic decrement using get_mut() for lock-free counting
+        if let Some(mut count) = self.process_fd_counts.get_mut(&pid) {
+            *count = count.saturating_sub(1);
+        }
     }
 
     /// Cleanup all file descriptors for a terminated process
@@ -160,32 +161,24 @@ impl SyscallExecutor {
         let write_flag = flags & 0x0002; // O_WRONLY or O_RDWR
         let create_flag = flags & 0x0040; // O_CREAT
 
-        let canonical_path = match path.canonicalize() {
-            Ok(p) => p,
-            Err(_) => {
-                if create_flag != 0 {
-                    path.clone()
-                } else {
-                    return SyscallResult::error("File does not exist");
-                }
-            }
-        };
+        // For permission checks, use the path as-is (VFS handles its own resolution)
+        let check_path = path.clone();
 
         // Check permissions using centralized manager based on operation
         if create_flag != 0 {
-            let request = PermissionRequest::file_create(pid, canonical_path.clone());
+            let request = PermissionRequest::file_create(pid, check_path.clone());
             let response = self.permission_manager.check_and_audit(&request);
             if !response.is_allowed() {
                 return SyscallResult::permission_denied(response.reason());
             }
         } else if write_flag != 0 {
-            let request = PermissionRequest::file_write(pid, canonical_path.clone());
+            let request = PermissionRequest::file_write(pid, check_path.clone());
             let response = self.permission_manager.check_and_audit(&request);
             if !response.is_allowed() {
                 return SyscallResult::permission_denied(response.reason());
             }
         } else if read_flag != 0 {
-            let request = PermissionRequest::file_read(pid, canonical_path.clone());
+            let request = PermissionRequest::file_read(pid, check_path.clone());
             let response = self.permission_manager.check_and_audit(&request);
             if !response.is_allowed() {
                 return SyscallResult::permission_denied(response.reason());
@@ -225,6 +218,18 @@ impl SyscallExecutor {
         }
 
         // Fallback to std::fs if VFS unavailable or failed
+        // Canonicalize path for std::fs (only for real filesystem)
+        let std_path = match path.canonicalize() {
+            Ok(p) => p,
+            Err(_) => {
+                if create_flag != 0 {
+                    path.clone()
+                } else {
+                    return SyscallResult::error("File does not exist");
+                }
+            }
+        };
+
         let mut options = OpenOptions::new();
 
         // Access mode
@@ -247,7 +252,7 @@ impl SyscallExecutor {
             options.append(true); // O_APPEND
         }
 
-        match options.open(path) {
+        match options.open(&std_path) {
             Ok(file) => {
                 // Allocate FD and store std file handle
                 let fd = self.fd_manager.allocate_fd();
