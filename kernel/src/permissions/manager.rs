@@ -55,8 +55,10 @@ impl PermissionManager {
     }
 
     /// Get policy engine (for adding custom policies)
-    pub fn policy_mut(&mut self) -> &mut PolicyEngine {
-        Arc::get_mut(&mut self.policy).expect("Policy engine is shared")
+    ///
+    /// Returns None if the policy Arc has other strong references (shared state)
+    pub fn policy_mut(&mut self) -> Option<&mut PolicyEngine> {
+        Arc::get_mut(&mut self.policy)
     }
 
     /// Get audit logger

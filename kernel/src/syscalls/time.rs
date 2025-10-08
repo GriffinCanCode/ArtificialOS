@@ -48,13 +48,19 @@ impl SyscallExecutor {
             return SyscallResult::permission_denied(response.reason());
         }
 
-        let start = SYSTEM_START
-            .get()
-            .expect("System start time not initialized");
-        let uptime = start.elapsed().as_secs();
+        let start = SYSTEM_START.get().ok_or_else(|| {
+            log::error!("System start time not initialized");
+            "System start time not initialized"
+        });
 
-        info!("PID {} retrieved system uptime: {} seconds", pid, uptime);
-        let data = uptime.to_le_bytes().to_vec();
-        SyscallResult::success_with_data(data)
+        match start {
+            Ok(start_time) => {
+                let uptime = start_time.elapsed().as_secs();
+                info!("PID {} retrieved system uptime: {} seconds", pid, uptime);
+                let data = uptime.to_le_bytes().to_vec();
+                SyscallResult::success_with_data(data)
+            }
+            Err(e) => SyscallResult::error(e),
+        }
     }
 }

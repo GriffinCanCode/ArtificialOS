@@ -49,7 +49,11 @@ impl MemoryManager {
             self.memory_storage.shrink_to_fit();
 
             let free_list_size = self.free_list.lock()
-                .expect("Free list mutex poisoned - critical GC failure").len();
+                .map(|fl| fl.len())
+                .unwrap_or_else(|poisoned| {
+                    log::warn!("Free list mutex poisoned during GC - recovering");
+                    poisoned.into_inner().len()
+                });
             info!(
                 "Garbage collection complete: removed {} deallocated blocks and their storage, {} blocks remain, {} blocks in segregated free list for O(1)/O(log n) recycling (maps shrunk to fit)",
                 removed_count,

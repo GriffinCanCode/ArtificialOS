@@ -83,8 +83,10 @@ impl Policy for CustomPolicy {
     fn name(&self) -> &str { "custom" }
 }
 
-// Add custom policy
-manager.policy_mut().add_policy(Box::new(CustomPolicy));
+// Add custom policy (returns None if Arc is shared)
+if let Some(policy) = manager.policy_mut() {
+    policy.add_policy(Box::new(CustomPolicy));
+}
 ```
 
 ### 4. Audit Trail

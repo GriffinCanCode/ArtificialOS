@@ -121,7 +121,14 @@ impl MountManager {
         // Find longest matching mount point
         for mount_path in order.iter() {
             if path.starts_with(mount_path) {
-                let entry = self.mounts.get(mount_path).unwrap();
+                // Atomically get mount entry - handle concurrent unmount race condition
+                let entry = self.mounts.get(mount_path).ok_or_else(|| {
+                    VfsError::NotFound(format!(
+                        "mount point was removed concurrently: {}",
+                        mount_path.display()
+                    ))
+                })?;
+
                 let fs = entry.fs.clone();
                 let readonly = entry.readonly;
                 let rel_path = if path == *mount_path {

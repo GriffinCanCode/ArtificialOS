@@ -94,8 +94,13 @@ impl ShmManager {
 
         // Try to recycle an ID from the free list, otherwise allocate new
         let segment_id = {
-            let mut free_ids = self.free_ids.lock()
-                .expect("Shared memory ID free list mutex poisoned");
+            let mut free_ids = match self.free_ids.lock() {
+                Ok(guard) => guard,
+                Err(poisoned) => {
+                    log::error!("Shared memory ID free list mutex poisoned - recovering");
+                    poisoned.into_inner()
+                }
+            };
             if let Some(recycled_id) = free_ids.pop() {
                 info!("Recycled segment ID {} for PID {}", recycled_id, owner_pid);
                 recycled_id
@@ -262,8 +267,13 @@ impl ShmManager {
 
         // Add segment ID to free list for recycling
         {
-            let mut free_ids = self.free_ids.lock()
-                .expect("Shared memory ID free list mutex poisoned");
+            let mut free_ids = match self.free_ids.lock() {
+                Ok(guard) => guard,
+                Err(poisoned) => {
+                    log::error!("Shared memory ID free list mutex poisoned during cleanup - recovering");
+                    poisoned.into_inner()
+                }
+            };
             free_ids.push(segment_id);
             info!("Added segment ID {} to free list for recycling", segment_id);
         }

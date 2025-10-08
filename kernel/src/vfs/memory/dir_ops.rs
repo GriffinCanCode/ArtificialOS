@@ -54,8 +54,16 @@ impl MemFS {
             current.push(component);
 
             if !self.nodes.contains_key(&current) {
-                let parent = current.parent().unwrap().to_path_buf();
-                let name = current.file_name().unwrap().to_str().unwrap().to_string();
+                // Safe: current always has parent since we start from "/" and push components
+                let parent = current.parent()
+                    .ok_or_else(|| VfsError::InvalidPath("path has no parent".to_string()))?
+                    .to_path_buf();
+
+                // Safe: current always has filename since we just pushed a component
+                let name = current.file_name()
+                    .and_then(|n| n.to_str())
+                    .ok_or_else(|| VfsError::InvalidPath("invalid UTF-8 in path component".to_string()))?
+                    .to_string();
 
                 self.nodes.insert(
                     current.clone(),

@@ -52,8 +52,8 @@ impl SimulationEbpfProvider {
     fn current_timestamp() -> u64 {
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos() as u64
+            .map(|d| d.as_nanos() as u64)
+            .unwrap_or(0) // Fallback to 0 if system time is before Unix epoch
     }
 }
 

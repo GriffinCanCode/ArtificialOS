@@ -208,7 +208,20 @@ impl LimitManager {
 
 impl Default for LimitManager {
     fn default() -> Self {
-        Self::new().expect("Failed to create limit manager")
+        Self::new().unwrap_or_else(|e| {
+            log::error!("Failed to create limit manager in Default impl: {}", e);
+            // Return a minimal working manager
+            #[cfg(target_os = "linux")]
+            {
+                LimitManager {
+                    cgroup_path: std::path::PathBuf::from("/tmp/ai-os-fallback"),
+                }
+            }
+            #[cfg(not(target_os = "linux"))]
+            {
+                LimitManager {}
+            }
+        })
     }
 }
 

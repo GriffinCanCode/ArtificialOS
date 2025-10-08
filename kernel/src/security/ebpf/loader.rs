@@ -46,8 +46,8 @@ impl ProgramLoader {
             events_captured: 0,
             created_at: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_secs(),
+                .map(|d| d.as_secs())
+                .unwrap_or(0), // Fallback to 0 if system time is before Unix epoch
         };
 
         programs.insert(config.name.clone(), program);

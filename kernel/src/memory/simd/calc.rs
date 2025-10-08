@@ -232,13 +232,13 @@ unsafe fn min_u64_avx512(data: &[u64]) -> u64 {
 
     // Find minimum in vector
     let min_arr: [u64; 8] = std::mem::transmute(min_vec);
-    let mut min_val = *min_arr.iter().min()
-        .expect("AVX-512 min array should contain 8 elements");
+    let mut min_val = min_arr.iter().min().copied()
+        .unwrap_or(u64::MAX); // Safe fallback, array has 8 elements
 
-    // Handle remaining elements (guaranteed non-empty by offset < len check)
+    // Handle remaining elements
     if offset < len {
-        min_val = min_val.min(*data[offset..].iter().min()
-            .expect("Remaining slice guaranteed non-empty"));
+        min_val = min_val.min(data[offset..].iter().min().copied()
+            .unwrap_or(u64::MAX)); // Safe fallback for remainder
     }
 
     min_val
@@ -260,15 +260,15 @@ unsafe fn min_u64_avx2(data: &[u64]) -> u64 {
         let ptr = chunk.as_ptr() as *const __m256i;
         let values = _mm256_loadu_si256(ptr);
         let vals: [u64; 4] = std::mem::transmute(values);
-        min_val = min_val.min(*vals.iter().min()
-            .expect("AVX2 chunk contains exactly 4 elements"));
+        min_val = min_val.min(vals.iter().min().copied()
+            .unwrap_or(u64::MAX)); // Safe fallback, chunk has 4 elements
     }
 
-    // Handle remaining elements (guaranteed non-empty by remainder check)
+    // Handle remaining elements
     let remainder_start = (data.len() / 4) * 4;
     if remainder_start < data.len() {
-        min_val = min_val.min(*data[remainder_start..].iter().min()
-            .expect("Remainder slice guaranteed non-empty"));
+        min_val = min_val.min(data[remainder_start..].iter().min().copied()
+            .unwrap_or(u64::MAX)); // Safe fallback for remainder
     }
 
     min_val
@@ -293,13 +293,13 @@ unsafe fn max_u64_avx512(data: &[u64]) -> u64 {
 
     // Find maximum in vector
     let max_arr: [u64; 8] = std::mem::transmute(max_vec);
-    let mut max_val = *max_arr.iter().max()
-        .expect("AVX-512 max array should contain 8 elements");
+    let mut max_val = max_arr.iter().max().copied()
+        .unwrap_or(0); // Safe fallback, array has 8 elements
 
-    // Handle remaining elements (guaranteed non-empty by offset < len check)
+    // Handle remaining elements
     if offset < len {
-        max_val = max_val.max(*data[offset..].iter().max()
-            .expect("Remaining slice guaranteed non-empty"));
+        max_val = max_val.max(data[offset..].iter().max().copied()
+            .unwrap_or(0)); // Safe fallback for remainder
     }
 
     max_val
@@ -317,15 +317,15 @@ unsafe fn max_u64_avx2(data: &[u64]) -> u64 {
         let ptr = chunk.as_ptr() as *const __m256i;
         let values = _mm256_loadu_si256(ptr);
         let vals: [u64; 4] = std::mem::transmute(values);
-        max_val = max_val.max(*vals.iter().max()
-            .expect("AVX2 chunk contains exactly 4 elements"));
+        max_val = max_val.max(vals.iter().max().copied()
+            .unwrap_or(0)); // Safe fallback, chunk has 4 elements
     }
 
-    // Handle remaining elements (guaranteed non-empty by remainder check)
+    // Handle remaining elements
     let remainder_start = (data.len() / 4) * 4;
     if remainder_start < data.len() {
-        max_val = max_val.max(*data[remainder_start..].iter().max()
-            .expect("Remainder slice guaranteed non-empty"));
+        max_val = max_val.max(data[remainder_start..].iter().max().copied()
+            .unwrap_or(0)); // Safe fallback for remainder
     }
 
     max_val

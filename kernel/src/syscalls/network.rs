@@ -135,15 +135,18 @@ impl SyscallExecutor {
             pid, sockfd, domain, socket_type, protocol
         );
 
-        let data = json::to_vec(&serde_json::json!({
+        match json::to_vec(&serde_json::json!({
             "sockfd": sockfd,
             "domain": domain,
             "type": socket_type,
             "protocol": protocol
-        }))
-        .unwrap();
-
-        SyscallResult::success_with_data(data)
+        })) {
+            Ok(data) => SyscallResult::success_with_data(data),
+            Err(e) => {
+                warn!("Failed to serialize socket result: {}", e);
+                SyscallResult::error("Internal serialization error")
+            }
+        }
     }
 
     pub(super) fn bind(&self, pid: Pid, sockfd: u32, address: &str) -> SyscallResult {
@@ -237,13 +240,16 @@ impl SyscallExecutor {
                     pid, sockfd, client_fd, addr
                 );
 
-                let data = json::to_vec(&serde_json::json!({
+                match json::to_vec(&serde_json::json!({
                     "client_fd": client_fd,
                     "address": addr.to_string()
-                }))
-                .unwrap();
-
-                SyscallResult::success_with_data(data)
+                })) {
+                    Ok(data) => SyscallResult::success_with_data(data),
+                    Err(e) => {
+                        warn!("Failed to serialize accept result: {}", e);
+                        SyscallResult::error("Internal serialization error")
+                    }
+                }
             } else {
                 SyscallResult::error("No pending connections")
             }
@@ -293,11 +299,15 @@ impl SyscallExecutor {
                         "PID {} sent {} bytes on TCP socket {}",
                         pid, bytes_sent, sockfd
                     );
-                    let result = json::to_vec(&serde_json::json!({
+                    match json::to_vec(&serde_json::json!({
                         "bytes_sent": bytes_sent
-                    }))
-                    .unwrap();
-                    SyscallResult::success_with_data(result)
+                    })) {
+                        Ok(result) => SyscallResult::success_with_data(result),
+                        Err(e) => {
+                            warn!("Failed to serialize send result: {}", e);
+                            SyscallResult::error("Internal serialization error")
+                        }
+                    }
                 }
                 Err(e) => {
                     warn!("Send failed on socket {}: {}", sockfd, e);
@@ -365,11 +375,15 @@ impl SyscallExecutor {
                         "PID {} sent {} bytes to {} on UDP socket {}",
                         pid, bytes_sent, address, sockfd
                     );
-                    let result = json::to_vec(&serde_json::json!({
+                    match json::to_vec(&serde_json::json!({
                         "bytes_sent": bytes_sent
-                    }))
-                    .unwrap();
-                    SyscallResult::success_with_data(result)
+                    })) {
+                        Ok(result) => SyscallResult::success_with_data(result),
+                        Err(e) => {
+                            warn!("Failed to serialize sendto result: {}", e);
+                            SyscallResult::error("Internal serialization error")
+                        }
+                    }
                 }
                 Err(e) => {
                     warn!("SendTo failed on socket {}: {}", sockfd, e);
@@ -396,13 +410,16 @@ impl SyscallExecutor {
                         pid, bytes_read, addr, sockfd
                     );
 
-                    let result = json::to_vec(&serde_json::json!({
+                    match json::to_vec(&serde_json::json!({
                         "data": buffer,
                         "address": addr.to_string()
-                    }))
-                    .unwrap();
-
-                    SyscallResult::success_with_data(result)
+                    })) {
+                        Ok(result) => SyscallResult::success_with_data(result),
+                        Err(e) => {
+                            warn!("Failed to serialize recvfrom result: {}", e);
+                            SyscallResult::error("Internal serialization error")
+                        }
+                    }
                 }
                 Err(e) => {
                     warn!("RecvFrom failed on socket {}: {}", sockfd, e);
@@ -468,10 +485,15 @@ impl SyscallExecutor {
             sockfd, level, optname
         );
 
-        let result = json::to_vec(&serde_json::json!({
+        let result = match json::to_vec(&serde_json::json!({
             "value": 0
-        }))
-        .unwrap();
+        })) {
+            Ok(data) => data,
+            Err(e) => {
+                warn!("Failed to serialize getsockopt result: {}", e);
+                return SyscallResult::error("Internal serialization error");
+            }
+        };
 
         info!("PID {} got socket option from {}", pid, sockfd);
         SyscallResult::success_with_data(result)

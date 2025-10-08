@@ -36,8 +36,8 @@ pub async fn handle_stream_events(
             // Generate system events based on current state
             let timestamp = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_secs();
+                .map(|d| d.as_secs())
+                .unwrap_or(0); // Fallback to 0 if system time is before Unix epoch
 
             // Emit process list events if requested
             if event_types.is_empty() || event_types.contains(&"process_created".to_string()) {

@@ -8,7 +8,7 @@ use crate::core::json;
 use crate::core::types::Pid;
 use crate::permissions::{PermissionChecker, PermissionRequest, Resource, Action};
 
-use log::{error, info};
+use log::{error, info, warn};
 
 use crate::memory::types::ProcessMemoryStats;
 use crate::security::Capability;
@@ -103,13 +103,16 @@ impl SyscallExecutor {
                     pid, target, freed
                 );
 
-                let data = json::to_vec(&serde_json::json!({
+                match json::to_vec(&serde_json::json!({
                     "freed_bytes": freed,
                     "target_pid": target
-                }))
-                .unwrap();
-
-                SyscallResult::success_with_data(data)
+                })) {
+                    Ok(data) => SyscallResult::success_with_data(data),
+                    Err(e) => {
+                        warn!("Failed to serialize GC result: {}", e);
+                        SyscallResult::error("Internal serialization error")
+                    }
+                }
             }
             None => {
                 // Global GC - run comprehensive cleanup
@@ -131,15 +134,18 @@ impl SyscallExecutor {
                     stats.duration_ms
                 );
 
-                let data = json::to_vec(&serde_json::json!({
+                match json::to_vec(&serde_json::json!({
                     "freed_bytes": stats.freed_bytes,
                     "freed_blocks": stats.freed_blocks,
                     "processes_cleaned": stats.processes_cleaned,
                     "duration_ms": stats.duration_ms
-                }))
-                .unwrap();
-
-                SyscallResult::success_with_data(data)
+                })) {
+                    Ok(data) => SyscallResult::success_with_data(data),
+                    Err(e) => {
+                        warn!("Failed to serialize global GC result: {}", e);
+                        SyscallResult::error("Internal serialization error")
+                    }
+                }
             }
         }
     }

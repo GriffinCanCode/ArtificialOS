@@ -38,8 +38,13 @@ impl MemoryManager {
 
         // Try to recycle an address from the segregated free list (O(1) or O(log n) lookup)
         let address = {
-            let mut free_list = self.free_list.lock()
-                .expect("Free list mutex poisoned - critical allocator failure");
+            let mut free_list = match self.free_list.lock() {
+                Ok(guard) => guard,
+                Err(poisoned) => {
+                    log::error!("Free list mutex poisoned during allocation - recovering");
+                    poisoned.into_inner()
+                }
+            };
 
             if let Some(free_block) = free_list.find_best_fit(size) {
                 let address = free_block.address;
@@ -129,8 +134,13 @@ impl MemoryManager {
 
                 // Add to segregated free list for address recycling
                 {
-                    let mut free_list = self.free_list.lock()
-                        .expect("Free list mutex poisoned - critical allocator failure");
+                    let mut free_list = match self.free_list.lock() {
+                        Ok(guard) => guard,
+                        Err(poisoned) => {
+                            log::error!("Free list mutex poisoned during deallocation - recovering");
+                            poisoned.into_inner()
+                        }
+                    };
                     free_list.insert(FreeBlock { address, size });
 
                     // Periodically coalesce adjacent blocks to reduce fragmentation

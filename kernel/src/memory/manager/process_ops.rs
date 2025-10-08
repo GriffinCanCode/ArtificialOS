@@ -80,13 +80,25 @@ impl MemoryManager {
 
             // Add freed blocks to segregated free list for recycling
             {
-                let mut free_list = self.free_list.lock()
-                    .expect("Free list mutex poisoned - critical process cleanup failure");
-                for block in freed_blocks {
-                    free_list.insert(block);
+                match self.free_list.lock() {
+                    Ok(mut free_list) => {
+                        for block in freed_blocks {
+                            free_list.insert(block);
+                        }
+                        // Always coalesce after large batch frees
+                        Self::coalesce_free_blocks(&mut free_list);
+                    }
+                    Err(poisoned) => {
+                        // Mutex poisoned: thread panicked while holding lock
+                        // Attempt recovery by acquiring poisoned guard
+                        log::error!("Free list mutex poisoned during process {} cleanup - attempting recovery", pid);
+                        let mut free_list = poisoned.into_inner();
+                        for block in freed_blocks {
+                            free_list.insert(block);
+                        }
+                        Self::coalesce_free_blocks(&mut free_list);
+                    }
                 }
-                // Always coalesce after large batch frees
-                Self::coalesce_free_blocks(&mut free_list);
             }
 
             // Track deallocated blocks for GC

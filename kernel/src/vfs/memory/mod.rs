@@ -155,14 +155,11 @@ impl MemFS {
     /// Ensure parent directory exists
     pub(super) fn ensure_parent(&self, path: &Path) -> VfsResult<()> {
         if let Some(parent) = self.parent_path(path) {
-            if !self.nodes.contains_key(&parent) {
-                return Err(VfsError::NotFound(format!(
-                    "parent directory not found: {}",
-                    parent.display()
-                )));
-            }
+            // Check and validate parent in one atomic operation to avoid TOCTOU
+            let node = self.nodes.get(&parent).ok_or_else(|| {
+                VfsError::NotFound(format!("parent directory not found: {}", parent.display()))
+            })?;
 
-            let node = self.nodes.get(&parent).unwrap();
             if !node.is_dir() {
                 return Err(VfsError::NotADirectory(parent.display().to_string()));
             }

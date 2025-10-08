@@ -173,12 +173,15 @@ impl SyscallExecutor {
                     pid, path, fd, flags, mode
                 );
 
-                let data = json::to_vec(&serde_json::json!({
+                match json::to_vec(&serde_json::json!({
                     "fd": fd
-                }))
-                .unwrap();
-
-                SyscallResult::success_with_data(data)
+                })) {
+                    Ok(data) => SyscallResult::success_with_data(data),
+                    Err(e) => {
+                        warn!("Failed to serialize open result: {}", e);
+                        SyscallResult::error("Internal serialization error")
+                    }
+                }
             }
             Err(e) => {
                 error!("Failed to open file {:?}: {}", path, e);
@@ -223,12 +226,15 @@ impl SyscallExecutor {
                 pid, fd, new_fd
             );
 
-            let data = json::to_vec(&serde_json::json!({
+            match json::to_vec(&serde_json::json!({
                 "new_fd": new_fd
-            }))
-            .unwrap();
-
-            SyscallResult::success_with_data(data)
+            })) {
+                Ok(data) => SyscallResult::success_with_data(data),
+                Err(e) => {
+                    warn!("Failed to serialize dup result: {}", e);
+                    SyscallResult::error("Internal serialization error")
+                }
+            }
         } else {
             SyscallResult::error("Invalid file descriptor")
         }
@@ -294,12 +300,15 @@ impl SyscallExecutor {
                         pid, fd, new_offset, whence_str
                     );
 
-                    let data = json::to_vec(&serde_json::json!({
+                    match json::to_vec(&serde_json::json!({
                         "offset": new_offset
-                    }))
-                    .unwrap();
-
-                    SyscallResult::success_with_data(data)
+                    })) {
+                        Ok(data) => SyscallResult::success_with_data(data),
+                        Err(e) => {
+                            warn!("Failed to serialize lseek result: {}", e);
+                            SyscallResult::error("Internal serialization error")
+                        }
+                    }
                 }
                 Err(e) => {
                     error!("Seek failed for FD {}: {}", fd, e);
@@ -326,12 +335,15 @@ impl SyscallExecutor {
             pid, fd, cmd, arg
         );
 
-        let data = json::to_vec(&serde_json::json!({
+        match json::to_vec(&serde_json::json!({
             "result": 0
-        }))
-        .unwrap();
-
-        SyscallResult::success_with_data(data)
+        })) {
+            Ok(data) => SyscallResult::success_with_data(data),
+            Err(e) => {
+                warn!("Failed to serialize fcntl result: {}", e);
+                SyscallResult::error("Internal serialization error")
+            }
+        }
     }
 
     pub(super) fn fsync_fd(&self, pid: Pid, fd: u32) -> SyscallResult {
