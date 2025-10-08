@@ -256,7 +256,6 @@ struct IpcGuardState {
     pid: Pid,
     cleanup: Box<dyn Fn(u64) -> Result<(), String> + Send + Sync>,
     active: bool,
-    collector: Option<Arc<Collector>>,
 }
 
 impl IpcGuardRef {
@@ -266,7 +265,7 @@ impl IpcGuardRef {
         resource_type: IpcResourceType,
         pid: Pid,
         cleanup: F,
-        collector: Option<Arc<Collector>>,
+        _collector: Option<Arc<Collector>>,
     ) -> Self
     where
         F: Fn(u64) -> Result<(), String> + Send + Sync + 'static,
@@ -279,7 +278,6 @@ impl IpcGuardRef {
             pid,
             cleanup: Box::new(cleanup),
             active: true,
-            collector,
         };
 
         Self {

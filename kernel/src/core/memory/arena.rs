@@ -6,30 +6,30 @@
 use bumpalo::Bump;
 use std::cell::RefCell;
 
-/// Thread-local arena for request-scoped allocations
-///
-/// # Performance
-///
-/// - **Allocation**: O(1), just bumps pointer
-/// - **Deallocation**: O(1), drops entire arena at once
-/// - **10-100x faster** than individual allocations
-///
-/// # Example
-///
-/// ```ignore
-/// with_arena(|arena| {
-///     // All allocations use arena
-///     let vec = arena.alloc_vec();
-///     vec.push(1);
-///     vec.push(2);
-///
-///     let string = arena.alloc_str("temporary");
-///
-///     // Process request...
-///
-///     // Arena automatically freed when closure returns
-/// });
-/// ```
+// Thread-local arena for request-scoped allocations
+//
+// # Performance
+//
+// - **Allocation**: O(1), just bumps pointer
+// - **Deallocation**: O(1), drops entire arena at once
+// - **10-100x faster** than individual allocations
+//
+// # Example
+//
+// ```
+// with_arena(|arena| {
+//     // All allocations use arena
+//     let vec = arena.alloc_vec();
+//     vec.push(1);
+//     vec.push(2);
+//
+//     let string = arena.alloc_str("temporary");
+//
+//     // Process request...
+//
+//     // Arena automatically freed when closure returns
+// });
+// ```
 thread_local! {
     static ARENA: RefCell<Option<Bump>> = RefCell::new(None);
 }

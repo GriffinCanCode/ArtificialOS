@@ -224,7 +224,6 @@ struct MemoryGuardState {
     pid: Pid,
     manager: Arc<MemoryManager>,
     active: bool,
-    collector: Option<Arc<Collector>>,
 }
 
 impl MemoryGuardRef {
@@ -234,7 +233,7 @@ impl MemoryGuardRef {
         size: Size,
         pid: Pid,
         manager: Arc<MemoryManager>,
-        collector: Option<Arc<Collector>>,
+        _collector: Option<Arc<Collector>>,
     ) -> Self {
         let metadata = GuardMetadata::new("memory_ref")
             .with_pid(pid)
@@ -246,7 +245,6 @@ impl MemoryGuardRef {
             pid,
             manager,
             active: true,
-            collector,
         };
 
         Self {

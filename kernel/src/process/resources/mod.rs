@@ -126,11 +126,10 @@ impl ResourceOrchestrator {
         let mut total_stats = CleanupStats::default();
 
         let errors = with_arena(|arena| {
-            use crate::core::optimization::prefetch_read;
+
 
             let mut error_msgs = bumpalo::collections::Vec::new_in(arena);
             let resources_vec: Vec<_> = self.resources.iter().rev().collect();
-            let len = resources_vec.len();
 
             // Cleanup in reverse order (LIFO)
             for (_i, resource) in resources_vec.into_iter().enumerate() {

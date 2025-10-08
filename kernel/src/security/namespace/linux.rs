@@ -10,7 +10,7 @@ use super::veth::VethManager;
 use crate::core::types::Pid;
 use ahash::RandomState;
 use dashmap::DashMap;
-use log::{debug, info, warn};
+use log::{info, warn};
 use std::sync::Arc;
 
 #[cfg(target_os = "linux")]

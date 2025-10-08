@@ -456,7 +456,7 @@ mod tests {
             assert!(
                 matches!(
                     result.unwrap_err(),
-                    ProcessError::PermissionDenied(_).into()
+                    ProcessError::PermissionDenied(_)
                 ),
                 "Wrong error type for bypass attempt: {}",
                 attempt

@@ -264,7 +264,7 @@ mod tests {
 
         // Let it timeout
         let result = handle.join().unwrap();
-        assert!(matches!(result, Err(PipeError::Timeout { .. }).into()));
+        assert!(matches!(result, Err(PipeError::Timeout { .. })));
     }
 
     #[test]

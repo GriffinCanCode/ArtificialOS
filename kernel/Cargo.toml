@@ -81,6 +81,8 @@ default = []
 nightly = []
 tokio = []
 jemalloc = ["tikv-jemallocator"]
+lz4 = []  # Optional LZ4 compression for bincode
+custom_limits = []  # Allow custom compile-time limits
 
 [target.'cfg(target_os = "linux")'.dependencies]
 rtnetlink = { version = "0.14", default-features = false }

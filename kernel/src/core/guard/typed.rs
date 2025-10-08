@@ -138,56 +138,50 @@ impl<T: Send, S: TypedState> Guard for TypedGuard<T, S> {
     }
 }
 
-// Common state types
-
-/// Uninitialized state
-pub struct Uninitialized;
-impl TypedState for Uninitialized {
-    fn state_name() -> &'static str {
-        "uninitialized"
-    }
-
-    fn can_transition_to<S: TypedState>() -> bool {
-        // Can only transition to Initialized
-        std::any::TypeId::of::<S>() == std::any::TypeId::of::<Initialized>()
-    }
-}
-
-/// Initialized state
-pub struct Initialized;
-impl TypedState for Initialized {
-    fn state_name() -> &'static str {
-        "initialized"
-    }
-}
-
-/// Running state
-pub struct Running;
-impl TypedState for Running {
-    fn state_name() -> &'static str {
-        "running"
-    }
-}
-
-/// Stopped state
-pub struct Stopped;
-impl TypedState for Stopped {
-    fn state_name() -> &'static str {
-        "stopped"
-    }
-}
-
-/// Terminated state
-pub struct Terminated;
-impl TypedState for Terminated {
-    fn state_name() -> &'static str {
-        "terminated"
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // Test-only state types for demonstrating the type-state pattern
+    pub struct Uninitialized;
+    impl TypedState for Uninitialized {
+        fn state_name() -> &'static str {
+            "uninitialized"
+        }
+
+        fn can_transition_to<S: TypedState>() -> bool {
+            // Can only transition to Initialized
+            std::any::TypeId::of::<S>() == std::any::TypeId::of::<Initialized>()
+        }
+    }
+
+    pub struct Initialized;
+    impl TypedState for Initialized {
+        fn state_name() -> &'static str {
+            "initialized"
+        }
+    }
+
+    pub struct Running;
+    impl TypedState for Running {
+        fn state_name() -> &'static str {
+            "running"
+        }
+    }
+
+    pub struct Stopped;
+    impl TypedState for Stopped {
+        fn state_name() -> &'static str {
+            "stopped"
+        }
+    }
+
+    pub struct Terminated;
+    impl TypedState for Terminated {
+        fn state_name() -> &'static str {
+            "terminated"
+        }
+    }
 
     struct TestResource {
         value: usize,

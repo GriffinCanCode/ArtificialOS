@@ -264,6 +264,6 @@ mod tests {
         let req = PermissionRequest::file_read(100, PathBuf::from("/tmp/test.txt"));
         let cap = req.to_capability();
         assert!(cap.is_some());
-        assert!(matches!(cap.unwrap(), Capability::ReadFile(_).into()));
+        assert!(matches!(cap.unwrap(), Capability::ReadFile(_)));
     }
 }

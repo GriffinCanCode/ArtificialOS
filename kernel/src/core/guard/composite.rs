@@ -160,10 +160,12 @@ impl Drop for CompositeGuard {
 }
 
 /// Builder for composite guards with named guards
+#[cfg(test)]
 pub struct CompositeGuardBuilder {
     guards: Vec<(String, Box<dyn Guard>)>,
 }
 
+#[cfg(test)]
 impl CompositeGuardBuilder {
     /// Create a new builder
     pub fn new() -> Self {
@@ -187,6 +189,7 @@ impl CompositeGuardBuilder {
     }
 }
 
+#[cfg(test)]
 impl Default for CompositeGuardBuilder {
     fn default() -> Self {
         Self::new()

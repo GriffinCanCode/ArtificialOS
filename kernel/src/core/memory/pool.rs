@@ -8,24 +8,24 @@ use std::cell::RefCell;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
-/// Thread-local memory pool for Vec<u8> buffers
-///
-/// # Performance
-///
-/// - **Allocation reduction**: 50-80% in high-throughput scenarios
-/// - **Latency improvement**: 5-15% reduction in syscall execution time
-/// - **Thread-local**: Zero contention between threads
-///
-/// # Example
-///
-/// ```ignore
-/// // Get pooled buffer
-/// let mut buf = get_pooled_buffer();
-/// buf.extend_from_slice(b"data");
-///
-/// // Automatically returned to pool on drop
-/// drop(buf);
-/// ```
+// Thread-local memory pool for Vec<u8> buffers
+//
+// # Performance
+//
+// - **Allocation reduction**: 50-80% in high-throughput scenarios
+// - **Latency improvement**: 5-15% reduction in syscall execution time
+// - **Thread-local**: Zero contention between threads
+//
+// # Example
+//
+// ```
+// // Get pooled buffer
+// let mut buf = get_pooled_buffer();
+// buf.extend_from_slice(b"data");
+//
+// // Automatically returned to pool on drop
+// drop(buf);
+// ```
 thread_local! {
     static SMALL_POOL: RefCell<Vec<Vec<u8>>> = RefCell::new(Vec::new());
     static MEDIUM_POOL: RefCell<Vec<Vec<u8>>> = RefCell::new(Vec::new());

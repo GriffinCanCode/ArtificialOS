@@ -1,48 +1,111 @@
 # AgentOS
 
-A production-grade userspace process orchestrator with observability-native architecture and AI-driven application generation — or, more honestly, what happens when you spend way too much time thinking about how operating systems should work in an AI-first world.
+A modern desktop operating system built from scratch in userspace with a production-grade microkernel architecture — featuring true process orchestration, sophisticated IPC, network isolation, and a dynamic UI system that renders applications from JSON specifications or runs native code. Oh, and it can also generate applications with AI if you want.
 
 ![AgentOS Interface](assets/demo.png)
 
-## Overview — Or, What I Built and Why
+## Overview — A Real Desktop OS in Userspace
 
-I built AgentOS because I was frustrated. Not with any particular technology, but with a fundamental architectural mismatch: we're building AI systems on top of infrastructure designed for a pre-AI world. The system I wanted didn't exist — a userspace microkernel runtime where applications are generated from natural language and executed through a structured tool system, combining proven algorithms (CFS scheduling, segregated free lists, Unix IPC) with observability built-in from day one, not bolted on as an afterthought.
+**What if you rebuilt a desktop OS from scratch with modern architecture?** That's AgentOS.
 
-**What it is:** A four-layer system with Go orchestration, Python AI service, Rust microkernel, and React/TypeScript frontend displayed in a webview.
+I spent way too much time thinking about operating systems and built something that shouldn't exist but does: a legitimate userspace microkernel with desktop environment, window management, full IPC stack, 95+ syscalls, and observability woven into the fabric from day one. It runs as an Electron app on top of your host OS, but underneath is a complete process orchestration system combining proven algorithms (CFS scheduling, segregated free lists, Unix IPC) with modern architecture patterns.
 
-## Architecture
+**What it is:** A four-layer desktop OS with Rust microkernel, Go backend services, Python AI service, and React/TypeScript desktop shell. Think of it as rebuilding macOS/Windows/Linux from first principles, but it runs in userspace.
+
+## Architecture — Four Layers, One System
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Frontend (TypeScript/React)                                │
-│  - Dynamic UI rendering from JSON specifications            │
-│  - Local tool execution (<10ms)                             │
-│  - Component state management                               │
-│  - WebSocket streaming                                      │
+│  Desktop Shell (TypeScript/React)                           │
+│  - Window management (drag, resize, minimize, snap)         │
+│  - Desktop environment (menu bar, dock, launcher)           │
+│  - Dynamic UI rendering (Blueprint, Native Web, Native Proc)│
+│  - Component state management (<10ms tool execution)        │
+│  - WebSocket streaming for real-time updates               │
 └────────────────┬────────────────────────────────────────────┘
                  │ HTTP/WebSocket (Port 5173)
 ┌────────────────▼────────────────────────────────────────────┐
-│  Backend Orchestration (Go)                                 │
-│  - App lifecycle management                                 │
-│  - Service registry                                         │
-│  - Session persistence                                      │
-│  - gRPC client coordination                                 │
+│  System Services (Go)                                       │
+│  - Application lifecycle (spawn, focus, close, persist)     │
+│  - Service providers (filesystem, storage, network, auth)   │
+│  - Session management (save/restore workspaces)             │
+│  - Blueprint DSL parser and app registry                    │
+│  - gRPC orchestration between kernel and AI service         │
 └────────────────┬────────────────────────────────────────────┘
                  │ gRPC
         ┌────────┴─────────┐
         │                  │
         ▼                  ▼
 ┌──────────────┐  ┌────────────────────────┐
-│ AI Service   │  │ Rust Kernel            │
-│ (Python)     │  │ (Userspace Microkernel)│
+│ AI Service   │  │ Microkernel (Rust)     │
+│ (Python)     │  │                        │
 │              │  │                        │
-│ - LLM        │  │ - Process mgmt         │
-│ - UI gen     │  │ - IPC (4 types)        │
-│ - Streaming  │  │ - Observability        │
-│              │  │ - Syscalls (95+)       │
-│ Port 50052   │  │ Port 50051             │
+│ - UI gen     │  │ - Process orchestration│
+│ - LLM        │  │ - IPC (4 types)        │
+│ - Streaming  │  │ - Scheduler (CFS)      │
+│ - Templates  │  │ - VFS & Filesystem     │
+│              │  │ - Security & Sandboxing│
+│ Port 50052   │  │ - Syscalls (95+)       │
+│              │  │ - Observability        │
+│              │  │ Port 50051             │
 └──────────────┘  └────────────────────────┘
 ```
+
+**Your kernel pieces map to a desktop OS:**
+- **Rust kernel** → The actual OS core (process management, IPC, scheduling, sandboxing)
+- **Go backend** → System services layer (like systemd, launchd, or Windows Services)
+- **TypeScript/React** → The desktop shell (like GNOME, KDE, or Windows Explorer)
+- **Python AI** → Optional app generator (one feature among many)
+
+## Desktop Environment — Because This Should Feel Like An OS
+
+AgentOS includes a complete desktop environment with window management, application launcher, and system apps. This isn't a toy — it's designed to feel like a real desktop OS:
+
+**Core Desktop Features:**
+- **Window Management**: Full drag, resize, minimize, maximize with snap-to-edge positioning (9 snap zones)
+- **Menu Bar**: Top bar with system menus, app name, and system controls
+- **Dock/Taskbar**: Quick access to running applications and favorites
+- **App Launcher**: Spotlight-style launcher (⌘K/Ctrl+K) for instant app search
+- **Keyboard Shortcuts**: Alt+Tab for window switching, ⌘W to close, ⌘M to minimize
+- **Desktop Icons**: Launch apps with double-click (coming soon)
+- **Session Management**: Save and restore complete workspace state
+
+**System Applications:**
+- **File Manager**: Browse filesystem with tree view, file operations, search (showcase your VFS!)
+- **Task Manager**: View processes, CPU, memory, IPC stats (showcase your ProcessManager!)
+- **System Monitor**: Real-time kernel observability dashboard with causality tracking
+- **Terminal**: Full shell integration for native process apps
+- **Settings**: Configure appearance, permissions, performance, and developer options
+- **App Store**: Browse and install applications from registry
+
+**Why This Matters:**
+Your kernel has 95 syscalls, four IPC types, network isolation, and sophisticated scheduling. Building system apps that **actually use** these features showcases what you've built. A file manager demonstrates your VFS. A task manager demonstrates your process orchestration. A system monitor demonstrates your observability infrastructure.
+
+## The Pitch — What This Really Is
+
+> **AgentOS: A Modern Desktop OS Built From Scratch**
+>
+> A userspace operating system with a production-grade microkernel architecture, 
+> running as an Electron app. Features a complete desktop environment, three-tier
+> application system (Blueprint, Native Web, Native Process), full process isolation,
+> sophisticated IPC, and an extensible app ecosystem.
+>
+> **Built in Rust, Go, Python, and TypeScript.**
+>
+> **Core Features:**
+> - ✅ True process orchestration with CFS-inspired scheduling
+> - ✅ Four types of IPC (pipes, shared memory, async queues, mmap)
+> - ✅ Network namespace isolation (Linux, macOS, simulation)
+> - ✅ Observability-first architecture with adaptive sampling
+> - ✅ Desktop environment with window management
+> - ✅ Three application types (Blueprint, Native Web, Native Process)
+> - ✅ 95+ syscalls across 13 categories
+> - ✅ Dynamic UI rendering from JSON specifications
+> - ✅ Optional AI-powered app generation
+> - ✅ Session persistence and workspace restoration
+>
+> **Think of it as:** What if you rebuilt a desktop OS with modern architecture, 
+> where AI generation is a feature, not the core?
 
 ## The Core Innovation: Observability Was Never An Afterthought
 
@@ -106,9 +169,9 @@ Every major operation emits observable events:
 
 ## System Components — The Four-Layer Stack
 
-### Backend Orchestration Layer (Go) — The Conductor
+### System Services Layer (Go) — The Orchestrator
 
-I chose Go for the orchestration layer for one simple reason: goroutines. When you're managing multiple AI-generated applications simultaneously, true parallel processing matters. The Go backend serves as the central orchestration hub, managing application lifecycle, routing requests, and coordinating between services — and doing it fast.
+I chose Go for the system services layer for one simple reason: goroutines. When you're managing multiple applications simultaneously (whether AI-generated, native web apps, or OS processes), true parallel processing matters. The Go backend serves as the central orchestration hub, managing application lifecycle, routing requests, coordinating between services, and providing system-level services like filesystem operations, storage, and authentication — and doing it fast.
 
 **Key Responsibilities:**
 - HTTP/REST API and WebSocket server
@@ -132,16 +195,16 @@ I chose Go for the orchestration layer for one simple reason: goroutines. When y
 - `grpc.KernelClient`: Executes syscalls through Rust kernel
 - `ws.Handler`: Streams real-time updates to frontend
 
-### AI Service Layer (Python) — The Generator
+### AI Service Layer (Python) — The Optional Generator
 
-Python gets a bad rap for performance, but for LLM orchestration? It's perfect. The entire AI service is isolated behind gRPC, so language choice doesn't matter for the overall system latency — and Python's ecosystem for AI is unmatched.
+Python gets a bad rap for performance, but for LLM orchestration? It's perfect. The entire AI service is isolated behind gRPC, so language choice doesn't matter for the overall system latency — and Python's ecosystem for AI is unmatched. **This layer is optional** — the system works perfectly fine with just prebuilt Blueprint apps and native applications. AI generation is a power user feature, not a requirement.
 
 **Key Responsibilities:**
-- UI specification generation (template-based with LLM enhancement)
+- UI specification generation (template-based with optional LLM enhancement)
 - Token-level streaming for real-time updates
 - Chat response generation with thought streaming
 - UI caching for performance optimization
-- Optional LLM inference using Google Gemini API (gemini-2.0-flash-exp)
+- Optional LLM inference using Google Gemini API (gemini-2.0-flash-exp) when you want AI-generated apps
 
 **Core Components:**
 - `UIGeneratorAgent`: Generates structured JSON UI specifications (rule-based + LLM)
@@ -151,9 +214,9 @@ Python gets a bad rap for performance, but for LLM orchestration? It's perfect. 
 - `UICache`: Caches frequently requested UI patterns
 - `ToolRegistry`: Modular tool system with 80+ tools across 5 categories (UI, app, system, math, network)
 
-### Kernel Layer (Rust) — Where I Went Deep
+### Microkernel Layer (Rust) — The Heart of the OS
 
-This is where I spent most of my time, and where I'm most proud of the work. Rust was the only choice here — memory safety without garbage collection overhead, fearless concurrency, and a type system that catches bugs at compile time. The result is a production-grade userspace microkernel with observability-first architecture, comprehensive IPC, and performance optimizations that kept me up at night (in a good way).
+This is where I spent most of my time, and where I'm most proud of the work. Rust was the only choice here — memory safety without garbage collection overhead, fearless concurrency, and a type system that catches bugs at compile time. The result is a production-grade userspace microkernel that does what real operating systems do: manage processes, schedule execution, isolate resources, enforce security, and provide comprehensive IPC — all with observability-first architecture and performance optimizations that kept me up at night (in a good way).
 
 **What makes this interesting:**
 - **Observability-Native Design**: Dual-layer architecture (distributed tracing + event streaming) with adaptive sampling, Welford's algorithm for anomaly detection, causality tracking, and lock-free event streams (65K ring buffer, ~50ns/event)
@@ -257,18 +320,19 @@ fmt.Printf("Success: %d, Failed: %d\n", result.SuccessCount, result.FailureCount
 
 These enhancements are detailed in [gRPC Improvements Documentation](docs/GRPC_IMPROVEMENTS.md).
 
-### Frontend Layer (TypeScript/React) — The Interface
+### Desktop Shell Layer (TypeScript/React) — The User Experience
 
-The frontend had to do something most UIs don't: render arbitrary applications from JSON specifications in real-time. Not templates. Not pre-defined layouts. Actual dynamic applications with state management, tool execution, and desktop-grade window management — all while maintaining sub-10ms response times.
+The desktop shell had to feel like a real OS, not a web app pretending to be one. That meant proper window management, a complete desktop environment (menu bar, dock, launcher), and the ability to render three distinct types of applications: Blueprint apps from JSON specifications, native TypeScript/React apps with full npm ecosystem access, and native OS processes with terminal UI. All while maintaining sub-10ms response times and desktop-grade interactions.
 
 **Key Responsibilities:**
-- Parse and render JSON UI specifications (23 component types)
+- Desktop environment with window management (drag, resize, minimize, snap-to-edge)
+- Three rendering modes: Blueprint (JSON specs), Native Web (React apps), Native Process (terminal)
 - Execute local tools with sub-10ms latency
-- Desktop-grade window management (react-rnd powered)
 - Per-app component state with observable updates
-- WebSocket streaming for real-time AI responses
-- Keyboard shortcuts and gesture handling
+- WebSocket streaming for real-time updates
+- Keyboard shortcuts and gesture handling (⌘K launcher, Alt+Tab switching)
 - App registry and session management UI
+- Workspace persistence and restoration
 
 **Core Modules:**
 - `DynamicRenderer`: Main rendering engine with virtual scrolling and modular architecture
@@ -422,9 +486,9 @@ make logs
 - [gRPC Improvements](docs/GRPC_IMPROVEMENTS.md) - Streaming, async, and batch execution details
 - [Graceful-with-Fallback Pattern](docs/GRACEFUL_WITH_FALLBACK_PATTERN.md) - Async shutdown pattern for background tasks
 
-## Three-Tier Application System — Blueprint, Native Web, and Native Process Apps
+## Three-Tier Application System — Because One Size Doesn't Fit All
 
-AgentOS supports **three distinct types of applications**, each optimized for different use cases. This isn't just flexibility for the sake of it — it's architectural recognition that AI-generated UIs, hand-coded web apps, and native executables have fundamentally different needs.
+A real desktop OS needs to run different types of applications. AgentOS supports **three distinct application types**, each optimized for different use cases. This isn't just flexibility for the sake of it — it's architectural recognition that simple utilities, complex UIs, and native executables have fundamentally different needs. AI generation is just one way to create Blueprint apps, not the only way.
 
 ### Application Types
 
@@ -665,11 +729,11 @@ All three types:
 - Access the same backend services
 - Persist via the same registry
 
-## The Core Architectural Insight: Generate-Once-Execute-Many
+## The AI Generation Pattern: Generate-Once-Execute-Many (When You Use It)
 
-This pattern is what makes AgentOS fundamentally different from chat-based AI interfaces. I watched too many demos where every button click went back to the LLM — 2-5 seconds per interaction, burning tokens like kindling. That's not an application. That's an expensive conversation.
+When you do use AI generation, AgentOS follows a fundamentally different pattern than chat-based AI interfaces. I watched too many demos where every button click went back to the LLM — 2-5 seconds per interaction, burning tokens like kindling. That's not an application. That's an expensive conversation.
 
-I built AgentOS around a different philosophy: generate the application once, execute it many times. Separate AI generation from application execution at the architectural level.
+The AI generation in AgentOS (which is optional) follows a better philosophy: generate the application specification once, execute it many times locally. Separate AI generation from application execution at the architectural level. But most apps don't need AI generation at all — they're either prebuilt Blueprint apps (loaded from `.bp` files) or hand-coded native applications.
 
 ### Application Lifecycle
 
@@ -701,12 +765,13 @@ I built AgentOS around a different philosophy: generate the application once, ex
 - Non-deterministic behavior
 - Unusable for actual applications
 
-**What I Built Instead:**
-- UI spec generated once (template or LLM), tools execute many times
-- Sub-10ms response after initial generation
-- Single generation cost per application (instant for templates, 2-5s for LLM)
-- Deterministic tool execution
-- No network latency for user interactions
+**AgentOS Approach (The Fast Way):**
+- Blueprint apps: UI spec loaded once (instant from `.bp` file or 2-5s from LLM), tools execute locally many times
+- Native apps: Zero generation time, just TypeScript/React development
+- Native processes: Direct OS process execution
+- Sub-10ms tool execution for all app types
+- Deterministic, local execution
+- No network latency for interactions
 - Actually feels like software, not a chatbot
 
 ### Component System
@@ -1047,11 +1112,11 @@ I wanted AgentOS to feel like a real desktop OS, not a web app pretending to be 
 - **Dual-Mode Architecture**: WindowManager for windowed apps + DynamicRenderer for fullscreen (backward compatible)
 
 ### Multi-Application Management
-- Concurrent execution of multiple AI-generated applications
+- Concurrent execution of multiple applications (Blueprint, Native Web, Native Process)
 - Parent-child application relationships
 - Focus management with foreground/background states
 - Graceful cleanup of child applications when parent closes
-- Desktop environment with menu bar, dock, and taskbar
+- Desktop environment with menu bar, dock, taskbar, and app launcher
 
 ### Persistence Layer
 - **Blueprint DSL**: Define apps in `.bp` files with streaming-optimized JSON format
@@ -1165,10 +1230,11 @@ Building cross-platform network isolation taught me why most projects just suppo
 - Request size limits
 - Timeout enforcement
 
-**Application Security** (Why AI Generation Isn't Scary):
-- **No Arbitrary Code Execution**: UI specs are pure JSON data — it's data, not code
-- **Pre-defined Tools**: All operations go through registered tool functions — the LLM can't invent new syscalls
-- **Sandboxed Generation**: LLM generates data structures, not executable code — huge security win
+**Application Security** (Why Blueprint Apps Are Safe):
+- **No Arbitrary Code Execution**: Blueprint specs are pure JSON data — it's data, not code
+- **Pre-defined Tools**: All operations go through registered tool functions — no dynamic code execution
+- **Sandboxed by Design**: Blueprint apps can only invoke predefined tools, not create new syscalls or operations
+- **AI-Generated Apps Follow Same Rules**: When you use AI to generate a Blueprint, it's still just JSON data — huge security win
 
 **Automatic Cleanup:**
 - Zombie process reaping via waitpid
@@ -1328,9 +1394,9 @@ I was paranoid about concurrent access bugs, so I built stress tests that hammer
 
 All 18 tests passed with zero deadlocks, demonstrating robust concurrent access patterns across all DashMap-based kernel components.
 
-## What Makes This Different — Inspired Architecture, Custom Implementation
+## What Makes This Different — A Desktop OS Built With Modern Architecture
 
-AgentOS takes proven algorithms and patterns, then implements them in ways that work together better than I've seen elsewhere. The innovation is in **how these pieces integrate and adapt to each other**. Here's what makes it unique:
+AgentOS isn't trying to be Linux or Windows. It's what you get when you rebuild a desktop operating system from scratch with modern architecture principles, proven algorithms, and production-grade engineering. The innovation is in **how these pieces integrate** to create a legitimate userspace OS. Here's what makes it unique:
 
 ### 1. Observability-First Design (Woven Into The Fabric)
 
@@ -1441,7 +1507,7 @@ Every optimization here came from studying how the best systems work, then adapt
 - **DashMap shard tuning** — Started with defaults, profiled contention patterns, tuned to 128/64/32 shards based on actual workload characteristics
 - **ID recycling** — Calculated the exhaustion point (71 minutes at 1 alloc/μs), built a custom recycling system to prevent it
 
-### 5. Cross-Platform Network Isolation (One API, Three Implementations)
+### 6. Cross-Platform Network Isolation (One API, Three Implementations)
 
 Network isolation is trivial on Linux with namespaces, impossible on macOS without them. Rather than limit the system to Linux-only, I built a platform abstraction layer that provides the same security guarantees through different mechanisms:
 
@@ -1450,7 +1516,7 @@ Network isolation is trivial on Linux with namespaces, impossible on macOS witho
 - **Simulation mode** — capability-based restrictions for unsupported platforms, maintaining API compatibility
 - **Unified interface** — all three expose identical APIs, the platform detection happens at compile time
 
-### 6. Production Thinking (Anticipating Failure Modes)
+### 7. Production Thinking (Anticipating Failure Modes)
 
 These features came from asking "what breaks in production?" and designing solutions before the problems appear:
 
@@ -1463,12 +1529,13 @@ These features came from asking "what breaks in production?" and designing solut
 
 ## Acknowledgments — Standing On Shoulders
 
-I didn't invent most of this. What I did was put proven pieces together in a new way:
+I didn't invent most of this. What I did was ask "what would a desktop OS look like if designed from scratch today?" and then put proven pieces together to answer that question:
 
-- **Proven Algorithms**: CFS scheduling (Linux), segregated free lists (jemalloc), Unix IPC (POSIX) — borrowed from the best
-- **Modern Rust**: Tokio async runtime, DashMap lock-free maps, crossbeam concurrency — the ecosystem is incredible
-- **Google Gemini API**: Efficient LLM inference for application generation — fast enough to feel real-time
-- **gRPC & Protocol Buffers**: Type-safe high-performance RPC — better than REST for this use case
-- **React Ecosystem**: Dynamic UI rendering with Zustand state management — React is still the best choice for complex UIs
+- **Proven OS Algorithms**: CFS scheduling (Linux), segregated free lists (jemalloc), Unix IPC (POSIX), network namespaces — borrowed from decades of OS research
+- **Modern Rust**: Tokio async runtime, DashMap lock-free maps, crossbeam concurrency, parking_lot synchronization — the ecosystem is incredible
+- **Desktop Patterns**: Window management (react-rnd), application lifecycle, session persistence — lessons from macOS, Windows, Linux desktop environments
+- **gRPC & Protocol Buffers**: Type-safe high-performance RPC — better than REST for inter-service communication
+- **React Ecosystem**: Dynamic UI rendering, Zustand state management, virtual scrolling — React enables building a desktop shell in the browser
+- **Google Gemini API**: Optional LLM inference for AI-generated Blueprint apps — a power user feature, not the core system
 
-**The innovation is in how these pieces work together, not in reinventing any particular wheel.**
+**The innovation is in how these pieces integrate to create a legitimate userspace desktop OS, not in reinventing any particular wheel. AI generation is just one optional feature among many.**
