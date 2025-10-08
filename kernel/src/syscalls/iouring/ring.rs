@@ -7,6 +7,7 @@
  use super::completion::{SyscallCompletionQueue, SyscallCompletionEntry, SyscallCompletionStatus};
  use super::IoUringError;
  use crate::core::types::Pid;
+ use crate::core::sync::{WaitQueue, SyncConfig};
  use std::sync::Arc;
  use std::sync::atomic::{AtomicU64, Ordering};
  use std::time::{Duration, Instant};
@@ -17,11 +18,14 @@
  /// - Lock-free ring buffers for zero-contention syscall batching
  /// - Optimized for high-frequency async syscall patterns
  /// - Cache-line aligned stats for accurate monitoring
+ /// - Futex-based waiting (Linux) for minimal overhead
  pub struct SyscallCompletionRing {
      pid: Pid,
      submission_queue: Arc<SyscallSubmissionQueue>,
      completion_queue: Arc<SyscallCompletionQueue>,
      stats: Arc<RingStats>,
+     /// Efficient wait queue for completion notifications
+     wait_queue: WaitQueue<u64>,
  }
 
  impl SyscallCompletionRing {
@@ -32,6 +36,8 @@
              submission_queue: Arc::new(SyscallSubmissionQueue::new(sq_size)),
              completion_queue: Arc::new(SyscallCompletionQueue::new(cq_size)),
              stats: Arc::new(RingStats::default()),
+             // Use low_latency config for syscall completions
+             wait_queue: WaitQueue::low_latency(),
          }
      }
 
@@ -64,7 +70,7 @@
      /// Complete an operation and add to completion queue (lock-free)
      ///
      /// # Performance
-     /// Hot path - zero-contention atomic operation
+     /// Hot path - zero-contention atomic operation with efficient wake
      pub fn complete(
          &self,
          seq: u64,
@@ -75,9 +81,16 @@
          let entry = SyscallCompletionEntry::new(seq, status, result, user_data);
          let _ = self.completion_queue.push(entry);
          self.stats.completions.fetch_add(1, Ordering::Relaxed);
+
+         // Wake any waiters (futex on Linux, no polling!)
+         self.wait_queue.wake_one(seq);
      }
 
      /// Wait for a completion with timeout (blocking)
+     ///
+     /// # Performance
+     ///
+     /// Uses adaptive spinwait followed by futex (Linux) for optimal latency
      pub fn wait_completion_timeout(
          &self,
          seq: u64,
@@ -86,17 +99,26 @@
          let start = Instant::now();
 
          loop {
-             // Lock-free check for completion
+             // Lock-free fast path: check if completion is already available
              if let Some(entry) = self.completion_queue.find_and_remove(seq) {
                  return Ok(entry);
              }
 
-             if start.elapsed() >= timeout {
+             // Check timeout
+             let elapsed = start.elapsed();
+             if elapsed >= timeout {
                  return Err(IoUringError::Timeout);
              }
 
-             // Yield to avoid busy waiting
-             std::thread::sleep(Duration::from_micros(100));
+             // Calculate remaining timeout
+             let remaining = timeout.saturating_sub(elapsed);
+
+             // Efficient wait (adaptive spin + futex = no busy-loop)
+             self.wait_queue
+                 .wait(seq, Some(remaining))
+                 .map_err(|_| IoUringError::Timeout)?;
+
+             // Loop to check completion queue again after wake
          }
      }
 

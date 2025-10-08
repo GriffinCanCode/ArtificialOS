@@ -35,6 +35,7 @@ time = { version = "0.3", default-features = false, features = ["serde", "macros
 
 # Concurrency
 parking_lot = "0.12"
+parking_lot_core = "0.9"
 dashmap = { version = "5.5", default-features = false }
 ahash = "0.8"
 ringbuf = "0.4"
@@ -87,6 +88,10 @@ harness = false
 
 [[bench]]
 name = "bincode_benchmark"
+harness = false
+
+[[bench]]
+name = "sync_benchmark"
 harness = false
 
 # Development profile - optimized for build speed
