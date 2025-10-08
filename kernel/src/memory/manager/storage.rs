@@ -35,17 +35,19 @@ impl MemoryManager {
             // Calculate offset within the block
             let offset = address - base_addr;
 
-            // Get or create storage for this block using alter() for atomic operation
-            self.memory_storage.alter(&base_addr, |_, mut block_data| {
-                // Ensure block_data is large enough
-                if block_data.len() < block_size {
-                    block_data.resize(block_size, 0u8);
-                }
-                // Write data at the offset using SIMD-accelerated copy
-                let end = offset + data.len();
-                simd_memcpy(&mut block_data[offset..end], data);
-                block_data
-            });
+            // Get or create storage for this block
+            let mut entry = self.memory_storage
+                .entry(base_addr)
+                .or_insert_with(|| vec![0u8; block_size]);
+
+            // Ensure block_data is large enough
+            if entry.len() < block_size {
+                entry.resize(block_size, 0u8);
+            }
+
+            // Write data at the offset using SIMD-accelerated copy
+            let end = offset + data.len();
+            simd_memcpy(&mut entry[offset..end], data);
 
             info!(
                 "Wrote {} bytes to address 0x{:x} (offset {} in block at 0x{:x})",

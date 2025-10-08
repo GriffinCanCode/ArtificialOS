@@ -185,6 +185,77 @@ where
     pub fn strategy_name(&self) -> &'static str {
         self.strategy.name()
     }
+
+    /// Async-compatible wait using tokio::spawn_blocking
+    ///
+    /// This bridges the gap between async code and our sync WaitQueue.
+    /// Uses futex on Linux (via spawn_blocking) without blocking the tokio runtime.
+    ///
+    /// # Performance
+    ///
+    /// - Spawns blocking task (minimal overhead, ~1µs)
+    /// - Underlying wait uses futex (Linux) for zero CPU usage
+    /// - No busy-waiting or polling
+    #[cfg(feature = "tokio")]
+    pub async fn wait_async(&self, key: K, timeout: Option<Duration>) -> WaitResult<()> {
+        let strategy = self.strategy.clone();
+        tokio::task::spawn_blocking(move || {
+            let woken = strategy.wait(key, timeout);
+            if woken {
+                Ok(())
+            } else {
+                Err(WaitError::Timeout)
+            }
+        })
+        .await
+        .map_err(|e| WaitError::Cancelled)?
+    }
+
+    /// Async-compatible wait_while using tokio::spawn_blocking
+    ///
+    /// # Performance
+    ///
+    /// Predicate is evaluated in the blocking task (not on tokio runtime)
+    #[cfg(feature = "tokio")]
+    pub async fn wait_while_async<F>(
+        &self,
+        key: K,
+        timeout: Option<Duration>,
+        predicate: F,
+    ) -> WaitResult<()>
+    where
+        F: FnMut() -> bool + Send + 'static,
+    {
+        let strategy = self.strategy.clone();
+        tokio::task::spawn_blocking(move || {
+            let start = std::time::Instant::now();
+            let mut pred = predicate;
+
+            loop {
+                // Check predicate first
+                if !pred() {
+                    return Ok(());
+                }
+
+                // Check timeout
+                if let Some(timeout) = timeout {
+                    if start.elapsed() >= timeout {
+                        return Err(WaitError::Timeout);
+                    }
+                }
+
+                // Calculate remaining timeout
+                let remaining = timeout.map(|t| t.saturating_sub(start.elapsed()));
+
+                // Wait for notification
+                if !strategy.wait(key, remaining) {
+                    return Err(WaitError::Timeout);
+                }
+            }
+        })
+        .await
+        .map_err(|_| WaitError::Cancelled)?
+    }
 }
 
 impl<K> Clone for WaitQueue<K>

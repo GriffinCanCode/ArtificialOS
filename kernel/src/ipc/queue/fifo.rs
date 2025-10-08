@@ -5,18 +5,22 @@
 
 use super::super::types::{IpcError, IpcResult, QueueId};
 use super::types::QueueMessage;
+use crate::core::sync::WaitQueue;
 use crate::core::types::Pid;
 use std::collections::VecDeque;
 use std::sync::Arc;
-use tokio::sync::Notify;
 
 /// FIFO queue implementation
+///
+/// # Performance
+///
+/// Uses centralized WaitQueue (futex on Linux) for optimal blocking operations
 pub(super) struct FifoQueue {
     pub id: QueueId,
     pub owner: Pid,
     pub capacity: usize,
     pub messages: VecDeque<QueueMessage>,
-    pub notify: Arc<Notify>,
+    pub wait_queue: Arc<WaitQueue<QueueId>>,
     pub closed: bool,
 }
 
@@ -28,7 +32,8 @@ impl FifoQueue {
             owner,
             capacity: capacity.min(MAX_QUEUE_CAPACITY),
             messages: VecDeque::new(),
-            notify: Arc::new(Notify::new()),
+            // Use long_wait config for IPC operations (futex on Linux, zero CPU spinning)
+            wait_queue: Arc::new(WaitQueue::long_wait()),
             closed: false,
         }
     }
@@ -47,7 +52,8 @@ impl FifoQueue {
         }
 
         self.messages.push_back(message);
-        self.notify.notify_one();
+        // Wake one waiter using centralized futex-based wake (Linux) or condvar (other platforms)
+        self.wait_queue.wake_one(self.id);
         Ok(())
     }
 
@@ -65,6 +71,7 @@ impl FifoQueue {
 
     pub fn close(&mut self) {
         self.closed = true;
-        self.notify.notify_waiters();
+        // Wake all waiters on close
+        self.wait_queue.wake_all(self.id);
     }
 }

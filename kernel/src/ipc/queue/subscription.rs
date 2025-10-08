@@ -74,32 +74,52 @@ impl QueueManager {
     }
 
     /// Poll standard queue (FIFO/Priority)
+    ///
+    /// # Performance
+    ///
+    /// Uses centralized WaitQueue with async adapter for futex-based blocking (Linux)
     async fn poll_standard_queue(&self, queue_id: QueueId, pid: Pid) -> IpcResult<QueueMessage> {
-        let notify = self.get_queue_notify(queue_id)?;
+        let wait_queue = self.get_queue_wait_queue(queue_id)?;
+        let timeout = std::time::Duration::from_millis(100); // Poll every 100ms
 
         loop {
+            // Fast path: try to receive immediately
             if let Some(msg) = self.receive(queue_id, pid)? {
                 return Ok(msg);
             }
 
-            notify.notified().await;
-
+            // Check if closed before waiting
             if self.is_queue_closed(queue_id)? {
                 return Err(IpcError::Closed("Queue closed".into()));
             }
+
+            // Slow path: async wait on centralized WaitQueue
+            // This uses futex on Linux (zero CPU spinning) via spawn_blocking
+            let wait_queue_clone = wait_queue.clone();
+            let _ = tokio::task::spawn_blocking(move || {
+                wait_queue_clone.wait(queue_id, Some(timeout))
+            })
+            .await
+            .map_err(|e| IpcError::InvalidOperation(format!("Wait task failed: {}", e)))?;
+
+            // After wake or timeout, check for message again (loop)
         }
     }
 
-    /// Get notification handle for queue
-    fn get_queue_notify(&self, queue_id: QueueId) -> IpcResult<std::sync::Arc<tokio::sync::Notify>> {
+    /// Get WaitQueue handle for queue
+    ///
+    /// # Performance
+    ///
+    /// Returns centralized WaitQueue that uses futex on Linux
+    fn get_queue_wait_queue(&self, queue_id: QueueId) -> IpcResult<std::sync::Arc<crate::core::sync::WaitQueue<QueueId>>> {
         let queue = self
             .queues
             .get(&queue_id)
             .ok_or_else(|| IpcError::NotFound(format!("Queue {} not found", queue_id)))?;
 
         match queue.value() {
-            Queue::Fifo(q) => Ok(q.notify.clone()),
-            Queue::Priority(q) => Ok(q.notify.clone()),
+            Queue::Fifo(q) => Ok(q.wait_queue.clone()),
+            Queue::Priority(q) => Ok(q.wait_queue.clone()),
             Queue::PubSub(_) => Err(IpcError::InvalidOperation(
                 "Use subscribe for PubSub queues".into(),
             )),
