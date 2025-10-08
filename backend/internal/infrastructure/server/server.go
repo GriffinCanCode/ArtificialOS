@@ -30,6 +30,7 @@ import (
 	scraperProvider "github.com/GriffinCanCode/AgentOS/backend/internal/providers/scraper"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/storage"
 	systemProvider "github.com/GriffinCanCode/AgentOS/backend/internal/providers/system"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/terminal"
 )
 
 // Server wraps the HTTP server and dependencies
@@ -315,6 +316,12 @@ func registerProviders(registry *service.Registry, kernel *kernel.KernelClient) 
 	mthProvider := mathProvider.NewProvider()
 	if err := registry.Register(mthProvider); err != nil {
 		fmt.Printf("Warning: Failed to register math provider: %v\n", err)
+	}
+
+	// Terminal provider
+	termProvider := terminal.NewProvider()
+	if err := registry.Register(termProvider); err != nil {
+		fmt.Printf("Warning: Failed to register terminal provider: %v\n", err)
 	}
 
 	// IPC provider (only if kernel is available)

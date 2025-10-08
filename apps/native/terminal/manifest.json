@@ -1,0 +1,32 @@
+{
+  "id": "terminal",
+  "name": "Terminal",
+  "type": "native_web",
+  "version": "1.0.0",
+  "icon": "💻",
+  "category": "system",
+  "author": "system",
+  "description": "Full-featured terminal emulator with xterm.js, supporting multiple sessions, ANSI colors, and interactive shells",
+  "permissions": [
+    "EXECUTE_PROCESS",
+    "READ_FILE",
+    "WRITE_FILE",
+    "LIST_DIRECTORY"
+  ],
+  "services": ["terminal", "storage"],
+  "exports": {
+    "component": "Terminal"
+  },
+  "tags": ["terminal", "shell", "console", "system", "developer"],
+  "features": [
+    "Full xterm.js terminal emulation",
+    "Multiple tabs/sessions",
+    "ANSI escape sequences and colors",
+    "Copy/paste support",
+    "Terminal search",
+    "Configurable shell (bash, zsh, etc.)",
+    "Persistent sessions",
+    "Resize handling",
+    "Keyboard shortcuts"
+  ]
+}
