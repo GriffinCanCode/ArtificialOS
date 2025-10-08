@@ -3,8 +3,9 @@
  * Tests for sandboxed system call execution
  */
 
-use ai_os_kernel::sandbox::{Capability, SandboxConfig, SandboxManager};
-use ai_os_kernel::syscall::{Syscall, SyscallExecutor, SyscallResult};
+use ai_os_kernel::security::traits::SandboxProvider;
+use ai_os_kernel::security::{Capability, SandboxConfig, SandboxManager};
+use ai_os_kernel::syscalls::{Syscall, SyscallExecutor, SyscallResult};
 use pretty_assertions::assert_eq;
 use std::fs;
 use std::path::PathBuf;
@@ -161,7 +162,7 @@ fn test_create_file() {
 
     // Create sandbox with CreateFile capability
     let mut config = SandboxConfig::minimal(pid);
-    config.grant_capability(Capability::CreateFile);
+    config.grant_capability(Capability::CreateFile(None));
     config.allow_path(temp_dir.path().canonicalize().unwrap());
     sandbox_manager.create_sandbox(config);
 
@@ -187,7 +188,7 @@ fn test_delete_file() {
 
     // Create sandbox with DeleteFile capability
     let mut config = SandboxConfig::minimal(pid);
-    config.grant_capability(Capability::DeleteFile);
+    config.grant_capability(Capability::DeleteFile(None));
     config.allow_path(temp_dir.path().canonicalize().unwrap());
     sandbox_manager.create_sandbox(config);
 
@@ -213,7 +214,7 @@ fn test_list_directory() {
 
     // Create sandbox with ListDirectory capability
     let mut config = SandboxConfig::minimal(pid);
-    config.grant_capability(Capability::ListDirectory);
+    config.grant_capability(Capability::ListDirectory(None));
     config.allow_path(temp_dir.path().canonicalize().unwrap());
     sandbox_manager.create_sandbox(config);
 
@@ -321,7 +322,7 @@ fn test_create_directory() {
 
     // Create sandbox with CreateFile capability (used for directories too)
     let mut config = SandboxConfig::minimal(pid);
-    config.grant_capability(Capability::CreateFile);
+    config.grant_capability(Capability::CreateFile(None));
     config.allow_path(temp_dir.path().canonicalize().unwrap());
     sandbox_manager.create_sandbox(config);
 

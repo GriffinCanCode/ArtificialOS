@@ -7,7 +7,7 @@ pub mod async_task;
 pub mod batch;
 pub mod streaming;
 
-pub use async_task::{AsyncTaskManager, TaskStatus};
+pub use async_task::{AsyncTaskManager, TaskStats, TaskStatus};
 pub use batch::BatchExecutor;
 pub use streaming::StreamingManager;
 

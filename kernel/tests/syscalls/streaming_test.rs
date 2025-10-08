@@ -3,7 +3,7 @@
  * Tests for streaming file operations
  */
 
-use ai_os_kernel::api::streaming::StreamingManager;
+use ai_os_kernel::api::execution::StreamingManager;
 use ai_os_kernel::security::traits::SandboxProvider;
 use ai_os_kernel::security::{Capability, SandboxConfig, SandboxManager};
 use ai_os_kernel::syscalls::SyscallExecutor;
