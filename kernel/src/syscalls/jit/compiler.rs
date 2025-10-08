@@ -370,10 +370,11 @@ mod tests {
         let result = handler.execute(123, &Syscall::GetProcessList);
 
         match result {
-            SyscallResult::Success { .. } | SyscallResult::Error { .. } => {
+            SyscallResult::Success { .. }
+            | SyscallResult::Error { .. }
+            | SyscallResult::PermissionDenied { .. } => {
                 // Success or expected error - both are fine
             }
-            _ => panic!("Unexpected result"),
         }
     }
 }

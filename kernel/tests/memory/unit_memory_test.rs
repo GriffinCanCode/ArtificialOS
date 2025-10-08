@@ -154,7 +154,7 @@ fn test_invalid_deallocation() {
     assert!(result.is_err());
 
     match result {
-        Err(MemoryError::InvalidAddress) => {
+        Err(MemoryError::InvalidAddress(_)) => {
             // Expected
         }
         _ => panic!("Expected InvalidAddress error"),

@@ -447,7 +447,8 @@ fn test_signal_outcome_properties() {
 
 #[test]
 fn test_signal_handler_executor() {
-    let handler = SignalHandler::new();
+    let callbacks = Arc::new(CallbackRegistry::new());
+    let handler = SignalHandler::new(callbacks);
     let pid: Pid = 1;
 
     // Test default action execution
@@ -489,7 +490,8 @@ fn test_signal_handler_executor() {
 
 #[test]
 fn test_signal_handler_default_actions() {
-    let handler = SignalHandler::new();
+    let callbacks = Arc::new(CallbackRegistry::new());
+    let handler = SignalHandler::new(callbacks);
 
     // Fatal signals should terminate
     assert_eq!(
