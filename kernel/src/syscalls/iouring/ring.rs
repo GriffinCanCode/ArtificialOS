@@ -7,12 +7,15 @@
  use super::completion::{SyscallCompletionQueue, SyscallCompletionEntry, SyscallCompletionStatus};
  use super::IoUringError;
  use crate::core::types::Pid;
- use crate::core::sync::{WaitQueue, SyncConfig};
+ use crate::core::sync::WaitQueue;
  use std::sync::Arc;
  use std::sync::atomic::{AtomicU64, Ordering};
- use std::time::{Duration, Instant};
+use std::time::{Duration, Instant};
 
- /// Completion ring with lock-free submission and completion queues
+/// Default timeout for syscall completion operations (30 seconds)
+const DEFAULT_COMPLETION_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// Completion ring with lock-free submission and completion queues
  ///
  /// # Performance
  /// - Lock-free ring buffers for zero-contention syscall batching
@@ -122,11 +125,13 @@
          }
      }
 
-     /// Wait for a completion (blocking, no timeout)
-     pub fn wait_completion(&self, seq: u64) -> Result<SyscallCompletionEntry, IoUringError> {
-         // Use a very long timeout instead of infinite
-         self.wait_completion_timeout(seq, Duration::from_secs(300))
-     }
+    /// Wait for a completion (blocking, with default timeout)
+    ///
+    /// Uses a default timeout of 30 seconds to prevent hung operations from blocking indefinitely.
+    /// For custom timeouts, use `wait_completion_timeout` directly.
+    pub fn wait_completion(&self, seq: u64) -> Result<SyscallCompletionEntry, IoUringError> {
+        self.wait_completion_timeout(seq, DEFAULT_COMPLETION_TIMEOUT)
+    }
 
      /// Try to get a completion (non-blocking, lock-free)
      pub fn try_complete(&self) -> Option<SyscallCompletionEntry> {
