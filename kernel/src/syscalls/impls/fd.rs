@@ -22,9 +22,10 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 
-use super::executor::SyscallExecutorWithIpc;
+use crate::syscalls::core::executor::SyscallExecutorWithIpc;
+use crate::syscalls::timeout::executor::TimeoutError;
 use super::handle::FileHandle;
-use super::types::SyscallResult;
+use crate::syscalls::types::SyscallResult;
 
 /// File descriptor manager
 ///
@@ -126,7 +127,7 @@ impl FdManager {
     }
 
     /// Track that a process owns an FD (atomic increment)
-    pub(super) fn track_fd(&self, pid: Pid, fd: u32) {
+    pub(in crate::syscalls) fn track_fd(&self, pid: Pid, fd: u32) {
         // Use entry API for HashSet (simpler and correct)
         self.process_fds
             .entry(pid)
@@ -138,7 +139,7 @@ impl FdManager {
     }
 
     /// Untrack an FD from a process (atomic decrement, O(1) removal)
-    pub(super) fn untrack_fd(&self, pid: Pid, fd: u32) {
+    pub(in crate::syscalls) fn untrack_fd(&self, pid: Pid, fd: u32) {
         if let Some(mut fds) = self.process_fds.get_mut(&pid) {
             fds.remove(&fd); // O(1) HashSet removal
         }
@@ -186,7 +187,7 @@ impl Clone for FdManager {
 }
 
 impl SyscallExecutorWithIpc {
-    pub(super) fn open(&self, pid: Pid, path: &PathBuf, flags: u32, mode: u32) -> SyscallResult {
+    pub(in crate::syscalls) fn open(&self, pid: Pid, path: &PathBuf, flags: u32, mode: u32) -> SyscallResult {
         let span = span_operation("fd_open");
         let _guard = span.enter();
 
@@ -359,7 +360,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn close_fd(&self, pid: Pid, fd: u32) -> SyscallResult {
+    pub(in crate::syscalls) fn close_fd(&self, pid: Pid, fd: u32) -> SyscallResult {
         let span = span_operation("fd_close");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
@@ -381,7 +382,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn dup(&self, pid: Pid, fd: u32) -> SyscallResult {
+    pub(in crate::syscalls) fn dup(&self, pid: Pid, fd: u32) -> SyscallResult {
         let span = span_operation("fd_dup");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
@@ -445,7 +446,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn dup2(&self, pid: Pid, oldfd: u32, newfd: u32) -> SyscallResult {
+    pub(in crate::syscalls) fn dup2(&self, pid: Pid, oldfd: u32, newfd: u32) -> SyscallResult {
         let span = span_operation("fd_dup2");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
@@ -502,7 +503,7 @@ impl SyscallExecutorWithIpc {
         SyscallResult::success()
     }
 
-    pub(super) fn lseek(&self, pid: Pid, fd: u32, offset: i64, whence: u32) -> SyscallResult {
+    pub(in crate::syscalls) fn lseek(&self, pid: Pid, fd: u32, offset: i64, whence: u32) -> SyscallResult {
         // Note: lseek operates on already-open fds with validated permissions
 
         if let Some(handle_arc) = self.fd_manager.open_files.get(&fd) {
@@ -549,7 +550,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn fcntl(&self, pid: Pid, fd: u32, cmd: u32, arg: u32) -> SyscallResult {
+    pub(in crate::syscalls) fn fcntl(&self, pid: Pid, fd: u32, cmd: u32, arg: u32) -> SyscallResult {
         // Note: fcntl operates on already-open fds with validated permissions
 
         // Verify FD exists
@@ -575,7 +576,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn fsync_fd(&self, pid: Pid, fd: u32) -> SyscallResult {
+    pub(in crate::syscalls) fn fsync_fd(&self, pid: Pid, fd: u32) -> SyscallResult {
         // Fsync synchronizes file data and metadata to disk
         // Can block for extended periods on slow storage (NFS, USB, etc.)
 
@@ -595,14 +596,14 @@ impl SyscallExecutorWithIpc {
                     info!("PID {} synchronized FD {} to disk", pid, fd);
                     SyscallResult::success()
                 }
-                Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+                Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
                     error!(
                         "Fsync timed out for PID {}, FD {} after {}ms (slow storage?)",
                         pid, fd, elapsed_ms
                     );
                     SyscallResult::error(format!("Fsync timed out after {}ms", elapsed_ms))
                 }
-                Err(super::TimeoutError::Operation(e)) => {
+                Err(TimeoutError::Operation(e)) => {
                     error!("Fsync failed for FD {}: {}", fd, e);
                     SyscallResult::error(format!("Fsync failed: {}", e))
                 }
@@ -613,7 +614,7 @@ impl SyscallExecutorWithIpc {
     }
 
     #[allow(dead_code)]
-    pub(super) fn fdatasync_fd(&self, pid: Pid, fd: u32) -> SyscallResult {
+    pub(in crate::syscalls) fn fdatasync_fd(&self, pid: Pid, fd: u32) -> SyscallResult {
         // Fdatasync synchronizes file data (not metadata) to disk
         // Can block for extended periods on slow storage
 
@@ -633,14 +634,14 @@ impl SyscallExecutorWithIpc {
                     info!("PID {} synchronized FD {} data to disk", pid, fd);
                     SyscallResult::success()
                 }
-                Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+                Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
                     error!(
                         "Fdatasync timed out for PID {}, FD {} after {}ms (slow storage?)",
                         pid, fd, elapsed_ms
                     );
                     SyscallResult::error(format!("Fdatasync timed out after {}ms", elapsed_ms))
                 }
-                Err(super::TimeoutError::Operation(e)) => {
+                Err(TimeoutError::Operation(e)) => {
                     error!("Fdatasync failed for FD {}: {}", fd, e);
                     SyscallResult::error(format!("Fdatasync failed: {}", e))
                 }

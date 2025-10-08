@@ -4,6 +4,8 @@
 * Socket operations for TCP/UDP networking
 */
 
+use crate::syscalls::timeout::executor::TimeoutError;
+
 use crate::core::serialization::json;
 use crate::core::types::Pid;
 use crate::monitoring::span_operation;
@@ -18,8 +20,8 @@ use std::net::{TcpListener, TcpStream, UdpSocket};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 
-use super::executor::SyscallExecutorWithIpc;
-use super::types::SyscallResult;
+use crate::syscalls::core::executor::SyscallExecutorWithIpc;
+use crate::syscalls::types::SyscallResult;
 
 /// Unified socket abstraction - eliminates need for separate collections per type
 ///
@@ -224,7 +226,7 @@ impl Clone for SocketManager {
 }
 
 impl SyscallExecutorWithIpc {
-    pub(super) fn socket(
+    pub(in crate::syscalls) fn socket(
         &self,
         pid: Pid,
         domain: u32,
@@ -308,7 +310,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn bind(&self, pid: Pid, sockfd: u32, address: &str) -> SyscallResult {
+    pub(in crate::syscalls) fn bind(&self, pid: Pid, sockfd: u32, address: &str) -> SyscallResult {
         let span = span_operation("socket_bind");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
@@ -366,7 +368,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn listen(&self, pid: Pid, sockfd: u32, backlog: u32) -> SyscallResult {
+    pub(in crate::syscalls) fn listen(&self, pid: Pid, sockfd: u32, backlog: u32) -> SyscallResult {
         let span = span_operation("socket_listen");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
@@ -411,7 +413,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn accept(&self, pid: Pid, sockfd: u32) -> SyscallResult {
+    pub(in crate::syscalls) fn accept(&self, pid: Pid, sockfd: u32) -> SyscallResult {
         let span = span_operation("socket_accept");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
@@ -500,7 +502,7 @@ impl SyscallExecutorWithIpc {
                     }
                 }
             }
-            Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+            Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
                 error!(
                     "Accept timed out for PID {}, socket {} after {}ms",
                     pid, sockfd, elapsed_ms
@@ -508,26 +510,26 @@ impl SyscallExecutorWithIpc {
                 span.record_error(&format!("Timeout after {}ms", elapsed_ms));
                 SyscallResult::error("Accept timed out")
             }
-            Err(super::TimeoutError::Operation(AcceptError::NotListener)) => {
+            Err(TimeoutError::Operation(AcceptError::NotListener)) => {
                 span.record_error("Socket is not a TCP listener");
                 SyscallResult::error("Socket is not a TCP listener")
             }
-            Err(super::TimeoutError::Operation(AcceptError::InvalidSocket)) => {
+            Err(TimeoutError::Operation(AcceptError::InvalidSocket)) => {
                 span.record_error("Invalid socket or not listening");
                 SyscallResult::error("Invalid socket or not listening")
             }
-            Err(super::TimeoutError::Operation(AcceptError::NoPendingConnections)) => {
+            Err(TimeoutError::Operation(AcceptError::NoPendingConnections)) => {
                 span.record_error("No pending connections");
                 SyscallResult::error("No pending connections")
             }
-            Err(super::TimeoutError::Operation(AcceptError::Other(e))) => {
+            Err(TimeoutError::Operation(AcceptError::Other(e))) => {
                 span.record_error(&format!("Accept failed: {}", e));
                 SyscallResult::error(format!("Accept failed: {}", e))
             }
         }
     }
 
-    pub(super) fn connect(&self, pid: Pid, sockfd: u32, address: &str) -> SyscallResult {
+    pub(in crate::syscalls) fn connect(&self, pid: Pid, sockfd: u32, address: &str) -> SyscallResult {
         let span = span_operation("socket_connect");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
@@ -564,7 +566,7 @@ impl SyscallExecutorWithIpc {
                 span.record_result(true);
                 SyscallResult::success()
             }
-            Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+            Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
                 error!(
                     "Connect timed out for PID {}, socket {} to {} after {}ms",
                     pid, sockfd, address, elapsed_ms
@@ -572,7 +574,7 @@ impl SyscallExecutorWithIpc {
                 span.record_error(&format!("Timeout after {}ms", elapsed_ms));
                 SyscallResult::error("Connect timed out")
             }
-            Err(super::TimeoutError::Operation(e)) => {
+            Err(TimeoutError::Operation(e)) => {
                 warn!("Failed to connect socket {} to {}: {}", sockfd, address, e);
                 span.record_error(&format!("Connect failed: {}", e));
                 SyscallResult::error(format!("Connect failed: {}", e))
@@ -580,7 +582,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn send(&self, pid: Pid, sockfd: u32, data: &[u8], _flags: u32) -> SyscallResult {
+    pub(in crate::syscalls) fn send(&self, pid: Pid, sockfd: u32, data: &[u8], _flags: u32) -> SyscallResult {
         let span = span_operation("socket_send");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
@@ -639,7 +641,7 @@ impl SyscallExecutorWithIpc {
                     }
                 }
             }
-            Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+            Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
                 error!(
                     "Send timed out for PID {}, socket {} after {}ms",
                     pid, sockfd, elapsed_ms
@@ -647,19 +649,19 @@ impl SyscallExecutorWithIpc {
                 span.record_error(&format!("Timeout after {}ms", elapsed_ms));
                 SyscallResult::error("Send timed out")
             }
-            Err(super::TimeoutError::Operation(SendError::NotStream)) => {
+            Err(TimeoutError::Operation(SendError::NotStream)) => {
                 span.record_error("Socket is not a TCP stream");
                 SyscallResult::error("Socket is not a TCP stream")
             }
-            Err(super::TimeoutError::Operation(SendError::InvalidSocket)) => {
+            Err(TimeoutError::Operation(SendError::InvalidSocket)) => {
                 span.record_error("Invalid socket or not connected");
                 SyscallResult::error("Invalid socket or not connected")
             }
-            Err(super::TimeoutError::Operation(SendError::WouldBlock)) => {
+            Err(TimeoutError::Operation(SendError::WouldBlock)) => {
                 span.record_error("Send would block");
                 SyscallResult::error("Send would block")
             }
-            Err(super::TimeoutError::Operation(SendError::Other(e))) => {
+            Err(TimeoutError::Operation(SendError::Other(e))) => {
                 warn!("Send failed on socket {}: {}", sockfd, e);
                 span.record_error(&format!("Send failed: {}", e));
                 SyscallResult::error(format!("Send failed: {}", e))
@@ -667,7 +669,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn recv(&self, pid: Pid, sockfd: u32, size: usize, _flags: u32) -> SyscallResult {
+    pub(in crate::syscalls) fn recv(&self, pid: Pid, sockfd: u32, size: usize, _flags: u32) -> SyscallResult {
         let span = span_operation("socket_recv");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
@@ -726,7 +728,7 @@ impl SyscallExecutorWithIpc {
                 span.record_result(true);
                 SyscallResult::success_with_data(buffer)
             }
-            Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+            Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
                 error!(
                     "Recv timed out for PID {}, socket {} after {}ms",
                     pid, sockfd, elapsed_ms
@@ -734,19 +736,19 @@ impl SyscallExecutorWithIpc {
                 span.record_error(&format!("Timeout after {}ms", elapsed_ms));
                 SyscallResult::error("Recv timed out")
             }
-            Err(super::TimeoutError::Operation(RecvError::NotStream)) => {
+            Err(TimeoutError::Operation(RecvError::NotStream)) => {
                 span.record_error("Socket is not a TCP stream");
                 SyscallResult::error("Socket is not a TCP stream")
             }
-            Err(super::TimeoutError::Operation(RecvError::InvalidSocket)) => {
+            Err(TimeoutError::Operation(RecvError::InvalidSocket)) => {
                 span.record_error("Invalid socket or not connected");
                 SyscallResult::error("Invalid socket or not connected")
             }
-            Err(super::TimeoutError::Operation(RecvError::WouldBlock)) => {
+            Err(TimeoutError::Operation(RecvError::WouldBlock)) => {
                 span.record_error("Recv would block");
                 SyscallResult::error("Recv would block")
             }
-            Err(super::TimeoutError::Operation(RecvError::Other(e))) => {
+            Err(TimeoutError::Operation(RecvError::Other(e))) => {
                 warn!("Recv failed on socket {}: {}", sockfd, e);
                 span.record_error(&format!("Recv failed: {}", e));
                 SyscallResult::error(format!("Recv failed: {}", e))
@@ -754,7 +756,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn sendto(
+    pub(in crate::syscalls) fn sendto(
         &self,
         pid: Pid,
         sockfd: u32,
@@ -821,7 +823,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn recvfrom(
+    pub(in crate::syscalls) fn recvfrom(
         &self,
         pid: Pid,
         sockfd: u32,
@@ -883,7 +885,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn close_socket(&self, pid: Pid, sockfd: u32) -> SyscallResult {
+    pub(in crate::syscalls) fn close_socket(&self, pid: Pid, sockfd: u32) -> SyscallResult {
         let span = span_operation("socket_close");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
@@ -916,7 +918,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn setsockopt(
+    pub(in crate::syscalls) fn setsockopt(
         &self,
         pid: Pid,
         sockfd: u32,
@@ -942,7 +944,7 @@ impl SyscallExecutorWithIpc {
         SyscallResult::success()
     }
 
-    pub(super) fn getsockopt(
+    pub(in crate::syscalls) fn getsockopt(
         &self,
         pid: Pid,
         sockfd: u32,

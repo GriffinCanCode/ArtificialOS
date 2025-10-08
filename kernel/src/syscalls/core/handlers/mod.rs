@@ -16,6 +16,7 @@ mod signal_handler;
 mod system_handler;
 mod time_handler;
 
+// Re-export all handlers
 pub use async_handler::AsyncSyscallHandler;
 pub use fd_handler::FileDescriptorHandler;
 pub use fs_handler::FileSystemHandler;
@@ -28,5 +29,3 @@ pub use scheduler_handler::SchedulerHandler;
 pub use signal_handler::SignalHandler;
 pub use system_handler::SystemHandler;
 pub use time_handler::TimeHandler;
-
-// Re-export io_uring handlers

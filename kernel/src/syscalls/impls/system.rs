@@ -12,12 +12,12 @@ use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource}
 use log::{error, info, trace, warn};
 use prost::bytes;
 
-use super::executor::SyscallExecutorWithIpc;
-use super::types::{SyscallResult, SystemInfo};
-use super::TimeoutError;
+use crate::syscalls::core::executor::SyscallExecutorWithIpc;
+use crate::syscalls::types::{SyscallResult, SystemInfo};
+use crate::syscalls::timeout::executor::TimeoutError;
 
 impl SyscallExecutorWithIpc {
-    pub(super) fn get_system_info(&self, pid: Pid) -> SyscallResult {
+    pub(in crate::syscalls) fn get_system_info(&self, pid: Pid) -> SyscallResult {
         let span = span_operation("get_system_info");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
@@ -56,7 +56,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn get_current_time(&self, pid: Pid) -> SyscallResult {
+    pub(in crate::syscalls) fn get_current_time(&self, pid: Pid) -> SyscallResult {
         let span = span_operation("get_time");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
@@ -92,7 +92,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn get_env_var(&self, pid: Pid, key: &str) -> SyscallResult {
+    pub(in crate::syscalls) fn get_env_var(&self, pid: Pid, key: &str) -> SyscallResult {
         let span = span_operation("env_get");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
@@ -125,7 +125,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn set_env_var(&self, pid: Pid, key: &str, value: &str) -> SyscallResult {
+    pub(in crate::syscalls) fn set_env_var(&self, pid: Pid, key: &str, value: &str) -> SyscallResult {
         let span = span_operation("env_set");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
@@ -151,7 +151,7 @@ impl SyscallExecutorWithIpc {
         SyscallResult::success()
     }
 
-    pub(super) fn network_request(&self, pid: Pid, url: &str) -> SyscallResult {
+    pub(in crate::syscalls) fn network_request(&self, pid: Pid, url: &str) -> SyscallResult {
         let span = span_operation("http_request");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));

@@ -4,6 +4,8 @@
 * Process management and control
 */
 
+use crate::syscalls::timeout::executor::TimeoutError;
+
 use crate::core::serialization::json;
 use crate::core::types::{Pid, Priority};
 use crate::monitoring::span_operation;
@@ -13,11 +15,11 @@ use std::process::Command;
 
 use crate::security::{ResourceLimitProvider, SandboxProvider};
 
-use super::executor::SyscallExecutorWithIpc;
-use super::types::{ProcessOutput, SyscallResult};
+use crate::syscalls::core::executor::SyscallExecutorWithIpc;
+use crate::syscalls::types::{ProcessOutput, SyscallResult};
 
 impl SyscallExecutorWithIpc {
-    pub(super) fn spawn_process(&self, pid: Pid, command: &str, args: &[String]) -> SyscallResult {
+    pub(in crate::syscalls) fn spawn_process(&self, pid: Pid, command: &str, args: &[String]) -> SyscallResult {
         let span = span_operation("process_spawn");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
@@ -92,7 +94,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn kill_process(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
+    pub(in crate::syscalls) fn kill_process(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
         let span = span_operation("process_kill");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
@@ -116,7 +118,7 @@ impl SyscallExecutorWithIpc {
         SyscallResult::success()
     }
 
-    pub(super) fn get_process_info(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
+    pub(in crate::syscalls) fn get_process_info(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
         let span = span_operation("process_get_info");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
@@ -159,7 +161,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn get_process_list(&self, pid: Pid) -> SyscallResult {
+    pub(in crate::syscalls) fn get_process_list(&self, pid: Pid) -> SyscallResult {
         let span = span_operation("process_list");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
@@ -202,7 +204,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn set_process_priority(
+    pub(in crate::syscalls) fn set_process_priority(
         &self,
         pid: Pid,
         target_pid: Pid,
@@ -233,7 +235,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn get_process_state(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
+    pub(in crate::syscalls) fn get_process_state(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
         let request =
             PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Inspect);
         let response = self.permission_manager.check(&request);
@@ -262,7 +264,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn get_process_stats_call(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
+    pub(in crate::syscalls) fn get_process_stats_call(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
         let request =
             PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Inspect);
         let response = self.permission_manager.check(&request);
@@ -291,7 +293,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn wait_process(
+    pub(in crate::syscalls) fn wait_process(
         &self,
         pid: Pid,
         target_pid: Pid,
@@ -375,7 +377,7 @@ impl SyscallExecutorWithIpc {
                 span.record_result(true);
                 SyscallResult::success()
             }
-            Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+            Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
                 warn!(
                     "Process wait timed out: PID {} waiting for PID {} after {}ms",
                     pid, target_pid, elapsed_ms
@@ -383,11 +385,11 @@ impl SyscallExecutorWithIpc {
                 span.record_error(&format!("Timeout after {}ms", elapsed_ms));
                 SyscallResult::error(format!("Process wait timed out after {}ms", elapsed_ms))
             }
-            Err(super::TimeoutError::Operation(WaitError::NotFound)) => {
+            Err(TimeoutError::Operation(WaitError::NotFound)) => {
                 span.record_error(&format!("Process {} not found", target_pid));
                 SyscallResult::error(format!("Process {} not found", target_pid))
             }
-            Err(super::TimeoutError::Operation(WaitError::StillRunning)) => {
+            Err(TimeoutError::Operation(WaitError::StillRunning)) => {
                 // This shouldn't happen (retry should handle this)
                 span.record_error("Unexpected still running state");
                 SyscallResult::error("Process still running")

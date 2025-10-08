@@ -8,7 +8,7 @@ use crate::core::serialization::json;
 use crate::core::types::Pid;
 use crate::core::{Operation, TransactionGuard};
 use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
-use crate::syscalls::TimeoutError;
+use crate::syscalls::timeout::executor::TimeoutError;
 
 use log::{error, info, trace};
 use std::fs;
@@ -17,35 +17,35 @@ use std::path::PathBuf;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
-use super::executor::SyscallExecutorWithIpc;
-use super::types::SyscallResult;
+use crate::syscalls::core::executor::SyscallExecutorWithIpc;
+use crate::syscalls::types::SyscallResult;
 
 impl SyscallExecutorWithIpc {
-    pub(super) fn read_file(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
+    pub(in crate::syscalls) fn read_file(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
         self.vfs_read(pid, path)
     }
 
-    pub(super) fn write_file(&self, pid: Pid, path: &PathBuf, data: &[u8]) -> SyscallResult {
+    pub(in crate::syscalls) fn write_file(&self, pid: Pid, path: &PathBuf, data: &[u8]) -> SyscallResult {
         self.vfs_write(pid, path, data)
     }
 
-    pub(super) fn create_file(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
+    pub(in crate::syscalls) fn create_file(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
         self.vfs_write(pid, path, &[])
     }
 
-    pub(super) fn delete_file(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
+    pub(in crate::syscalls) fn delete_file(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
         self.vfs_delete(pid, path)
     }
 
-    pub(super) fn list_directory(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
+    pub(in crate::syscalls) fn list_directory(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
         self.vfs_list_dir(pid, path)
     }
 
-    pub(super) fn file_exists(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
+    pub(in crate::syscalls) fn file_exists(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
         self.vfs_exists(pid, path)
     }
 
-    pub(super) fn file_stat(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
+    pub(in crate::syscalls) fn file_stat(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
         let request = PermissionRequest::file_read(pid, path.clone());
         let response = self.permission_manager.check(&request);
 
@@ -101,21 +101,21 @@ impl SyscallExecutorWithIpc {
                     }
                 }
             }
-            Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+            Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
                 error!(
                     "File stat timed out for {:?} after {}ms (slow storage?)",
                     path, elapsed_ms
                 );
                 SyscallResult::error(format!("Timeout after {}ms", elapsed_ms))
             }
-            Err(super::TimeoutError::Operation(e)) => {
+            Err(TimeoutError::Operation(e)) => {
                 error!("Failed to stat file {:?}: {}", path, e);
                 SyscallResult::error(format!("Stat failed: {}", e))
             }
         }
     }
 
-    pub(super) fn move_file(
+    pub(in crate::syscalls) fn move_file(
         &self,
         pid: Pid,
         source: &PathBuf,
@@ -178,14 +178,14 @@ impl SyscallExecutorWithIpc {
                 transaction.commit().ok();
                 SyscallResult::success()
             }
-            Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+            Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
                 error!(
                     "Move timed out for {:?} -> {:?} after {}ms (slow storage?)",
                     source, destination, elapsed_ms
                 );
                 SyscallResult::error(format!("Timeout after {}ms", elapsed_ms))
             }
-            Err(super::TimeoutError::Operation(e)) => {
+            Err(TimeoutError::Operation(e)) => {
                 error!(
                     "Failed to move file {:?} -> {:?}: {}",
                     source, destination, e
@@ -195,7 +195,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn copy_file(
+    pub(in crate::syscalls) fn copy_file(
         &self,
         pid: Pid,
         source: &PathBuf,
@@ -259,14 +259,14 @@ impl SyscallExecutorWithIpc {
                 transaction.commit().ok();
                 SyscallResult::success()
             }
-            Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+            Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
                 error!(
                     "Copy timed out for {:?} -> {:?} after {}ms (slow storage or large file?)",
                     source, destination, elapsed_ms
                 );
                 SyscallResult::error(format!("Timeout after {}ms", elapsed_ms))
             }
-            Err(super::TimeoutError::Operation(e)) => {
+            Err(TimeoutError::Operation(e)) => {
                 error!(
                     "Failed to copy file {:?} -> {:?}: {}",
                     source, destination, e
@@ -276,15 +276,15 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn create_directory(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
+    pub(in crate::syscalls) fn create_directory(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
         self.vfs_create_dir(pid, path)
     }
 
-    pub(super) fn remove_directory(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
+    pub(in crate::syscalls) fn remove_directory(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
         self.vfs_remove_dir(pid, path)
     }
 
-    pub(super) fn get_working_directory(&self, pid: Pid) -> SyscallResult {
+    pub(in crate::syscalls) fn get_working_directory(&self, pid: Pid) -> SyscallResult {
         let request = PermissionRequest::new(
             pid,
             Resource::System {
@@ -313,7 +313,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn set_working_directory(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
+    pub(in crate::syscalls) fn set_working_directory(&self, pid: Pid, path: &PathBuf) -> SyscallResult {
         let request = PermissionRequest::file_read(pid, path.clone());
         let response = self.permission_manager.check_and_audit(&request);
 
@@ -333,7 +333,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn truncate_file(&self, pid: Pid, path: &PathBuf, size: u64) -> SyscallResult {
+    pub(in crate::syscalls) fn truncate_file(&self, pid: Pid, path: &PathBuf, size: u64) -> SyscallResult {
         let request = PermissionRequest::file_write(pid, path.clone());
         let response = self.permission_manager.check_and_audit(&request);
 

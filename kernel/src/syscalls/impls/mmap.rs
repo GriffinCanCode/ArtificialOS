@@ -10,11 +10,11 @@ use crate::permissions::{PermissionChecker, PermissionRequest};
 use log::{error, info};
 use std::path::PathBuf;
 
-use super::executor::SyscallExecutorWithIpc;
-use super::types::SyscallResult;
+use crate::syscalls::core::executor::SyscallExecutorWithIpc;
+use crate::syscalls::types::SyscallResult;
 
 impl SyscallExecutorWithIpc {
-    pub(super) fn mmap(
+    pub(in crate::syscalls) fn mmap(
         &self,
         pid: Pid,
         path: &str,
@@ -82,7 +82,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn mmap_read(
+    pub(in crate::syscalls) fn mmap_read(
         &self,
         pid: Pid,
         mmap_id: u32,
@@ -115,7 +115,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn mmap_write(
+    pub(in crate::syscalls) fn mmap_write(
         &self,
         pid: Pid,
         mmap_id: u32,
@@ -140,7 +140,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn msync(&self, pid: Pid, mmap_id: u32) -> SyscallResult {
+    pub(in crate::syscalls) fn msync(&self, pid: Pid, mmap_id: u32) -> SyscallResult {
         // Mmap manager is legitimately optional (feature flag)
         let mmap_manager = match &self.ipc.mmap_manager {
             Some(mm) => mm,
@@ -159,7 +159,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn munmap(&self, pid: Pid, mmap_id: u32) -> SyscallResult {
+    pub(in crate::syscalls) fn munmap(&self, pid: Pid, mmap_id: u32) -> SyscallResult {
         // Mmap manager is legitimately optional (feature flag)
         let mmap_manager = match &self.ipc.mmap_manager {
             Some(mm) => mm,
@@ -178,7 +178,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn mmap_stats(&self, pid: Pid, mmap_id: u32) -> SyscallResult {
+    pub(in crate::syscalls) fn mmap_stats(&self, pid: Pid, mmap_id: u32) -> SyscallResult {
         // Check permission using centralized manager
         use crate::permissions::{Action, Resource};
         let request = PermissionRequest::new(

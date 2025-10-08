@@ -41,7 +41,7 @@ pub struct ProcessManager {
     pub(super) scheduler: Option<Arc<RwLock<Scheduler>>>,
     pub(super) scheduler_task: Option<Arc<SchedulerTask>>,
     pub(super) preemption: Option<Arc<PreemptionController>>,
-    pub(super) fd_manager: Option<crate::syscalls::fd::FdManager>,
+    pub(super) fd_manager: Option<crate::syscalls::impls::fd::FdManager>,
     // Comprehensive resource cleanup orchestrator (required)
     pub(super) resource_orchestrator: ResourceOrchestrator,
     // Track child processes per parent PID for limit enforcement

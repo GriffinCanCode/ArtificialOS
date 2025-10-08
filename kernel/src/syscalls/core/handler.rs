@@ -3,7 +3,7 @@
  * Defines the interface for syscall handlers and handler registration
  */
 
-use super::types::{Syscall, SyscallResult};
+use crate::syscalls::types::{Syscall, SyscallResult};
 use crate::core::types::Pid;
 use std::sync::Arc;
 

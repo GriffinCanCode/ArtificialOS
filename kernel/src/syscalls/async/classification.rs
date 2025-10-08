@@ -83,7 +83,7 @@ impl Syscall {
             | Syscall::GetUptime => SyscallClass::Fast,
 
             // Environment variables (HashMap lookup)
-            Syscall::GetEnvVar { .. } => SyscallClass::Fast,
+            Syscall::GetEnvironmentVar { .. } => SyscallClass::Fast,
 
             // File descriptor operations (in-memory registry)
             Syscall::Dup { .. }
@@ -96,12 +96,14 @@ impl Syscall {
             | Syscall::QueueStats { .. } => SyscallClass::Fast,
 
             // Socket stats (in-memory counter reads)
-            Syscall::GetSocketInfo { .. } => SyscallClass::Fast,
+            // GetSocketInfo removed - use network syscalls instead
 
             // Scheduler queries (cached state)
-            Syscall::GetSchedulerPolicy { .. }
-            | Syscall::GetSchedulerPriority { .. }
-            | Syscall::GetSchedulerStats { .. } => SyscallClass::Fast,
+            Syscall::GetSchedulingPolicy
+            | Syscall::GetSchedulerStats
+            | Syscall::GetTimeQuantum
+            | Syscall::GetProcessSchedulerStats { .. }
+            | Syscall::GetAllProcessSchedulerStats => SyscallClass::Fast,
 
             // Working directory (cached per-process)
             Syscall::GetWorkingDirectory => SyscallClass::Fast,
@@ -125,40 +127,10 @@ impl Syscall {
             | Syscall::TruncateFile { .. }
             | Syscall::Open { .. }
             | Syscall::Close { .. }
-            | Syscall::Lseek { .. }
-            | Syscall::Read { .. }
-            | Syscall::Write { .. }
-            | Syscall::Readv { .. }
-            | Syscall::Writev { .. }
-            | Syscall::Pread { .. }
-            | Syscall::Pwrite { .. }
-            | Syscall::Fsync { .. }
-            | Syscall::Fdatasync { .. }
-            | Syscall::Sync
-            | Syscall::Fadvise { .. }
-            | Syscall::Fallocate { .. } => SyscallClass::Blocking,
+            | Syscall::Lseek { .. } => SyscallClass::Blocking,
 
-            // File attribute operations (kernel syscalls)
-            Syscall::Chmod { .. }
-            | Syscall::Chown { .. }
-            | Syscall::Utime { .. }
-            | Syscall::Fstat { .. }
-            | Syscall::Fchmod { .. }
-            | Syscall::Fchown { .. }
-            | Syscall::Futimens { .. } => SyscallClass::Blocking,
-
-            // Directory operations (kernel syscalls)
-            Syscall::Getdents { .. }
-            | Syscall::Mkdir { .. }
-            | Syscall::Rmdir { .. }
-            | Syscall::Rename { .. }
-            | Syscall::Link { .. }
-            | Syscall::Unlink { .. }
-            | Syscall::Symlink { .. }
-            | Syscall::Readlink { .. }
-            | Syscall::Chdir { .. }
-            | Syscall::Fchdir { .. }
-            | Syscall::SetWorkingDirectory { .. } => SyscallClass::Blocking,
+            // Directory operations
+            Syscall::SetWorkingDirectory { .. } => SyscallClass::Blocking,
 
             // Network operations (I/O, can block)
             Syscall::Socket { .. }
@@ -168,12 +140,11 @@ impl Syscall {
             | Syscall::Connect { .. }
             | Syscall::Send { .. }
             | Syscall::Recv { .. }
-            | Syscall::Sendto { .. }
-            | Syscall::Recvfrom { .. }
-            | Syscall::Shutdown { .. }
+            | Syscall::SendTo { .. }
+            | Syscall::RecvFrom { .. }
             | Syscall::CloseSocket { .. }
-            | Syscall::Setsockopt { .. }
-            | Syscall::Getsockopt { .. }
+            | Syscall::SetSockOpt { .. }
+            | Syscall::GetSockOpt { .. }
             | Syscall::NetworkRequest { .. } => SyscallClass::Blocking,
 
             // IPC operations (can block on full/empty buffers)
@@ -206,35 +177,40 @@ impl Syscall {
             | Syscall::WaitProcess { .. } => SyscallClass::Blocking,
 
             // Scheduler operations (can trigger context switch)
-            Syscall::SetSchedulerPolicy { .. }
-            | Syscall::SetSchedulerPriority { .. }
-            | Syscall::YieldCpu => SyscallClass::Blocking,
+            Syscall::SetSchedulingPolicy { .. }
+            | Syscall::SetTimeQuantum { .. }
+            | Syscall::BoostPriority { .. }
+            | Syscall::LowerPriority { .. }
+            | Syscall::YieldProcess
+            | Syscall::ScheduleNext
+            | Syscall::GetCurrentScheduled => SyscallClass::Blocking,
 
             // Signal operations (delivery can trigger handlers)
             Syscall::SendSignal { .. }
             | Syscall::RegisterSignalHandler { .. }
             | Syscall::BlockSignal { .. }
             | Syscall::UnblockSignal { .. }
-            | Syscall::GetPendingSignals => SyscallClass::Blocking,
+            | Syscall::GetPendingSignals
+            | Syscall::GetSignalStats
+            | Syscall::WaitForSignal { .. }
+            | Syscall::GetSignalState { .. } => SyscallClass::Blocking,
 
             // Time operations (blocking by definition)
-            Syscall::Sleep { .. }
-            | Syscall::Nanosleep { .. } => SyscallClass::Blocking,
+            Syscall::Sleep { .. } => SyscallClass::Blocking,
 
             // Memory management operations (potential GC)
-            Syscall::TriggerGc { .. } => SyscallClass::Blocking,
+            Syscall::TriggerGC { .. } => SyscallClass::Blocking,
 
             // Environment modification (can trigger side effects)
-            Syscall::SetEnvVar { .. } => SyscallClass::Blocking,
+            Syscall::SetEnvironmentVar { .. } => SyscallClass::Blocking,
 
             // Mmap operations (page table modifications)
             Syscall::Mmap { .. }
-            | Syscall::Munmap { .. }
-            | Syscall::Mprotect { .. }
+            | Syscall::MmapRead { .. }
+            | Syscall::MmapWrite { .. }
             | Syscall::Msync { .. }
-            | Syscall::Madvise { .. }
-            | Syscall::Mlock { .. }
-            | Syscall::Munlock { .. } => SyscallClass::Blocking,
+            | Syscall::Munmap { .. }
+            | Syscall::MmapStats { .. } => SyscallClass::Blocking,
 
             // Catch-all for future syscalls: default to blocking (safe)
             _ => SyscallClass::Blocking,

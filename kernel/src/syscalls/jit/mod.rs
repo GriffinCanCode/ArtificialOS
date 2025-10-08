@@ -44,7 +44,7 @@ pub struct JitManager {
 
 impl JitManager {
     /// Create a new JIT manager with a reference to the syscall executor
-    pub fn new(executor: Arc<crate::syscalls::executor::SyscallExecutorWithIpc>) -> Self {
+    pub fn new(executor: Arc<crate::syscalls::core::executor::SyscallExecutorWithIpc>) -> Self {
         info!("Initializing JIT manager for syscall optimization");
         Self {
             detector: Arc::new(HotpathDetector::new()),

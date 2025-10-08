@@ -6,12 +6,12 @@
 use crate::core::types::Pid;
 use crate::core::serialization::{bincode, json};
 use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
-use crate::syscalls::executor::SyscallExecutorWithIpc;
+use crate::syscalls::core::executor::SyscallExecutorWithIpc;
 use crate::syscalls::types::SyscallResult;
 use log::{error, info};
 
 impl SyscallExecutorWithIpc {
-    pub(crate) fn create_shm(&self, pid: Pid, size: usize) -> SyscallResult {
+    pub(in crate::syscalls) fn create_shm(&self, pid: Pid, size: usize) -> SyscallResult {
         let request =
             PermissionRequest::new(pid, Resource::IpcChannel { channel_id: 0 }, Action::Create);
         let response = self.permission_manager.check_and_audit(&request);
@@ -44,7 +44,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(crate) fn attach_shm(&self, pid: Pid, segment_id: u32, read_only: bool) -> SyscallResult {
+    pub(in crate::syscalls) fn attach_shm(&self, pid: Pid, segment_id: u32, read_only: bool) -> SyscallResult {
         let request = PermissionRequest::new(
             pid,
             Resource::IpcChannel {
@@ -76,7 +76,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(crate) fn detach_shm(&self, pid: Pid, segment_id: u32) -> SyscallResult {
+    pub(in crate::syscalls) fn detach_shm(&self, pid: Pid, segment_id: u32) -> SyscallResult {
         // Direct access - no Option check!
         let shm_manager = &self.ipc.shm_manager;
 
@@ -92,7 +92,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(crate) fn write_shm(
+    pub(in crate::syscalls) fn write_shm(
         &self,
         pid: Pid,
         segment_id: u32,
@@ -133,7 +133,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(crate) fn read_shm(
+    pub(in crate::syscalls) fn read_shm(
         &self,
         pid: Pid,
         segment_id: u32,
@@ -174,7 +174,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(crate) fn destroy_shm(&self, pid: Pid, segment_id: u32) -> SyscallResult {
+    pub(in crate::syscalls) fn destroy_shm(&self, pid: Pid, segment_id: u32) -> SyscallResult {
         // Direct access - no Option check!
         let shm_manager = &self.ipc.shm_manager;
 
@@ -190,7 +190,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(crate) fn shm_stats(&self, pid: Pid, segment_id: u32) -> SyscallResult {
+    pub(in crate::syscalls) fn shm_stats(&self, pid: Pid, segment_id: u32) -> SyscallResult {
         // Direct access - no Option check!
         let shm_manager = &self.ipc.shm_manager;
 

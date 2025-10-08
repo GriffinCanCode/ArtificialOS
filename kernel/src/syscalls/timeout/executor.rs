@@ -176,7 +176,8 @@ impl TimeoutExecutor {
                     // Check timeout (batched for performance)
                     // First 16 iterations: check every time (spin loop is fast)
                     // After that: check every TIME_CHECK_INTERVAL iterations
-                    let should_check_time = retry_count < 16 || retry_count % TIME_CHECK_INTERVAL == 0;
+                    let should_check_time =
+                        retry_count < 16 || retry_count % TIME_CHECK_INTERVAL == 0;
 
                     if should_check_time {
                         if let Some(deadline_time) = deadline {
@@ -439,7 +440,10 @@ mod tests {
             "test",
         );
 
-        assert!(matches!(result, Err(TimeoutError::Operation(TestError::Fatal(_)))));
+        assert!(matches!(
+            result,
+            Err(TimeoutError::Operation(TestError::Fatal(_)))
+        ));
         assert_eq!(counter.load(Ordering::SeqCst), 1); // Only called once
     }
 
@@ -471,6 +475,9 @@ mod tests {
         );
 
         // Returns the error immediately (no timeout)
-        assert!(matches!(result, Err(TimeoutError::Operation(TestError::WouldBlock))));
+        assert!(matches!(
+            result,
+            Err(TimeoutError::Operation(TestError::WouldBlock))
+        ));
     }
 }

@@ -5,7 +5,7 @@
 
 use super::{IoUringManager, SyscallOpType, SyscallSubmissionEntry};
 use crate::core::types::Pid;
-use crate::syscalls::handler::SyscallHandler;
+use crate::syscalls::core::handler::SyscallHandler;
 use crate::syscalls::types::{Syscall, SyscallResult};
 use std::sync::Arc;
 
@@ -162,7 +162,7 @@ impl IoUringAsyncHandler {
     }
 }
 
-impl crate::syscalls::handlers::AsyncSyscallHandler for IoUringAsyncHandler {
+impl crate::syscalls::core::handlers::AsyncSyscallHandler for IoUringAsyncHandler {
     fn handle_async(
         &self,
         pid: Pid,

@@ -9,12 +9,12 @@ use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource}
 use crate::scheduler::{PriorityControl, SchedulerControl, SchedulerPolicy, SchedulerStats};
 use log::{error, info};
 
-use super::executor::SyscallExecutorWithIpc;
-use super::types::SyscallResult;
+use crate::syscalls::core::executor::SyscallExecutorWithIpc;
+use crate::syscalls::types::SyscallResult;
 
 impl SyscallExecutorWithIpc {
     /// Schedule next process (internal implementation)
-    pub(super) fn schedule_next(&self, pid: Pid) -> SyscallResult {
+    pub(in crate::syscalls) fn schedule_next(&self, pid: Pid) -> SyscallResult {
         let request = PermissionRequest::new(
             pid,
             Resource::System {
@@ -49,7 +49,7 @@ impl SyscallExecutorWithIpc {
     }
 
     /// Yield current process (internal implementation)
-    pub(super) fn yield_process(&self, pid: Pid) -> SyscallResult {
+    pub(in crate::syscalls) fn yield_process(&self, pid: Pid) -> SyscallResult {
         info!("Process {} yielding CPU", pid);
 
         let process_manager = match &self.optional.process_manager {
@@ -71,7 +71,7 @@ impl SyscallExecutorWithIpc {
     }
 
     /// Get currently scheduled process (internal implementation)
-    pub(super) fn get_current_scheduled(&self, pid: Pid) -> SyscallResult {
+    pub(in crate::syscalls) fn get_current_scheduled(&self, pid: Pid) -> SyscallResult {
         let request = PermissionRequest::new(
             pid,
             Resource::System {
@@ -102,7 +102,7 @@ impl SyscallExecutorWithIpc {
     }
 
     /// Set scheduling policy (internal implementation)
-    pub(super) fn set_scheduling_policy(&self, pid: Pid, policy_str: &str) -> SyscallResult {
+    pub(in crate::syscalls) fn set_scheduling_policy(&self, pid: Pid, policy_str: &str) -> SyscallResult {
         let request = PermissionRequest::new(
             pid,
             Resource::System {
@@ -149,7 +149,7 @@ impl SyscallExecutorWithIpc {
     }
 
     /// Get current scheduling policy (internal implementation)
-    pub(super) fn get_scheduling_policy(&self, pid: Pid) -> SyscallResult {
+    pub(in crate::syscalls) fn get_scheduling_policy(&self, pid: Pid) -> SyscallResult {
         let request = PermissionRequest::new(
             pid,
             Resource::System {
@@ -192,7 +192,7 @@ impl SyscallExecutorWithIpc {
     }
 
     /// Set time quantum (internal implementation)
-    pub(super) fn set_time_quantum(&self, pid: Pid, quantum_micros: u64) -> SyscallResult {
+    pub(in crate::syscalls) fn set_time_quantum(&self, pid: Pid, quantum_micros: u64) -> SyscallResult {
         let request = PermissionRequest::new(
             pid,
             Resource::System {
@@ -229,7 +229,7 @@ impl SyscallExecutorWithIpc {
     }
 
     /// Get current time quantum (internal implementation)
-    pub(super) fn get_time_quantum(&self, pid: Pid) -> SyscallResult {
+    pub(in crate::syscalls) fn get_time_quantum(&self, pid: Pid) -> SyscallResult {
         let request = PermissionRequest::new(
             pid,
             Resource::System {
@@ -262,7 +262,7 @@ impl SyscallExecutorWithIpc {
     }
 
     /// Get global scheduler statistics (internal implementation)
-    pub(super) fn get_scheduler_stats(&self, pid: Pid) -> SyscallResult {
+    pub(in crate::syscalls) fn get_scheduler_stats(&self, pid: Pid) -> SyscallResult {
         let request = PermissionRequest::new(
             pid,
             Resource::System {
@@ -296,7 +296,7 @@ impl SyscallExecutorWithIpc {
     }
 
     /// Get process scheduler statistics (internal implementation)
-    pub(super) fn get_process_scheduler_stats(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
+    pub(in crate::syscalls) fn get_process_scheduler_stats(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
         let request =
             PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Inspect);
         let response = self.permission_manager.check(&request);
@@ -332,7 +332,7 @@ impl SyscallExecutorWithIpc {
     }
 
     /// Get all process scheduler statistics (internal implementation)
-    pub(super) fn get_all_process_scheduler_stats(&self, pid: Pid) -> SyscallResult {
+    pub(in crate::syscalls) fn get_all_process_scheduler_stats(&self, pid: Pid) -> SyscallResult {
         let request = PermissionRequest::new(
             pid,
             Resource::System {
@@ -369,7 +369,7 @@ impl SyscallExecutorWithIpc {
     }
 
     /// Boost process priority (internal implementation)
-    pub(super) fn boost_priority(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
+    pub(in crate::syscalls) fn boost_priority(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
         let request =
             PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Write);
         let response = self.permission_manager.check_and_audit(&request);
@@ -403,7 +403,7 @@ impl SyscallExecutorWithIpc {
     }
 
     /// Lower process priority (internal implementation)
-    pub(super) fn lower_priority(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
+    pub(in crate::syscalls) fn lower_priority(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
         let request =
             PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Write);
         let response = self.permission_manager.check_and_audit(&request);

@@ -4,8 +4,8 @@
  */
 
 use crate::core::types::Pid;
-use crate::syscalls::executor::SyscallExecutorWithIpc;
-use crate::syscalls::handler::SyscallHandler;
+use crate::syscalls::core::executor::SyscallExecutorWithIpc;
+use crate::syscalls::core::handler::SyscallHandler;
 use crate::syscalls::types::{Syscall, SyscallResult};
 
 /// Handler for network syscalls

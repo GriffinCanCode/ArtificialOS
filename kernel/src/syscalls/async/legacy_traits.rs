@@ -32,7 +32,7 @@
  * - **Memory**: Futures are stack-allocated when possible
  */
 
-use super::types::*;
+use crate::syscalls::types::*;
 use crate::core::types::Pid;
 use std::path::PathBuf;
 

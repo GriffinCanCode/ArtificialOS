@@ -1,45 +1,56 @@
 /*!
  * Syscalls Module
- * Modular system call implementation
+ * Modular system call implementation with native async traits (Rust 1.75+)
+ *
+ * ## Module Organization
+ *
+ * - **core**: Core execution infrastructure (executor, handlers, registry)
+ * - **async**: Async execution layer with intelligent dispatch
+ * - **impls**: Syscall implementations by category (fs, network, process, etc.)
+ * - **timeout**: Timeout management for blocking operations
+ * - **types**: Type definitions and serialization
+ * - **iouring**: io_uring-style async completion
+ * - **ipc**: Inter-process communication implementations
+ * - **jit**: JIT compilation for hot paths
  */
 
-mod executor;
-pub mod fd;
-mod fs;
-mod handle;
-mod handler;
-mod handlers;
-pub mod iouring; // io_uring-style async syscall completion
-mod ipc;
-pub mod jit; // JIT compilation for hot syscall paths
-mod memory;
-mod mmap;
-mod network;
-mod process;
-mod scheduler;
-mod signals;
-mod system;
-mod time;
-mod timeout_config; // Timeout configuration for blocking syscalls
-mod timeout_executor; // Generic timeout execution
+// Core modules (organized by domain)
+pub mod r#async;
+pub mod core;
+pub mod impls;
+pub mod iouring;
+pub mod ipc;
+pub mod jit;
+pub mod timeout;
 pub mod traits;
 pub mod types;
-mod types_ext; // Syscall type extensions for tracing
-mod vfs_adapter;
+mod types_ext;
 
-// Re-export public API
-pub use executor::SyscallExecutorWithIpc;
-pub use fd::FdManager;
-pub use handler::{SyscallHandler, SyscallHandlerRegistry};
+// Re-export public API from core
+pub use core::{SyscallExecutorWithIpc, SyscallHandler, SyscallHandlerRegistry, SYSTEM_START};
+
+// Re-export public API from impls
+pub use impls::{FdManager, FileHandle, Socket, SocketManager, SocketStats};
+
+// Re-export public API from async
+pub use r#async::{AsyncExecutorStats, AsyncSyscallExecutor, SyscallClass};
+
+// Re-export public API from timeout
+pub use timeout::{SyscallTimeoutConfig, TimeoutError, TimeoutExecutor, TimeoutPolicy};
+
+// Re-export public API from iouring
 pub use iouring::{
     IoUringExecutor, IoUringManager, SyscallCompletionEntry, SyscallCompletionRing,
     SyscallCompletionStatus, SyscallOpType, SyscallSubmissionEntry,
 };
+
+// Re-export public API from jit
 pub use jit::{JitManager, JitStats, SyscallPattern};
-pub use network::{SocketManager, SocketStats};
-pub use timeout_config::SyscallTimeoutConfig;
-pub use timeout_executor::{TimeoutError, TimeoutExecutor};
+
+// Re-export public API from traits
 pub use traits::*;
+
+// Re-export public API from types
 pub use types::{ProcessOutput, Syscall, SyscallError, SyscallResult, SystemInfo};
 
 // Re-export ProcessMemoryStats from memory module

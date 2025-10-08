@@ -29,7 +29,7 @@
 use crate::core::types::Pid;
 use crate::ipc::zerocopy::ZeroCopyIpc;
 use crate::signals::SignalManagerImpl;
-use crate::syscalls::fd::FdManager;
+use crate::syscalls::impls::fd::FdManager;
 use log::{debug, info};
 use std::sync::Arc;
 use thiserror::Error;

@@ -28,7 +28,7 @@ pub struct ProcessManagerBuilder {
     enable_limits: bool,
     ipc_manager: Option<IPCManager>,
     scheduler_policy: Option<SchedulingPolicy>,
-    fd_manager: Option<crate::syscalls::fd::FdManager>,
+    fd_manager: Option<crate::syscalls::impls::fd::FdManager>,
     resource_orchestrator: ResourceOrchestrator,
     signal_manager: Option<Arc<crate::signals::SignalManagerImpl>>,
     collector: Option<Arc<Collector>>,
@@ -81,7 +81,7 @@ impl ProcessManagerBuilder {
     }
 
     /// Add file descriptor manager for automatic FD cleanup
-    pub fn with_fd_manager(mut self, fd_manager: crate::syscalls::fd::FdManager) -> Self {
+    pub fn with_fd_manager(mut self, fd_manager: crate::syscalls::impls::fd::FdManager) -> Self {
         self.fd_manager = Some(fd_manager);
         self
     }

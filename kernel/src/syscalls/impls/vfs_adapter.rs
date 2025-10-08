@@ -4,6 +4,8 @@
 * Routes filesystem syscalls through VFS when available
 */
 
+use crate::syscalls::timeout::executor::TimeoutError;
+
 use crate::core::serialization::json;
 use crate::core::types::Pid;
 use crate::monitoring::span_operation;
@@ -15,13 +17,13 @@ use std::path::Path;
 
 use crate::vfs::{FileSystem, VfsError};
 
-use super::executor::SyscallExecutorWithIpc;
-use super::types::SyscallResult;
+use crate::syscalls::core::executor::SyscallExecutorWithIpc;
+use crate::syscalls::types::SyscallResult;
 
 impl SyscallExecutorWithIpc {
     /// Read file using VFS if available, otherwise use std::fs
     /// Can block on slow storage (NFS, USB, slow disks)
-    pub(super) fn vfs_read(&self, pid: Pid, path: &Path) -> SyscallResult {
+    pub(in crate::syscalls) fn vfs_read(&self, pid: Pid, path: &Path) -> SyscallResult {
         let span = span_operation("vfs_read");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
@@ -65,14 +67,14 @@ impl SyscallExecutorWithIpc {
                     span.record_result(true);
                     return SyscallResult::success_with_data(data);
                 }
-                Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+                Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
                     warn!(
                         "VFS read timed out for {:?} after {}ms (slow storage?), falling back to std::fs",
                         path, elapsed_ms
                     );
                     span.record("vfs_timeout_ms", &format!("{}", elapsed_ms));
                 }
-                Err(super::TimeoutError::Operation(e)) => {
+                Err(TimeoutError::Operation(e)) => {
                     warn!(
                         "VFS read failed for {:?}: {}, falling back to std::fs",
                         path, e
@@ -99,7 +101,7 @@ impl SyscallExecutorWithIpc {
                 span.record_result(true);
                 SyscallResult::success_with_data(data)
             }
-            Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+            Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
                 error!("Read timed out for {:?} after {}ms", path, elapsed_ms);
                 span.record_error(&format!("Timeout after {}ms", elapsed_ms));
                 SyscallResult::error(format!(
@@ -107,7 +109,7 @@ impl SyscallExecutorWithIpc {
                     elapsed_ms
                 ))
             }
-            Err(super::TimeoutError::Operation(e)) => {
+            Err(TimeoutError::Operation(e)) => {
                 error!("Read failed for {:?}: {}", path, e);
                 span.record_error(&format!("Read failed: {}", e));
                 SyscallResult::error(format!("Read failed: {}", e))
@@ -117,7 +119,7 @@ impl SyscallExecutorWithIpc {
 
     /// Write file using VFS if available
     /// Can block on slow storage (NFS, USB, slow disks)
-    pub(super) fn vfs_write(&self, pid: Pid, path: &Path, data: &[u8]) -> SyscallResult {
+    pub(in crate::syscalls) fn vfs_write(&self, pid: Pid, path: &Path, data: &[u8]) -> SyscallResult {
         let span = span_operation("vfs_write");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
@@ -176,14 +178,14 @@ impl SyscallExecutorWithIpc {
                     span.record_result(true);
                     return SyscallResult::success();
                 }
-                Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+                Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
                     warn!(
                         "VFS write timed out for {:?} after {}ms (slow storage?), falling back to std::fs",
                         path, elapsed_ms
                     );
                     span.record("vfs_timeout_ms", &format!("{}", elapsed_ms));
                 }
-                Err(super::TimeoutError::Operation(e)) => {
+                Err(TimeoutError::Operation(e)) => {
                     warn!(
                         "VFS write failed for {:?}: {}, falling back to std::fs",
                         path, e
@@ -210,7 +212,7 @@ impl SyscallExecutorWithIpc {
                 span.record_result(true);
                 SyscallResult::success()
             }
-            Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+            Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
                 error!("Write timed out for {:?} after {}ms", path, elapsed_ms);
                 span.record_error(&format!("Timeout after {}ms", elapsed_ms));
                 SyscallResult::error(format!(
@@ -218,7 +220,7 @@ impl SyscallExecutorWithIpc {
                     elapsed_ms
                 ))
             }
-            Err(super::TimeoutError::Operation(e)) => {
+            Err(TimeoutError::Operation(e)) => {
                 error!("Write failed for {:?}: {}", path, e);
                 span.record_error(&format!("Write failed: {}", e));
                 SyscallResult::error(format!("Write failed: {}", e))
@@ -228,7 +230,7 @@ impl SyscallExecutorWithIpc {
 
     /// Delete file using VFS if available
     /// Can block on slow storage (NFS, USB, slow disks)
-    pub(super) fn vfs_delete(&self, pid: Pid, path: &Path) -> SyscallResult {
+    pub(in crate::syscalls) fn vfs_delete(&self, pid: Pid, path: &Path) -> SyscallResult {
         let span = span_operation("vfs_delete");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
@@ -261,14 +263,14 @@ impl SyscallExecutorWithIpc {
                     span.record_result(true);
                     return SyscallResult::success();
                 }
-                Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+                Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
                     warn!(
                         "VFS delete timed out for {:?} after {}ms (slow storage?), falling back to std::fs",
                         path, elapsed_ms
                     );
                     span.record("vfs_timeout_ms", &format!("{}", elapsed_ms));
                 }
-                Err(super::TimeoutError::Operation(e)) => {
+                Err(TimeoutError::Operation(e)) => {
                     warn!(
                         "VFS delete failed for {:?}: {}, falling back to std::fs",
                         path, e
@@ -294,7 +296,7 @@ impl SyscallExecutorWithIpc {
                 span.record_result(true);
                 SyscallResult::success()
             }
-            Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+            Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
                 error!("Delete timed out for {:?} after {}ms", path, elapsed_ms);
                 span.record_error(&format!("Timeout after {}ms", elapsed_ms));
                 SyscallResult::error(format!(
@@ -302,7 +304,7 @@ impl SyscallExecutorWithIpc {
                     elapsed_ms
                 ))
             }
-            Err(super::TimeoutError::Operation(e)) => {
+            Err(TimeoutError::Operation(e)) => {
                 error!("Delete failed for {:?}: {}", path, e);
                 span.record_error(&format!("Delete failed: {}", e));
                 SyscallResult::error(format!("Delete failed: {}", e))
@@ -311,7 +313,7 @@ impl SyscallExecutorWithIpc {
     }
 
     /// Check if file exists using VFS if available
-    pub(super) fn vfs_exists(&self, pid: Pid, path: &Path) -> SyscallResult {
+    pub(in crate::syscalls) fn vfs_exists(&self, pid: Pid, path: &Path) -> SyscallResult {
         let span = span_operation("vfs_exists");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
@@ -342,7 +344,7 @@ impl SyscallExecutorWithIpc {
 
     /// Create directory using VFS if available
     /// Can block on slow storage (NFS, USB, slow disks)
-    pub(super) fn vfs_create_dir(&self, pid: Pid, path: &Path) -> SyscallResult {
+    pub(in crate::syscalls) fn vfs_create_dir(&self, pid: Pid, path: &Path) -> SyscallResult {
         let span = span_operation("vfs_create_dir");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
@@ -375,14 +377,14 @@ impl SyscallExecutorWithIpc {
                     span.record_result(true);
                     return SyscallResult::success();
                 }
-                Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+                Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
                     warn!(
                         "VFS create_dir timed out for {:?} after {}ms (slow storage?), falling back to std::fs",
                         path, elapsed_ms
                     );
                     span.record("vfs_timeout_ms", &format!("{}", elapsed_ms));
                 }
-                Err(super::TimeoutError::Operation(e)) => {
+                Err(TimeoutError::Operation(e)) => {
                     warn!(
                         "VFS create_dir failed for {:?}: {}, falling back to std::fs",
                         path, e
@@ -408,7 +410,7 @@ impl SyscallExecutorWithIpc {
                 span.record_result(true);
                 SyscallResult::success()
             }
-            Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+            Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
                 error!(
                     "Create directory timed out for {:?} after {}ms",
                     path, elapsed_ms
@@ -419,7 +421,7 @@ impl SyscallExecutorWithIpc {
                     elapsed_ms
                 ))
             }
-            Err(super::TimeoutError::Operation(e)) => {
+            Err(TimeoutError::Operation(e)) => {
                 error!("Create directory failed for {:?}: {}", path, e);
                 span.record_error(&format!("Mkdir failed: {}", e));
                 SyscallResult::error(format!("Mkdir failed: {}", e))
@@ -429,7 +431,7 @@ impl SyscallExecutorWithIpc {
 
     /// Remove directory using VFS if available
     /// Can block on slow storage, especially for large/nested directories
-    pub(super) fn vfs_remove_dir(&self, pid: Pid, path: &Path) -> SyscallResult {
+    pub(in crate::syscalls) fn vfs_remove_dir(&self, pid: Pid, path: &Path) -> SyscallResult {
         let span = span_operation("vfs_remove_dir");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
@@ -462,14 +464,14 @@ impl SyscallExecutorWithIpc {
                     span.record_result(true);
                     return SyscallResult::success();
                 }
-                Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+                Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
                     warn!(
                         "VFS remove_dir timed out for {:?} after {}ms (slow storage or large directory?), falling back to std::fs",
                         path, elapsed_ms
                     );
                     span.record("vfs_timeout_ms", &format!("{}", elapsed_ms));
                 }
-                Err(super::TimeoutError::Operation(e)) => {
+                Err(TimeoutError::Operation(e)) => {
                     warn!(
                         "VFS remove_dir failed for {:?}: {}, falling back to std::fs",
                         path, e
@@ -495,7 +497,7 @@ impl SyscallExecutorWithIpc {
                 span.record_result(true);
                 SyscallResult::success()
             }
-            Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+            Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
                 error!(
                     "Remove directory timed out for {:?} after {}ms",
                     path, elapsed_ms
@@ -506,7 +508,7 @@ impl SyscallExecutorWithIpc {
                     elapsed_ms
                 ))
             }
-            Err(super::TimeoutError::Operation(e)) => {
+            Err(TimeoutError::Operation(e)) => {
                 error!("Remove directory failed for {:?}: {}", path, e);
                 span.record_error(&format!("Remove directory failed: {}", e));
                 SyscallResult::error(format!("Remove directory failed: {}", e))
@@ -516,7 +518,7 @@ impl SyscallExecutorWithIpc {
 
     /// List directory using VFS if available
     /// Can block on slow storage, especially for large directories
-    pub(super) fn vfs_list_dir(&self, pid: Pid, path: &Path) -> SyscallResult {
+    pub(in crate::syscalls) fn vfs_list_dir(&self, pid: Pid, path: &Path) -> SyscallResult {
         let span = span_operation("vfs_list_dir");
         let _guard = span.enter();
         span.record("pid", &format!("{}", pid));
@@ -582,14 +584,14 @@ impl SyscallExecutorWithIpc {
                         }
                     }
                 }
-                Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+                Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
                     warn!(
                         "VFS list_dir timed out for {:?} after {}ms (slow storage or large directory?), falling back to std::fs",
                         path, elapsed_ms
                     );
                     span.record("vfs_timeout_ms", &format!("{}", elapsed_ms));
                 }
-                Err(super::TimeoutError::Operation(e)) => {
+                Err(TimeoutError::Operation(e)) => {
                     warn!(
                         "VFS list_dir failed for {:?}: {}, falling back to std::fs",
                         path, e
@@ -646,7 +648,7 @@ impl SyscallExecutorWithIpc {
                     }
                 }
             }
-            Err(super::TimeoutError::Timeout { elapsed_ms, .. }) => {
+            Err(TimeoutError::Timeout { elapsed_ms, .. }) => {
                 error!(
                     "List directory timed out for {:?} after {}ms",
                     path, elapsed_ms
@@ -657,7 +659,7 @@ impl SyscallExecutorWithIpc {
                     elapsed_ms
                 ))
             }
-            Err(super::TimeoutError::Operation(e)) => {
+            Err(TimeoutError::Operation(e)) => {
                 error!("List directory failed for {:?}: {}", path, e);
                 span.record_error(&format!("List failed: {}", e));
                 SyscallResult::error(format!("List failed: {}", e))

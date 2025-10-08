@@ -12,11 +12,11 @@ use log::{error, info, warn};
 
 use crate::memory::types::ProcessMemoryStats;
 
-use super::executor::SyscallExecutorWithIpc;
-use super::types::SyscallResult;
+use crate::syscalls::core::executor::SyscallExecutorWithIpc;
+use crate::syscalls::types::SyscallResult;
 
 impl SyscallExecutorWithIpc {
-    pub(super) fn get_memory_stats(&self, pid: Pid) -> SyscallResult {
+    pub(in crate::syscalls) fn get_memory_stats(&self, pid: Pid) -> SyscallResult {
         // NOTE: SyscallGuard not needed here - executor already provides comprehensive
         // syscall tracing via span_syscall() and collector.syscall_exit()
 
@@ -52,7 +52,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn get_process_memory_stats(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
+    pub(in crate::syscalls) fn get_process_memory_stats(&self, pid: Pid, target_pid: Pid) -> SyscallResult {
         // Check permission using centralized manager
         let request =
             PermissionRequest::new(pid, Resource::Process { pid: target_pid }, Action::Inspect);
@@ -89,7 +89,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(super) fn trigger_gc(&self, pid: Pid, target_pid: Option<u32>) -> SyscallResult {
+    pub(in crate::syscalls) fn trigger_gc(&self, pid: Pid, target_pid: Option<u32>) -> SyscallResult {
         // Check permission using centralized manager
         let request = PermissionRequest::new(
             pid,

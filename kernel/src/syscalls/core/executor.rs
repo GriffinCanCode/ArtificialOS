@@ -13,7 +13,7 @@ use tracing::{error, info};
 
 use super::handler::SyscallHandlerRegistry;
 use super::handlers::*;
-use super::types::{Syscall, SyscallResult};
+use crate::syscalls::types::{Syscall, SyscallResult};
 
 /// Global system start time for uptime tracking
 pub static SYSTEM_START: OnceLock<Instant> = OnceLock::new();
@@ -62,7 +62,6 @@ impl Default for OptionalManagers {
     }
 }
 
-
 // ============================================================================
 // Specialized Executor with IPC
 // ============================================================================
@@ -73,10 +72,10 @@ pub struct SyscallExecutorWithIpc {
     // Core managers (always present)
     pub(super) sandbox_manager: SandboxManager,
     pub(super) permission_manager: PermissionManager,
-    pub(super) fd_manager: super::fd::FdManager,
-    pub(super) socket_manager: super::network::SocketManager,
-    pub(super) timeout_executor: super::timeout_executor::TimeoutExecutor,
-    pub(super) timeout_config: super::timeout_config::SyscallTimeoutConfig,
+    pub(super) fd_manager: crate::syscalls::impls::fd::FdManager,
+    pub(super) socket_manager: crate::syscalls::impls::network::SocketManager,
+    pub(super) timeout_executor: crate::syscalls::timeout::executor::TimeoutExecutor,
+    pub(super) timeout_config: crate::syscalls::timeout::config::SyscallTimeoutConfig,
 
     // Handler registry
     handler_registry: SyscallHandlerRegistry,
@@ -108,7 +107,6 @@ impl Clone for SyscallExecutorWithIpc {
     }
 }
 
-
 // ============================================================================
 // IPC-Enabled Executor - Construction and Builders
 // ============================================================================
@@ -129,10 +127,10 @@ impl SyscallExecutorWithIpc {
         let executor = Self {
             sandbox_manager,
             permission_manager,
-            fd_manager: super::fd::FdManager::new(),
-            socket_manager: super::network::SocketManager::new(),
-            timeout_executor: super::timeout_executor::TimeoutExecutor::disabled(),
-            timeout_config: super::timeout_config::SyscallTimeoutConfig::new(),
+            fd_manager: crate::syscalls::impls::fd::FdManager::new(),
+            socket_manager: crate::syscalls::impls::network::SocketManager::new(),
+            timeout_executor: crate::syscalls::timeout::executor::TimeoutExecutor::disabled(),
+            timeout_config: crate::syscalls::timeout::config::SyscallTimeoutConfig::new(),
             handler_registry: SyscallHandlerRegistry::new(),
             ipc: IpcManagers {
                 pipe_manager,
@@ -162,10 +160,10 @@ impl SyscallExecutorWithIpc {
         Self {
             sandbox_manager,
             permission_manager,
-            fd_manager: super::fd::FdManager::new(),
-            socket_manager: super::network::SocketManager::new(),
-            timeout_executor: super::timeout_executor::TimeoutExecutor::disabled(),
-            timeout_config: super::timeout_config::SyscallTimeoutConfig::default(),
+            fd_manager: crate::syscalls::impls::fd::FdManager::new(),
+            socket_manager: crate::syscalls::impls::network::SocketManager::new(),
+            timeout_executor: crate::syscalls::timeout::executor::TimeoutExecutor::disabled(),
+            timeout_config: crate::syscalls::timeout::config::SyscallTimeoutConfig::default(),
             handler_registry: SyscallHandlerRegistry::new(),
             ipc: IpcManagers {
                 pipe_manager,
@@ -225,13 +223,16 @@ impl SyscallExecutorWithIpc {
         if self.timeout_config.enabled {
             use crate::monitoring::TimeoutObserver;
             let observer = Arc::new(TimeoutObserver::new(collector));
-            self.timeout_executor = super::timeout_executor::TimeoutExecutor::new(Some(observer));
+            self.timeout_executor = crate::syscalls::timeout::executor::TimeoutExecutor::new(Some(observer));
         }
         self
     }
 
     /// Set timeout configuration
-    pub fn with_timeout_config(mut self, config: super::timeout_config::SyscallTimeoutConfig) -> Self {
+    pub fn with_timeout_config(
+        mut self,
+        config: crate::syscalls::timeout::config::SyscallTimeoutConfig,
+    ) -> Self {
         self.timeout_config = config;
         info!("Custom timeout configuration applied");
         self
@@ -267,17 +268,17 @@ impl SyscallExecutorWithIpc {
 
 impl SyscallExecutorWithIpc {
     /// Get reference to socket manager
-    pub fn socket_manager(&self) -> &super::network::SocketManager {
+    pub fn socket_manager(&self) -> &crate::syscalls::impls::network::SocketManager {
         &self.socket_manager
     }
 
     /// Get reference to file descriptor manager
-    pub fn fd_manager(&self) -> &super::fd::FdManager {
+    pub fn fd_manager(&self) -> &crate::syscalls::impls::fd::FdManager {
         &self.fd_manager
     }
 
     /// Get timeout configuration
-    pub fn timeout_config(&self) -> &super::timeout_config::SyscallTimeoutConfig {
+    pub fn timeout_config(&self) -> &crate::syscalls::timeout::config::SyscallTimeoutConfig {
         &self.timeout_config
     }
 

@@ -6,13 +6,13 @@
 use crate::core::types::Pid;
 use crate::core::serialization::{bincode, json};
 use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource};
-use crate::syscalls::executor::SyscallExecutorWithIpc;
+use crate::syscalls::core::executor::SyscallExecutorWithIpc;
 use crate::syscalls::types::SyscallResult;
-use crate::syscalls::TimeoutError;
+use crate::syscalls::timeout::executor::TimeoutError;
 use log::{error, info};
 
 impl SyscallExecutorWithIpc {
-    pub(crate) fn create_pipe(
+    pub(in crate::syscalls) fn create_pipe(
         &self,
         pid: Pid,
         reader_pid: Pid,
@@ -53,7 +53,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(crate) fn write_pipe(&self, pid: Pid, pipe_id: u32, data: &[u8]) -> SyscallResult {
+    pub(in crate::syscalls) fn write_pipe(&self, pid: Pid, pipe_id: u32, data: &[u8]) -> SyscallResult {
         let request = PermissionRequest::new(
             pid,
             Resource::IpcChannel {
@@ -104,7 +104,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(crate) fn read_pipe(&self, pid: Pid, pipe_id: u32, size: usize) -> SyscallResult {
+    pub(in crate::syscalls) fn read_pipe(&self, pid: Pid, pipe_id: u32, size: usize) -> SyscallResult {
         let request = PermissionRequest::new(
             pid,
             Resource::IpcChannel {
@@ -154,7 +154,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(crate) fn close_pipe(&self, pid: Pid, pipe_id: u32) -> SyscallResult {
+    pub(in crate::syscalls) fn close_pipe(&self, pid: Pid, pipe_id: u32) -> SyscallResult {
         // Direct access - no Option check!
         let pipe_manager = &self.ipc.pipe_manager;
 
@@ -170,7 +170,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(crate) fn destroy_pipe(&self, pid: Pid, pipe_id: u32) -> SyscallResult {
+    pub(in crate::syscalls) fn destroy_pipe(&self, pid: Pid, pipe_id: u32) -> SyscallResult {
         // Direct access - no Option check!
         let pipe_manager = &self.ipc.pipe_manager;
 
@@ -186,7 +186,7 @@ impl SyscallExecutorWithIpc {
         }
     }
 
-    pub(crate) fn pipe_stats(&self, pid: Pid, pipe_id: u32) -> SyscallResult {
+    pub(in crate::syscalls) fn pipe_stats(&self, pid: Pid, pipe_id: u32) -> SyscallResult {
         // Direct access - no Option check!
         let pipe_manager = &self.ipc.pipe_manager;
 
