@@ -23,3 +23,6 @@ mod batch_test;
 
 #[path = "syscalls/streaming_test.rs"]
 mod streaming_test;
+
+#[path = "syscalls/fd_limits_test.rs"]
+mod fd_limits_test;

@@ -8,17 +8,16 @@ use crate::core::json;
 use crate::core::types::Pid;
 use crate::permissions::{PermissionChecker, PermissionRequest};
 
-use dashmap::DashMap;
 use ahash::RandomState;
+use dashmap::DashMap;
 use log::{error, info, warn};
 use parking_lot::RwLock;
 use std::fs::{File, OpenOptions};
-use std::io::{Read, Seek, SeekFrom, Write};
+use std::io::{Seek, SeekFrom};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 
-use crate::security::Capability;
 
 use super::executor::SyscallExecutor;
 use super::types::SyscallResult;
@@ -33,6 +32,8 @@ pub struct FdManager {
     open_files: Arc<DashMap<u32, Arc<RwLock<File>>, RandomState>>,
     /// Track which FDs belong to which process for cleanup
     process_fds: Arc<DashMap<Pid, Vec<u32>, RandomState>>,
+    /// Per-process FD counts for O(1) limit checks (lock-free via alter())
+    process_fd_counts: Arc<DashMap<Pid, u32, RandomState>>,
 }
 
 impl FdManager {
@@ -41,6 +42,7 @@ impl FdManager {
             next_fd: Arc::new(AtomicU32::new(3)), // Start at 3 (0, 1, 2 are stdin, stdout, stderr)
             open_files: Arc::new(DashMap::with_hasher(RandomState::new())),
             process_fds: Arc::new(DashMap::with_hasher(RandomState::new())),
+            process_fd_counts: Arc::new(DashMap::with_hasher(RandomState::new())),
         }
     }
 
@@ -48,19 +50,39 @@ impl FdManager {
         self.next_fd.fetch_add(1, Ordering::SeqCst)
     }
 
-    /// Track that a process owns an FD
-    fn track_fd(&self, pid: Pid, fd: u32) {
+    /// Get current FD count for a process (O(1) lookup)
+    pub fn get_fd_count(&self, pid: Pid) -> u32 {
+        self.process_fd_counts
+            .get(&pid)
+            .map(|r| *r.value())
+            .unwrap_or(0)
+    }
+
+    /// Check if process has any open FDs
+    pub fn has_process_fds(&self, pid: Pid) -> bool {
+        self.get_fd_count(pid) > 0
+    }
+
+    /// Track that a process owns an FD (atomic increment)
+    pub(super) fn track_fd(&self, pid: Pid, fd: u32) {
         self.process_fds
             .entry(pid)
             .or_insert_with(Vec::new)
             .push(fd);
+
+        // Atomic increment using alter() for lock-free counting
+        self.process_fd_counts.alter(&pid, |_, count| count + 1);
     }
 
-    /// Untrack an FD from a process
-    fn untrack_fd(&self, pid: Pid, fd: u32) {
+    /// Untrack an FD from a process (atomic decrement)
+    pub(super) fn untrack_fd(&self, pid: Pid, fd: u32) {
         if let Some(mut fds) = self.process_fds.get_mut(&pid) {
             fds.retain(|&x| x != fd);
         }
+
+        // Atomic decrement using alter() for lock-free counting
+        self.process_fd_counts
+            .alter(&pid, |_, count| count.saturating_sub(1));
     }
 
     /// Cleanup all file descriptors for a terminated process
@@ -78,6 +100,9 @@ impl FdManager {
             }
         }
 
+        // Remove the count entry (already removed fds)
+        self.process_fd_counts.remove(&pid);
+
         closed_count
     }
 }
@@ -88,12 +113,29 @@ impl Clone for FdManager {
             next_fd: Arc::clone(&self.next_fd),
             open_files: Arc::clone(&self.open_files),
             process_fds: Arc::clone(&self.process_fds),
+            process_fd_counts: Arc::clone(&self.process_fd_counts),
         }
     }
 }
 
 impl SyscallExecutor {
     pub(super) fn open(&self, pid: Pid, path: &PathBuf, flags: u32, mode: u32) -> SyscallResult {
+        // Check per-process FD limit BEFORE doing expensive operations
+        use crate::security::ResourceLimitProvider;
+        if let Some(limits) = self.sandbox_manager.get_limits(pid) {
+            let current_fd_count = self.fd_manager.get_fd_count(pid);
+            if current_fd_count >= limits.max_file_descriptors {
+                error!(
+                    "PID {} exceeded FD limit: {}/{} file descriptors",
+                    pid, current_fd_count, limits.max_file_descriptors
+                );
+                return SyscallResult::permission_denied(format!(
+                    "File descriptor limit exceeded: {}/{} FDs open",
+                    current_fd_count, limits.max_file_descriptors
+                ));
+            }
+        }
+
         // Check permissions based on flags
         let read_flag = flags & 0x0001; // O_RDONLY or O_RDWR
         let write_flag = flags & 0x0002; // O_WRONLY or O_RDWR
@@ -209,6 +251,22 @@ impl SyscallExecutor {
         // Note: dup doesn't check specific path permissions, just general file access
         // The original fd already had permissions checked at open time
 
+        // Check per-process FD limit BEFORE duplication
+        use crate::security::ResourceLimitProvider;
+        if let Some(limits) = self.sandbox_manager.get_limits(pid) {
+            let current_fd_count = self.fd_manager.get_fd_count(pid);
+            if current_fd_count >= limits.max_file_descriptors {
+                error!(
+                    "PID {} exceeded FD limit during dup: {}/{} file descriptors",
+                    pid, current_fd_count, limits.max_file_descriptors
+                );
+                return SyscallResult::permission_denied(format!(
+                    "File descriptor limit exceeded: {}/{} FDs open",
+                    current_fd_count, limits.max_file_descriptors
+                ));
+            }
+        }
+
         // Check if the FD exists and clone the Arc reference
         if let Some(file_ref) = self.fd_manager.open_files.get(&fd) {
             // Clone the Arc to increment reference count
@@ -243,6 +301,24 @@ impl SyscallExecutor {
     pub(super) fn dup2(&self, pid: Pid, oldfd: u32, newfd: u32) -> SyscallResult {
         // Note: dup2 doesn't check specific path permissions, just general file access
         // The original fd already had permissions checked at open time
+
+        // Check per-process FD limit BEFORE dup2 (only if newfd is not already open)
+        use crate::security::ResourceLimitProvider;
+        if !self.fd_manager.open_files.contains_key(&newfd) {
+            if let Some(limits) = self.sandbox_manager.get_limits(pid) {
+                let current_fd_count = self.fd_manager.get_fd_count(pid);
+                if current_fd_count >= limits.max_file_descriptors {
+                    error!(
+                        "PID {} exceeded FD limit during dup2: {}/{} file descriptors",
+                        pid, current_fd_count, limits.max_file_descriptors
+                    );
+                    return SyscallResult::permission_denied(format!(
+                        "File descriptor limit exceeded: {}/{} FDs open",
+                        current_fd_count, limits.max_file_descriptors
+                    ));
+                }
+            }
+        }
 
         // Check if the old FD exists and clone the Arc reference
         if let Some(file_ref) = self.fd_manager.open_files.get(&oldfd) {

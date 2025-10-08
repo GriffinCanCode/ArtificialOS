@@ -3,17 +3,19 @@
  * Comprehensive per-process resource tracking and cleanup orchestration
  */
 
-mod sockets;
-mod signals;
-mod rings;
-mod tasks;
+mod fds;
 mod mappings;
+mod rings;
+mod signals;
+mod sockets;
+mod tasks;
 
-pub use sockets::SocketResource;
-pub use signals::SignalResource;
-pub use rings::{RingResource, ZeroCopyResource, IoUringResource};
-pub use tasks::TaskResource;
+pub use fds::FdResource;
 pub use mappings::MappingResource;
+pub use rings::{IoUringResource, RingResource, ZeroCopyResource};
+pub use signals::SignalResource;
+pub use sockets::SocketResource;
+pub use tasks::TaskResource;
 
 use crate::core::types::Pid;
 use std::fmt;
@@ -89,8 +91,7 @@ impl ResourceOrchestrator {
                 if errors_encountered > 0 {
                     errors.push(format!(
                         "{}: {} errors during cleanup",
-                        resource_type,
-                        errors_encountered
+                        resource_type, errors_encountered
                     ));
                 }
 
@@ -167,7 +168,8 @@ mod tests {
 
     impl ResourceCleanup for TestResource {
         fn cleanup(&self, _pid: Pid) -> CleanupStats {
-            self.cleanup_count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            self.cleanup_count
+                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
             CleanupStats {
                 resources_freed: 1,
                 bytes_freed: 100,
@@ -186,8 +188,8 @@ mod tests {
 
     #[test]
     fn test_orchestrator_cleanup_order() {
-        use std::sync::Arc;
         use std::sync::atomic::AtomicUsize;
+        use std::sync::Arc;
 
         let r1_count = Arc::new(AtomicUsize::new(0));
         let r2_count = Arc::new(AtomicUsize::new(0));
