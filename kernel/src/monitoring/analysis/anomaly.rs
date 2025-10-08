@@ -6,7 +6,7 @@
  * using z-score without storing historical data
  */
 
-use super::events::{Event, Payload};
+use crate::monitoring::events::{Event, Payload};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 

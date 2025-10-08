@@ -32,45 +32,35 @@
  * ```
  */
 
-// Event streaming modules
-mod anomaly;
-mod bridge;
-mod collector;
+// Domain modules
+mod analysis;
+mod collection;
 mod events;
-mod query;
-mod sampler;
-mod stream;
-mod timeout;
-
-// Distributed tracing modules
 mod metrics;
-mod tracer;
+mod streaming;
+mod tracing;
 
 // Primary Event Streaming API
-pub use collector::Collector;
+pub use collection::Collector;
 pub use events::{Category, Event, EventFilter, Payload, Severity, SyscallResult};
-pub use query::{AggregationType, CausalityTracer, CommonQueries, Query, QueryResult};
-pub use stream::{EventStream, StreamStats, Subscriber};
+pub use streaming::{EventStream, StreamStats, Subscriber};
 
-// Anomaly detection
-pub use anomaly::{Anomaly, Detector};
+// Analysis API
+pub use analysis::{
+    Anomaly, AggregationType, CausalityTracer, CommonQueries, Detector, Query, QueryResult,
+    SampleDecision, Sampler,
+};
 
-// Sampling
-pub use sampler::{SampleDecision, Sampler};
-
-// Timeout observability
-pub use timeout::{TimeoutObserver, TimeoutStats};
+// Metrics API
+pub use metrics::{MetricsCollector, MetricsSnapshot, TimeoutObserver, TimeoutStats};
 
 // Distributed Tracing API (complementary to Collector)
-pub use tracer::{
+pub use tracing::{
     current_span, generate_trace_id, init_tracing, span_grpc, span_operation, span_syscall,
     GrpcSpan, OperationSpan, SyscallSpan,
 };
 
-// Metrics API (used by gRPC endpoints)
-pub use metrics::{MetricsCollector, MetricsSnapshot};
-
 // Bridge for integrating tracing with event streaming
-pub use bridge::{
-    collector as global_collector, emit_from_span, emit_from_span_with_pid, init_collector,
+pub use collection::{
+    global_collector, emit_from_span, emit_from_span_with_pid, init_collector,
 };

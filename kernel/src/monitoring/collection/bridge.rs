@@ -5,8 +5,8 @@
  * Allows tracing spans to automatically emit events to Collector
  */
 
-use super::collector::Collector;
-use super::events::{Category, Event, Payload, Severity};
+use super::Collector;
+use crate::monitoring::events::{Category, Event, Payload, Severity};
 use crate::core::types::Pid;
 use std::sync::Arc;
 

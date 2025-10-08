@@ -6,7 +6,7 @@
  * Zero-copy where possible, bounded memory usage, automatic backpressure
  */
 
-use super::events::{Event, EventFilter};
+use crate::monitoring::events::{Event, EventFilter};
 use crossbeam_queue::ArrayQueue;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;

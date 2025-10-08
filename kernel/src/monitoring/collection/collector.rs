@@ -5,12 +5,10 @@
  * Integrates: events, metrics, tracing, sampling, anomaly detection
  */
 
-use super::anomaly::Detector;
-use super::events::{Category, Event, Payload, Severity};
-use super::metrics::{MetricsCollector, MetricsSnapshot};
-use super::query::{Query, QueryResult};
-use super::sampler::{SampleDecision, Sampler};
-use super::stream::{EventStream, StreamStats, Subscriber};
+use crate::monitoring::analysis::{Detector, Query, QueryResult, SampleDecision, Sampler};
+use crate::monitoring::events::{Category, Event, Payload, Severity, SyscallResult};
+use crate::monitoring::metrics::{MetricsCollector, MetricsSnapshot};
+use crate::monitoring::streaming::{EventStream, StreamStats, Subscriber};
 use crate::core::types::Pid;
 use std::sync::Arc;
 
@@ -287,9 +285,9 @@ impl Collector {
     /// Record syscall execution
     pub fn syscall_exit(&self, pid: Pid, name: String, duration_us: u64, success: bool) {
         let result = if success {
-            super::events::SyscallResult::Success
+            SyscallResult::Success
         } else {
-            super::events::SyscallResult::Error
+            SyscallResult::Error
         };
 
         self.emit(
