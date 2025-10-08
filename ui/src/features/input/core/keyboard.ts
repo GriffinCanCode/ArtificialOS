@@ -87,43 +87,6 @@ export function matchesShortcut(
 }
 
 /**
- * Get platform-specific modifier key name
- */
-export function getPlatformModifier(): "Meta" | "Control" {
-  return navigator.platform.toLowerCase().includes("mac") ? "Meta" : "Control";
-}
-
-/**
- * Format shortcut for display
- */
-export function formatShortcut(key: string, modifiers?: ModifierKey[]): string {
-  const parts: string[] = [];
-  const isMac = getPlatformModifier() === "Meta";
-
-  if (modifiers) {
-    for (const mod of modifiers) {
-      switch (mod) {
-        case "Meta":
-          parts.push(isMac ? "⌘" : "Win");
-          break;
-        case "Control":
-          parts.push(isMac ? "⌃" : "Ctrl");
-          break;
-        case "Alt":
-          parts.push(isMac ? "⌥" : "Alt");
-          break;
-        case "Shift":
-          parts.push(isMac ? "⇧" : "Shift");
-          break;
-      }
-    }
-  }
-
-  parts.push(key.toUpperCase());
-  return parts.join(isMac ? "" : "+");
-}
-
-/**
  * Check if key is navigation key
  */
 export function isNavigationKey(key: string): boolean {
@@ -149,10 +112,3 @@ export function isActionKey(key: string): boolean {
   return actionKeys.includes(key);
 }
 
-/**
- * Check if key is modifier key
- */
-export function isModifierKey(key: string): boolean {
-  const modifierKeys = ["Alt", "Control", "Meta", "Shift"];
-  return modifierKeys.includes(key);
-}

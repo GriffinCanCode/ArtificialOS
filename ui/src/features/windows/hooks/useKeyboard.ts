@@ -3,8 +3,7 @@
  * Window keyboard shortcuts and navigation
  */
 
-import { useEffect } from "react";
-import { shouldIgnoreKeyboardEvent } from "../../input";
+import { useShortcuts, useScope } from "../../input";
 import type { Window } from "../core/types";
 
 export interface KeyboardActions {
@@ -14,17 +13,20 @@ export interface KeyboardActions {
 }
 
 export function useKeyboard(windows: Window[], actions: KeyboardActions) {
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger if typing in input
-      if (shouldIgnoreKeyboardEvent(e)) {
-        return;
-      }
+  // Activate window scope
+  useScope("window");
 
-      // Alt/Cmd + Tab: Cycle forward
-      if ((e.altKey || e.metaKey) && e.key === "Tab" && !e.shiftKey) {
-        e.preventDefault();
-
+  // Register window management shortcuts
+  useShortcuts([
+    {
+      id: "window.cycle.forward",
+      sequence: "$mod+Tab",
+      label: "Next Window",
+      description: "Focus next window",
+      category: "window",
+      scope: "global",
+      priority: "high",
+      handler: () => {
         const visible = windows.filter((w) => !w.isMinimized);
         if (visible.length === 0) return;
 
@@ -35,12 +37,17 @@ export function useKeyboard(windows: Window[], actions: KeyboardActions) {
         if (nextWindow) {
           actions.onFocus(nextWindow.id);
         }
-      }
-
-      // Alt/Cmd + Shift + Tab: Cycle backward
-      if ((e.altKey || e.metaKey) && e.shiftKey && e.key === "Tab") {
-        e.preventDefault();
-
+      },
+    },
+    {
+      id: "window.cycle.backward",
+      sequence: "$mod+Shift+Tab",
+      label: "Previous Window",
+      description: "Focus previous window",
+      category: "window",
+      scope: "global",
+      priority: "high",
+      handler: () => {
         const visible = windows.filter((w) => !w.isMinimized);
         if (visible.length === 0) return;
 
@@ -51,30 +58,37 @@ export function useKeyboard(windows: Window[], actions: KeyboardActions) {
         if (prevWindow) {
           actions.onFocus(prevWindow.id);
         }
-      }
-
-      // Cmd/Ctrl + M: Minimize focused
-      if ((e.metaKey || e.ctrlKey) && e.key === "m") {
-        e.preventDefault();
-
+      },
+    },
+    {
+      id: "window.minimize",
+      sequence: "$mod+m",
+      label: "Minimize Window",
+      description: "Minimize the focused window",
+      category: "window",
+      scope: "window",
+      priority: "high",
+      handler: () => {
         const focused = windows.find((w) => w.isFocused && !w.isMinimized);
         if (focused) {
           actions.onMinimize(focused.id);
         }
-      }
-
-      // Cmd/Ctrl + W: Close focused
-      if ((e.metaKey || e.ctrlKey) && e.key === "w") {
-        e.preventDefault();
-
+      },
+    },
+    {
+      id: "window.close",
+      sequence: "$mod+w",
+      label: "Close Window",
+      description: "Close the focused window",
+      category: "window",
+      scope: "window",
+      priority: "high",
+      handler: () => {
         const focused = windows.find((w) => w.isFocused);
         if (focused) {
           actions.onClose(focused.id);
         }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [windows, actions]);
+      },
+    },
+  ]);
 }

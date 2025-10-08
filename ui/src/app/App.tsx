@@ -22,7 +22,7 @@ import { useLogger } from "../core/utils/monitoring/useLogger";
 import { formatRelativeTime } from "../core/utils/dates";
 import { useFadeIn, useSlideInUp } from "../ui/hooks/useGSAP";
 import { queryClient } from "../core/lib/queryClient";
-import { shouldIgnoreKeyboardEvent } from "../features/input";
+import { useScope, useShortcuts } from "../features/input";
 import { Tooltip } from "../features/floating";
 import { AnimatedTitle } from "../ui/components/typography";
 import { TypewriterText } from "../ui/components/typography/TypewriterText";
@@ -190,33 +190,45 @@ function AppContent() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Global keyboard shortcut: Cmd/Ctrl + K to toggle creator
-  React.useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger shortcuts if user is typing in an input/textarea (except Escape)
-      if (shouldIgnoreKeyboardEvent(e, { allowedKeys: ["Escape"] })) {
-        return; // Let the input handle the keystroke (but allow Escape to close creator)
-      }
+  // Global keyboard shortcuts
+  useScope("global");
 
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
+  useShortcuts([
+    {
+      id: "app.creator.toggle",
+      sequence: "$mod+k",
+      label: "Toggle Creator",
+      description: "Open or close the app creator",
+      category: "system",
+      scope: "global",
+      priority: "critical",
+      handler: () => {
         setShowCreator(!showCreator);
         if (!showCreator) {
           setInputFocused(true);
           setTimeout(() => inputRef.current?.focus(), 50);
         }
-      }
-      // Escape to close creator
-      if (e.key === "Escape" && showCreator) {
-        setShowCreator(false);
-        setInputFocused(false);
-        inputRef.current?.blur();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [showCreator, inputFocused]);
+      },
+    },
+    {
+      id: "app.creator.close",
+      sequence: "Escape",
+      label: "Close Creator",
+      description: "Close the creator modal",
+      category: "system",
+      scope: "creator",
+      priority: "high",
+      allowInInput: true,
+      enabled: showCreator,
+      handler: () => {
+        if (showCreator) {
+          setShowCreator(false);
+          setInputFocused(false);
+          inputRef.current?.blur();
+        }
+      },
+    },
+  ]);
 
   const onSubmitSpotlight = useCallback(
     (data: SpotlightFormData) => {

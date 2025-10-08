@@ -4,7 +4,6 @@
  */
 
 import React, { useEffect, useState, useCallback } from "react";
-import { shouldIgnoreKeyboardEvent } from "../../../features/input";
 import { formatDate, formatTime } from "../../../core/utils/dates";
 import { Sortable, useDockItems, useDockActions } from "../../../features/dnd";
 import type { SortResult } from "../../../features/dnd";
@@ -13,6 +12,7 @@ import { BrandLogo } from "../typography/BrandLogo";
 import { DockItem } from "./DockItem";
 import { Grid as IconGrid } from "../../../features/icons";
 import type { IconType } from "../../../features/icons";
+import { useScope, useShortcuts } from "../../../features/input";
 import "./Desktop.css";
 
 interface DesktopProps {
@@ -27,35 +27,38 @@ export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpen
   const dockItems = useDockItems();
   const { reorder, toggle, remove } = useDockActions();
 
+  // Activate desktop scope
+  useScope("desktop");
+
+  // Register desktop shortcuts
+  useShortcuts([
+    {
+      id: "desktop.creator.open",
+      sequence: "$mod+k",
+      label: "Open Creator",
+      description: "Open the app creator",
+      category: "system",
+      scope: "desktop",
+      priority: "high",
+      handler: () => onOpenCreator(),
+    },
+    {
+      id: "desktop.hub.open",
+      sequence: "$mod+Space",
+      label: "Open Hub",
+      description: "Open the application hub",
+      category: "system",
+      scope: "desktop",
+      priority: "high",
+      handler: () => onOpenHub(),
+    },
+  ]);
+
   // Update clock
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger shortcuts if user is typing in an input/textarea
-      if (shouldIgnoreKeyboardEvent(e)) {
-        return; // Let the input handle the keystroke
-      }
-
-      // Cmd+K or Ctrl+K to open creator
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        onOpenCreator();
-      }
-      // Cmd+Space to open hub
-      if ((e.metaKey || e.ctrlKey) && e.key === " ") {
-        e.preventDefault();
-        onOpenHub();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onOpenCreator, onOpenHub]);
 
   // Handle dock reorder
   const handleDockSort = (result: SortResult) => {
