@@ -30,28 +30,30 @@
  * - **Per-process tracking**: Monitor peak usage and allocation counts
  */
 
-mod allocator;
-mod free_list;
+// Organized submodules
+mod core;
+mod extensions;
 mod gc;
-mod guard_ext;
-mod process_ops;
+mod process;
 mod storage;
-mod tracking;
 
-pub use guard_ext::MemoryGuardExt;
+// Re-export public types, traits, and extensions
+pub use core::{
+    Allocator, AllocationRequest, GarbageCollector, MemoryBlock, MemoryError, MemoryInfo,
+    MemoryPressure, MemoryResult, MemoryStats, ProcessMemoryCleanup, ProcessMemoryStats,
+};
+pub use extensions::MemoryGuardExt;
 
-use super::traits::{Allocator, GarbageCollector, MemoryInfo, ProcessMemoryCleanup};
-use super::types::MemoryBlock;
 use crate::core::types::{Address, Pid, Size};
 use crate::core::{ShardManager, WorkloadProfile};
 use crate::monitoring::Collector;
 use ahash::RandomState;
+use core::SegregatedFreeList;
 use dashmap::DashMap;
-use free_list::SegregatedFreeList;
 use log::info;
+use process::ProcessMemoryTracking;
 use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
-use tracking::ProcessMemoryTracking;
 
 /// Memory manager
 ///
@@ -138,11 +140,11 @@ impl MemoryManager {
 
 // Implement trait interfaces
 impl Allocator for MemoryManager {
-    fn allocate(&self, size: Size, pid: Pid) -> super::types::MemoryResult<Address> {
+    fn allocate(&self, size: Size, pid: Pid) -> MemoryResult<Address> {
         MemoryManager::allocate(self, size, pid)
     }
 
-    fn deallocate(&self, address: Address) -> super::types::MemoryResult<()> {
+    fn deallocate(&self, address: Address) -> MemoryResult<()> {
         MemoryManager::deallocate(self, address)
     }
 
@@ -156,7 +158,7 @@ impl Allocator for MemoryManager {
 }
 
 impl MemoryInfo for MemoryManager {
-    fn stats(&self) -> super::types::MemoryStats {
+    fn stats(&self) -> MemoryStats {
         MemoryManager::stats(self)
     }
 

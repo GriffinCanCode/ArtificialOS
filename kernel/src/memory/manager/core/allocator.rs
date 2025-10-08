@@ -3,9 +3,10 @@
  * Allocation and deallocation logic
  */
 
-use super::super::types::{MemoryBlock, MemoryError, MemoryPressure, MemoryResult};
+use super::super::process::ProcessMemoryTracking;
+use super::super::MemoryManager;
 use super::free_list::FreeBlock;
-use super::MemoryManager;
+use super::types::{MemoryBlock, MemoryError, MemoryPressure, MemoryResult};
 use crate::core::types::{Address, Pid, Size};
 use crate::monitoring::{Category, Event, Payload, Severity};
 use log::{error, info, warn};
@@ -90,7 +91,7 @@ impl MemoryManager {
             let mut track = self
                 .process_tracking
                 .entry(pid)
-                .or_insert_with(|| crate::memory::manager::tracking::ProcessMemoryTracking::new());
+                .or_insert_with(ProcessMemoryTracking::new);
             track.current_bytes += size;
             track.allocation_count += 1;
             if track.current_bytes > track.peak_bytes {

@@ -3,7 +3,7 @@
  * Internal GC for cleaning up deallocated memory blocks
  */
 
-use super::MemoryManager;
+use super::super::MemoryManager;
 use crate::core::types::{Address, Size};
 use log::info;
 use std::sync::atomic::Ordering;

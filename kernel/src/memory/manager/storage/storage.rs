@@ -3,8 +3,8 @@
  * Read/write operations for simulated physical memory
  */
 
-use super::super::types::{MemoryError, MemoryResult};
-use super::MemoryManager;
+use super::super::core::{MemoryError, MemoryResult};
+use super::super::MemoryManager;
 use crate::core::types::{Address, Size};
 use log::info;
 

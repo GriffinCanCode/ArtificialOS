@@ -309,12 +309,11 @@ impl AsyncSyscallExecutor {
 /// 3. **Phase 3**: io_uring for high-performance I/O
 /// 4. **Phase 4**: async IPC with tokio channels
 mod true_async_io {
-    use super::*;
     use std::path::PathBuf;
 
     /// Example of true async file read (to be implemented)
     #[allow(dead_code)]
-    async fn read_file_async(path: &PathBuf) -> std::io::Result<Vec<u8>> {
+    async fn read_file_async(_path: &PathBuf) -> std::io::Result<Vec<u8>> {
         // Future implementation:
         // tokio::fs::read(path).await
 
@@ -324,7 +323,7 @@ mod true_async_io {
 
     /// Example of io_uring integration (to be implemented)
     #[allow(dead_code)]
-    async fn read_file_uring(path: &PathBuf) -> std::io::Result<Vec<u8>> {
+    async fn read_file_uring(_path: &PathBuf) -> std::io::Result<Vec<u8>> {
         // Future implementation with io_uring
         // let ring = IoUring::new()?;
         // ring.read(path).await

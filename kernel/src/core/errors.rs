@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 // Re-export MemoryError from memory module
-pub use crate::memory::types::MemoryError;
+pub use crate::memory::MemoryError;
 
 // Re-export SandboxError from security module
 pub use crate::security::types::SandboxError;

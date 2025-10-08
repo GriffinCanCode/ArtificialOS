@@ -3,9 +3,8 @@
  * Process-specific memory management and statistics
  */
 
-use super::super::types::{MemoryBlock, MemoryStats};
-use super::free_list::{FreeBlock, SegregatedFreeList};
-use super::MemoryManager;
+use super::super::core::{FreeBlock, MemoryBlock, MemoryStats, SegregatedFreeList};
+use super::super::MemoryManager;
 use crate::core::types::{Pid, Size};
 use log::info;
 use std::sync::atomic::Ordering;
@@ -13,7 +12,7 @@ use std::sync::atomic::Ordering;
 impl MemoryManager {
     /// Coalesce adjacent free blocks to reduce fragmentation
     /// Works with segregated free lists by temporarily extracting all blocks
-    pub(super) fn coalesce_free_blocks(free_list: &mut SegregatedFreeList) {
+    pub(in crate::memory::manager) fn coalesce_free_blocks(free_list: &mut SegregatedFreeList) {
         if free_list.len() < 2 {
             return;
         }

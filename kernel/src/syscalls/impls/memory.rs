@@ -10,7 +10,7 @@ use crate::permissions::{Action, PermissionChecker, PermissionRequest, Resource}
 
 use log::{error, info, warn};
 
-use crate::memory::types::ProcessMemoryStats;
+use crate::memory::ProcessMemoryStats;
 
 use crate::syscalls::core::executor::SyscallExecutorWithIpc;
 use crate::syscalls::types::SyscallResult;

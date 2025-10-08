@@ -4,10 +4,9 @@
  * Extension trait to create RAII guards for memory allocations
  */
 
-use super::MemoryManager;
+use super::super::{MemoryManager, MemoryResult};
 use crate::core::guard::{MemoryGuard, MemoryGuardRef};
 use crate::core::types::{Pid, Size};
-use crate::memory::types::MemoryResult;
 use std::sync::Arc;
 
 /// Extension trait for creating memory guards

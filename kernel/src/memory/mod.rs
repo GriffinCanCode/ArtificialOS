@@ -7,11 +7,11 @@
 
 pub mod gc;
 pub mod manager;
-pub mod traits;
-pub mod types;
 
 // Re-export for convenience
 pub use gc::{GcStats, GcStrategy, GlobalGarbageCollector};
-pub use manager::{MemoryGuardExt, MemoryManager};
-pub use traits::*;
-pub use types::*;
+pub use manager::{
+    Allocator, AllocationRequest, GarbageCollector, MemoryBlock, MemoryError, MemoryGuardExt,
+    MemoryInfo, MemoryManager, MemoryPressure, MemoryResult, MemoryStats, ProcessMemoryCleanup,
+    ProcessMemoryStats,
+};

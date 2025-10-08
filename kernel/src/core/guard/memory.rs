@@ -345,14 +345,14 @@ pub trait MemoryGuardExt {
         &self,
         size: Size,
         pid: Pid,
-    ) -> Result<MemoryGuard, crate::memory::types::MemoryError>;
+    ) -> Result<MemoryGuard, crate::memory::MemoryError>;
 
     /// Allocate memory with a reference-counted guard
     fn allocate_guard_ref(
         &self,
         size: Size,
         pid: Pid,
-    ) -> Result<MemoryGuardRef, crate::memory::types::MemoryError>;
+    ) -> Result<MemoryGuardRef, crate::memory::MemoryError>;
 }
 
 #[cfg(test)]

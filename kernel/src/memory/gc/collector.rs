@@ -3,7 +3,7 @@
  * System-wide garbage collection and memory cleanup
  */
 
-use super::manager::MemoryManager;
+use super::super::manager::MemoryManager;
 use crate::core::serialization::serde::{is_zero_u64, is_zero_usize};
 use crate::core::types::{Pid, Size};
 use ahash::HashMap;

@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 
 /// Free block for address recycling
 #[derive(Debug, Clone)]
-pub(in crate::memory) struct FreeBlock {
+pub struct FreeBlock {
     pub address: Address,
     pub size: Size,
 }
@@ -19,7 +19,7 @@ pub(in crate::memory) struct FreeBlock {
 /// - Medium blocks (4KB-64KB): O(1) best-fit within size class
 /// - Large blocks (>64KB): O(log n) using BTreeMap
 #[derive(Debug)]
-pub(in crate::memory) struct SegregatedFreeList {
+pub struct SegregatedFreeList {
     /// Small allocations: <4KB - most common case
     /// Bucketed by powers of 2 for cache-friendly access
     small_blocks: Vec<Vec<FreeBlock>>, // 12 buckets: 64, 128, 256, ..., 2048, 4096 bytes

@@ -11,7 +11,7 @@ use crate::core::types::Size;
 /// - Cache-line aligned to prevent false sharing in concurrent memory operations
 #[repr(C, align(64))]
 #[derive(Debug, Clone)]
-pub(in crate::memory) struct ProcessMemoryTracking {
+pub struct ProcessMemoryTracking {
     pub current_bytes: Size,
     pub peak_bytes: Size,
     pub allocation_count: usize,
