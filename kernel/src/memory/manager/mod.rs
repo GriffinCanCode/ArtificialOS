@@ -43,6 +43,7 @@ pub use guard_ext::MemoryGuardExt;
 use super::traits::{Allocator, GarbageCollector, MemoryInfo, ProcessMemoryCleanup};
 use super::types::MemoryBlock;
 use crate::core::types::{Address, Pid, Size};
+use crate::core::{ShardManager, WorkloadProfile};
 use crate::monitoring::Collector;
 use ahash::RandomState;
 use dashmap::DashMap;
@@ -90,12 +91,11 @@ impl MemoryManager {
             total
         );
         Self {
-            // Use 128 shards for blocks - high contention data structure (default is 64)
-            // More shards = better concurrent access performance. Using ahash hasher.
+            // CPU-topology-aware shard counts for optimal concurrent performance
             blocks: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
                 0,
                 RandomState::new(),
-                128,
+                ShardManager::shards(WorkloadProfile::HighContention), // memory blocks: heavy concurrent access
             )),
             next_address: Arc::new(AtomicU64::new(0)),
             total_memory: total,
@@ -104,17 +104,15 @@ impl MemoryManager {
             critical_threshold: 0.95,
             gc_threshold: 1000,
             deallocated_count: Arc::new(AtomicU64::new(0)),
-            // Use 64 shards for process tracking (moderate contention). Using ahash hasher.
             process_tracking: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
                 0,
                 RandomState::new(),
-                64,
+                ShardManager::shards(WorkloadProfile::MediumContention), // per-process tracking: moderate access
             )),
-            // Use 128 shards for memory storage - high I/O contention. Using ahash hasher.
             memory_storage: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
                 0,
                 RandomState::new(),
-                128,
+                ShardManager::shards(WorkloadProfile::HighContention), // storage map: high I/O contention
             )),
             free_list: Arc::new(Mutex::new(SegregatedFreeList::new())),
             collector: None,

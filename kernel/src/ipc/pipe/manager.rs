@@ -10,6 +10,7 @@ use super::types::{
     PipeError, PipeStats, DEFAULT_PIPE_CAPACITY, MAX_PIPES_PER_PROCESS, MAX_PIPE_CAPACITY,
 };
 use crate::core::types::{Pid, Size};
+use crate::core::{ShardManager, WorkloadProfile};
 use crate::memory::MemoryManager;
 use crate::monitoring::Collector;
 use ahash::RandomState;
@@ -45,18 +46,17 @@ impl PipeManager {
             DEFAULT_PIPE_CAPACITY
         );
         Self {
-            // Use 64 shards for pipes - high I/O contention
+            // CPU-topology-aware shard counts for optimal concurrent performance
             pipes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
                 0,
                 RandomState::new(),
-                64,
+                ShardManager::shards(WorkloadProfile::MediumContention), // pipes: moderate I/O contention
             )),
             next_id: Arc::new(AtomicU32::new(1)),
-            // Use 32 shards for process pipe tracking
             process_pipes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
                 0,
                 RandomState::new(),
-                32,
+                ShardManager::shards(WorkloadProfile::LowContention), // per-process tracking: light access
             )),
             memory_manager,
             free_ids: Arc::new(SegQueue::new()),

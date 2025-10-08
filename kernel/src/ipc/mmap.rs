@@ -4,6 +4,7 @@
  */
 
 use crate::core::types::Pid;
+use crate::core::{ShardManager, WorkloadProfile};
 use crate::vfs::{FileSystem, MountManager};
 use ahash::RandomState;
 use dashmap::DashMap;
@@ -110,10 +111,11 @@ impl MmapManager {
     pub fn new() -> Self {
         info!("Mmap manager initialized");
         Self {
+            // CPU-topology-aware shard counts for optimal concurrent performance
             mappings: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
                 0,
                 RandomState::new(),
-                32,
+                ShardManager::shards(WorkloadProfile::LowContention), // mmap: infrequent access
             )),
             next_id: Arc::new(AtomicU32::new(1)),
             vfs: None,
@@ -124,10 +126,11 @@ impl MmapManager {
     pub fn with_vfs(vfs: Arc<MountManager>) -> Self {
         info!("Mmap manager initialized with VFS support");
         Self {
+            // CPU-topology-aware shard counts for optimal concurrent performance
             mappings: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
                 0,
                 RandomState::new(),
-                32,
+                ShardManager::shards(WorkloadProfile::LowContention), // mmap: infrequent access
             )),
             next_id: Arc::new(AtomicU32::new(1)),
             vfs: Some(vfs),

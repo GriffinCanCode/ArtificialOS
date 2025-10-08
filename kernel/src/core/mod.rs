@@ -10,6 +10,7 @@ pub mod guard;
 pub mod hints;
 pub mod json;
 pub mod serde;
+pub mod shard_manager;
 pub mod sync;
 pub mod traits;
 pub mod types;
@@ -23,5 +24,6 @@ pub use guard::{
     TypedState, Unlocked,
 };
 pub use hints::*;
+pub use shard_manager::{ShardManager, WorkloadProfile};
 pub use traits::*;
 pub use types::*;

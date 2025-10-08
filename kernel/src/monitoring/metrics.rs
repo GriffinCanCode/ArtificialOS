@@ -4,6 +4,7 @@
  */
 
 use crate::core::serde::is_zero_u64;
+use crate::core::{ShardManager, WorkloadProfile};
 use ahash::RandomState;
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
@@ -93,22 +94,23 @@ pub struct MetricsCollector {
 
 impl MetricsCollector {
     pub fn new() -> Self {
+        // CPU-topology-aware shard counts for optimal concurrent performance
+        let shards = ShardManager::shards(WorkloadProfile::LowContention); // metrics: infrequent updates, mostly reads
         Self {
-            // Use 32 shards for metrics - moderate write contention, high read contention
             counters: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
                 0,
                 RandomState::new(),
-                32,
+                shards,
             )),
             gauges: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
                 0,
                 RandomState::new(),
-                32,
+                shards,
             )),
             histograms: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
                 0,
                 RandomState::new(),
-                32,
+                shards,
             )),
             start_time: Instant::now(),
         }

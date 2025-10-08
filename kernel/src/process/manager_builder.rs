@@ -10,6 +10,7 @@ use super::resources::ResourceOrchestrator;
 use super::scheduler::Scheduler;
 use super::scheduler_task::SchedulerTask;
 use super::types::SchedulingPolicy;
+use crate::core::{ShardManager, WorkloadProfile};
 use crate::ipc::IPCManager;
 use crate::memory::MemoryManager;
 use crate::monitoring::Collector;
@@ -230,11 +231,11 @@ impl ProcessManagerBuilder {
         info!("Process manager initialized with: {}", features.join(", "));
 
         ProcessManager {
-            // Use 128 shards for processes - high contention from concurrent process operations
+            // CPU-topology-aware shard counts for optimal concurrent performance
             processes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
                 0,
                 RandomState::new(),
-                128,
+                ShardManager::shards(WorkloadProfile::HighContention), // process table: heavy concurrent access
             )),
             next_pid: Arc::new(AtomicU32::new(1)),
             memory_manager: self.memory_manager,
@@ -246,11 +247,10 @@ impl ProcessManagerBuilder {
             preemption,
             fd_manager: self.fd_manager,
             resource_orchestrator: orchestrator,
-            // Use 64 shards for child_counts (moderate contention)
             child_counts: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
                 0,
                 RandomState::new(),
-                64,
+                ShardManager::shards(WorkloadProfile::MediumContention), // child tracking: moderate access
             )),
             lifecycle,
             collector: self.collector,

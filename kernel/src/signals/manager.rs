@@ -9,6 +9,7 @@ use super::internal_types::{PrioritySignal, ProcessSignals, MAX_HANDLERS_PER_PRO
 use super::traits::*;
 use super::types::*;
 use crate::core::types::Pid;
+use crate::core::{ShardManager, WorkloadProfile};
 use ahash::RandomState;
 use dashmap::DashMap;
 use log::{debug, info, warn};
@@ -36,11 +37,11 @@ impl SignalManagerImpl {
         let callbacks = Arc::new(CallbackRegistry::new());
         info!("Signal manager initialized");
         Self {
-            // Use 128 shards for processes - high contention from signal delivery
+            // CPU-topology-aware shard counts for optimal concurrent performance
             processes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
                 0,
                 RandomState::new(),
-                128,
+                ShardManager::shards(WorkloadProfile::HighContention), // signal delivery: high contention
             )),
             handler: Arc::new(SignalHandler::new(callbacks.clone())),
             callbacks,

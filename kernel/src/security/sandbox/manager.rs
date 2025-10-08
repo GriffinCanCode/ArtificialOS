@@ -5,6 +5,7 @@
 use super::capability;
 use super::network;
 use crate::core::types::{Pid, ResourceLimits};
+use crate::core::{ShardManager, WorkloadProfile};
 use crate::monitoring::Collector;
 use crate::security::namespace::{IsolationMode, NamespaceConfig, NamespaceManager};
 use crate::security::traits::*;
@@ -28,17 +29,16 @@ impl SandboxManager {
     pub fn new() -> Self {
         info!("Sandbox manager initialized");
         Self {
-            // Use 64 shards for sandboxes - moderate contention
+            // CPU-topology-aware shard counts for optimal concurrent performance
             sandboxes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
                 0,
                 RandomState::new(),
-                64,
+                ShardManager::shards(WorkloadProfile::MediumContention), // sandboxes: moderate access
             )),
-            // Use 32 shards for spawn counts - lower contention
             spawned_counts: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
                 0,
                 RandomState::new(),
-                32,
+                ShardManager::shards(WorkloadProfile::LowContention), // spawn counts: infrequent access
             )),
             namespace_manager: None,
             collector: None,
@@ -68,17 +68,16 @@ impl SandboxManager {
             }
         );
         Self {
-            // Use 64 shards for sandboxes - moderate contention
+            // CPU-topology-aware shard counts for optimal concurrent performance
             sandboxes: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
                 0,
                 RandomState::new(),
-                64,
+                ShardManager::shards(WorkloadProfile::MediumContention), // sandboxes: moderate access
             )),
-            // Use 32 shards for spawn counts - lower contention
             spawned_counts: Arc::new(DashMap::with_capacity_and_hasher_and_shard_amount(
                 0,
                 RandomState::new(),
-                32,
+                ShardManager::shards(WorkloadProfile::LowContention), // spawn counts: infrequent access
             )),
             namespace_manager: Some(ns_manager),
             collector: None,
