@@ -198,18 +198,20 @@ impl SyscallExecutor {
                     self.fd_manager.open_files.insert(fd, handle);
                     self.fd_manager.track_fd(pid, fd);
 
-                    info!(
-                        "PID {} opened {:?} via VFS with FD {}, flags: 0x{:x}",
-                        pid, path, fd, flags
-                    );
+                info!(
+                    "PID {} opened {:?} via VFS with FD {}, flags: 0x{:x}",
+                    pid, path, fd, flags
+                );
 
-                    return match json::to_vec(&serde_json::json!({ "fd": fd })) {
-                        Ok(data) => SyscallResult::success_with_data(data),
-                        Err(e) => {
-                            warn!("Failed to serialize open result: {}", e);
-                            SyscallResult::error("Internal serialization error")
-                        }
-                    };
+                return match json::to_vec(&serde_json::json!({ "fd": fd })) {
+                    Ok(data) => SyscallResult::success_with_data(data),
+                    Err(e) => {
+                        // Clean up FD on serialization error to prevent leak
+                        let _ = self.close_fd(pid, fd);
+                        warn!("Failed to serialize open result: {}", e);
+                        SyscallResult::error("Internal serialization error")
+                    }
+                };
                 }
                 Err(e) => {
                     warn!(
@@ -271,6 +273,8 @@ impl SyscallExecutor {
                 match json::to_vec(&serde_json::json!({ "fd": fd })) {
                     Ok(data) => SyscallResult::success_with_data(data),
                     Err(e) => {
+                        // Clean up FD on serialization error to prevent leak
+                        let _ = self.close_fd(pid, fd);
                         warn!("Failed to serialize open result: {}", e);
                         SyscallResult::error("Internal serialization error")
                     }

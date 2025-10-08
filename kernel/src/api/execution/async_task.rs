@@ -10,6 +10,7 @@
  * - The cleanup task runs every 5 minutes to remove expired completed tasks
  */
 
+use crate::core::guard::AsyncTaskGuard;
 use crate::core::types::Pid;
 use crate::syscalls::{Syscall, SyscallExecutor, SyscallResult};
 use dashmap::DashMap;
@@ -191,12 +192,12 @@ impl AsyncTaskManager {
             .or_insert_with(HashSet::new)
             .insert(task_id.clone());
 
-        // Spawn async execution
+        // Spawn async execution with guard for automatic cleanup
         let tasks = Arc::clone(&self.tasks);
         let executor = self.executor.clone();
         let task_id_clone = task_id.clone();
 
-        tokio::spawn(async move {
+        let handle = tokio::spawn(async move {
             // Update to running
             if let Some(mut task) = tasks.get_mut(&task_id_clone) {
                 task.status = TaskStatus::Running;
@@ -240,6 +241,11 @@ impl AsyncTaskManager {
                 task.cancel_tx = None; // Clear cancellation channel after completion
             }
         });
+
+        // Guard ensures task is tracked and can be cancelled on drop
+        // Note: We don't store the guard since tasks are tracked in DashMap
+        // The guard is useful for external callers who want auto-cancellation
+        let _guard = AsyncTaskGuard::from_handle(handle, Some(pid)).no_auto_cancel();
 
         task_id
     }
@@ -381,6 +387,95 @@ impl AsyncTaskManager {
     /// Get total number of tasks (all states)
     pub fn task_count(&self) -> usize {
         self.tasks.len()
+    }
+
+    /// Submit task and return a guard for automatic cancellation
+    ///
+    /// The guard will cancel the task when dropped unless explicitly disabled.
+    /// Useful for callers who want RAII semantics for task lifecycle.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let guard = manager.submit_with_guard(pid, syscall);
+    /// // Task automatically cancelled if guard drops before completion
+    /// ```
+    pub fn submit_with_guard(&self, pid: Pid, syscall: Syscall) -> (String, AsyncTaskGuard<SyscallResult>) {
+        let task_id = Uuid::new_v4().to_string();
+        let (cancel_tx, cancel_rx) = oneshot::channel();
+
+        // Insert pending task
+        self.tasks.insert(
+            task_id.clone(),
+            Task {
+                pid,
+                status: TaskStatus::Pending,
+                progress: 0.0,
+                cancel_tx: Some(cancel_tx),
+                completed_at: None,
+            },
+        );
+
+        // Track task for this process
+        self.process_tasks
+            .entry(pid)
+            .or_insert_with(HashSet::new)
+            .insert(task_id.clone());
+
+        // Spawn async execution
+        let tasks = Arc::clone(&self.tasks);
+        let executor = self.executor.clone();
+        let task_id_clone = task_id.clone();
+
+        let handle = tokio::spawn(async move {
+            // Update to running
+            if let Some(mut task) = tasks.get_mut(&task_id_clone) {
+                task.status = TaskStatus::Running;
+            }
+
+            // Execute with cancellation support
+            let result = tokio::select! {
+                result = cancel_rx => {
+                    match result {
+                        Ok(_) => {
+                            if let Some(mut task) = tasks.get_mut(&task_id_clone) {
+                                task.status = TaskStatus::Cancelled;
+                                task.completed_at = Some(Instant::now());
+                                task.cancel_tx = None;
+                            }
+                            return SyscallResult::Error {
+                                message: "Task cancelled".into(),
+                            };
+                        }
+                        Err(_) => {
+                            SyscallResult::Error {
+                                message: "Cancellation channel dropped unexpectedly".into(),
+                            }
+                        }
+                    }
+                }
+                result = tokio::task::spawn_blocking(move || executor.execute(pid, syscall)) => {
+                    result.unwrap_or_else(|e| SyscallResult::Error {
+                        message: format!("Task panic: {}", e),
+                    })
+                }
+            };
+
+            // Update with result
+            if let Some(mut task) = tasks.get_mut(&task_id_clone) {
+                task.status = TaskStatus::Completed(result.clone());
+                task.progress = 1.0;
+                task.completed_at = Some(Instant::now());
+                task.cancel_tx = None;
+            }
+
+            result
+        });
+
+        // Create guard with auto-cancel enabled
+        let guard = AsyncTaskGuard::from_handle(handle, Some(pid));
+
+        (task_id, guard)
     }
 
     /// Get count of tasks by state

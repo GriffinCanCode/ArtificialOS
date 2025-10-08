@@ -137,9 +137,9 @@ mod tests {
             // Guard automatically cleans up despite error
         }
 
-        let used_before = manager.used_memory();
+        let used_before = manager.used_memory;
         let _ = operation_that_fails(&manager, pid);
-        let used_after = manager.used_memory();
+        let used_after = manager.used_memory;
 
         // Memory should be freed despite error
         assert_eq!(used_before, used_after);
