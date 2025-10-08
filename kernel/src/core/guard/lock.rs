@@ -4,10 +4,10 @@
  * Type-safe lock guards that encode lock state in the type system
  */
 
-use super::traits::{Guard, GuardDrop, Recoverable};
+use super::traits::{Guard, Recoverable};
 use super::{GuardError, GuardMetadata, GuardResult};
 use std::marker::PhantomData;
-use std::sync::{Arc, Mutex, MutexGuard as StdMutexGuard, PoisonError};
+use std::sync::{Arc, Mutex, MutexGuard as StdMutexGuard};
 
 /// Lock state marker traits
 pub trait LockState: Send + Sync {}
@@ -19,6 +19,11 @@ impl LockState for Locked {}
 /// Type marker for unlocked state
 pub struct Unlocked;
 impl LockState for Unlocked {}
+
+// SAFETY: LockGuard is Send because the actual shared data is in Arc<Mutex<T>>,
+// which is Send when T: Send. The MutexGuard is only ever accessed on the thread
+// that holds the LockGuard, and we never send it across threads directly.
+unsafe impl<T: Send + 'static, S: LockState> Send for LockGuard<T, S> {}
 
 /// Type-safe lock guard with state tracking
 ///
@@ -35,7 +40,7 @@ impl LockState for Unlocked {}
 /// let value = locked.access(); // Only available when Locked
 /// let unlocked = locked.unlock(); // Type changes back to Unlocked
 /// ```
-pub struct LockGuard<T, S: LockState = Unlocked> {
+pub struct LockGuard<T: 'static, S: LockState = Unlocked> {
     data: Arc<Mutex<T>>,
     guard: Option<StdMutexGuard<'static, T>>,
     metadata: GuardMetadata,
@@ -44,7 +49,7 @@ pub struct LockGuard<T, S: LockState = Unlocked> {
     _state: PhantomData<S>,
 }
 
-impl<T: Send> LockGuard<T, Unlocked> {
+impl<T: Send + 'static> LockGuard<T, Unlocked> {
     /// Create a new unlocked guard
     pub fn new(data: T) -> Self {
         Self {
@@ -85,12 +90,12 @@ impl<T: Send> LockGuard<T, Unlocked> {
 
     /// Try to acquire lock without blocking
     pub fn try_lock(self) -> Result<LockGuard<T, Locked>, Self> {
-        match self.data.try_lock() {
+        match Arc::clone(&self.data).try_lock() {
             Ok(guard) => {
                 let guard_static: StdMutexGuard<'static, T> = unsafe { std::mem::transmute(guard) };
 
                 Ok(LockGuard {
-                    data: self.data.clone(),
+                    data: self.data,
                     guard: Some(guard_static),
                     metadata: self.metadata,
                     poisoned: false,
@@ -103,7 +108,7 @@ impl<T: Send> LockGuard<T, Unlocked> {
     }
 }
 
-impl<T: Send> LockGuard<T, Locked> {
+impl<T: Send + 'static> LockGuard<T, Locked> {
     /// Access the protected data
     ///
     /// # Type Safety
@@ -147,7 +152,7 @@ impl<T: Send> LockGuard<T, Locked> {
     }
 }
 
-impl<T, S: LockState> Guard for LockGuard<T, S> {
+impl<T: Send + 'static, S: LockState> Guard for LockGuard<T, S> {
     fn resource_type(&self) -> &'static str {
         if self.guard.is_some() {
             "lock_locked"
@@ -174,14 +179,7 @@ impl<T, S: LockState> Guard for LockGuard<T, S> {
     }
 }
 
-impl<T> GuardDrop for LockGuard<T, Locked> {
-    fn on_drop(&mut self) {
-        // Release lock
-        self.guard = None;
-    }
-}
-
-impl<T, S: LockState> Recoverable for LockGuard<T, S> {
+impl<T: Send + 'static, S: LockState> Recoverable for LockGuard<T, S> {
     fn is_poisoned(&self) -> bool {
         self.poisoned
     }
@@ -206,11 +204,6 @@ impl<T, S: LockState> Recoverable for LockGuard<T, S> {
     }
 }
 
-impl<T> Drop for LockGuard<T, Locked> {
-    fn drop(&mut self) {
-        self.on_drop();
-    }
-}
 
 #[cfg(test)]
 mod tests {

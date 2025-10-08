@@ -133,54 +133,67 @@ impl GuardDrop for MemoryGuard {
 impl Observable for MemoryGuard {
     fn emit_created(&self) {
         if let Some(ref collector) = self.collector {
-            let event = Event::new(Category::Memory, "guard_created")
-                .with_severity(Severity::Debug)
-                .with_payload(Payload::pairs(vec![
-                    ("pid", self.pid.to_string()),
-                    ("address", self.address.to_string()),
-                    ("size", self.size.to_string()),
-                ]));
+            let event = Event::new(
+                Severity::Debug,
+                Category::Memory,
+                Payload::MemoryAllocated {
+                    size: self.size,
+                    region_id: self.address as u64,
+                },
+            ).with_pid(self.pid);
             collector.emit(event);
         }
     }
 
     fn emit_used(&self, operation: &str) {
         if let Some(ref collector) = self.collector {
-            let event = Event::new(Category::Memory, "guard_used")
-                .with_severity(Severity::Debug)
-                .with_payload(Payload::pairs(vec![
-                    ("pid", self.pid.to_string()),
-                    ("address", self.address.to_string()),
-                    ("operation", operation.to_string()),
-                ]));
+            let event = Event::new(
+                Severity::Debug,
+                Category::Memory,
+                Payload::MetricUpdate {
+                    name: "memory_guard_used".to_string(),
+                    value: 1.0,
+                    labels: vec![
+                        ("pid".to_string(), self.pid.to_string()),
+                        ("address".to_string(), self.address.to_string()),
+                        ("operation".to_string(), operation.to_string()),
+                    ],
+                },
+            ).with_pid(self.pid);
             collector.emit(event);
         }
     }
 
     fn emit_dropped(&self) {
         if let Some(ref collector) = self.collector {
-            let lifetime = self.metadata.lifetime_micros();
-            let event = Event::new(Category::Memory, "guard_dropped")
-                .with_severity(Severity::Debug)
-                .with_payload(Payload::pairs(vec![
-                    ("pid", self.pid.to_string()),
-                    ("address", self.address.to_string()),
-                    ("size", self.size.to_string()),
-                    ("lifetime_micros", lifetime.to_string()),
-                ]));
+            let _lifetime = self.metadata.lifetime_micros();
+            let event = Event::new(
+                Severity::Debug,
+                Category::Memory,
+                Payload::MemoryFreed {
+                    size: self.size,
+                    region_id: self.address as u64,
+                },
+            ).with_pid(self.pid);
             collector.emit(event);
         }
     }
 
     fn emit_error(&self, error: &GuardError) {
         if let Some(ref collector) = self.collector {
-            let event = Event::new(Category::Memory, "guard_error")
-                .with_severity(Severity::Error)
-                .with_payload(Payload::pairs(vec![
-                    ("pid", self.pid.to_string()),
-                    ("address", self.address.to_string()),
-                    ("error", error.to_string()),
-                ]));
+            let event = Event::new(
+                Severity::Error,
+                Category::Memory,
+                Payload::MetricUpdate {
+                    name: "memory_guard_error".to_string(),
+                    value: 1.0,
+                    labels: vec![
+                        ("pid".to_string(), self.pid.to_string()),
+                        ("address".to_string(), self.address.to_string()),
+                        ("error".to_string(), error.to_string()),
+                    ],
+                },
+            ).with_pid(self.pid);
             collector.emit(event);
         }
     }

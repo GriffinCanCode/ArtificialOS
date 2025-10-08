@@ -30,7 +30,7 @@ impl<G: Guard> ObservableGuard<G> {
         let wrapped = Self {
             inner: guard,
             collector,
-            category: Category::System,
+            category: Category::Resource,
         };
 
         wrapped.emit_created();
@@ -60,8 +60,11 @@ impl<G: Guard> ObservableGuard<G> {
     }
 
     /// Unwrap to get the inner guard
-    pub fn into_inner(self) -> G {
-        self.inner
+    pub fn into_inner(mut self) -> G {
+        // Extract inner before drop runs
+        let inner_ptr = &mut self.inner as *mut G;
+        std::mem::forget(self);
+        unsafe { std::ptr::read(inner_ptr) }
     }
 
     /// Execute an operation with observability
@@ -76,46 +79,67 @@ impl<G: Guard> ObservableGuard<G> {
 
 impl<G: Guard> Observable for ObservableGuard<G> {
     fn emit_created(&self) {
-        let event = Event::new(self.category, "guard_created")
-            .with_severity(Severity::Debug)
-            .with_payload(Payload::pairs(vec![
-                ("resource_type", self.inner.resource_type().to_string()),
-                (
-                    "creation_time",
-                    format!("{:?}", self.inner.metadata().creation_time),
-                ),
-            ]));
+        let event = Event::new(
+            Severity::Debug,
+            self.category,
+            Payload::MetricUpdate {
+                name: format!("{}_created", self.inner.resource_type()),
+                value: 1.0,
+                labels: vec![
+                    ("resource_type".to_string(), self.inner.resource_type().to_string()),
+                    ("creation_time".to_string(), format!("{:?}", self.inner.metadata().creation_time)),
+                ],
+            },
+        );
         self.collector.emit(event);
     }
 
     fn emit_used(&self, operation: &str) {
-        let event = Event::new(self.category, "guard_used")
-            .with_severity(Severity::Debug)
-            .with_payload(Payload::pairs(vec![
-                ("resource_type", self.inner.resource_type().to_string()),
-                ("operation", operation.to_string()),
-            ]));
+        let event = Event::new(
+            Severity::Debug,
+            self.category,
+            Payload::MetricUpdate {
+                name: format!("{}_used", self.inner.resource_type()),
+                value: 1.0,
+                labels: vec![
+                    ("resource_type".to_string(), self.inner.resource_type().to_string()),
+                    ("operation".to_string(), operation.to_string()),
+                ],
+            },
+        );
         self.collector.emit(event);
     }
 
     fn emit_dropped(&self) {
         let lifetime = self.inner.metadata().lifetime_micros();
-        let event = Event::new(self.category, "guard_dropped")
-            .with_severity(Severity::Debug)
-            .with_payload(Payload::pairs(vec![
-                ("resource_type", self.inner.resource_type().to_string()),
-                ("lifetime_micros", lifetime.to_string()),
-            ]));
+        let event = Event::new(
+            Severity::Debug,
+            self.category,
+            Payload::MetricUpdate {
+                name: format!("{}_dropped", self.inner.resource_type()),
+                value: lifetime as f64,
+                labels: vec![
+                    ("resource_type".to_string(), self.inner.resource_type().to_string()),
+                    ("lifetime_micros".to_string(), lifetime.to_string()),
+                ],
+            },
+        );
         self.collector.emit(event);
     }
 
     fn emit_error(&self, error: &super::GuardError) {
-        let event = Event::new(self.category, "guard_error")
-            .with_severity(Severity::Error)
-            .with_payload(Payload::pairs(vec![
-                ("resource_type", self.inner.resource_type().to_string()),
-                ("error", error.to_string()),
-            ]));
+        let event = Event::new(
+            Severity::Error,
+            self.category,
+            Payload::MetricUpdate {
+                name: format!("{}_error", self.inner.resource_type()),
+                value: 1.0,
+                labels: vec![
+                    ("resource_type".to_string(), self.inner.resource_type().to_string()),
+                    ("error".to_string(), error.to_string()),
+                ],
+            },
+        );
         self.collector.emit(event);
     }
 }

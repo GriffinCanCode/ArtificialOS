@@ -8,7 +8,7 @@ use super::traits::{Guard, GuardDrop, Observable};
 use super::{GuardError, GuardMetadata, GuardResult};
 use crate::core::types::Pid;
 use crate::monitoring::{Category, Collector, Event, Payload, Severity};
-use std::sync::{Arc, Weak};
+use std::sync::Arc;
 
 /// File descriptor guard with automatic close
 ///
@@ -123,31 +123,43 @@ impl GuardDrop for FdGuard {
 impl Observable for FdGuard {
     fn emit_created(&self) {
         if let Some(ref collector) = self.collector {
-            let mut payload = vec![
-                ("pid", self.pid.to_string()),
-                ("fd", self.fd.to_string()),
+            let mut labels = vec![
+                ("pid".to_string(), self.pid.to_string()),
+                ("fd".to_string(), self.fd.to_string()),
             ];
 
             if let Some(ref path) = self.path {
-                payload.push(("path", path.clone()));
+                labels.push(("path".to_string(), path.clone()));
             }
 
-            let event = Event::new(Category::FileSystem, "fd_opened")
-                .with_severity(Severity::Debug)
-                .with_payload(Payload::pairs(payload));
+            let event = Event::new(
+                Severity::Debug,
+                Category::Resource,
+                Payload::MetricUpdate {
+                    name: "fd_opened".to_string(),
+                    value: 1.0,
+                    labels,
+                },
+            ).with_pid(self.pid);
             collector.emit(event);
         }
     }
 
     fn emit_used(&self, operation: &str) {
         if let Some(ref collector) = self.collector {
-            let event = Event::new(Category::FileSystem, "fd_operation")
-                .with_severity(Severity::Debug)
-                .with_payload(Payload::pairs(vec![
-                    ("pid", self.pid.to_string()),
-                    ("fd", self.fd.to_string()),
-                    ("operation", operation.to_string()),
-                ]));
+            let event = Event::new(
+                Severity::Debug,
+                Category::Resource,
+                Payload::MetricUpdate {
+                    name: "fd_operation".to_string(),
+                    value: 1.0,
+                    labels: vec![
+                        ("pid".to_string(), self.pid.to_string()),
+                        ("fd".to_string(), self.fd.to_string()),
+                        ("operation".to_string(), operation.to_string()),
+                    ],
+                },
+            ).with_pid(self.pid);
             collector.emit(event);
         }
     }
@@ -155,26 +167,38 @@ impl Observable for FdGuard {
     fn emit_dropped(&self) {
         if let Some(ref collector) = self.collector {
             let lifetime = self.metadata.lifetime_micros();
-            let event = Event::new(Category::FileSystem, "fd_closed")
-                .with_severity(Severity::Debug)
-                .with_payload(Payload::pairs(vec![
-                    ("pid", self.pid.to_string()),
-                    ("fd", self.fd.to_string()),
-                    ("lifetime_micros", lifetime.to_string()),
-                ]));
+            let event = Event::new(
+                Severity::Debug,
+                Category::Resource,
+                Payload::MetricUpdate {
+                    name: "fd_closed".to_string(),
+                    value: lifetime as f64,
+                    labels: vec![
+                        ("pid".to_string(), self.pid.to_string()),
+                        ("fd".to_string(), self.fd.to_string()),
+                        ("lifetime_micros".to_string(), lifetime.to_string()),
+                    ],
+                },
+            ).with_pid(self.pid);
             collector.emit(event);
         }
     }
 
     fn emit_error(&self, error: &GuardError) {
         if let Some(ref collector) = self.collector {
-            let event = Event::new(Category::FileSystem, "fd_error")
-                .with_severity(Severity::Error)
-                .with_payload(Payload::pairs(vec![
-                    ("pid", self.pid.to_string()),
-                    ("fd", self.fd.to_string()),
-                    ("error", error.to_string()),
-                ]));
+            let event = Event::new(
+                Severity::Error,
+                Category::Resource,
+                Payload::MetricUpdate {
+                    name: "fd_error".to_string(),
+                    value: 1.0,
+                    labels: vec![
+                        ("pid".to_string(), self.pid.to_string()),
+                        ("fd".to_string(), self.fd.to_string()),
+                        ("error".to_string(), error.to_string()),
+                    ],
+                },
+            ).with_pid(self.pid);
             collector.emit(event);
         }
     }

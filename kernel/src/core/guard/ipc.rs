@@ -155,27 +155,39 @@ impl GuardDrop for IpcGuard {
 impl Observable for IpcGuard {
     fn emit_created(&self) {
         if let Some(ref collector) = self.collector {
-            let event = Event::new(Category::IPC, "guard_created")
-                .with_severity(Severity::Debug)
-                .with_payload(Payload::pairs(vec![
-                    ("pid", self.pid.to_string()),
-                    ("resource_type", self.resource_type.as_str().to_string()),
-                    ("resource_id", self.resource_id.to_string()),
-                ]));
+            let event = Event::new(
+                Severity::Debug,
+                Category::Ipc,
+                Payload::MetricUpdate {
+                    name: "ipc_guard_created".to_string(),
+                    value: 1.0,
+                    labels: vec![
+                        ("pid".to_string(), self.pid.to_string()),
+                        ("resource_type".to_string(), self.resource_type.as_str().to_string()),
+                        ("resource_id".to_string(), self.resource_id.to_string()),
+                    ],
+                },
+            ).with_pid(self.pid);
             collector.emit(event);
         }
     }
 
     fn emit_used(&self, operation: &str) {
         if let Some(ref collector) = self.collector {
-            let event = Event::new(Category::IPC, "guard_used")
-                .with_severity(Severity::Debug)
-                .with_payload(Payload::pairs(vec![
-                    ("pid", self.pid.to_string()),
-                    ("resource_type", self.resource_type.as_str().to_string()),
-                    ("resource_id", self.resource_id.to_string()),
-                    ("operation", operation.to_string()),
-                ]));
+            let event = Event::new(
+                Severity::Debug,
+                Category::Ipc,
+                Payload::MetricUpdate {
+                    name: "ipc_guard_used".to_string(),
+                    value: 1.0,
+                    labels: vec![
+                        ("pid".to_string(), self.pid.to_string()),
+                        ("resource_type".to_string(), self.resource_type.as_str().to_string()),
+                        ("resource_id".to_string(), self.resource_id.to_string()),
+                        ("operation".to_string(), operation.to_string()),
+                    ],
+                },
+            ).with_pid(self.pid);
             collector.emit(event);
         }
     }
@@ -183,28 +195,40 @@ impl Observable for IpcGuard {
     fn emit_dropped(&self) {
         if let Some(ref collector) = self.collector {
             let lifetime = self.metadata.lifetime_micros();
-            let event = Event::new(Category::IPC, "guard_dropped")
-                .with_severity(Severity::Debug)
-                .with_payload(Payload::pairs(vec![
-                    ("pid", self.pid.to_string()),
-                    ("resource_type", self.resource_type.as_str().to_string()),
-                    ("resource_id", self.resource_id.to_string()),
-                    ("lifetime_micros", lifetime.to_string()),
-                ]));
+            let event = Event::new(
+                Severity::Debug,
+                Category::Ipc,
+                Payload::MetricUpdate {
+                    name: "ipc_guard_dropped".to_string(),
+                    value: lifetime as f64,
+                    labels: vec![
+                        ("pid".to_string(), self.pid.to_string()),
+                        ("resource_type".to_string(), self.resource_type.as_str().to_string()),
+                        ("resource_id".to_string(), self.resource_id.to_string()),
+                        ("lifetime_micros".to_string(), lifetime.to_string()),
+                    ],
+                },
+            ).with_pid(self.pid);
             collector.emit(event);
         }
     }
 
     fn emit_error(&self, error: &GuardError) {
         if let Some(ref collector) = self.collector {
-            let event = Event::new(Category::IPC, "guard_error")
-                .with_severity(Severity::Error)
-                .with_payload(Payload::pairs(vec![
-                    ("pid", self.pid.to_string()),
-                    ("resource_type", self.resource_type.as_str().to_string()),
-                    ("resource_id", self.resource_id.to_string()),
-                    ("error", error.to_string()),
-                ]));
+            let event = Event::new(
+                Severity::Error,
+                Category::Ipc,
+                Payload::MetricUpdate {
+                    name: "ipc_guard_error".to_string(),
+                    value: 1.0,
+                    labels: vec![
+                        ("pid".to_string(), self.pid.to_string()),
+                        ("resource_type".to_string(), self.resource_type.as_str().to_string()),
+                        ("resource_id".to_string(), self.resource_id.to_string()),
+                        ("error".to_string(), error.to_string()),
+                    ],
+                },
+            ).with_pid(self.pid);
             collector.emit(event);
         }
     }

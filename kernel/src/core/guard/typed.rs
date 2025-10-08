@@ -5,11 +5,11 @@
  */
 
 use super::traits::Guard;
-use super::{GuardError, GuardMetadata, GuardResult};
+use super::{GuardMetadata, GuardResult};
 use std::marker::PhantomData;
 
 /// Marker trait for type states
-pub trait TypedState: Send + Sync {
+pub trait TypedState: Send + Sync + 'static {
     /// State name for debugging
     fn state_name() -> &'static str;
 
@@ -120,7 +120,7 @@ impl<T, S: TypedState> TypedGuard<T, S> {
     }
 }
 
-impl<T, S: TypedState> Guard for TypedGuard<T, S> {
+impl<T: Send, S: TypedState> Guard for TypedGuard<T, S> {
     fn resource_type(&self) -> &'static str {
         self.metadata.resource_type
     }

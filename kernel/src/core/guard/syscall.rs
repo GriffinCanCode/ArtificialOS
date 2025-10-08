@@ -43,12 +43,14 @@ impl SyscallGuard {
         let start_time = Instant::now();
 
         // Emit entry event
-        let event = Event::new(Category::Syscall, "syscall_enter")
-            .with_severity(Severity::Debug)
-            .with_payload(Payload::pairs(vec![
-                ("syscall", syscall_name.to_string()),
-                ("pid", pid.to_string()),
-            ]));
+        let event = Event::new(
+            Severity::Debug,
+            Category::Syscall,
+            Payload::SyscallEnter {
+                name: syscall_name.to_string(),
+                args_hash: 0,
+            },
+        ).with_pid(pid);
         collector.emit(event);
 
         Self {
@@ -83,15 +85,27 @@ impl SyscallGuard {
             payload.push(("error", err));
         }
 
+        let result_enum = if success {
+            crate::monitoring::SyscallResult::Success
+        } else {
+            crate::monitoring::SyscallResult::Error
+        };
+
         let severity = if success {
             Severity::Debug
         } else {
-            Severity::Warning
+            Severity::Warn
         };
 
-        let event = Event::new(Category::Syscall, "syscall_exit")
-            .with_severity(severity)
-            .with_payload(Payload::pairs(payload));
+        let event = Event::new(
+            severity,
+            Category::Syscall,
+            Payload::SyscallExit {
+                name: self.syscall_name.to_string(),
+                duration_us: duration_micros,
+                result: result_enum,
+            },
+        ).with_pid(self.pid);
 
         self.collector.emit(event);
     }
@@ -131,13 +145,15 @@ impl Drop for SyscallGuard {
         if !self.result_recorded {
             let duration_micros = self.start_time.elapsed().as_micros() as u64;
 
-            let event = Event::new(Category::Syscall, "syscall_exit")
-                .with_severity(Severity::Debug)
-                .with_payload(Payload::pairs(vec![
-                    ("syscall", self.syscall_name.to_string()),
-                    ("pid", self.pid.to_string()),
-                    ("duration_micros", duration_micros.to_string()),
-                ]));
+            let event = Event::new(
+                Severity::Debug,
+                Category::Syscall,
+                Payload::SyscallExit {
+                    name: self.syscall_name.to_string(),
+                    duration_us: duration_micros,
+                    result: crate::monitoring::SyscallResult::Success,
+                },
+            ).with_pid(self.pid);
 
             self.collector.emit(event);
         }

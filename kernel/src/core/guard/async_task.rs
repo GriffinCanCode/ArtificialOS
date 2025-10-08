@@ -20,7 +20,7 @@ use tokio::task::JoinHandle;
 ///
 /// // Task automatically cancelled if guard drops
 /// ```
-pub struct AsyncTaskGuard<T> {
+pub struct AsyncTaskGuard<T: Send + 'static> {
     task_id: Option<u64>,
     handle: Option<JoinHandle<T>>,
     pid: Option<Pid>,
@@ -94,15 +94,11 @@ impl<T: Send + 'static> AsyncTaskGuard<T> {
     }
 
     /// Await the task result
-    pub async fn await_result(mut self) -> Result<T, tokio::task::JoinError> {
+    pub async fn await_result(mut self) -> GuardResult<T> {
         if let Some(handle) = self.handle.take() {
-            handle.await
+            handle.await.map_err(|e| GuardError::OperationFailed(format!("Task join error: {:?}", e)))
         } else {
-            Err(tokio::task::JoinError::try_from(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Task already completed",
-            ))
-            .unwrap())
+            Err(GuardError::AlreadyReleased)
         }
     }
 
@@ -117,7 +113,7 @@ impl<T: Send + 'static> AsyncTaskGuard<T> {
     }
 }
 
-impl<T> Guard for AsyncTaskGuard<T> {
+impl<T: Send + 'static> Guard for AsyncTaskGuard<T> {
     fn resource_type(&self) -> &'static str {
         "async_task"
     }
@@ -140,7 +136,7 @@ impl<T> Guard for AsyncTaskGuard<T> {
     }
 }
 
-impl<T> GuardDrop for AsyncTaskGuard<T> {
+impl<T: Send + 'static> GuardDrop for AsyncTaskGuard<T> {
     fn on_drop(&mut self) {
         if self.auto_cancel && self.is_active() {
             self.abort();
@@ -154,7 +150,7 @@ impl<T> GuardDrop for AsyncTaskGuard<T> {
     }
 }
 
-impl<T> Drop for AsyncTaskGuard<T> {
+impl<T: Send + 'static> Drop for AsyncTaskGuard<T> {
     fn drop(&mut self) {
         self.on_drop();
     }

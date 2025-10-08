@@ -7,7 +7,7 @@
 use super::MemoryManager;
 use crate::core::guard::{MemoryGuard, MemoryGuardRef};
 use crate::core::types::{Pid, Size};
-use crate::memory::types::{MemoryError, MemoryResult};
+use crate::memory::types::MemoryResult;
 use std::sync::Arc;
 
 /// Extension trait for creating memory guards
@@ -75,9 +75,6 @@ impl MemoryGuardExt for MemoryManager {
         ))
     }
 }
-
-/// Re-export for convenience
-pub use crate::core::guard::{Guard, MemoryGuard, MemoryGuardRef};
 
 #[cfg(test)]
 mod tests {

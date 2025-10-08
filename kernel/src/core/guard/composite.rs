@@ -129,10 +129,8 @@ impl Guard for CompositeGuard {
     where
         Self: Sized + 'static,
     {
-        // Leak all inner guards
-        for guard in self.guards {
-            let _ = guard.leak();
-        }
+        // Note: Can't call leak() on trait objects, so just box self
+        // Inner guards will be leaked when the box is never dropped
         Box::new(self)
     }
 }

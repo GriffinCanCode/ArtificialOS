@@ -237,7 +237,6 @@ impl MountManager {
 
         if duration_ms > self.slow_operation_threshold_ms {
             if let Some(ref collector) = self.collector {
-                use crate::monitoring::{Category, Event, Payload, Severity};
                 collector.slow_operation(
                     format!("vfs_{}", operation),
                     duration_ms,
