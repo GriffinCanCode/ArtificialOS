@@ -11,7 +11,6 @@ import {
   UIExecutor,
   SystemExecutor,
   AppExecutor,
-  NetworkExecutor,
   TimerExecutor,
   CanvasExecutor,
   BrowserExecutor,
@@ -47,7 +46,6 @@ export class ToolExecutor {
   private uiExecutor: UIExecutor;
   private systemExecutor: SystemExecutor;
   private appExecutor: AppExecutor;
-  private networkExecutor: NetworkExecutor;
   private timerExecutor: TimerExecutor;
   private canvasExecutor: CanvasExecutor;
   private browserExecutor: BrowserExecutor;
@@ -80,13 +78,12 @@ export class ToolExecutor {
     this.uiExecutor = new UIExecutor(this.context);
     this.systemExecutor = new SystemExecutor(this.context);
     this.appExecutor = new AppExecutor(this.context);
-    this.networkExecutor = new NetworkExecutor(this.context);
     this.timerExecutor = new TimerExecutor(this.context);
     this.canvasExecutor = new CanvasExecutor(this.context);
     this.browserExecutor = new BrowserExecutor(this.context);
     this.playerExecutor = new PlayerExecutor(this.context);
     this.gameExecutor = new GameExecutor(this.context);
-    this.clipboardExecutor = new ClipboardExecutor(this.context);
+    this.clipboardExecutor = new ClipboardExecutor(this.context, this.serviceExecutor);
     this.notificationExecutor = new NotificationExecutor(this.context);
     this.toastExecutor = new ToastExecutor(this.context);
     this.formExecutor = new FormExecutor(this.context);
@@ -144,7 +141,7 @@ export class ToolExecutor {
     });
 
     // Log all state changes in development
-    if (process.env.NODE_ENV === "development") {
+    if (import.meta.env?.DEV) {
       this.componentState.subscribeWildcard("*", (event) => {
         logger.verboseThrottled("State change", {
           component: "ComponentState",
@@ -184,7 +181,21 @@ export class ToolExecutor {
       }
 
       // Check if this is a service tool (backend providers)
-      const servicePrefixes = ["storage", "auth", "ai", "sync", "media", "scraper", "math", "terminal"];
+      const servicePrefixes = [
+        "storage",
+        "auth",
+        "ai",
+        "sync",
+        "media",
+        "scraper",
+        "math",
+        "terminal",
+        "settings",
+        "permissions",
+        "theme",
+        "monitor",
+        "http",
+      ];
       const [category] = toolId.split(".");
 
       let result;
@@ -212,9 +223,6 @@ export class ToolExecutor {
             break;
           case "hub":
             result = await this.hubExecutor.execute(toolId.split(".")[1], params);
-            break;
-          case "http":
-            result = await this.networkExecutor.execute(toolId.split(".")[1], params);
             break;
           case "timer":
             result = this.timerExecutor.execute(toolId.split(".")[1], params);
