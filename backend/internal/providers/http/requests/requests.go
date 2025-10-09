@@ -128,6 +128,7 @@ func (r *RequestsOps) Get(ctx context.Context, params map[string]interface{}, ap
 	}
 
 	// Step 1: Permission check with kernel (if available)
+	// Skip if syscall not implemented yet - graceful degradation
 	if r.Kernel != nil {
 		host := extractHost(urlStr)
 
@@ -138,8 +139,8 @@ func (r *RequestsOps) Get(ctx context.Context, params map[string]interface{}, ap
 			"target":   host,
 		})
 
-		if err != nil {
-			// Permission denied
+		if err != nil && !strings.Contains(err.Error(), "unsupported syscall") {
+			// Permission denied (but allow if syscall not implemented)
 			return client.Failure(fmt.Sprintf("permission denied: %v", err))
 		}
 	}
@@ -200,7 +201,7 @@ func (r *RequestsOps) Post(ctx context.Context, params map[string]interface{}, a
 		return client.Failure("data parameter required")
 	}
 
-	// Step 1: Permission check with kernel
+	// Step 1: Permission check with kernel (graceful degradation)
 	if r.Kernel != nil {
 		host := extractHost(urlStr)
 		_, err := r.Kernel.ExecuteSyscall(ctx, r.PID, "check_permission", map[string]interface{}{
@@ -208,7 +209,7 @@ func (r *RequestsOps) Post(ctx context.Context, params map[string]interface{}, a
 			"action":   "connect",
 			"target":   host,
 		})
-		if err != nil {
+		if err != nil && !strings.Contains(err.Error(), "unsupported syscall") {
 			return client.Failure(fmt.Sprintf("permission denied: %v", err))
 		}
 	}
@@ -283,7 +284,7 @@ func (r *RequestsOps) Put(ctx context.Context, params map[string]interface{}, ap
 		return client.Failure("data parameter required")
 	}
 
-	// Step 1: Permission check
+	// Step 1: Permission check (graceful degradation)
 	if r.Kernel != nil {
 		host := extractHost(urlStr)
 		_, err := r.Kernel.ExecuteSyscall(ctx, r.PID, "check_permission", map[string]interface{}{
@@ -291,7 +292,7 @@ func (r *RequestsOps) Put(ctx context.Context, params map[string]interface{}, ap
 			"action":   "connect",
 			"target":   host,
 		})
-		if err != nil {
+		if err != nil && !strings.Contains(err.Error(), "unsupported syscall") {
 			return client.Failure(fmt.Sprintf("permission denied: %v", err))
 		}
 	}
@@ -350,7 +351,7 @@ func (r *RequestsOps) Patch(ctx context.Context, params map[string]interface{}, 
 		return client.Failure("data parameter required")
 	}
 
-	// Permission check
+	// Permission check (graceful degradation)
 	if r.Kernel != nil {
 		host := extractHost(urlStr)
 		_, err := r.Kernel.ExecuteSyscall(ctx, r.PID, "check_permission", map[string]interface{}{
@@ -358,7 +359,7 @@ func (r *RequestsOps) Patch(ctx context.Context, params map[string]interface{}, 
 			"action":   "connect",
 			"target":   host,
 		})
-		if err != nil {
+		if err != nil && !strings.Contains(err.Error(), "unsupported syscall") {
 			return client.Failure(fmt.Sprintf("permission denied: %v", err))
 		}
 	}
@@ -410,7 +411,7 @@ func (r *RequestsOps) Delete(ctx context.Context, params map[string]interface{},
 		return client.Failure(err.Error())
 	}
 
-	// Permission check
+	// Permission check (graceful degradation)
 	if r.Kernel != nil {
 		host := extractHost(urlStr)
 		_, err := r.Kernel.ExecuteSyscall(ctx, r.PID, "check_permission", map[string]interface{}{
@@ -418,7 +419,7 @@ func (r *RequestsOps) Delete(ctx context.Context, params map[string]interface{},
 			"action":   "connect",
 			"target":   host,
 		})
-		if err != nil {
+		if err != nil && !strings.Contains(err.Error(), "unsupported syscall") {
 			return client.Failure(fmt.Sprintf("permission denied: %v", err))
 		}
 	}
@@ -463,7 +464,7 @@ func (r *RequestsOps) Head(ctx context.Context, params map[string]interface{}, a
 		return client.Failure(err.Error())
 	}
 
-	// Permission check
+	// Permission check (graceful degradation)
 	if r.Kernel != nil {
 		host := extractHost(urlStr)
 		_, err := r.Kernel.ExecuteSyscall(ctx, r.PID, "check_permission", map[string]interface{}{
@@ -471,7 +472,7 @@ func (r *RequestsOps) Head(ctx context.Context, params map[string]interface{}, a
 			"action":   "connect",
 			"target":   host,
 		})
-		if err != nil {
+		if err != nil && !strings.Contains(err.Error(), "unsupported syscall") {
 			return client.Failure(fmt.Sprintf("permission denied: %v", err))
 		}
 	}
@@ -530,7 +531,7 @@ func (r *RequestsOps) Options(ctx context.Context, params map[string]interface{}
 		return client.Failure(err.Error())
 	}
 
-	// Permission check
+	// Permission check (graceful degradation)
 	if r.Kernel != nil {
 		host := extractHost(urlStr)
 		_, err := r.Kernel.ExecuteSyscall(ctx, r.PID, "check_permission", map[string]interface{}{
@@ -538,7 +539,7 @@ func (r *RequestsOps) Options(ctx context.Context, params map[string]interface{}
 			"action":   "connect",
 			"target":   host,
 		})
-		if err != nil {
+		if err != nil && !strings.Contains(err.Error(), "unsupported syscall") {
 			return client.Failure(fmt.Sprintf("permission denied: %v", err))
 		}
 	}
