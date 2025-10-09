@@ -3,7 +3,6 @@
  * Central registry for all keyboard shortcuts with lifecycle management
  */
 
-// @ts-expect-error - tinykeys has types but package.json exports resolution issue
 import { tinykeys } from "tinykeys";
 import { toTinykeysFormat, detectPlatform } from "./platform";
 import { normalizeSequence, validateSequence } from "./parser";

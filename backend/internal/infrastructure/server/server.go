@@ -22,9 +22,11 @@ import (
 	"github.com/GriffinCanCode/AgentOS/backend/internal/infrastructure/monitoring"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/infrastructure/tracing"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/auth"
+	browserProvider "github.com/GriffinCanCode/AgentOS/backend/internal/providers/browser"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/clipboard"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/filesystem"
 	httpProvider "github.com/GriffinCanCode/AgentOS/backend/internal/providers/http"
+	httpclient "github.com/GriffinCanCode/AgentOS/backend/internal/providers/http/client"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/ipc"
 	mathProvider "github.com/GriffinCanCode/AgentOS/backend/internal/providers/math"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/monitor"
@@ -61,7 +63,6 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	} else {
 		logger = logging.NewDefault()
 	}
-	defer logger.Sync()
 
 	logger.Info("Initializing AgentOS Server",
 		zap.String("port", cfg.Server.Port),
@@ -377,5 +378,15 @@ func registerProviders(registry *service.Registry, kernel *kernel.KernelClient) 
 	themeProvider := theme.NewProvider(kernel, storagePID, storagePath)
 	if err := registry.Register(themeProvider); err != nil {
 		fmt.Printf("Warning: Failed to register theme provider: %v\n", err)
+	}
+
+	// Browser provider (requires kernel and HTTP client)
+	if kernel != nil {
+		// Create HTTP client for browser provider
+		httpClient := httpclient.NewClient()
+		brProvider := browserProvider.New(httpClient, kernel, storagePID)
+		if err := registry.Register(brProvider); err != nil {
+			fmt.Printf("Warning: Failed to register browser provider: %v\n", err)
+		}
 	}
 }

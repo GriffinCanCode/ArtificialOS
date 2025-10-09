@@ -288,7 +288,7 @@ mod tests {
     #[test]
     fn test_spawn_simple_command() {
         let executor = ProcessExecutor::new();
-        let config = ExecutionConfig::new("sleep".to_string()).with_args(vec!["0.1".to_string()]);
+        let config = ExecutionConfig::new("sleep".into()).with_args(vec!["0.1".to_string()]);
 
         let result = executor.spawn(1, "test-sleep".to_string(), config);
         assert!(result.is_ok());
@@ -303,7 +303,7 @@ mod tests {
     #[test]
     fn test_invalid_command() {
         let executor = ProcessExecutor::new();
-        let config = ExecutionConfig::new("echo; rm -rf /".to_string());
+        let config = ExecutionConfig::new("echo; rm -rf /".into());
 
         let result = executor.spawn(1, "test-evil".to_string(), config);
         assert!(result.is_err());
@@ -316,7 +316,7 @@ mod tests {
     #[test]
     fn test_kill_process() {
         let executor = ProcessExecutor::new();
-        let config = ExecutionConfig::new("sleep".to_string()).with_args(vec!["10".to_string()]);
+        let config = ExecutionConfig::new("sleep".into()).with_args(vec!["10".to_string()]);
 
         executor.spawn(1, "test-sleep".to_string(), config).unwrap();
         assert!(executor.is_running(1));
@@ -329,7 +329,7 @@ mod tests {
     #[test]
     fn test_get_os_pid() {
         let executor = ProcessExecutor::new();
-        let config = ExecutionConfig::new("sleep".to_string()).with_args(vec!["0.1".to_string()]);
+        let config = ExecutionConfig::new("sleep".into()).with_args(vec!["0.1".to_string()]);
 
         let os_pid = executor.spawn(1, "test-sleep".to_string(), config).unwrap();
         assert_eq!(executor.get_os_pid(1), Some(os_pid));
@@ -378,7 +378,7 @@ mod tests {
 
         // Test command with .. in argument
         let config =
-            ExecutionConfig::new("cat".to_string()).with_args(vec!["../etc/passwd".to_string()]);
+            ExecutionConfig::new("cat".into()).with_args(vec!["../etc/passwd".to_string()]);
         let result = executor.spawn(1, "test-traversal".to_string(), config);
         assert!(result.is_err());
         assert!(matches!(
@@ -387,7 +387,7 @@ mod tests {
         ));
 
         // Test command with /./ and .. combination (the bypass)
-        let config = ExecutionConfig::new("cat".to_string())
+        let config = ExecutionConfig::new("cat".into())
             .with_args(vec!["./../../etc/passwd".to_string()]);
         let result = executor.spawn(2, "test-bypass".to_string(), config);
         assert!(result.is_err());
@@ -397,7 +397,7 @@ mod tests {
         ));
 
         // Test URL encoded traversal
-        let config = ExecutionConfig::new("cat".to_string())
+        let config = ExecutionConfig::new("cat".into())
             .with_args(vec!["%2e%2e/etc/passwd".to_string()]);
         let result = executor.spawn(3, "test-encoded".to_string(), config);
         assert!(result.is_err());
@@ -407,7 +407,7 @@ mod tests {
         ));
 
         // Test Windows-style traversal
-        let config = ExecutionConfig::new("cat".to_string())
+        let config = ExecutionConfig::new("cat".into())
             .with_args(vec!["..\\..\\windows\\system32".to_string()]);
         let result = executor.spawn(4, "test-windows".to_string(), config);
         assert!(result.is_err());
@@ -417,7 +417,7 @@ mod tests {
         ));
 
         // Test safe path - should succeed (or fail for other reasons, but not path validation)
-        let config = ExecutionConfig::new("echo".to_string())
+        let config = ExecutionConfig::new("echo".into())
             .with_args(vec!["./valid/path.txt".to_string()]);
         let result = executor.spawn(5, "test-safe".to_string(), config);
         // Should not fail due to path validation
@@ -446,7 +446,7 @@ mod tests {
 
         for (i, attempt) in bypass_attempts.iter().enumerate() {
             let config =
-                ExecutionConfig::new("cat".to_string()).with_args(vec![attempt.to_string()]);
+                ExecutionConfig::new("cat".into()).with_args(vec![attempt.to_string()]);
             let result = executor.spawn(100 + i as u32, format!("bypass-{}", i), config);
             assert!(
                 result.is_err(),

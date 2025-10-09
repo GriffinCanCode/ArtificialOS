@@ -10,7 +10,11 @@ use std::sync::Arc;
 
 #[tokio::test]
 async fn test_jit_hotpath_detection() {
-    let executor = Arc::new(SyscallExecutorWithIpc::new(SandboxManager::new()));
+    let sandbox_manager = SandboxManager::new();
+    let memory_manager = ai_os_kernel::memory::MemoryManager::new();
+    let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
+    let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
+    let executor = Arc::new(SyscallExecutorWithIpc::with_ipc_direct(sandbox_manager, pipe_manager, shm_manager));
     let jit = JitManager::new(executor);
     let syscall = Syscall::GetProcessList;
 
@@ -25,7 +29,11 @@ async fn test_jit_hotpath_detection() {
 
 #[tokio::test]
 async fn test_jit_compilation_candidates() {
-    let executor = Arc::new(SyscallExecutorWithIpc::new(SandboxManager::new()));
+    let sandbox_manager = SandboxManager::new();
+    let memory_manager = ai_os_kernel::memory::MemoryManager::new();
+    let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
+    let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
+    let executor = Arc::new(SyscallExecutorWithIpc::with_ipc_direct(sandbox_manager, pipe_manager, shm_manager));
     let jit = JitManager::new(executor);
 
     // Record various syscalls with high frequency
@@ -45,7 +53,11 @@ async fn test_jit_compilation_candidates() {
 
 #[tokio::test]
 async fn test_jit_compilation() {
-    let executor = Arc::new(SyscallExecutorWithIpc::new(SandboxManager::new()));
+    let sandbox_manager = SandboxManager::new();
+    let memory_manager = ai_os_kernel::memory::MemoryManager::new();
+    let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
+    let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
+    let executor = Arc::new(SyscallExecutorWithIpc::with_ipc_direct(sandbox_manager, pipe_manager, shm_manager));
     let jit = JitManager::new(executor);
     let pattern = SyscallPattern::from_syscall(&Syscall::GetProcessList);
 
@@ -60,7 +72,11 @@ async fn test_jit_compilation() {
 
 #[tokio::test]
 async fn test_jit_cache_hit() {
-    let executor = Arc::new(SyscallExecutorWithIpc::new(SandboxManager::new()));
+    let sandbox_manager = SandboxManager::new();
+    let memory_manager = ai_os_kernel::memory::MemoryManager::new();
+    let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
+    let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
+    let executor = Arc::new(SyscallExecutorWithIpc::with_ipc_direct(sandbox_manager, pipe_manager, shm_manager));
     let jit = JitManager::new(executor);
     let syscall = Syscall::GetProcessList;
     let pattern = SyscallPattern::from_syscall(&syscall);
@@ -84,7 +100,11 @@ async fn test_jit_cache_hit() {
 
 #[tokio::test]
 async fn test_jit_cache_miss() {
-    let executor = Arc::new(SyscallExecutorWithIpc::new(SandboxManager::new()));
+    let sandbox_manager = SandboxManager::new();
+    let memory_manager = ai_os_kernel::memory::MemoryManager::new();
+    let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
+    let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
+    let executor = Arc::new(SyscallExecutorWithIpc::with_ipc_direct(sandbox_manager, pipe_manager, shm_manager));
     let jit = JitManager::new(executor);
     let syscall = Syscall::GetProcessList;
 
@@ -99,7 +119,11 @@ async fn test_jit_cache_miss() {
 
 #[tokio::test]
 async fn test_jit_multiple_patterns() {
-    let executor = Arc::new(SyscallExecutorWithIpc::new(SandboxManager::new()));
+    let sandbox_manager = SandboxManager::new();
+    let memory_manager = ai_os_kernel::memory::MemoryManager::new();
+    let pipe_manager = ai_os_kernel::ipc::PipeManager::new(memory_manager.clone());
+    let shm_manager = ai_os_kernel::ipc::ShmManager::new(memory_manager.clone());
+    let executor = Arc::new(SyscallExecutorWithIpc::with_ipc_direct(sandbox_manager, pipe_manager, shm_manager));
     let jit = JitManager::new(executor);
 
     // Compile multiple patterns

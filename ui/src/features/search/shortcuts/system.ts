@@ -3,7 +3,7 @@
  * System-wide shortcuts for spotlight search
  */
 
-import type { ShortcutConfig } from "../../input";
+import type { ShortcutConfig } from "../../input/shortcuts/core/types";
 
 export const spotlightShortcuts: ShortcutConfig[] = [
   {

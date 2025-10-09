@@ -115,6 +115,8 @@ export default function BrowserApp({ context }: NativeAppProps) {
             context={context}
             onLoadComplete={handleLoadComplete}
             onError={handleError}
+            enableJavaScript={settings.enableJavaScript}
+            showConsole={settings.showConsole}
           />
         ) : (
           <div className="browser-empty">

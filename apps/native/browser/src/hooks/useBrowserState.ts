@@ -16,9 +16,10 @@ export function useBrowserState(context: NativeAppContext) {
     homepage: 'about:blank',
     newTabPage: 'blank',
     downloadPath: '/tmp/downloads',
-    enableJavaScript: true,
+    enableJavaScript: false,
     enableImages: true,
     enableReaderMode: true,
+    showConsole: false,
   });
 
   // Load persisted data

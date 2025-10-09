@@ -14,6 +14,7 @@ export interface BrowserTab {
   historyIndex: number;
   isPinned?: boolean;
   isPrivate?: boolean;
+  console?: ConsoleOutput[];
 }
 
 export interface Bookmark {
@@ -53,6 +54,13 @@ export interface BrowserSettings {
   enableJavaScript: boolean;
   enableImages: boolean;
   enableReaderMode: boolean;
+  showConsole: boolean;
+}
+
+export interface ConsoleOutput {
+  level: string;
+  message: string;
+  time: string;
 }
 
 export type RenderMode = 'iframe' | 'proxy' | 'reader';

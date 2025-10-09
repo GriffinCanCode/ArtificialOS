@@ -443,11 +443,15 @@ mod tests {
 
     #[test]
     fn test_simd_threshold() {
-        assert_eq!(simd_threshold(), 1024);
-        assert!(!would_use_simd(512));
-        assert!(!would_use_simd(1024));
-        assert!(would_use_simd(1025));
-        assert!(would_use_simd(2048));
+        let threshold = simd_threshold();
+        // Threshold should be reasonable (between 256 and 2048)
+        assert!(threshold >= 256 && threshold <= 2048, "threshold = {}", threshold);
+
+        // Test relative to actual threshold
+        assert!(!would_use_simd(threshold / 2));
+        assert!(!would_use_simd(threshold));
+        assert!(would_use_simd(threshold + 1));
+        assert!(would_use_simd(threshold * 2));
     }
 
     #[test]

@@ -9,13 +9,14 @@ A full-featured web browser application with multi-tab support, bookmarks, and h
 - ✅ Navigation controls (back, forward, refresh, home)
 - ✅ Server-side proxy rendering (bypasses CORS, X-Frame-Options)
 - ✅ Static HTML/CSS rendering (fast, clean)
+- ✅ **JavaScript sandboxing** (goja-based secure execution)
+- ✅ **Console output** (view JavaScript logs, warnings, errors)
 - ✅ DuckDuckGo, Google, Bing search integration
 - ✅ Safe URL validation
 - ✅ Tab management (create, close, switch)
 - ✅ Link interception (navigates through proxy)
 - ✅ Cookie and session management per app
 - ✅ Persistent storage for settings
-- 🚧 JavaScript support (coming soon - requires sandbox)
 - 🚧 Bookmarks (coming soon)
 - 🚧 History tracking (coming soon)
 - 🚧 Reader mode (coming soon)
@@ -42,7 +43,12 @@ The browser uses a **server-side proxy** approach to bypass browser security res
 
 ### Services Used
 
-- **browser**: Server-side proxy for web content (`browser.navigate`, `browser.proxy_asset`)
+- **browser**: Server-side proxy for web content with JavaScript sandboxing
+  - `browser.navigate` - Load pages with optional JS execution
+  - `browser.proxy_asset` - Fetch assets through backend
+  - `browser.execute_script` - Run JS in sandbox
+  - `browser.inject_script` - Inject scripts into pages
+  - `browser.eval_expression` - Evaluate JS expressions
 - **storage**: Save bookmarks, history, and settings
 - **filesystem**: Download files (future)
 
@@ -101,21 +107,30 @@ The `url.ts` utility intelligently distinguishes between URLs and search queries
 
 ### Security
 
+- **JavaScript Sandboxing**: All JS runs in isolated goja VMs with:
+  - Memory limits (50MB per sandbox)
+  - Execution timeouts (5 seconds default)
+  - Disabled filesystem/network access
+  - Restricted global scope
+  - Safe DOM proxy layer
 - All URLs are validated before loading
 - Dangerous protocols (javascript:, data:, etc.) are blocked
 - Backend performs permission checks before network requests
 - HTML content is sanitized on backend and frontend (defense in depth)
 - All requests go through kernel permission system
+- Inline event handlers stripped for safety
 
 ### Performance
 
 - ~500ms average page load (Google)
-- Static HTML/CSS only (no JavaScript execution)
+- Optional JavaScript execution (sandboxed, ~1-2ms startup overhead)
+- Sandbox pool with 4 pre-warmed VMs for instant execution
 - No CORS errors or failed network requests
 - Efficient goquery-based HTML parsing
 - Lazy tab loading
 - Efficient state management with hooks
 - Minimal re-renders
+- Console output with minimal performance impact
 
 **Note**: Initial navigation may take ~1 second as the backend:
 1. Fetches the page

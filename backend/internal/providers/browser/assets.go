@@ -190,7 +190,8 @@ func (p *Provider) SubmitForm(ctx context.Context, params map[string]interface{}
 
 	// Process response as HTML page
 	body := resp.String()
-	processed, err := p.processHTML(body, urlStr, sessionID)
+	enableJS, _ := params["enable_js"].(bool)
+	processed, err := p.processHTML(body, urlStr, sessionID, enableJS)
 	if err != nil {
 		return client.Failure(err.Error())
 	}

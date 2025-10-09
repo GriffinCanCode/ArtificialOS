@@ -153,7 +153,7 @@ mod tests {
 
     #[test]
     fn test_cidr_matching() {
-        let rules = vec![NetworkRule::AllowCIDR("192.168.1.0/24".to_string())];
+        let rules = vec![NetworkRule::AllowCIDR("192.168.1.0/24".into())];
         assert!(check_network_access(&rules, "192.168.1.100", None));
         assert!(!check_network_access(&rules, "192.168.2.100", None));
     }

@@ -303,7 +303,7 @@ mod tests {
                 Severity::Info,
                 Category::Process,
                 Payload::ProcessCreated {
-                    name: format!("test{}", i),
+                    name: format!("test{}", i).into(),
                     priority: 5,
                 },
             ));
@@ -324,7 +324,7 @@ mod tests {
                 Severity::Info,
                 Category::Process,
                 Payload::ProcessCreated {
-                    name: format!("test{}", i),
+                    name: format!("test{}", i).into(),
                     priority: 5,
                 },
             );

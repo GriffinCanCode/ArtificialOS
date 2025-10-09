@@ -451,7 +451,7 @@ mod tests {
 
         let mem_fs = Arc::new(MemFS::new());
         let temp = TempDir::new().unwrap();
-        let local_fs = Arc::new(LocalFS::new(temp.path().into()));
+        let local_fs = Arc::new(LocalFS::new(temp.path().to_path_buf()));
 
         mgr.mount("/mem", mem_fs).unwrap();
         mgr.mount("/local", local_fs).unwrap();
@@ -518,16 +518,16 @@ mod tests {
     fn test_list_mounts() {
         let mgr = MountManager::new();
 
-        mgr.mount("/data", Arc::new(MemFS::new().into())).unwrap();
-        mgr.mount("/tmp", Arc::new(MemFS::new().into())).unwrap();
+        mgr.mount("/data", Arc::new(MemFS::new())).unwrap();
+        mgr.mount("/tmp", Arc::new(MemFS::new())).unwrap();
 
         let mounts = mgr.list_mounts();
         assert_eq!(mounts.len(), 2);
         assert!(mounts
             .iter()
-            .any(|(p, _)| p == &PathBuf::from("/data").into()));
+            .any(|(p, _)| p == &PathBuf::from("/data")));
         assert!(mounts
             .iter()
-            .any(|(p, _)| p == &PathBuf::from("/tmp").into()));
+            .any(|(p, _)| p == &PathBuf::from("/tmp")));
     }
 }

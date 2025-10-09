@@ -210,21 +210,46 @@ The provider rewrites all URLs in HTML to work through the proxy:
 - **Concurrent Sessions**: Thread-safe session management
 - **Asset Caching**: TODO - Add backend caching layer
 
-## Limitations & Future Work
+## JavaScript Sandboxing
+
+### Implementation
+
+JavaScript execution uses **goja** (pure Go JavaScript engine) with:
+
+1. **Isolated Runtimes**: Each sandbox has its own VM instance
+2. **Resource Limits**: 
+   - Memory: 50MB per sandbox
+   - CPU: 5-second execution timeout
+   - Call stack: 1024 depth limit
+3. **Security Restrictions**:
+   - No `require()`, `process`, filesystem access
+   - No network requests (except through bridge)
+   - Stripped dangerous globals
+4. **Sandbox Pool**: Pre-warmed VMs (4 instances) for zero-startup execution
+5. **DOM Proxy**: Lightweight document model for safe interaction
+
+### Tools
+
+- `browser.execute_script` - Run arbitrary JS in sandbox
+- `browser.inject_script` - Inject script into page context
+- `browser.eval_expression` - Evaluate expressions and return values
 
 ### Current Limitations
-- No JavaScript execution (static HTML only)
+
 - No WebSocket proxying
 - No Service Worker support
-- Limited interactive features
+- Limited DOM API (querySelector, basic manipulation only)
+- No AJAX/fetch (coming soon via bridge)
 
 ### Planned Enhancements
-- [ ] JavaScript sandbox with isolated execution
+
 - [ ] WebSocket proxying for real-time apps
 - [ ] Service Worker support for PWAs
+- [ ] Full DOM API implementation
+- [ ] Fetch API through secure bridge
 - [ ] Backend caching for assets
 - [ ] Download manager integration
-- [ ] Developer tools (network inspector, console)
+- [ ] Developer tools (network inspector, enhanced console)
 - [ ] Ad blocking and tracking protection
 
 ## Comparison with Alternatives

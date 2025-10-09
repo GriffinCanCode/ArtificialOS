@@ -314,16 +314,18 @@ export function useSearchActions() {
 
 /**
  * Subscribe to all search results
+ * Uses shallow comparison to prevent infinite re-renders
  */
 export function useSearchResults() {
-  return useSearchStore((state) => state.getAllResults());
+  return useSearchStore(useShallow((state) => state.getAllResults()));
 }
 
 /**
  * Subscribe to specific context results
+ * Uses shallow comparison to prevent infinite re-renders
  */
 export function useContextResults(contextId: string) {
-  return useSearchStore((state) => state.getContextResults(contextId));
+  return useSearchStore(useShallow((state) => state.getContextResults(contextId)));
 }
 
 /**

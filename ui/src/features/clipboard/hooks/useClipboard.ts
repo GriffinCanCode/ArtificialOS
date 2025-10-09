@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
-import type { ClipboardEntry, ClipboardOptions, ClipboardStats } from "../core/types";
+import type { ClipboardEntry, ClipboardOptions, ClipboardStats, ClipboardState } from "../core/types";
 import { clipboardManager } from "../core/manager";
 import { logger } from "@/core/utils/monitoring/logger";
 
@@ -25,7 +25,7 @@ export function useClipboard(options: UseClipboardOptions = {}) {
   const [error, setError] = useState<string | null>(null);
 
   // Subscribe to clipboard state
-  const state = useSyncExternalStore(
+  const state = useSyncExternalStore<ClipboardState>(
     clipboardManager.subscribe.bind(clipboardManager),
     clipboardManager.getState.bind(clipboardManager),
     clipboardManager.getState.bind(clipboardManager)

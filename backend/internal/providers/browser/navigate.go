@@ -22,6 +22,8 @@ func (p *Provider) Navigate(ctx context.Context, params map[string]interface{}, 
 	}
 
 	sessionID, _ := params["session_id"].(string)
+	enableJS, _ := params["enable_js"].(bool)
+
 	appID := ""
 	if appCtx.AppID != nil {
 		appID = *appCtx.AppID
@@ -35,7 +37,7 @@ func (p *Provider) Navigate(ctx context.Context, params map[string]interface{}, 
 	}
 
 	// Process HTML
-	processed, err := p.processHTML(pageData.Body, urlStr, sessionID)
+	processed, err := p.processHTML(pageData.Body, urlStr, sessionID, enableJS)
 	if err != nil {
 		return client.Failure(fmt.Sprintf("failed to process HTML: %v", err))
 	}
@@ -112,19 +114,30 @@ func (p *Provider) fetchPage(ctx context.Context, urlStr string, session *Browse
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
 
+	// Check response status
+	statusCode := resp.StatusCode()
+	if statusCode < 200 || statusCode >= 400 {
+		return nil, fmt.Errorf("HTTP %d: %s (url: %s)", statusCode, resp.Status(), urlStr)
+	}
+
 	// Extract response body
 	body := resp.String()
 
+	if body == "" {
+		return nil, fmt.Errorf("empty response body from %s (status: %d, content-type: %s)",
+			urlStr, statusCode, resp.Header().Get("Content-Type"))
+	}
+
 	return &PageData{
 		Body:        body,
-		Status:      200, // TODO: Extract actual status
-		ContentType: "text/html",
+		Status:      statusCode,
+		ContentType: resp.Header().Get("Content-Type"),
 		Headers:     headers,
 	}, nil
 }
 
 // processHTML rewrites URLs and makes the page browseable
-func (p *Provider) processHTML(html string, baseURL string, sessionID string) (*ProcessedHTML, error) {
+func (p *Provider) processHTML(html string, baseURL string, sessionID string, enableJS bool) (*ProcessedHTML, error) {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse HTML: %w", err)
@@ -141,10 +154,12 @@ func (p *Provider) processHTML(html string, baseURL string, sessionID string) (*
 		title = parsedBase.Host
 	}
 
-	// Remove JavaScript (causes CORS errors when executed in frontend)
+	// Always remove scripts for now - sandboxed execution needs more work
+	// TODO: Implement full sandbox execution with proper DOM parsing
 	doc.Find("script").Remove()
+	_ = enableJS // Suppress unused warning
 
-	// Remove inline event handlers
+	// Remove inline event handlers (not safe even with sandboxing)
 	doc.Find("[onclick]").RemoveAttr("onclick")
 	doc.Find("[onload]").RemoveAttr("onload")
 	doc.Find("[onerror]").RemoveAttr("onerror")
@@ -223,9 +238,6 @@ func (p *Provider) rewriteStylesheets(doc *goquery.Document, base *url.URL, sess
 		}
 	})
 }
-
-// Note: Scripts are now removed entirely to prevent CORS errors
-// JavaScript execution will be added in future with proper sandboxing
 
 // rewriteForms rewrites form actions
 func (p *Provider) rewriteForms(doc *goquery.Document, base *url.URL, sessionID string) {

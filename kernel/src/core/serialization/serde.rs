@@ -380,13 +380,12 @@ mod tests {
     use serde::{Deserialize, Serialize};
     use std::time::SystemTime;
 
-    #[serde_as]
     #[derive(Debug, Serialize, Deserialize, PartialEq)]
     struct ModernStruct {
-        #[serde_as(as = "DurationMicroSeconds<u64>")]
+        #[serde(with = "system_time_micros")]
         timestamp: SystemTime,
 
-        #[serde_as(as = "Option<DurationMicroSeconds<u64>>")]
+        #[serde(with = "optional_system_time_micros")]
         #[serde(skip_serializing_if = "is_none")]
         optional_time: Option<SystemTime>,
 
@@ -425,13 +424,13 @@ mod tests {
         assert!(is_default(&0u64));
         assert!(!is_default(&1u64));
         assert!(is_none::<String>(&None));
-        assert!(!is_none(&Some(1).into()));
+        assert!(!is_none(&Some(1)));
         assert!(is_empty_vec::<i32>(&vec![]));
         assert!(!is_empty_vec(&vec![1]));
         assert!(is_empty_slice::<i32>(&[]));
         assert!(!is_empty_slice(&[1]));
-        assert!(is_empty_string(&String::new().into()));
-        assert!(!is_empty_string(&"test".to_string().into()));
+        assert!(is_empty_string(&String::new()));
+        assert!(!is_empty_string(&"test".to_string()));
         assert!(is_zero_u8(&0));
         assert!(is_zero_u16(&0));
         assert!(is_zero_u32(&0));

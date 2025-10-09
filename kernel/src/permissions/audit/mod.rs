@@ -238,7 +238,7 @@ mod tests {
         // Add more than MAX_AUDIT_EVENTS
         for i in 0..(MAX_AUDIT_EVENTS + 100) {
             let req =
-                PermissionRequest::file_read(100, PathBuf::from(format!("/test{}", i).into()));
+                PermissionRequest::file_read(100, PathBuf::from(format!("/test{}", i)));
             let resp = PermissionResponse::allow(req.clone(), "test");
             logger.log(AuditEvent::new(req, resp));
         }

@@ -169,7 +169,7 @@ func (m *Provider) systemStats(ctx context.Context) (*types.Result, error) {
 			Allocated:    memStats.Alloc,
 			Total:        memStats.TotalAlloc,
 			System:       memStats.Sys,
-			GCPauses:     memStats.PauseTotalNs / 1000000, // Convert to ms
+			GCPauses:     uint32(memStats.PauseTotalNs / 1000000), // Convert to ms
 			NumGC:        memStats.NumGC,
 			UsagePercent: float64(memStats.Alloc) / float64(memStats.Sys) * 100,
 		},
