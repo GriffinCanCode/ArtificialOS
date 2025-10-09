@@ -148,7 +148,7 @@ impl SyscallExecutorWithIpc {
         let permission_manager = PermissionManager::new(sandbox_manager.clone());
         info!("Syscall executor initialized with IPC support");
 
-        let executor = Self {
+        let mut executor = Self {
             sandbox_manager,
             permission_manager,
             fd_manager: crate::syscalls::impls::fd::FdManager::new(),
@@ -166,6 +166,8 @@ impl SyscallExecutorWithIpc {
             optional: OptionalManagers::default(),
         };
 
+        // Build and register all handlers
+        executor.handler_registry = Self::build_handler_registry(&executor);
         executor
     }
 
@@ -182,7 +184,7 @@ impl SyscallExecutorWithIpc {
         let permission_manager = PermissionManager::new(sandbox_manager.clone());
         info!("Syscall executor initialized with full features");
 
-        Self {
+        let mut executor = Self {
             sandbox_manager,
             permission_manager,
             fd_manager: crate::syscalls::impls::fd::FdManager::new(),
@@ -205,7 +207,11 @@ impl SyscallExecutorWithIpc {
                 metrics: None,
                 collector: None,
             },
-        }
+        };
+
+        // Build and register all handlers
+        executor.handler_registry = Self::build_handler_registry(&executor);
+        executor
     }
 
     /// Add queue manager support

@@ -252,8 +252,10 @@ fn test_high_frequency_wake() {
 
 #[test]
 fn test_clone_behavior() {
-    let queue1 = WaitQueue::<u64>::with_defaults();
-    let queue2 = queue1.clone();
+    use std::sync::Arc;
+
+    let queue1 = Arc::new(WaitQueue::<u64>::with_defaults());
+    let queue2 = Arc::clone(&queue1);
 
     let handle = thread::spawn(move || queue2.wait(2000, Some(Duration::from_secs(1))));
 

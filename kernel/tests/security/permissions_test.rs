@@ -46,7 +46,7 @@ fn test_network_permissions_integration() {
     // Create sandbox with network access
     let mut config = SandboxConfig::minimal(200);
     config.network_rules.push(NetworkRule::AllowHost {
-        host: "api.example.com".to_string(),
+        host: "api.example.com".to_string().into(),
         port: Some(443),
     });
     sandbox.create_sandbox(config);

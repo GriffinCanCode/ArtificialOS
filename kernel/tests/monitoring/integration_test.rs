@@ -133,9 +133,9 @@ fn test_causality_tracking_integration() {
         Severity::Info,
         Category::Network,
         ai_os_kernel::monitoring::Payload::ConnectionEstablished {
-            protocol: "tcp".to_string(),
+            protocol: "tcp".to_string().into(),
             local_port: 8080,
-            remote_addr: "127.0.0.1:54321".to_string(),
+            remote_addr: "127.0.0.1:54321".to_string().into(),
         },
     );
 
@@ -147,7 +147,7 @@ fn test_causality_tracking_integration() {
             Severity::Debug,
             Category::Syscall,
             ai_os_kernel::monitoring::Payload::SyscallExit {
-                name: "recv".to_string(),
+                name: "recv".to_string().into(),
                 duration_us: 150,
                 result: ai_os_kernel::monitoring::SyscallResult::Success,
             },
@@ -160,7 +160,7 @@ fn test_causality_tracking_integration() {
             Severity::Debug,
             Category::Syscall,
             ai_os_kernel::monitoring::Payload::SyscallExit {
-                name: "send".to_string(),
+                name: "send".to_string().into(),
                 duration_us: 200,
                 result: ai_os_kernel::monitoring::SyscallResult::Success,
             },

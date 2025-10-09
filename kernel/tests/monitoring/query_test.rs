@@ -14,7 +14,7 @@ fn create_test_events() -> Vec<Event> {
             Severity::Info,
             Category::Process,
             Payload::ProcessCreated {
-                name: "app1".to_string(),
+                name: "app1".to_string().into(),
                 priority: 5,
             },
         )
@@ -32,7 +32,7 @@ fn create_test_events() -> Vec<Event> {
             Severity::Error,
             Category::Syscall,
             Payload::SyscallExit {
-                name: "read".to_string(),
+                name: "read".to_string().into(),
                 duration_us: 5000,
                 result: SyscallResult::Error,
             },
@@ -142,7 +142,7 @@ fn test_query_duration_stats() {
             Severity::Debug,
             Category::Syscall,
             Payload::SyscallExit {
-                name: "read".to_string(),
+                name: "read".to_string().into(),
                 duration_us: 100,
                 result: SyscallResult::Success,
             },
@@ -151,7 +151,7 @@ fn test_query_duration_stats() {
             Severity::Debug,
             Category::Syscall,
             Payload::SyscallExit {
-                name: "write".to_string(),
+                name: "write".to_string().into(),
                 duration_us: 200,
                 result: SyscallResult::Success,
             },
@@ -160,7 +160,7 @@ fn test_query_duration_stats() {
             Severity::Warn,
             Category::Syscall,
             Payload::SyscallSlow {
-                name: "fsync".to_string(),
+                name: "fsync".to_string().into(),
                 duration_ms: 50,
                 threshold_ms: 10,
             },
@@ -181,7 +181,7 @@ fn test_causality_tracing() {
             Severity::Info,
             Category::Process,
             Payload::ProcessCreated {
-                name: "app".to_string(),
+                name: "app".to_string().into(),
                 priority: 5,
             },
         )
@@ -199,7 +199,7 @@ fn test_causality_tracing() {
             Severity::Info,
             Category::Process,
             Payload::ProcessCreated {
-                name: "other".to_string(),
+                name: "other".to_string().into(),
                 priority: 3,
             },
         )
@@ -217,7 +217,7 @@ fn test_causality_root_cause() {
             Severity::Info,
             Category::Process,
             Payload::ProcessCreated {
-                name: "root".to_string(),
+                name: "root".to_string().into(),
                 priority: 5,
             },
         )
@@ -246,7 +246,7 @@ fn test_causality_timeline() {
         Severity::Info,
         Category::Process,
         Payload::ProcessCreated {
-            name: "app".to_string(),
+            name: "app".to_string().into(),
             priority: 5,
         },
     )

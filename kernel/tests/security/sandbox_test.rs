@@ -194,7 +194,7 @@ fn test_network_rule_specific_host() {
 
     let mut config = SandboxConfig::minimal(pid);
     config.network_rules.push(NetworkRule::AllowHost {
-        host: "api.example.com".to_string(),
+        host: "api.example.com".to_string().into(),
         port: Some(443),
     });
 
@@ -226,7 +226,7 @@ fn test_network_rule_wildcard_domain() {
 
     let mut config = SandboxConfig::minimal(pid);
     config.network_rules.push(NetworkRule::AllowHost {
-        host: "*.example.com".to_string(),
+        host: "*.example.com".to_string().into(),
         port: None, // Any port
     });
 
@@ -261,7 +261,7 @@ fn test_network_rule_cidr_ipv4() {
     let mut config = SandboxConfig::minimal(pid);
     config
         .network_rules
-        .push(NetworkRule::AllowCIDR("192.168.1.0/24".to_string()));
+        .push(NetworkRule::AllowCIDR("192.168.1.0/24".to_string().into()));
 
     manager.create_sandbox(config);
 
@@ -299,7 +299,7 @@ fn test_network_rule_block_priority() {
     // Allow all, but block specific host
     config.network_rules.push(NetworkRule::AllowAll);
     config.network_rules.push(NetworkRule::BlockHost {
-        host: "malicious.com".to_string(),
+        host: "malicious.com".to_string().into(),
         port: None,
     });
 
