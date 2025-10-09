@@ -20,10 +20,14 @@ export class ServiceExecutor implements AsyncExecutor {
     });
 
     try {
+      // Extract service_id from toolId (format: "service.tool")
+      const [serviceId] = toolId.split(".");
+
       const response = await fetch("http://localhost:8000/services/execute", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          service_id: serviceId,
           tool_id: toolId,
           params: params,
           app_id: this.context.appId,

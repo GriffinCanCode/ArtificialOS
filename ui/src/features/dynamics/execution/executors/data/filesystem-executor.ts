@@ -5,6 +5,7 @@
 
 import { logger } from "../../../../../core/utils/monitoring/logger";
 import { toRgbaString, UI_COLORS, ALPHA_VALUES } from "../../../../../core/utils/color";
+import { normalizePath } from "../../../../../core/utils/paths";
 import { ExecutorContext, AsyncExecutor } from "../core/types";
 
 export class FilesystemExecutor implements AsyncExecutor {
@@ -40,6 +41,7 @@ export class FilesystemExecutor implements AsyncExecutor {
 
   private async listDirectory(params: Record<string, any>): Promise<any> {
     // Handle path from multiple sources: explicit param, component state, or clicked file
+    // Normalize all paths for consistency
     // Use VFS path - kernel mounts at /storage
     let path =
       params.path ||
@@ -59,6 +61,7 @@ export class FilesystemExecutor implements AsyncExecutor {
     try {
       // Build request payload, only include app_id if it's set
       const payload: any = {
+        service_id: "filesystem",
         tool_id: "filesystem.list",
         params: { path },
       };
@@ -193,7 +196,7 @@ export class FilesystemExecutor implements AsyncExecutor {
       // Convert entries to format expected by native apps (add full paths)
       const enrichedEntries = entries.map((entry: any) => ({
         name: entry.name,
-        path: `${path}/${entry.name}`.replace(/\/+/g, "/"),
+        path: normalizePath(`${path}/${entry.name}`),
         size: entry.size || 0,
         modified: entry.modified || new Date().toISOString(),
         is_dir: entry.is_dir || false,

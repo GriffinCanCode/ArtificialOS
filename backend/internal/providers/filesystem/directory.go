@@ -95,8 +95,11 @@ func (d *DirectoryOps) List(ctx context.Context, params map[string]interface{}, 
 		return Failure("path parameter required")
 	}
 
+	// Resolve path using standard path resolution
+	resolvedPath := resolvePath(path, appCtx)
+
 	pid := d.GetPID(appCtx)
-	data, err := d.Kernel.ExecuteSyscall(ctx, pid, "list_directory", map[string]interface{}{"path": path})
+	data, err := d.Kernel.ExecuteSyscall(ctx, pid, "list_directory", map[string]interface{}{"path": resolvedPath})
 	if err != nil {
 		return Failure(fmt.Sprintf("list failed: %v", err))
 	}
@@ -130,12 +133,15 @@ func (d *DirectoryOps) Create(ctx context.Context, params map[string]interface{}
 		return Failure("path parameter required")
 	}
 
+	// Resolve path using standard path resolution
+	resolvedPath := resolvePath(path, appCtx)
+
 	pid := d.GetPID(appCtx)
 
 	// Log the directory creation attempt
-	fmt.Printf("[Filesystem] Creating directory: path=%s, pid=%d\n", path, pid)
+	fmt.Printf("[Filesystem] Creating directory: path=%s, resolved=%s, pid=%d\n", path, resolvedPath, pid)
 
-	data, err := d.Kernel.ExecuteSyscall(ctx, pid, "create_directory", map[string]interface{}{"path": path})
+	data, err := d.Kernel.ExecuteSyscall(ctx, pid, "create_directory", map[string]interface{}{"path": resolvedPath})
 	if err != nil {
 		errMsg := fmt.Sprintf("create failed for path '%s': %v", path, err)
 		fmt.Printf("[Filesystem] ERROR: %s\n", errMsg)
@@ -154,10 +160,13 @@ func (d *DirectoryOps) Delete(ctx context.Context, params map[string]interface{}
 		return Failure("path parameter required")
 	}
 
+	// Resolve path using standard path resolution
+	resolvedPath := resolvePath(path, appCtx)
+
 	pid := d.GetPID(appCtx)
 
 	// Use kernel delete_file which should handle directories
-	_, err := d.Kernel.ExecuteSyscall(ctx, pid, "delete_file", map[string]interface{}{"path": path})
+	_, err := d.Kernel.ExecuteSyscall(ctx, pid, "delete_file", map[string]interface{}{"path": resolvedPath})
 	if err != nil {
 		return Failure(fmt.Sprintf("delete failed: %v", err))
 	}
@@ -172,8 +181,11 @@ func (d *DirectoryOps) Exists(ctx context.Context, params map[string]interface{}
 		return Failure("path parameter required")
 	}
 
+	// Resolve path using standard path resolution
+	resolvedPath := resolvePath(path, appCtx)
+
 	pid := d.GetPID(appCtx)
-	data, err := d.Kernel.ExecuteSyscall(ctx, pid, "file_stat", map[string]interface{}{"path": path})
+	data, err := d.Kernel.ExecuteSyscall(ctx, pid, "file_stat", map[string]interface{}{"path": resolvedPath})
 	if err != nil {
 		return Success(map[string]interface{}{"exists": false, "path": path})
 	}
@@ -199,9 +211,12 @@ func (d *DirectoryOps) Walk(ctx context.Context, params map[string]interface{}, 
 		maxDepth = int(depth)
 	}
 
-	// Resolve path through kernel
+	// Resolve path using standard path resolution
+	resolvedPath := resolvePath(path, appCtx)
+
+	// Get full path through kernel
 	pid := d.GetPID(appCtx)
-	statData, err := d.Kernel.ExecuteSyscall(ctx, pid, "file_stat", map[string]interface{}{"path": path})
+	statData, err := d.Kernel.ExecuteSyscall(ctx, pid, "file_stat", map[string]interface{}{"path": resolvedPath})
 	if err != nil {
 		return Failure(fmt.Sprintf("path not accessible: %v", err))
 	}
@@ -275,8 +290,11 @@ func (d *DirectoryOps) Tree(ctx context.Context, params map[string]interface{}, 
 		maxDepth = int(depth)
 	}
 
+	// Resolve path using standard path resolution
+	resolvedPath := resolvePath(path, appCtx)
+
 	pid := d.GetPID(appCtx)
-	statData, err := d.Kernel.ExecuteSyscall(ctx, pid, "file_stat", map[string]interface{}{"path": path})
+	statData, err := d.Kernel.ExecuteSyscall(ctx, pid, "file_stat", map[string]interface{}{"path": resolvedPath})
 	if err != nil {
 		return Failure(fmt.Sprintf("path not accessible: %v", err))
 	}
@@ -340,8 +358,11 @@ func (d *DirectoryOps) Flatten(ctx context.Context, params map[string]interface{
 		return Failure("path parameter required")
 	}
 
+	// Resolve path using standard path resolution
+	resolvedPath := resolvePath(path, appCtx)
+
 	pid := d.GetPID(appCtx)
-	statData, err := d.Kernel.ExecuteSyscall(ctx, pid, "file_stat", map[string]interface{}{"path": path})
+	statData, err := d.Kernel.ExecuteSyscall(ctx, pid, "file_stat", map[string]interface{}{"path": resolvedPath})
 	if err != nil {
 		return Failure(fmt.Sprintf("path not accessible: %v", err))
 	}

@@ -143,10 +143,13 @@ func (b *BasicOps) Read(ctx context.Context, params map[string]interface{}, appC
 		return Failure("kernel not available")
 	}
 
+	// Resolve path using standard path resolution
+	resolvedPath := resolvePath(path, appCtx)
+
 	pid := b.GetPID(appCtx)
 
 	data, err := b.Kernel.ExecuteSyscall(ctx, pid, "read_file", map[string]interface{}{
-		"path": path,
+		"path": resolvedPath,
 	})
 	if err != nil {
 		return Failure(fmt.Sprintf("read failed: %v", err))
@@ -175,10 +178,13 @@ func (b *BasicOps) Write(ctx context.Context, params map[string]interface{}, app
 		return Failure("kernel not available")
 	}
 
+	// Resolve path using standard path resolution
+	resolvedPath := resolvePath(path, appCtx)
+
 	pid := b.GetPID(appCtx)
 
 	_, err := b.Kernel.ExecuteSyscall(ctx, pid, "write_file", map[string]interface{}{
-		"path": path,
+		"path": resolvedPath,
 		"data": []byte(data),
 	})
 	if err != nil {
@@ -208,11 +214,14 @@ func (b *BasicOps) Append(ctx context.Context, params map[string]interface{}, ap
 		return Failure("kernel not available")
 	}
 
+	// Resolve path using standard path resolution
+	resolvedPath := resolvePath(path, appCtx)
+
 	pid := b.GetPID(appCtx)
 
 	// Read existing content
 	existing, err := b.Kernel.ExecuteSyscall(ctx, pid, "read_file", map[string]interface{}{
-		"path": path,
+		"path": resolvedPath,
 	})
 	if err != nil {
 		// File might not exist, treat as empty
@@ -222,7 +231,7 @@ func (b *BasicOps) Append(ctx context.Context, params map[string]interface{}, ap
 	// Append and write
 	combined := append(existing, []byte(data)...)
 	_, err = b.Kernel.ExecuteSyscall(ctx, pid, "write_file", map[string]interface{}{
-		"path": path,
+		"path": resolvedPath,
 		"data": combined,
 	})
 	if err != nil {
@@ -247,10 +256,13 @@ func (b *BasicOps) Create(ctx context.Context, params map[string]interface{}, ap
 		return Failure("kernel not available")
 	}
 
+	// Resolve path using standard path resolution
+	resolvedPath := resolvePath(path, appCtx)
+
 	pid := b.GetPID(appCtx)
 
 	_, err := b.Kernel.ExecuteSyscall(ctx, pid, "create_file", map[string]interface{}{
-		"path": path,
+		"path": resolvedPath,
 	})
 	if err != nil {
 		return Failure(fmt.Sprintf("create failed: %v", err))
@@ -270,10 +282,13 @@ func (b *BasicOps) Delete(ctx context.Context, params map[string]interface{}, ap
 		return Failure("kernel not available")
 	}
 
+	// Resolve path using standard path resolution
+	resolvedPath := resolvePath(path, appCtx)
+
 	pid := b.GetPID(appCtx)
 
 	_, err := b.Kernel.ExecuteSyscall(ctx, pid, "delete_file", map[string]interface{}{
-		"path": path,
+		"path": resolvedPath,
 	})
 	if err != nil {
 		return Failure(fmt.Sprintf("delete failed: %v", err))
@@ -293,10 +308,13 @@ func (b *BasicOps) Exists(ctx context.Context, params map[string]interface{}, ap
 		return Failure("kernel not available")
 	}
 
+	// Resolve path using standard path resolution
+	resolvedPath := resolvePath(path, appCtx)
+
 	pid := b.GetPID(appCtx)
 
 	data, err := b.Kernel.ExecuteSyscall(ctx, pid, "file_exists", map[string]interface{}{
-		"path": path,
+		"path": resolvedPath,
 	})
 	if err != nil {
 		return Success(map[string]interface{}{"exists": false, "path": path})
@@ -318,10 +336,13 @@ func (b *BasicOps) ReadLines(ctx context.Context, params map[string]interface{},
 		return Failure("kernel not available")
 	}
 
+	// Resolve path using standard path resolution
+	resolvedPath := resolvePath(path, appCtx)
+
 	pid := b.GetPID(appCtx)
 
 	data, err := b.Kernel.ExecuteSyscall(ctx, pid, "read_file", map[string]interface{}{
-		"path": path,
+		"path": resolvedPath,
 	})
 	if err != nil {
 		return Failure(fmt.Sprintf("read failed: %v", err))
@@ -360,10 +381,13 @@ func (b *BasicOps) ReadJSON(ctx context.Context, params map[string]interface{}, 
 		return Failure("kernel not available")
 	}
 
+	// Resolve path using standard path resolution
+	resolvedPath := resolvePath(path, appCtx)
+
 	pid := b.GetPID(appCtx)
 
 	data, err := b.Kernel.ExecuteSyscall(ctx, pid, "read_file", map[string]interface{}{
-		"path": path,
+		"path": resolvedPath,
 	})
 	if err != nil {
 		return Failure(fmt.Sprintf("read failed: %v", err))
@@ -397,6 +421,9 @@ func (b *BasicOps) WriteJSON(ctx context.Context, params map[string]interface{},
 		return Failure("kernel not available")
 	}
 
+	// Resolve path using standard path resolution
+	resolvedPath := resolvePath(path, appCtx)
+
 	pid := b.GetPID(appCtx)
 
 	// Serialize to JSON
@@ -406,7 +433,7 @@ func (b *BasicOps) WriteJSON(ctx context.Context, params map[string]interface{},
 	}
 
 	_, err = b.Kernel.ExecuteSyscall(ctx, pid, "write_file", map[string]interface{}{
-		"path": path,
+		"path": resolvedPath,
 		"data": jsonData,
 	})
 	if err != nil {
@@ -431,10 +458,13 @@ func (b *BasicOps) ReadBinary(ctx context.Context, params map[string]interface{}
 		return Failure("kernel not available")
 	}
 
+	// Resolve path using standard path resolution
+	resolvedPath := resolvePath(path, appCtx)
+
 	pid := b.GetPID(appCtx)
 
 	data, err := b.Kernel.ExecuteSyscall(ctx, pid, "read_file", map[string]interface{}{
-		"path": path,
+		"path": resolvedPath,
 	})
 	if err != nil {
 		return Failure(fmt.Sprintf("read failed: %v", err))
@@ -474,10 +504,13 @@ func (b *BasicOps) WriteBinary(ctx context.Context, params map[string]interface{
 		return Failure("kernel not available")
 	}
 
+	// Resolve path using standard path resolution
+	resolvedPath := resolvePath(path, appCtx)
+
 	pid := b.GetPID(appCtx)
 
 	_, err := b.Kernel.ExecuteSyscall(ctx, pid, "write_file", map[string]interface{}{
-		"path": path,
+		"path": resolvedPath,
 		"data": data,
 	})
 	if err != nil {
@@ -524,6 +557,9 @@ func (b *BasicOps) WriteLines(ctx context.Context, params map[string]interface{}
 		return Failure("kernel not available")
 	}
 
+	// Resolve path using standard path resolution
+	resolvedPath := resolvePath(path, appCtx)
+
 	pid := b.GetPID(appCtx)
 
 	// Join lines with newline
@@ -536,7 +572,7 @@ func (b *BasicOps) WriteLines(ctx context.Context, params map[string]interface{}
 	}
 
 	_, err := b.Kernel.ExecuteSyscall(ctx, pid, "write_file", map[string]interface{}{
-		"path": path,
+		"path": resolvedPath,
 		"data": []byte(content),
 	})
 	if err != nil {

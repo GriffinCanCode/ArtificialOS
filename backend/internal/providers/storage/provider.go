@@ -8,6 +8,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/paths"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/types"
 )
 
@@ -141,6 +142,15 @@ func (s *Provider) set(ctx context.Context, appID string, params map[string]inte
 		return failure(fmt.Sprintf("failed to serialize value: %v", err))
 	}
 
+	// Ensure app's data directory exists
+	appDataDir := paths.AppPath(appID).DataDir()
+	if s.kernel != nil {
+		// Try to create directory (will silently succeed if it already exists)
+		_, _ = s.kernel.ExecuteSyscall(ctx, s.storagePID, "create_directory", map[string]interface{}{
+			"path": appDataDir,
+		})
+	}
+
 	// Write to filesystem via kernel
 	path := s.keyPath(appID, key)
 	if s.kernel != nil {
@@ -253,7 +263,8 @@ func (s *Provider) remove(ctx context.Context, appID string, params map[string]i
 
 func (s *Provider) list(ctx context.Context, appID string) (*types.Result, error) {
 	// Use kernel to list directory for the app's storage path
-	appDir := filepath.Join(s.storagePath, "storage", appID)
+	// Use standard paths structure: /storage/apps/{appID}/data/
+	appDir := paths.AppPath(appID).DataDir()
 
 	var keys []string
 
@@ -341,7 +352,9 @@ func (s *Provider) clear(ctx context.Context, appID string) (*types.Result, erro
 }
 
 func (s *Provider) keyPath(appID, key string) string {
-	return filepath.Join(s.storagePath, "storage", appID, key+".json")
+	// Use standard paths structure: /storage/apps/{appID}/data/{key}.json
+	appDataDir := paths.AppPath(appID).DataDir()
+	return filepath.Join(appDataDir, key+".json")
 }
 
 func (s *Provider) cacheKey(appID, key string) string {
