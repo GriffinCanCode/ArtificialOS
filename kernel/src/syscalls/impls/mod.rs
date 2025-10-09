@@ -30,6 +30,7 @@ pub mod signals;
 pub mod system;
 pub mod time;
 pub mod vfs_adapter;
+pub mod watch;
 
 // Re-export commonly used types
 pub use fd::FdManager;

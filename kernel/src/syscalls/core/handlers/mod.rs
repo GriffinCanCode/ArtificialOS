@@ -17,6 +17,7 @@ mod search_handler;
 mod signal_handler;
 mod system_handler;
 mod time_handler;
+mod watch_handler;
 
 // Re-export all handlers
 pub use async_handler::AsyncSyscallHandler;
@@ -33,3 +34,4 @@ pub use search_handler::SearchHandler;
 pub use signal_handler::SignalHandler;
 pub use system_handler::SystemHandler;
 pub use time_handler::TimeHandler;
+pub use watch_handler::WatchHandler;

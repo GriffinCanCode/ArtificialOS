@@ -296,6 +296,7 @@ impl SyscallExecutorWithIpc {
             .register(Arc::new(FileDescriptorHandler::new(
                 executor.clone().into(),
             )))
+            .register(Arc::new(WatchHandler::new(executor.clone().into())))
     }
 }
 

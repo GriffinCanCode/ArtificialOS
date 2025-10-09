@@ -105,44 +105,44 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    info!("Initializing VFS with default mount points...");
+    info!("Initializing VFS with default mount points and file watching...");
     let vfs = MountManager::new();
 
-    // Mount local filesystem at /storage for persistent data
+    // Mount local filesystem at /storage for persistent data with observability
     let storage_path =
         std::env::var("KERNEL_STORAGE_PATH").unwrap_or_else(|_| "/tmp/ai-os-storage".to_string());
-    info!(storage_path = %storage_path, "Mounting local filesystem at /storage");
+    info!(storage_path = %storage_path, "Mounting observable local filesystem at /storage");
     if let Err(e) = std::fs::create_dir_all(&storage_path) {
         tracing::warn!(error = %e, "Could not create storage directory");
     }
-    if let Err(e) = vfs.mount("/storage", Arc::new(LocalFS::new(&storage_path))) {
+    // Wrap with ObservableFS for file watching
+    let storage_fs = ai_os_kernel::vfs::ObservableFS::new(LocalFS::new(&storage_path));
+    if let Err(e) = vfs.mount("/storage", Arc::new(storage_fs)) {
         tracing::error!(error = %e, "Failed to mount /storage");
         return Err("Failed to mount /storage filesystem".into());
     }
 
-    // Mount in-memory filesystem at /tmp (100MB limit)
-    info!("Mounting in-memory filesystem at /tmp (100MB limit)");
-    if let Err(e) = vfs.mount(
-        "/tmp",
-        Arc::new(MemFS::with_capacity(
-            ai_os_kernel::core::limits::TMP_FILESYSTEM_CAPACITY,
-        )),
-    ) {
+    // Mount in-memory filesystem at /tmp (100MB limit) with observability
+    info!("Mounting observable in-memory filesystem at /tmp (100MB limit)");
+    let tmp_fs = ai_os_kernel::vfs::ObservableFS::new(
+        MemFS::with_capacity(ai_os_kernel::core::limits::TMP_FILESYSTEM_CAPACITY)
+    );
+    if let Err(e) = vfs.mount("/tmp", Arc::new(tmp_fs)) {
         tracing::error!(error = %e, "Failed to mount /tmp");
         return Err("Failed to mount /tmp filesystem".into());
     }
 
-    // Mount in-memory filesystem at /cache (50MB limit)
-    info!("Mounting in-memory filesystem at /cache (50MB limit)");
-    if let Err(e) = vfs.mount(
-        "/cache",
-        Arc::new(MemFS::with_capacity(
-            ai_os_kernel::core::limits::CACHE_FILESYSTEM_CAPACITY,
-        )),
-    ) {
+    // Mount in-memory filesystem at /cache (50MB limit) with observability
+    info!("Mounting observable in-memory filesystem at /cache (50MB limit)");
+    let cache_fs = ai_os_kernel::vfs::ObservableFS::new(
+        MemFS::with_capacity(ai_os_kernel::core::limits::CACHE_FILESYSTEM_CAPACITY)
+    );
+    if let Err(e) = vfs.mount("/cache", Arc::new(cache_fs)) {
         tracing::error!(error = %e, "Failed to mount /cache");
         return Err("Failed to mount /cache filesystem".into());
     }
+
+    info!("File watching enabled for all mount points");
 
     info!("Initializing mmap manager with VFS support...");
     let mmap_manager = MmapManager::with_vfs(Arc::new(vfs.clone().into()));

@@ -445,6 +445,13 @@ pub enum Syscall {
     },
     ClipboardUnsubscribe,
     ClipboardStats,
+
+    // === File Watching ===
+    /// Subscribe to file system events for a path pattern
+    WatchFiles { pattern: String },
+
+    /// Unsubscribe from file watching
+    UnwatchFiles { watch_id: String },
 }
 
 #[cfg(test)]
