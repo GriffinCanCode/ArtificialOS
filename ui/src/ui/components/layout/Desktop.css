@@ -9,6 +9,23 @@
   flex-direction: column;
 }
 
+/* Desktop Icons - fade out when launchpad is visible */
+.desktop-icons {
+  position: absolute;
+  inset: 36px 0 0 0;
+  z-index: 10;
+  opacity: 1;
+  transform: scale(1);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: all;
+}
+
+.desktop-icons.hidden {
+  opacity: 0;
+  transform: scale(0.95);
+  pointer-events: none;
+}
+
 /* Background - Enhanced depth layers */
 .desktop-background {
   position: absolute;
@@ -73,6 +90,43 @@
   background: var(--color-secondary-alpha-20);
   color: var(--color-text-primary);
   transform: translateY(-1px);
+}
+
+.menubar-launchpad {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.menubar-launchpad:hover {
+  background: rgba(139, 92, 246, 0.25);
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.3);
+}
+
+.launchpad-icon {
+  font-size: 18px;
+  filter: drop-shadow(0 2px 4px rgba(139, 92, 246, 0.5));
+  transition: all 0.2s ease;
+}
+
+.menubar-launchpad:hover .launchpad-icon {
+  transform: scale(1.1);
+  filter: drop-shadow(0 2px 8px rgba(139, 92, 246, 0.7));
+}
+
+.menubar-launchpad.active {
+  background: rgba(139, 92, 246, 0.3);
+  border-color: rgba(139, 92, 246, 0.6);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+}
+
+.menubar-launchpad.active .launchpad-icon {
+  transform: scale(1.15);
+  filter: drop-shadow(0 2px 12px rgba(139, 92, 246, 0.9));
 }
 
 .menubar-item.logo {

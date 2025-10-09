@@ -53,6 +53,7 @@ function AppContent() {
   const log = useLogger("AppContent");
   const [showAbout, setShowAbout] = React.useState(false);
   const [showSpotlight, setShowSpotlight] = React.useState(false);
+  const [showLaunchpad, setShowLaunchpad] = React.useState(false);
   const { client, generateUI } = useWebSocket();
   const { addMessage, addThought, appendToLastMessage } = useAppActions();
   const { open: openWindow } = useActions();
@@ -254,6 +255,20 @@ function AppContent() {
         setShowSpotlight(false);
       },
     },
+    {
+      id: "app.launchpad.close",
+      sequence: "Escape",
+      label: "Close Launchpad",
+      description: "Close Launchpad",
+      category: "system",
+      scope: "global",
+      priority: "high",
+      allowInInput: false,
+      enabled: showLaunchpad,
+      handler: () => {
+        setShowLaunchpad(false);
+      },
+    },
   ]);
 
   const onSubmitSpotlight = useCallback(
@@ -368,6 +383,8 @@ function AppContent() {
           onOpenHub={() => handleLaunchApp("hub")}
           onOpenCreator={() => setShowCreator(true)}
           onOpenAbout={() => setShowAbout(true)}
+          showLaunchpad={showLaunchpad}
+          onToggleLaunchpad={() => setShowLaunchpad(!showLaunchpad)}
         />
       </div>
 

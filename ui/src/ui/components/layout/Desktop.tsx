@@ -10,6 +10,7 @@ import type { SortResult } from "../../../features/dnd";
 import { Tooltip } from "../../../features/floating";
 import { BrandLogo } from "../typography/BrandLogo";
 import { DockItem } from "./DockItem";
+import { Launchpad } from "./Launchpad";
 import { Grid as IconGrid } from "../../../features/icons";
 import type { IconType } from "../../../features/icons";
 import { useScope, useShortcuts } from "../../../features/input";
@@ -20,9 +21,11 @@ interface DesktopProps {
   onOpenHub: () => void;
   onOpenCreator: () => void;
   onOpenAbout: () => void;
+  showLaunchpad: boolean;
+  onToggleLaunchpad: () => void;
 }
 
-export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpenCreator, onOpenAbout }) => {
+export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpenCreator, onOpenAbout, showLaunchpad, onToggleLaunchpad }) => {
   const [time, setTime] = useState(new Date());
   const dockItems = useDockItems();
   const { reorder, toggle, remove } = useDockActions();
@@ -42,6 +45,16 @@ export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpen
       scope: "desktop",
       priority: "high",
       handler: () => onOpenHub(),
+    },
+    {
+      id: "desktop.launchpad.toggle",
+      sequence: "$mod+l",
+      label: "Toggle Launchpad",
+      description: "Show or hide the launchpad app grid",
+      category: "system",
+      scope: "desktop",
+      priority: "high",
+      handler: () => onToggleLaunchpad(),
     },
   ]);
 
@@ -102,11 +115,16 @@ export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpen
         <div className="desktop-gradient" />
       </div>
 
-      {/* Desktop Icons Grid */}
-      <IconGrid
-        onIconDoubleClick={handleIconDoubleClick}
-        onBackgroundClick={() => {}}
-      />
+      {/* Desktop Icons Grid - hidden when launchpad is visible */}
+      <div className={`desktop-icons ${showLaunchpad ? "hidden" : ""}`}>
+        <IconGrid
+          onIconDoubleClick={handleIconDoubleClick}
+          onBackgroundClick={() => {}}
+        />
+      </div>
+
+      {/* Launchpad - replaces desktop icons when visible */}
+      <Launchpad isVisible={showLaunchpad} onLaunchApp={onLaunchApp} />
 
       {/* Top Menu Bar */}
       <div className="desktop-menubar">
@@ -115,6 +133,14 @@ export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpen
           <button className="menubar-item" onClick={onOpenHub}>
             Hub
           </button>
+          <Tooltip content="Launchpad (⌘L)" delay={500}>
+            <button
+              className={`menubar-item menubar-launchpad ${showLaunchpad ? "active" : ""}`}
+              onClick={onToggleLaunchpad}
+            >
+              <span className="launchpad-icon">⚡</span>
+            </button>
+          </Tooltip>
         </div>
         <div className="menubar-right">
           <div className="menubar-clock">
