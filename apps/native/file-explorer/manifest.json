@@ -3,7 +3,7 @@
   "name": "File Explorer",
   "type": "native_web",
   "version": "2.0.0",
-  "icon": "📁",
+  "icon": "/apps/native/file-explorer/assets/icon.svg",
   "category": "system",
   "author": "system",
   "description": "Revolutionary file explorer with Miller Columns, command palette, smart previews, and intelligent search",

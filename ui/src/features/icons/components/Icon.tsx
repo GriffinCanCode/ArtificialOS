@@ -8,6 +8,7 @@ import type { Icon as IconType } from "../core/types";
 import { gridToPixel } from "../core/grid";
 import { DEFAULT_GRID_CONFIG, DOUBLE_CLICK_THRESHOLD } from "../core/types";
 import { Badge } from "./Badge";
+import { IconRenderer } from "../../../core/utils/icon-renderer";
 import "./Icon.css";
 
 // ============================================================================
@@ -124,7 +125,11 @@ export const Icon: React.FC<IconProps> = React.memo(
         onContextMenu={handleContextMenu}
       >
         <div className="desktop-icon-image">
-          {icon.icon}
+          <IconRenderer
+            icon={icon.icon}
+            alt={icon.label}
+            size={48}
+          />
           {icon.badge && <Badge badge={icon.badge} />}
         </div>
         <div className="desktop-icon-label">{icon.label}</div>

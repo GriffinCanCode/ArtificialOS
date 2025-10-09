@@ -4,6 +4,7 @@
  */
 
 import React from "react";
+import { IconRenderer } from "../../../core/utils/icon-renderer";
 import "./AppShortcut.css";
 
 export interface AppShortcutProps {
@@ -34,7 +35,9 @@ export const AppShortcut: React.FC<AppShortcutProps> = ({
   if (variant === "icon") {
     return (
       <div className="app-shortcut-icon" onClick={handleClick}>
-        <div className="app-shortcut-icon-symbol">{icon}</div>
+        <div className="app-shortcut-icon-symbol">
+          <IconRenderer icon={icon} alt={name} size={32} />
+        </div>
         <div className="app-shortcut-icon-name">{name}</div>
       </div>
     );
@@ -43,7 +46,9 @@ export const AppShortcut: React.FC<AppShortcutProps> = ({
   if (variant === "list") {
     return (
       <div className="app-shortcut-list" onClick={handleClick}>
-        <div className="app-shortcut-list-icon">{icon}</div>
+        <div className="app-shortcut-list-icon">
+          <IconRenderer icon={icon} alt={name} size={24} />
+        </div>
         <div className="app-shortcut-list-content">
           <div className="app-shortcut-list-name">{name}</div>
           {description && <div className="app-shortcut-list-description">{description}</div>}
@@ -56,7 +61,9 @@ export const AppShortcut: React.FC<AppShortcutProps> = ({
   // Card variant (default)
   return (
     <div className="app-shortcut-card" onClick={handleClick}>
-      <div className="app-shortcut-card-icon">{icon}</div>
+      <div className="app-shortcut-card-icon">
+        <IconRenderer icon={icon} alt={name} size={40} />
+      </div>
       <div className="app-shortcut-card-name">{name}</div>
       {description && <div className="app-shortcut-card-description">{description}</div>}
       {category && <div className="app-shortcut-card-category">{category}</div>}

@@ -6,9 +6,17 @@
 
 cd "$(dirname "$0")/.." || exit
 
+# Set environment variables for filesystem
+export WORKSPACE_ROOT="$(pwd)"
+export KERNEL_STORAGE_PATH="${KERNEL_STORAGE_PATH:-/tmp/ai-os-storage}"
+
 echo "=============================="
 echo "Starting Backend Stack"
 echo "=============================="
+echo ""
+echo "Environment:"
+echo "   WORKSPACE_ROOT:        $WORKSPACE_ROOT"
+echo "   KERNEL_STORAGE_PATH:   $KERNEL_STORAGE_PATH"
 echo ""
 
 # Create logs directory
@@ -52,6 +60,8 @@ if [ ! -f "target/release/kernel" ]; then
     echo "   Building kernel..."
     cargo build --release 2>&1 | tee ../logs/kernel-build.log
 fi
+echo "   Initializing filesystem and syncing native apps..."
+WORKSPACE_ROOT="$WORKSPACE_ROOT" KERNEL_STORAGE_PATH="$KERNEL_STORAGE_PATH" \
 ./target/release/kernel > ../logs/kernel.log 2>&1 &
 KERNEL_PID=$!
 echo "   Kernel started (PID: $KERNEL_PID)"

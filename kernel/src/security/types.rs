@@ -259,7 +259,12 @@ impl SandboxConfig {
             pid,
             capabilities,
             resource_limits: ResourceLimits::default(),
-            allowed_paths: vec![PathBuf::from("/tmp"), PathBuf::from("/var/tmp")],
+            allowed_paths: vec![
+                PathBuf::from("/tmp"),
+                PathBuf::from("/var/tmp"),
+                PathBuf::from("/storage"),
+                PathBuf::from("/cache"),
+            ],
             blocked_paths: vec![PathBuf::from("/etc/passwd"), PathBuf::from("/etc/shadow")],
             network_rules: vec![],
             environment_vars: vec![],

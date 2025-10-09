@@ -17,7 +17,7 @@ import { getDefaultIcons, shouldInitializeDefaults } from "../utils/defaults";
  */
 export function useDefaults() {
   const icons = useIcons();
-  const { add, clearAll, updatePositions } = useActions();
+  const { add, clearAll, updatePositions, update } = useActions();
 
   useEffect(() => {
     // Check for duplicate native icons (corrupted localStorage)
@@ -78,7 +78,7 @@ export function useDefaults() {
       return;
     }
 
-    // Only initialize if desktop is empty
+    // Initialize if desktop is empty
     if (shouldInitializeDefaults(icons)) {
       const defaults = getDefaultIcons();
 
@@ -86,6 +86,27 @@ export function useDefaults() {
       for (const iconData of defaults) {
         add(iconData);
       }
+    } else {
+      // Update existing native app icons if their definitions have changed
+      const defaults = getDefaultIcons();
+
+      defaults.forEach((defaultIcon) => {
+        // Find existing icon with same packageId (only for native metadata)
+        const existingIcon = icons.find(
+          (icon) =>
+            icon.type === "native" &&
+            icon.metadata.type === "native" &&
+            "packageId" in icon.metadata &&
+            "packageId" in defaultIcon.metadata &&
+            icon.metadata.packageId === defaultIcon.metadata.packageId
+        );
+
+        if (existingIcon && existingIcon.icon !== defaultIcon.icon) {
+          const packageId = "packageId" in defaultIcon.metadata ? defaultIcon.metadata.packageId : "unknown";
+          console.log(`Updating icon for ${packageId}: ${existingIcon.icon} -> ${defaultIcon.icon}`);
+          update(existingIcon.id, { icon: defaultIcon.icon });
+        }
+      });
     }
   }, []); // Empty dependency array - only run once on mount
 

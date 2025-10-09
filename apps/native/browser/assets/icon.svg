@@ -1,0 +1,89 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Clean, sophisticated gradients -->
+    <linearGradient id="primaryGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#007AFF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0051D5;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#34C759;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#30A14E;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="backgroundGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F2F2F7;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#E5E5EA;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- Subtle shadow filters -->
+    <filter id="softShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000000" flood-opacity="0.15"/>
+    </filter>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="32" cy="32" r="28"
+          fill="url(#backgroundGradient)"
+          filter="url(#softShadow)"/>
+
+  <!-- Central hub node -->
+  <circle cx="32" cy="32" r="8"
+          fill="url(#primaryGradient)"
+          filter="url(#glow)"/>
+
+  <!-- Connection lines radiating outward -->
+  <g stroke="url(#primaryGradient)" stroke-width="2.5" opacity="0.7">
+    <!-- Primary connections (4 main directions) -->
+    <line x1="32" y1="24" x2="32" y2="12"/>
+    <line x1="40" y1="32" x2="52" y2="32"/>
+    <line x1="32" y1="40" x2="32" y2="52"/>
+    <line x1="24" y1="32" x2="12" y2="32"/>
+
+    <!-- Secondary connections (diagonals) -->
+    <line x1="37.66" y1="26.34" x2="45.25" y2="18.75" opacity="0.5"/>
+    <line x1="37.66" y1="37.66" x2="45.25" y2="45.25" opacity="0.5"/>
+    <line x1="26.34" y1="37.66" x2="18.75" y2="45.25" opacity="0.5"/>
+    <line x1="26.34" y1="26.34" x2="18.75" y2="18.75" opacity="0.5"/>
+  </g>
+
+  <!-- Outer nodes -->
+  <g fill="url(#accentGradient)">
+    <!-- Primary nodes -->
+    <circle cx="32" cy="12" r="4"/>
+    <circle cx="52" cy="32" r="4"/>
+    <circle cx="32" cy="52" r="4"/>
+    <circle cx="12" cy="32" r="4"/>
+
+    <!-- Secondary nodes -->
+    <circle cx="45.25" cy="18.75" r="3" opacity="0.8"/>
+    <circle cx="45.25" cy="45.25" r="3" opacity="0.8"/>
+    <circle cx="18.75" cy="45.25" r="3" opacity="0.8"/>
+    <circle cx="18.75" cy="18.75" r="3" opacity="0.8"/>
+  </g>
+
+  <!-- Data flow animation paths (subtle) -->
+  <g stroke="#FFFFFF" stroke-width="1" opacity="0.4">
+    <circle cx="32" cy="32" r="12" fill="none" stroke-dasharray="2,4"/>
+    <circle cx="32" cy="32" r="18" fill="none" stroke-dasharray="1,6"/>
+  </g>
+
+  <!-- Central highlight -->
+  <circle cx="32" cy="32" r="8"
+          fill="none"
+          stroke="#FFFFFF"
+          stroke-width="1"
+          opacity="0.3"/>
+
+  <!-- Subtle outer ring -->
+  <circle cx="32" cy="32" r="28"
+          fill="none"
+          stroke="#FFFFFF"
+          stroke-width="0.5"
+          opacity="0.2"/>
+</svg>

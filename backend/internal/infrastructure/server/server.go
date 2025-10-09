@@ -172,6 +172,9 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	// Serve native app bundles (static files from apps/dist)
 	router.Static("/native-apps", "../apps/dist")
 
+	// Serve native app assets (icons, etc. from apps/native)
+	router.Static("/apps/native", "../apps/native")
+
 	// Register routes
 	router.GET("/", handlers.Root)
 	router.GET("/health", handlers.Health)

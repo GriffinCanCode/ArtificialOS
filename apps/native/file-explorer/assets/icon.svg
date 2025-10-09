@@ -1,0 +1,70 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background gradient -->
+  <defs>
+    <linearGradient id="folderGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4A90E2;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#357ABD;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2C5F8A;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="tabGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#5BA0F2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4A90E2;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="highlightGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#FFFFFF;stop-opacity:0.1" />
+    </linearGradient>
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+    <filter id="innerShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feOffset dx="0" dy="1"/>
+      <feGaussianBlur stdDeviation="1" result="offset-blur"/>
+      <feFlood flood-color="#FFFFFF" flood-opacity="0.2"/>
+      <feComposite in2="offset-blur" operator="in"/>
+    </filter>
+  </defs>
+
+  <!-- Main folder body -->
+  <path d="M8 20 L8 52 C8 55.314 10.686 58 14 58 L50 58 C53.314 58 56 55.314 56 52 L56 24 C56 20.686 53.314 18 50 18 L30 18 L26 14 C24.895 12.895 23.447 12.286 21.943 12.286 L14 12.286 C10.686 12.286 8 14.972 8 18.286 L8 20 Z"
+        fill="url(#folderGradient)"
+        filter="url(#shadow)"/>
+
+  <!-- Folder tab -->
+  <path d="M8 18.286 C8 14.972 10.686 12.286 14 12.286 L21.943 12.286 C23.447 12.286 24.895 12.895 26 14 L30 18 L50 18 C53.314 18 56 20.686 56 24 L56 20 C56 16.686 53.314 14 50 14 L28 14 L24 10 C22.895 8.895 21.447 8.286 19.943 8.286 L14 8.286 C10.686 8.286 8 10.972 8 14.286 L8 18.286 Z"
+        fill="url(#tabGradient)"
+        filter="url(#shadow)"/>
+
+  <!-- Inner highlight -->
+  <path d="M12 22 L12 52 C12 53.105 12.895 54 14 54 L50 54 C51.105 54 52 53.105 52 52 L52 24 C52 22.895 51.105 22 50 22 L12 22 Z"
+        fill="url(#highlightGradient)"
+        opacity="0.6"/>
+
+  <!-- File icons inside folder -->
+  <g opacity="0.7">
+    <!-- Document 1 -->
+    <rect x="18" y="28" width="8" height="10" rx="1" fill="#FFFFFF" opacity="0.8"/>
+    <rect x="19" y="30" width="6" height="1" fill="#4A90E2" opacity="0.6"/>
+    <rect x="19" y="32" width="6" height="1" fill="#4A90E2" opacity="0.4"/>
+    <rect x="19" y="34" width="4" height="1" fill="#4A90E2" opacity="0.4"/>
+
+    <!-- Document 2 -->
+    <rect x="30" y="28" width="8" height="10" rx="1" fill="#FFFFFF" opacity="0.8"/>
+    <rect x="31" y="30" width="6" height="1" fill="#4A90E2" opacity="0.6"/>
+    <rect x="31" y="32" width="6" height="1" fill="#4A90E2" opacity="0.4"/>
+    <rect x="31" y="34" width="4" height="1" fill="#4A90E2" opacity="0.4"/>
+
+    <!-- Document 3 -->
+    <rect x="42" y="28" width="8" height="10" rx="1" fill="#FFFFFF" opacity="0.8"/>
+    <rect x="43" y="30" width="6" height="1" fill="#4A90E2" opacity="0.6"/>
+    <rect x="43" y="32" width="6" height="1" fill="#4A90E2" opacity="0.4"/>
+    <rect x="43" y="34" width="4" height="1" fill="#4A90E2" opacity="0.4"/>
+  </g>
+
+  <!-- Subtle rim light -->
+  <path d="M8 20 L8 52 C8 55.314 10.686 58 14 58 L50 58 C53.314 58 56 55.314 56 52 L56 24 C56 20.686 53.314 18 50 18 L30 18 L26 14 C24.895 12.895 23.447 12.286 21.943 12.286 L14 12.286 C10.686 12.286 8 14.972 8 18.286 L8 20 Z"
+        fill="none"
+        stroke="url(#highlightGradient)"
+        stroke-width="1"
+        opacity="0.5"/>
+</svg>

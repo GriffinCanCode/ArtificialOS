@@ -28,12 +28,23 @@ export function getDefaultIcons(): Omit<Icon, "id" | "isSelected" | "isDragging"
     {
       type: "native",
       label: "Files",
-      icon: "📁",
+      icon: "/apps/native/file-explorer/assets/icon.svg",
       position: { row: 0, col: 1 },
       metadata: {
         type: "native",
         packageId: "file-explorer",
         bundlePath: "/apps/native/file-explorer",
+      },
+    },
+    {
+      type: "native",
+      label: "Browser",
+      icon: "/apps/native/browser/assets/icon.svg",
+      position: { row: 0, col: 2 },
+      metadata: {
+        type: "native",
+        packageId: "browser",
+        bundlePath: "/apps/native/browser",
       },
     },
   ];

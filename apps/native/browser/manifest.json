@@ -3,7 +3,7 @@
   "name": "Web Browser",
   "type": "native_web",
   "version": "1.0.0",
-  "icon": "🌐",
+  "icon": "/apps/native/browser/assets/icon.svg",
   "category": "utilities",
   "author": "system",
   "description": "Full-featured web browser with multi-tab support, bookmarks, history, reader mode, and download manager",

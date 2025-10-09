@@ -70,17 +70,38 @@ export class FilesystemExecutor implements AsyncExecutor {
         payload.app_id = this.context.appId;
       }
 
+      logger.info("Fetching directory listing", {
+        component: "FilesystemExecutor",
+        payload,
+        url: "http://localhost:8000/services/execute"
+      });
+
       const response = await fetch("http://localhost:8000/services/execute", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
+      logger.info("Fetch response received", {
+        component: "FilesystemExecutor",
+        ok: response.ok,
+        status: response.status,
+        statusText: response.statusText
+      });
+
       if (!response.ok) {
-        throw new Error(`Failed to list directory: ${response.statusText}`);
+        const errorText = await response.text().catch(() => "Could not read error response");
+        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
       }
 
       const result = await response.json();
+
+      logger.info("Response parsed", {
+        component: "FilesystemExecutor",
+        success: result.success,
+        hasData: !!result.data,
+        error: result.error
+      });
 
       if (!result.success) {
         throw new Error(result.error || "Directory listing failed");
@@ -208,13 +229,21 @@ export class FilesystemExecutor implements AsyncExecutor {
 
       return { files, path, count: entries.length, entries: enrichedEntries };
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorName = error instanceof Error ? error.name : "UnknownError";
+
       logger.error("Failed to list directory", error as Error, {
         component: "FilesystemExecutor",
         path,
+        errorName,
+        errorMessage,
+        errorType: typeof error,
+        stack: error instanceof Error ? error.stack : undefined
       });
+
       this.context.componentState.set(
         "error",
-        `Failed to list directory: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Failed to list directory: ${errorMessage}`
       );
       return { files: [], path, count: 0, entries: [] };
     }

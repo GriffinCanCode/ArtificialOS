@@ -13,6 +13,7 @@ import {
 } from "../../../core/utils/animation/componentVariants";
 import { Tooltip, ContextMenu } from "../../../features/floating";
 import type { DropdownItem } from "../../../features/floating";
+import { IconRenderer } from "../../../core/utils/icon-renderer";
 import "./Launcher.css";
 
 interface LauncherProps {
@@ -42,7 +43,7 @@ export const Launcher: React.FC<LauncherProps> = React.memo(({ onAppLaunch, onCr
       launchApp.mutate(packageId, {
         onSuccess: (response) => {
           if (onAppLaunch) {
-            onAppLaunch(response.app_id, response.blueprint);
+            onAppLaunch(response.app_id, response.blueprint || {});
           }
         },
       });
@@ -165,7 +166,13 @@ export const Launcher: React.FC<LauncherProps> = React.memo(({ onAppLaunch, onCr
                       ×
                     </button>
                   </Tooltip>
-                  <div className="app-icon">{app.icon}</div>
+                  <div className="app-icon">
+                    <IconRenderer
+                      icon={app.icon}
+                      alt={app.name}
+                      size={48}
+                    />
+                  </div>
                   <div className="app-name">{app.name}</div>
                   <div className="app-description">{app.description}</div>
                   <div className="app-meta">
