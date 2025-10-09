@@ -91,7 +91,6 @@ export const Launchpad: React.FC<LaunchpadProps> = ({ isVisible, onLaunchApp }) 
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="launchpad-search-input"
-          autoFocus
         />
       </div>
 
