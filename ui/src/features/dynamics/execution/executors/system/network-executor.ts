@@ -6,10 +6,8 @@
 import { ExecutorContext, AsyncExecutor } from "../core/types";
 
 export class NetworkExecutor implements AsyncExecutor {
-  private context: ExecutorContext;
-
-  constructor(context: ExecutorContext) {
-    this.context = context;
+  constructor(_context: ExecutorContext) {
+    // Context not currently used but kept for interface compatibility
   }
 
   async execute(action: string, params: Record<string, any>): Promise<any> {

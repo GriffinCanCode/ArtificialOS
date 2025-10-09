@@ -7,14 +7,15 @@ import { logger } from "../../../../../core/utils/monitoring/logger";
 import { ExecutorContext, AsyncExecutor } from "../core/types";
 
 export class ClipboardExecutor implements AsyncExecutor {
-  private context: ExecutorContext;
+  private serviceExecutor: any;
 
-  constructor(context: ExecutorContext) {
-    this.context = context;
+  constructor(_context: ExecutorContext, serviceExecutor?: any) {
+    // Context not currently used but kept for interface compatibility
+    this.serviceExecutor = serviceExecutor;
   }
 
   async execute(action: string, params: Record<string, any>): Promise<any> {
-    const service = this.context.service;
+    const service = this.serviceExecutor;
 
     switch (action) {
       case "copy":

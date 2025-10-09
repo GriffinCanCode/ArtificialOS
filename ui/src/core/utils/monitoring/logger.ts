@@ -5,6 +5,19 @@
 
 import { formatISO } from "../dates";
 
+// Extend Window interface for electronLog
+declare global {
+  interface Window {
+    electronLog?: {
+      error: (message: string, ...args: any[]) => void;
+      warn: (message: string, ...args: any[]) => void;
+      info: (message: string, ...args: any[]) => void;
+      debug: (message: string, ...args: any[]) => void;
+      verbose: (message: string, ...args: any[]) => void;
+    };
+  }
+}
+
 export enum LogLevel {
   ERROR = "error",
   WARN = "warn",

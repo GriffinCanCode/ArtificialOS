@@ -8,10 +8,8 @@ import { compareTimestampsAsc, compareTimestampsDesc } from "../../../../../core
 import { ExecutorContext, BaseExecutor } from "../core/types";
 
 export class DataExecutor implements BaseExecutor {
-  private context: ExecutorContext;
-
-  constructor(context: ExecutorContext) {
-    this.context = context;
+  constructor(_context: ExecutorContext) {
+    // Context not currently used but kept for interface compatibility
   }
 
   execute(action: string, params: Record<string, any>): any {

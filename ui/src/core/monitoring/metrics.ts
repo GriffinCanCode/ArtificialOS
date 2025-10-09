@@ -3,7 +3,7 @@
  * Centralized performance metrics tracking with Prometheus-compatible format
  */
 
-import type { MetricType, MetricValue, Histogram, MetricsSnapshot, HistogramStats } from "./types";
+import type { Histogram, MetricsSnapshot, HistogramStats } from "./types";
 
 class MetricsCollector {
   private counters: Map<string, number> = new Map();
