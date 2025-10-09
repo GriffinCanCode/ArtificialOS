@@ -5,7 +5,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import DOMPurify from 'dompurify';
-import type { BrowserTab, RenderMode } from '../types';
+import type { BrowserTab } from '../types';
 import type { NativeAppContext } from '../sdk.d';
 import { isSafeUrl } from '../utils/url';
 import './BrowserView.css';
@@ -18,13 +18,11 @@ interface BrowserViewProps {
 }
 
 export function BrowserView({ tab, context, onLoadComplete, onError }: BrowserViewProps) {
-  const [mode, setMode] = useState<RenderMode>('iframe');
   const [content, setContent] = useState<string>('');
   const [error, setError] = useState<string>('');
-  const iframeRef = useRef<HTMLIFrameElement>(null);
   const loadingRef = useRef(false);
 
-  // Load content
+  // Load content via HTTP proxy
   const loadContent = useCallback(async () => {
     if (loadingRef.current) return;
     loadingRef.current = true;
@@ -34,7 +32,6 @@ export function BrowserView({ tab, context, onLoadComplete, onError }: BrowserVi
 
     // Special URLs
     if (tab.url === 'about:blank') {
-      setMode('proxy');
       setContent('<div style="padding: 40px; text-align: center; color: #666;">New Tab</div>');
       onLoadComplete('New Tab');
       loadingRef.current = false;
@@ -50,15 +47,8 @@ export function BrowserView({ tab, context, onLoadComplete, onError }: BrowserVi
       return;
     }
 
-    // Try iframe first
-    try {
-      setMode('iframe');
-      // Iframe will handle loading
-      loadingRef.current = false;
-    } catch (err) {
-      console.error('[BrowserView] Iframe failed, falling back to proxy:', err);
-      await loadViaProxy();
-    }
+    // Load via HTTP proxy
+    await loadViaProxy();
   }, [tab.url, context.executor, onLoadComplete, onError]);
 
   // Load via HTTP proxy
@@ -87,7 +77,6 @@ export function BrowserView({ tab, context, onLoadComplete, onError }: BrowserVi
         ADD_ATTR: ['target', 'rel'],
       });
 
-      setMode('proxy');
       setContent(sanitized);
       onLoadComplete(title);
     } catch (err) {
@@ -104,27 +93,6 @@ export function BrowserView({ tab, context, onLoadComplete, onError }: BrowserVi
     loadContent();
   }, [tab.url]);
 
-  // Handle iframe load
-  const handleIframeLoad = useCallback(() => {
-    try {
-      const iframe = iframeRef.current;
-      if (!iframe || !iframe.contentDocument) return;
-
-      const title = iframe.contentDocument.title || tab.url;
-      onLoadComplete(title);
-    } catch (err) {
-      // Cross-origin, fall back to proxy
-      console.error('[BrowserView] Iframe cross-origin, switching to proxy');
-      loadViaProxy();
-    }
-  }, [tab.url, onLoadComplete, loadViaProxy]);
-
-  // Handle iframe error
-  const handleIframeError = useCallback(() => {
-    console.error('[BrowserView] Iframe error, switching to proxy');
-    loadViaProxy();
-  }, [loadViaProxy]);
-
   if (error) {
     return (
       <div className="browser-view error">
@@ -140,23 +108,7 @@ export function BrowserView({ tab, context, onLoadComplete, onError }: BrowserVi
     );
   }
 
-  if (mode === 'iframe') {
-    return (
-      <div className="browser-view iframe-mode">
-        <iframe
-          ref={iframeRef}
-          src={tab.url}
-          className="content-iframe"
-          sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
-          onLoad={handleIframeLoad}
-          onError={handleIframeError}
-          title={tab.title}
-        />
-      </div>
-    );
-  }
-
-  if (mode === 'proxy') {
+  if (content) {
     return (
       <div className="browser-view proxy-mode">
         <div

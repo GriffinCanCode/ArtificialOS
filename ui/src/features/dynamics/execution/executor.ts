@@ -141,16 +141,16 @@ export class ToolExecutor {
     });
 
     // Log all state changes in development
-    if (import.meta.env?.DEV) {
-      this.componentState.subscribeWildcard("*", (event) => {
-        logger.verboseThrottled("State change", {
-          component: "ComponentState",
-          key: event.key,
-          oldValue: event.oldValue,
-          newValue: event.newValue,
-        });
-      });
-    }
+    // Note: Conditional logging disabled to avoid build issues
+    // Enable via logger configuration if needed
+    // this.componentState.subscribeWildcard("*", (event) => {
+    //   logger.verboseThrottled("State change", {
+    //     component: "ComponentState",
+    //     key: event.key,
+    //     oldValue: event.oldValue,
+    //     newValue: event.newValue,
+    //   });
+    // });
   }
 
   setAppId(appId: string): void {
