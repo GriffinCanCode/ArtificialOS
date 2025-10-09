@@ -7,11 +7,15 @@ A full-featured web browser application with multi-tab support, bookmarks, and h
 - ✅ Multi-tab browsing with session management
 - ✅ Address bar with URL and search support
 - ✅ Navigation controls (back, forward, refresh, home)
-- ✅ Hybrid rendering (iframe with proxy fallback)
+- ✅ Server-side proxy rendering (bypasses CORS, X-Frame-Options)
+- ✅ Static HTML/CSS rendering (fast, clean)
 - ✅ DuckDuckGo, Google, Bing search integration
 - ✅ Safe URL validation
 - ✅ Tab management (create, close, switch)
+- ✅ Link interception (navigates through proxy)
+- ✅ Cookie and session management per app
 - ✅ Persistent storage for settings
+- 🚧 JavaScript support (coming soon - requires sandbox)
 - 🚧 Bookmarks (coming soon)
 - 🚧 History tracking (coming soon)
 - 🚧 Reader mode (coming soon)
@@ -19,25 +23,26 @@ A full-featured web browser application with multi-tab support, bookmarks, and h
 
 ## Architecture
 
-### Hybrid Rendering Approach
+### Server-Side Proxy Rendering
 
-The browser uses a sophisticated hybrid approach to render web content:
+The browser uses a **server-side proxy** approach to bypass browser security restrictions:
 
-1. **Iframe Mode (Primary)**: Attempts to load content in a sandboxed iframe
-   - Fast, native rendering
-   - Handles JavaScript-heavy sites
-   - Respects X-Frame-Options
+**Why Not Iframes?**
+- ❌ Blocked by `X-Frame-Options` headers (95% of sites)
+- ❌ Blocked by CSP `frame-ancestors` directive
+- ❌ CORS restrictions prevent cross-origin content
+- ❌ No control over content, limited interaction
 
-2. **Proxy Mode (Fallback)**: Fetches and sanitizes HTML
-   - Works when iframe is blocked (X-Frame-Options)
-   - Content is fetched via `http.get` provider
-   - HTML is sanitized with DOMPurify
-   - Good for static content
+**Server-Side Proxy Solution:**
+1. **Backend Fetching**: All HTTP requests made by Go backend (bypasses CORS)
+2. **HTML Rewriting**: URLs rewritten to work through proxy
+3. **Asset Proxying**: Images, CSS, JS fetched through backend
+4. **Session Management**: Server-side cookies and state
+5. **Kernel Integration**: Permission checks, metrics, observability
 
 ### Services Used
 
-- **http**: Fetch web pages (`http.get`)
-- **scraper**: Parse HTML and extract metadata (future)
+- **browser**: Server-side proxy for web content (`browser.navigate`, `browser.proxy_asset`)
 - **storage**: Save bookmarks, history, and settings
 - **filesystem**: Download files (future)
 
@@ -98,14 +103,28 @@ The `url.ts` utility intelligently distinguishes between URLs and search queries
 
 - All URLs are validated before loading
 - Dangerous protocols (javascript:, data:, etc.) are blocked
-- HTML content is sanitized with DOMPurify
-- Iframes use strict sandbox attributes
+- Backend performs permission checks before network requests
+- HTML content is sanitized on backend and frontend (defense in depth)
+- All requests go through kernel permission system
 
 ### Performance
 
+- ~500ms average page load (Google)
+- Static HTML/CSS only (no JavaScript execution)
+- No CORS errors or failed network requests
+- Efficient goquery-based HTML parsing
 - Lazy tab loading
 - Efficient state management with hooks
 - Minimal re-renders
+
+**Note**: Initial navigation may take ~1 second as the backend:
+1. Fetches the page
+2. Parses HTML
+3. Rewrites URLs
+4. Removes scripts
+5. Returns processed content
+
+Subsequent navigations are faster (~300-500ms) due to session reuse.
 
 ## Future Enhancements
 

@@ -12,7 +12,7 @@
     "READ_FILE",
     "WRITE_FILE"
   ],
-  "services": ["http", "scraper", "storage", "filesystem"],
+  "services": ["browser", "storage", "filesystem"],
   "exports": {
     "component": "Browser"
   },
