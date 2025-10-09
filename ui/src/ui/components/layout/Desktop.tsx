@@ -31,17 +31,8 @@ export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpen
   useScope("desktop");
 
   // Register desktop shortcuts
+  // Note: Cmd+K is handled globally in App.tsx
   useShortcuts([
-    {
-      id: "desktop.creator.open",
-      sequence: "$mod+k",
-      label: "Open Creator",
-      description: "Open the app creator",
-      category: "system",
-      scope: "desktop",
-      priority: "high",
-      handler: () => onOpenCreator(),
-    },
     {
       id: "desktop.hub.open",
       sequence: "$mod+Space",
