@@ -75,6 +75,7 @@ interface Store {
 
   // Utilities
   clearAll: () => void;
+  fixOverlaps: () => void;
 }
 
 // ============================================================================
@@ -119,9 +120,25 @@ export const useStore = create<Store>()(
 
           // Find first available position
           const collisionMap = buildCollisionMap(state.icons);
-          const position =
-            findFirstAvailable(collisionMap, state.viewportDimensions.rows, state.viewportDimensions.cols) ||
-            iconData.position;
+
+          // Check if requested position is available
+          let position = iconData.position;
+          const isOccupied = collisionMap.occupied.has(`${position.row}:${position.col}`);
+
+          if (isOccupied) {
+            // Find nearest available position
+            const nearest = findNearestAvailable(
+              position,
+              collisionMap,
+              state.viewportDimensions.rows,
+              state.viewportDimensions.cols
+            );
+            position = nearest || findFirstAvailable(
+              collisionMap,
+              state.viewportDimensions.rows,
+              state.viewportDimensions.cols
+            ) || position;
+          }
 
           const newIcon: Icon = {
             id,
@@ -209,18 +226,52 @@ export const useStore = create<Store>()(
 
         updatePositions: (positions) => {
           set(
-            (state) => ({
-              icons: state.icons.map((icon) => {
-                const newPosition = positions.get(icon.id);
-                return newPosition
-                  ? {
-                      ...icon,
-                      position: newPosition,
-                      updatedAt: now(),
+            (state) => {
+              // Build collision map excluding icons being moved
+              const movingIconIds = Array.from(positions.keys());
+              const staticIcons = state.icons.filter((icon) => !movingIconIds.includes(icon.id));
+              const collisionMap = buildCollisionMap(staticIcons);
+
+              // Update positions with collision detection
+              return {
+                icons: state.icons.map((icon) => {
+                  const newPosition = positions.get(icon.id);
+                  if (!newPosition) return icon;
+
+                  // Check if new position is occupied by a static icon
+                  const posKey = `${newPosition.row}:${newPosition.col}`;
+                  const isOccupied = collisionMap.occupied.has(posKey);
+
+                  if (isOccupied) {
+                    // Find nearest available position
+                    const nearest = findNearestAvailable(
+                      newPosition,
+                      collisionMap,
+                      state.viewportDimensions.rows,
+                      state.viewportDimensions.cols
+                    );
+
+                    if (nearest) {
+                      // Mark as occupied for subsequent icons
+                      collisionMap.occupied.set(`${nearest.row}:${nearest.col}`, icon.id);
+                      return {
+                        ...icon,
+                        position: nearest,
+                        updatedAt: now(),
+                      };
                     }
-                  : icon;
-              }),
-            }),
+                  }
+
+                  // Position is free or no alternative found
+                  collisionMap.occupied.set(posKey, icon.id);
+                  return {
+                    ...icon,
+                    position: newPosition,
+                    updatedAt: now(),
+                  };
+                }),
+              };
+            },
             false,
             "updatePositions"
           );
@@ -263,9 +314,8 @@ export const useStore = create<Store>()(
                 icons: state.icons.map((icon) => ({
                   ...icon,
                   isSelected: newSelectedIds.has(icon.id),
-                  zIndex: newSelectedIds.has(icon.id) ? state.nextZIndex : icon.zIndex,
+                  // Don't change z-index on selection - only on drag
                 })),
-                nextZIndex: state.nextZIndex + 1,
               };
             },
             false,
@@ -419,9 +469,8 @@ export const useStore = create<Store>()(
               icons: state.icons.map((icon) => ({
                 ...icon,
                 isDragging: iconIds.includes(icon.id),
-                zIndex: iconIds.includes(icon.id) ? state.nextZIndex : icon.zIndex,
+                // Don't change z-index - CSS will handle visual layering during drag
               })),
-              nextZIndex: state.nextZIndex + 1,
             }),
             false,
             "startDrag"
@@ -552,6 +601,89 @@ export const useStore = create<Store>()(
             "clearAll"
           );
         },
+
+        fixOverlaps: () => {
+          set(
+            (state) => {
+              // Find icons at the same position
+              const positionMap = new Map<string, Icon[]>();
+
+              state.icons.forEach((icon) => {
+                const key = `${icon.position.row}:${icon.position.col}`;
+                const existing = positionMap.get(key) || [];
+                existing.push(icon);
+                positionMap.set(key, existing);
+              });
+
+              // Find overlaps
+              const overlaps = Array.from(positionMap.entries()).filter(([_, icons]) => icons.length > 1);
+
+              if (overlaps.length === 0) {
+                return state; // No overlaps
+              }
+
+              console.warn(`Fixing ${overlaps.length} overlapping positions`);
+
+              // Build collision map of non-overlapping icons
+              const nonOverlappingIds = new Set(
+                state.icons
+                  .filter((icon) => {
+                    const key = `${icon.position.row}:${icon.position.col}`;
+                    const iconsAtPos = positionMap.get(key) || [];
+                    return iconsAtPos.length === 1;
+                  })
+                  .map((i) => i.id)
+              );
+
+              const collisionMap = buildCollisionMap(
+                state.icons.filter((i) => nonOverlappingIds.has(i.id))
+              );
+
+              // Fix each overlap by moving duplicates to nearest available positions
+              const fixedIcons = state.icons.map((icon) => {
+                const key = `${icon.position.row}:${icon.position.col}`;
+                const iconsAtPos = positionMap.get(key) || [];
+
+                if (iconsAtPos.length <= 1) {
+                  return icon; // No overlap
+                }
+
+                // Keep first icon, move others
+                const isFirst = iconsAtPos[0].id === icon.id;
+                if (isFirst) {
+                  return icon;
+                }
+
+                // Find nearest available position
+                const nearest = findNearestAvailable(
+                  icon.position,
+                  collisionMap,
+                  state.viewportDimensions.rows,
+                  state.viewportDimensions.cols
+                );
+
+                if (nearest) {
+                  // Mark as occupied
+                  collisionMap.occupied.set(`${nearest.row}:${nearest.col}`, icon.id);
+                  return {
+                    ...icon,
+                    position: nearest,
+                    updatedAt: now(),
+                  };
+                }
+
+                return icon;
+              });
+
+              return {
+                ...state,
+                icons: fixedIcons,
+              };
+            },
+            false,
+            "fixOverlaps"
+          );
+        },
       }),
       {
         name: "icons-storage",
@@ -607,6 +739,7 @@ export function useActions() {
       setBadge: state.setBadge,
       clearBadge: state.clearBadge,
       clearAll: state.clearAll,
+      fixOverlaps: state.fixOverlaps,
     }))
   );
 }

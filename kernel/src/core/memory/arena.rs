@@ -37,21 +37,30 @@ thread_local! {
 /// Execute closure with arena allocator
 ///
 /// All allocations during closure lifetime use arena and are freed together.
+///
+/// **Reentrant-safe**: If called from within another `with_arena` call,
+/// uses a temporary arena to avoid RefCell borrow panic.
 #[inline]
 pub fn with_arena<F, R>(f: F) -> R
 where
     F: FnOnce(&Bump) -> R,
 {
     ARENA.with(|cell| {
-        let mut opt = cell.borrow_mut();
-
-        // Reuse existing arena or create new one
-        let arena = opt.get_or_insert_with(|| Bump::with_capacity(64 * 1024)); // 64KB
-
-        arena.reset(); // Clear previous allocations
-        let result = f(arena);
-
-        result
+        // Try to borrow mutably - if it fails, we're in a nested call
+        match cell.try_borrow_mut() {
+            Ok(mut opt) => {
+                // Normal path: reuse or create arena
+                let arena = opt.get_or_insert_with(|| Bump::with_capacity(64 * 1024)); // 64KB
+                arena.reset(); // Clear previous allocations
+                f(arena)
+            }
+            Err(_) => {
+                // Nested call path: create temporary arena
+                // This avoids panic but loses pooling benefit for nested calls
+                let temp_arena = Bump::with_capacity(16 * 1024); // Smaller for nested calls
+                f(&temp_arena)
+            }
+        }
     })
 }
 

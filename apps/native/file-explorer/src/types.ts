@@ -1,6 +1,6 @@
 /**
  * File Explorer Types
- * Comprehensive TypeScript definitions
+ * Enhanced types for the revolutionary file explorer
  */
 
 // ============================================================================
@@ -19,114 +19,84 @@ export interface FileEntry {
   mime_type?: string;
   extension?: string;
   permissions?: string;
+  tags?: string[];
+  color?: string;
 }
 
 /**
- * View mode for file list
+ * Miller Column
  */
-export type ViewMode = 'list' | 'grid' | 'compact';
-
-/**
- * Sort field
- */
-export type SortField = 'name' | 'size' | 'modified' | 'type';
-
-/**
- * Sort direction
- */
-export type SortDirection = 'asc' | 'desc';
-
-/**
- * Sort configuration
- */
-export interface SortConfig {
-  field: SortField;
-  direction: SortDirection;
+export interface Column {
+  id: string;
+  path: string;
+  name: string;
+  entries: FileEntry[];
+  selectedIndex: number;
+  loading?: boolean;
 }
 
 /**
- * Selection mode
+ * Search filters
  */
-export type SelectionMode = 'single' | 'multiple';
+export interface SearchFilters {
+  type?: 'all' | 'files' | 'folders' | 'images' | 'documents' | 'code';
+  minSize?: number;
+  maxSize?: number;
+  modifiedAfter?: string;
+  modifiedBefore?: string;
+  extensions?: string[];
+  tags?: string[];
+}
 
 /**
- * Navigation history entry
+ * User preferences
  */
+export interface Preferences {
+  showHidden: boolean;
+  lastPath: string;
+  favorites: string[];
+  recent: string[];
+  tags: { [path: string]: string[] };
+  colors: { [path: string]: string };
+}
+
+/**
+ * Command for palette
+ */
+export interface Command {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  shortcut?: string;
+  category?: 'navigation' | 'file' | 'view' | 'search' | 'system';
+  handler: (payload?: any) => void | Promise<void>;
+}
+
+// ============================================================================
+// Navigation History
+// ============================================================================
+
 export interface HistoryEntry {
   path: string;
   timestamp: number;
 }
 
-/**
- * Clipboard operation
- */
+// ============================================================================
+// Clipboard
+// ============================================================================
+
 export type ClipboardOperation = 'copy' | 'cut' | null;
 
-/**
- * Clipboard state
- */
 export interface ClipboardState {
   operation: ClipboardOperation;
   paths: string[];
 }
 
 // ============================================================================
-// Component Props
-// ============================================================================
-
-/**
- * File list item props
- */
-export interface FileItemProps {
-  entry: FileEntry;
-  isSelected: boolean;
-  viewMode: ViewMode;
-  onClick: (entry: FileEntry, event: React.MouseEvent) => void;
-  onDoubleClick: (entry: FileEntry) => void;
-  onContextMenu: (entry: FileEntry, event: React.MouseEvent) => void;
-}
-
-/**
- * Context menu props
- */
-export interface ContextMenuProps {
-  x: number;
-  y: number;
-  entry: FileEntry | null;
-  selectedCount: number;
-  onClose: () => void;
-  onAction: (action: ContextAction) => void;
-}
-
-/**
- * Context menu action
- */
-export type ContextAction =
-  | 'open'
-  | 'copy'
-  | 'cut'
-  | 'paste'
-  | 'delete'
-  | 'rename'
-  | 'properties'
-  | 'new-folder'
-  | 'refresh';
-
-/**
- * Path breadcrumb segment
- */
-export interface PathSegment {
-  name: string;
-  path: string;
-}
-
-// ============================================================================
 // Hook Return Types
 // ============================================================================
 
-/**
- * File system hook return
- */
 export interface UseFileSystemReturn {
   entries: FileEntry[];
   currentPath: string;
@@ -146,36 +116,24 @@ export interface UseFileSystemReturn {
   moveEntry: (source: string, dest: string) => Promise<void>;
 }
 
-/**
- * Selection hook return
- */
-export interface UseSelectionReturn {
-  selected: Set<string>;
-  isSelected: (path: string) => boolean;
-  toggle: (path: string, event?: React.MouseEvent) => void;
-  selectRange: (start: string, end: string) => void;
-  selectAll: () => void;
-  clearSelection: () => void;
-  getSelectedEntries: () => FileEntry[];
+export interface UsePreferencesReturn {
+  data: Preferences;
+  toggleShowHidden: () => void;
+  addFavorite: (path: string) => void;
+  removeFavorite: (path: string) => void;
+  addRecent: (path: string) => void;
+  setTag: (path: string, tags: string[]) => void;
+  setColor: (path: string, color: string) => void;
 }
 
-/**
- * Keyboard navigation hook return
- */
-export interface UseKeyboardReturn {
-  focusedIndex: number;
-  handleKeyDown: (event: React.KeyboardEvent) => void;
-}
-
-/**
- * Clipboard hook return
- */
-export interface UseClipboardReturn {
-  clipboard: ClipboardState;
-  copy: (paths: string[]) => void;
-  cut: (paths: string[]) => void;
-  paste: (targetPath: string) => Promise<void>;
-  canPaste: boolean;
+export interface UseSearchReturn {
+  query: string;
+  setQuery: (query: string) => void;
+  filters: SearchFilters;
+  setFilters: (filters: SearchFilters) => void;
+  results: FileEntry[];
+  loading: boolean;
+  execute: () => Promise<void>;
   clear: () => void;
 }
 
@@ -183,9 +141,6 @@ export interface UseClipboardReturn {
 // Utility Types
 // ============================================================================
 
-/**
- * File type category
- */
 export type FileCategory =
   | 'folder'
   | 'document'
@@ -196,10 +151,73 @@ export type FileCategory =
   | 'code'
   | 'unknown';
 
-/**
- * File icon mapping
- */
 export interface FileIcon {
   emoji: string;
   color: string;
+}
+
+export interface PathSegment {
+  name: string;
+  path: string;
+}
+
+// ============================================================================
+// Old Types (for backward compatibility)
+// ============================================================================
+
+export type ViewMode = 'list' | 'grid' | 'compact';
+export type SortField = 'name' | 'size' | 'modified' | 'type';
+export type SortDirection = 'asc' | 'desc';
+
+export interface SortConfig {
+  field: SortField;
+  direction: SortDirection;
+}
+
+export interface FileItemProps {
+  entry: FileEntry;
+  isSelected: boolean;
+  viewMode: ViewMode;
+  onClick: (entry: FileEntry, event: React.MouseEvent) => void;
+  onDoubleClick: (entry: FileEntry) => void;
+  onContextMenu: (entry: FileEntry, event: React.MouseEvent) => void;
+}
+
+export interface ContextMenuProps {
+  x: number;
+  y: number;
+  entry: FileEntry | null;
+  selectedCount: number;
+  onClose: () => void;
+  onAction: (action: ContextAction) => void;
+}
+
+export type ContextAction =
+  | 'open'
+  | 'copy'
+  | 'cut'
+  | 'paste'
+  | 'delete'
+  | 'rename'
+  | 'properties'
+  | 'new-folder'
+  | 'refresh';
+
+export interface UseSelectionReturn {
+  selected: Set<string>;
+  isSelected: (path: string) => boolean;
+  toggle: (path: string, event?: React.MouseEvent) => void;
+  selectRange: (start: string, end: string) => void;
+  selectAll: () => void;
+  clearSelection: () => void;
+  getSelectedEntries: () => FileEntry[];
+}
+
+export interface UseClipboardReturn {
+  clipboard: ClipboardState;
+  copy: (paths: string[]) => void;
+  cut: (paths: string[]) => void;
+  paste: (targetPath: string) => Promise<void>;
+  canPaste: boolean;
+  clear: () => void;
 }

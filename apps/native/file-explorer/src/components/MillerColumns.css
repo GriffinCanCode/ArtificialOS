@@ -1,0 +1,367 @@
+/**
+ * Miller Columns - Premium Spatial Navigation
+ * Design: Clear hierarchy, smooth motion, beautiful interactions
+ */
+
+.miller-columns {
+  display: flex;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  gap: 0;
+  background: transparent;
+  scroll-behavior: smooth;
+  padding: 0;
+}
+
+.miller-column {
+  flex: 0 0 240px;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-raised);
+  border-right: 1px solid rgba(99, 102, 241, 0.06);
+  transition: all var(--transition-fast);
+  overflow: hidden;
+}
+
+.miller-column:hover {
+  border-color: rgba(99, 102, 241, 0.1);
+}
+
+.miller-column.active {
+  flex: 0 0 280px;
+  background: var(--surface-overlay);
+  border-color: rgba(99, 102, 241, 0.12);
+}
+
+/* ============================================================================
+   Column Header - Clear Navigation
+   ============================================================================ */
+
+.column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3);
+  border-bottom: 1px solid rgba(99, 102, 241, 0.06);
+  background: rgba(99, 102, 241, 0.02);
+  backdrop-filter: blur(8px);
+  flex-shrink: 0;
+  min-height: 40px;
+}
+
+.column-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  padding: 4px var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 160px;
+  position: relative;
+}
+
+.column-title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 1px;
+  background: var(--primary-500);
+  transform: translateX(-50%);
+  transition: width var(--transition-fast);
+}
+
+.column-title:hover {
+  background: rgba(99, 102, 241, 0.08);
+  color: var(--text-primary);
+}
+
+.column-title:hover::after {
+  width: 80%;
+}
+
+.column-count {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-subtle);
+  background: rgba(99, 102, 241, 0.1);
+  padding: 2px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(99, 102, 241, 0.12);
+  min-width: 24px;
+  text-align: center;
+  transition: all var(--transition-fast);
+}
+
+.column-header:hover .column-count {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.2);
+  color: var(--text-tertiary);
+}
+
+/* ============================================================================
+   Column Content - Smooth Scrolling
+   ============================================================================ */
+
+.column-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.column-loading,
+.column-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: var(--space-6);
+  gap: var(--space-3);
+  color: var(--text-tertiary);
+  animation: fadeIn var(--transition-base);
+}
+
+.spinner {
+  font-size: 32px;
+  animation: spin 1s linear infinite;
+  opacity: 0.6;
+}
+
+.loading-text,
+.empty-text {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text-subtle);
+}
+
+.empty-icon {
+  font-size: 48px;
+  opacity: 0.15;
+  filter: grayscale(1);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* ============================================================================
+   Column Items - Beautiful Interactions
+   ============================================================================ */
+
+.column-items {
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.column-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px var(--space-3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+  position: relative;
+  border: 1px solid transparent;
+  background: transparent;
+}
+
+.column-item:hover {
+  background: rgba(99, 102, 241, 0.06);
+  border-color: rgba(99, 102, 241, 0.12);
+  transform: translateX(2px);
+}
+
+.column-item.selected {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.2);
+}
+
+.column-item.selected:hover {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.25);
+}
+
+.column-item.directory {
+  font-weight: 500;
+}
+
+.column-item.directory::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--primary-500);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.column-item.directory.selected::after {
+  opacity: 0.8;
+}
+
+/* ============================================================================
+   Item Content - Clear Visual Hierarchy
+   ============================================================================ */
+
+.item-icon {
+  font-size: 20px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.15));
+  opacity: 0.9;
+}
+
+.column-item:hover .item-icon {
+  transform: scale(1.05) rotate(-2deg);
+  opacity: 1;
+}
+
+.item-details {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.item-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+  transition: color var(--transition-fast);
+}
+
+.column-item:hover .item-name {
+  color: var(--text-primary);
+}
+
+.item-tags {
+  display: flex;
+  gap: var(--space-1);
+  margin-top: 2px;
+  flex-wrap: wrap;
+}
+
+.tag {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--primary-300);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  transition: all var(--transition-fast);
+}
+
+.tag:hover {
+  background: rgba(99, 102, 241, 0.18);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.item-meta {
+  font-size: 10px;
+  color: var(--text-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  font-weight: 400;
+}
+
+.item-arrow {
+  font-size: 14px;
+  color: var(--text-subtle);
+  transition: all var(--transition-fast);
+  opacity: 0.4;
+}
+
+.column-item:hover .item-arrow {
+  transform: translateX(2px);
+  color: var(--text-tertiary);
+  opacity: 0.8;
+}
+
+/* ============================================================================
+   Animations - Smooth Entry
+   ============================================================================ */
+
+.column-item {
+  animation: slideUp var(--transition-fast) backwards;
+}
+
+.column-item:nth-child(1) { animation-delay: 0ms; }
+.column-item:nth-child(2) { animation-delay: 15ms; }
+.column-item:nth-child(3) { animation-delay: 30ms; }
+.column-item:nth-child(4) { animation-delay: 45ms; }
+.column-item:nth-child(5) { animation-delay: 60ms; }
+.column-item:nth-child(n+6) { animation-delay: 75ms; }
+
+/* ============================================================================
+   Scrollbar - Integrated Design
+   ============================================================================ */
+
+.column-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.column-content::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: var(--radius-sm);
+  margin: var(--space-2);
+}
+
+.column-content::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.2);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+.column-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.35);
+}
+
+/* ============================================================================
+   Responsive Adjustments
+   ============================================================================ */
+
+@media (max-width: 768px) {
+  .miller-column {
+    flex: 0 0 200px;
+  }
+
+  .miller-column.active {
+    flex: 0 0 240px;
+  }
+
+  .column-header {
+    padding: var(--space-2) var(--space-3);
+    min-height: 36px;
+  }
+
+  .item-icon {
+    font-size: 18px;
+  }
+}

@@ -1,0 +1,71 @@
+/**
+ * Status Bar - Subtle Information
+ */
+
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-5);
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.2) 0%,
+    rgba(0, 0, 0, 0.3) 100%
+  );
+  border-top: 1px solid rgba(99, 102, 241, 0.1);
+  min-height: 40px;
+  flex-shrink: 0;
+  font-size: 12px;
+  backdrop-filter: blur(10px);
+}
+
+.status-left,
+.status-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.status-path {
+  color: var(--text-tertiary);
+  font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 400px;
+  font-size: 11px;
+  letter-spacing: 0;
+  padding: 4px 8px;
+  background: rgba(99, 102, 241, 0.05);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(99, 102, 241, 0.1);
+  font-weight: 500;
+}
+
+.status-item {
+  color: var(--text-tertiary);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.status-item:hover {
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--text-secondary);
+}
+
+.status-selected {
+  color: var(--primary-400);
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  font-weight: 600;
+}
+
+.status-loading {
+  color: var(--text-subtle);
+  font-style: italic;
+  animation: pulse 1.5s ease-in-out infinite;
+}

@@ -1,0 +1,353 @@
+/**
+ * Command Palette - Power User Interface
+ * Design: Fast, beautiful, keyboard-first
+ */
+
+.command-palette-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px) saturate(140%);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 12vh;
+  z-index: 1000;
+  animation: fadeIn 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.command-palette {
+  width: 90%;
+  max-width: 560px;
+  max-height: 60vh;
+  background: var(--surface-overlay);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    0 0 20px rgba(99, 102, 241, 0.2),
+    var(--shadow-xl);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slideUp 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ============================================================================
+   Search Input - Focus on Speed
+   ============================================================================ */
+
+.palette-search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid rgba(99, 102, 241, 0.1);
+  background: rgba(99, 102, 241, 0.04);
+  position: relative;
+  min-height: 48px;
+}
+
+.palette-search::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(99, 102, 241, 0.3),
+    transparent
+  );
+}
+
+.search-icon {
+  font-size: 16px;
+  color: var(--primary-500);
+  opacity: 0.8;
+}
+
+.search-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  letter-spacing: -0.01em;
+}
+
+.search-input::placeholder {
+  color: var(--text-subtle);
+  font-weight: 400;
+}
+
+/* ============================================================================
+   Results - Beautiful List
+   ============================================================================ */
+
+.palette-results {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-3);
+}
+
+.command-group {
+  margin-bottom: var(--space-4);
+  animation: slideUp var(--transition-base) backwards;
+}
+
+.command-group:nth-child(1) { animation-delay: 0ms; }
+.command-group:nth-child(2) { animation-delay: 50ms; }
+.command-group:nth-child(3) { animation-delay: 100ms; }
+.command-group:nth-child(4) { animation-delay: 150ms; }
+
+.command-group:last-child {
+  margin-bottom: 0;
+}
+
+.group-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-2);
+  background: rgba(99, 102, 241, 0.05);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--primary-500);
+}
+
+.command-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+  position: relative;
+  overflow: hidden;
+}
+
+.command-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(99, 102, 241, 0.3),
+    transparent
+  );
+  transition: width var(--transition-base);
+}
+
+.command-item:hover::before {
+  width: 100%;
+}
+
+.command-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(99, 102, 241, 0.2);
+  transform: translateX(4px);
+}
+
+.command-item.selected {
+  background: linear-gradient(
+    135deg,
+    rgba(99, 102, 241, 0.20) 0%,
+    rgba(99, 102, 241, 0.15) 100%
+  );
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    var(--glow-subtle);
+  transform: translateX(6px);
+}
+
+.command-item.selected::before {
+  width: 100%;
+}
+
+.command-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+  transition: transform var(--transition-base);
+}
+
+.command-item:hover .command-icon,
+.command-item.selected .command-icon {
+  transform: scale(1.15) rotate(-3deg);
+}
+
+.command-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.command-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.command-description {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-shortcut {
+  font-size: 11px;
+  color: var(--text-subtle);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-family: 'SF Mono', 'Monaco', monospace;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.command-item:hover .command-shortcut,
+.command-item.selected .command-shortcut {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.4);
+  color: var(--primary-200);
+}
+
+/* ============================================================================
+   Empty State
+   ============================================================================ */
+
+.no-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8);
+  color: var(--text-tertiary);
+  animation: fadeIn var(--transition-base);
+}
+
+.no-results-icon {
+  font-size: 56px;
+  opacity: 0.2;
+  margin-bottom: var(--space-4);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.no-results-text {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+/* ============================================================================
+   Footer - Helpful Hints
+   ============================================================================ */
+
+.palette-footer {
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid rgba(99, 102, 241, 0.15);
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.1) 0%,
+    rgba(0, 0, 0, 0.2) 100%
+  );
+}
+
+.footer-hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.footer-hint kbd {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'SF Mono', 'Monaco', monospace;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  box-shadow:
+    0 2px 0 rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* ============================================================================
+   Scrollbar
+   ============================================================================ */
+
+.palette-results::-webkit-scrollbar {
+  width: 10px;
+}
+
+.palette-results::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-sm);
+  margin: var(--space-2);
+}
+
+.palette-results::-webkit-scrollbar-thumb {
+  background: linear-gradient(
+    180deg,
+    rgba(99, 102, 241, 0.4) 0%,
+    rgba(99, 102, 241, 0.3) 100%
+  );
+  border-radius: var(--radius-sm);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.palette-results::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(
+    180deg,
+    rgba(99, 102, 241, 0.6) 0%,
+    rgba(99, 102, 241, 0.5) 100%
+  );
+}
+
+/* ============================================================================
+   Responsive
+   ============================================================================ */
+
+@media (max-width: 768px) {
+  .command-palette {
+    max-width: 95%;
+  }
+
+  .palette-search {
+    padding: var(--space-4) var(--space-5);
+  }
+
+  .search-input {
+    font-size: 16px;
+  }
+}

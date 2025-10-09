@@ -1,110 +1,66 @@
 /**
- * Keyboard Navigation Hook
- * Handles keyboard shortcuts and navigation
+ * Keyboard Hook
+ * Global keyboard shortcuts
  */
 
-import { useState, useCallback } from 'react';
-import type { UseKeyboardReturn } from '../types';
+import { useCallback, useEffect } from 'react';
 
-export function useKeyboard(
-  itemCount: number,
-  onEnter: (index: number) => void,
-  onDelete: () => void,
-  onSelectAll: () => void,
-  onCopy: () => void,
-  onCut: () => void,
-  onPaste: () => void
-): UseKeyboardReturn {
-  const [focusedIndex, setFocusedIndex] = useState(0);
+interface UseKeyboardOptions {
+  onCommandP?: () => void;
+  onCommandO?: () => void;
+  onEscape?: () => void;
+  onCommandEnter?: () => void;
+  onSpace?: () => void;
+}
 
-  /**
-   * Handle keyboard events
-   */
-  const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
-    const { key, ctrlKey, metaKey } = event;
-    const modKey = ctrlKey || metaKey;
+export function useKeyboard(options: UseKeyboardOptions) {
+  const handleKeyDown = useCallback((event: React.KeyboardEvent | KeyboardEvent) => {
+    const isCommand = event.metaKey || event.ctrlKey;
 
-    switch (key) {
-      // Navigation
-      case 'ArrowDown':
-        event.preventDefault();
-        setFocusedIndex(prev => Math.min(prev + 1, itemCount - 1));
-        break;
-
-      case 'ArrowUp':
-        event.preventDefault();
-        setFocusedIndex(prev => Math.max(prev - 1, 0));
-        break;
-
-      case 'Home':
-        event.preventDefault();
-        setFocusedIndex(0);
-        break;
-
-      case 'End':
-        event.preventDefault();
-        setFocusedIndex(itemCount - 1);
-        break;
-
-      case 'PageDown':
-        event.preventDefault();
-        setFocusedIndex(prev => Math.min(prev + 10, itemCount - 1));
-        break;
-
-      case 'PageUp':
-        event.preventDefault();
-        setFocusedIndex(prev => Math.max(prev - 10, 0));
-        break;
-
-      // Actions
-      case 'Enter':
-        event.preventDefault();
-        if (focusedIndex >= 0 && focusedIndex < itemCount) {
-          onEnter(focusedIndex);
-        }
-        break;
-
-      case 'Delete':
-      case 'Backspace':
-        if (!modKey) {
-          event.preventDefault();
-          onDelete();
-        }
-        break;
-
-      // Shortcuts
-      case 'a':
-        if (modKey) {
-          event.preventDefault();
-          onSelectAll();
-        }
-        break;
-
-      case 'c':
-        if (modKey) {
-          event.preventDefault();
-          onCopy();
-        }
-        break;
-
-      case 'x':
-        if (modKey) {
-          event.preventDefault();
-          onCut();
-        }
-        break;
-
-      case 'v':
-        if (modKey) {
-          event.preventDefault();
-          onPaste();
-        }
-        break;
+    // Command+P - Command Palette
+    if (isCommand && event.key === 'p') {
+      event.preventDefault();
+      options.onCommandP?.();
+      return;
     }
-  }, [itemCount, focusedIndex, onEnter, onDelete, onSelectAll, onCopy, onCut, onPaste]);
+
+    // Command+O - Quick Access
+    if (isCommand && event.key === 'o') {
+      event.preventDefault();
+      options.onCommandO?.();
+      return;
+    }
+
+    // Escape
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      options.onEscape?.();
+      return;
+    }
+
+    // Command+Enter - Open file
+    if (isCommand && event.key === 'Enter') {
+      event.preventDefault();
+      options.onCommandEnter?.();
+      return;
+    }
+
+    // Space - Toggle preview
+    if (event.key === ' ' && !(event.target as HTMLElement).matches('input, textarea')) {
+      event.preventDefault();
+      options.onSpace?.();
+      return;
+    }
+  }, [options]);
+
+  // Listen to global keyboard events
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => handleKeyDown(e);
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [handleKeyDown]);
 
   return {
-    focusedIndex,
-    handleKeyDown,
+    handleKeyDown: (e: React.KeyboardEvent) => handleKeyDown(e),
   };
 }

@@ -105,14 +105,28 @@ export function useDrag(config: GridConfig = DEFAULT_GRID_CONFIG): DragHook {
     // Update positions for dragged icons
     const newPositions = new Map<string, GridPosition>();
 
-    draggedIds.forEach((id) => {
-      const icon = icons.find((i) => i.id === id);
-      if (!icon) return;
+    // Get dragged icons and calculate relative positions
+    const draggedIcons = icons.filter((i) => draggedIds.has(i.id));
 
-      // Calculate new position based on offset
-      // For now, all dragged icons snap to same position (TODO: maintain relative positions)
-      newPositions.set(id, previewPosition);
-    });
+    if (draggedIcons.length === 1) {
+      // Single icon: simply move to preview position
+      newPositions.set(draggedIcons[0].id, previewPosition);
+    } else {
+      // Multiple icons: maintain relative positions
+      // Find the "anchor" icon (first selected or closest to drag start)
+      const anchorIcon = draggedIcons[0];
+      const deltaRow = previewPosition.row - anchorIcon.position.row;
+      const deltaCol = previewPosition.col - anchorIcon.position.col;
+
+      // Apply delta to all dragged icons
+      draggedIcons.forEach((icon) => {
+        const newPos = {
+          row: Math.max(0, icon.position.row + deltaRow),
+          col: Math.max(0, icon.position.col + deltaCol),
+        };
+        newPositions.set(icon.id, newPos);
+      });
+    }
 
     updatePositions(newPositions);
 

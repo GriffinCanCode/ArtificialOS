@@ -2,11 +2,11 @@
   "id": "file-explorer",
   "name": "File Explorer",
   "type": "native_web",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "icon": "📁",
   "category": "system",
   "author": "system",
-  "description": "Browse and manage files with advanced features including virtualization, multiple view modes, and full keyboard navigation",
+  "description": "Revolutionary file explorer with Miller Columns, command palette, smart previews, and intelligent search",
   "permissions": [
     "READ_FILE",
     "WRITE_FILE",
@@ -16,19 +16,21 @@
     "MOVE_FILE",
     "COPY_FILE"
   ],
-  "services": ["filesystem", "storage"],
+  "services": ["filesystem", "storage", "clipboard"],
   "exports": {
     "component": "FileExplorer"
   },
-  "tags": ["files", "explorer", "system", "utilities"],
+  "tags": ["files", "explorer", "system", "utilities", "productivity"],
   "features": [
-    "Virtualized list rendering for large directories",
-    "Multiple view modes (list, grid, compact)",
-    "Advanced sorting and filtering",
-    "Multi-select with keyboard shortcuts",
-    "Copy, cut, paste operations",
-    "Context menu",
-    "Breadcrumb navigation",
-    "File type icons"
+    "Miller Columns for spatial navigation",
+    "Command Palette (⌘P) for power users",
+    "Smart inline previews (images, text, code)",
+    "Intelligent search with multiple filters",
+    "Quick Access to favorites and recent",
+    "Tag system with color coding",
+    "Beautiful animations and modern UI",
+    "Keyboard-driven workflow",
+    "Full keyboard navigation support",
+    "Persistent user preferences"
   ]
 }

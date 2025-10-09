@@ -17,7 +17,7 @@ import { getDefaultIcons, shouldInitializeDefaults } from "../utils/defaults";
  */
 export function useDefaults() {
   const icons = useIcons();
-  const { add, clearAll } = useActions();
+  const { add, clearAll, updatePositions } = useActions();
 
   useEffect(() => {
     // Check for duplicate native icons (corrupted localStorage)
@@ -36,6 +36,44 @@ export function useDefaults() {
       const defaults = getDefaultIcons();
       for (const iconData of defaults) {
         add(iconData);
+      }
+      return;
+    }
+
+    // Check for overlapping icons at the same position
+    const positionMap = new Map<string, string[]>();
+    icons.forEach((icon) => {
+      const key = `${icon.position.row}:${icon.position.col}`;
+      const existing = positionMap.get(key) || [];
+      existing.push(icon.id);
+      positionMap.set(key, existing);
+    });
+
+    // Find positions with multiple icons
+    const overlaps = Array.from(positionMap.entries()).filter(([_, ids]) => ids.length > 1);
+
+    if (overlaps.length > 0) {
+      console.warn("Detected overlapping icons, fixing positions:", overlaps);
+
+      // Auto-fix: spread out overlapping icons
+      const fixes = new Map<string, { row: number; col: number }>();
+
+      overlaps.forEach(([posKey, iconIds]) => {
+        // Keep first icon in place, move others to nearby positions
+        iconIds.slice(1).forEach((iconId, index) => {
+          const icon = icons.find((i) => i.id === iconId);
+          if (icon) {
+            // Try adjacent positions
+            fixes.set(iconId, {
+              row: icon.position.row,
+              col: icon.position.col + index + 1,
+            });
+          }
+        });
+      });
+
+      if (fixes.size > 0) {
+        updatePositions(fixes);
       }
       return;
     }

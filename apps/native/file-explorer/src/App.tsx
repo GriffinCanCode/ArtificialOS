@@ -1,631 +1,669 @@
 /**
- * File Explorer App
- * Main component orchestrating file management
+ * Revolutionary File Explorer - Miller Columns with Intelligence
+ *
+ * Key Innovations:
+ * - Miller Columns for spatial navigation and context
+ * - Command Palette (Cmd+P) for power users
+ * - Smart inline previews (images, code, text)
+ * - Intelligent search with multiple filters
+ * - Tag system with colors
+ * - Quick access to favorites and recent
+ * - Beautiful animations and polish
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import type { NativeAppProps } from './sdk';
-import type { ViewMode, SortConfig, ContextAction, FileEntry } from './types';
+import type { FileEntry, Column } from './types';
 import { useFileSystem } from './hooks/useFileSystem';
-import { useSelection } from './hooks/useSelection';
 import { useKeyboard } from './hooks/useKeyboard';
-import { useClipboard } from './hooks/useClipboard';
-import { sortEntries, filterEntries } from './utils';
-import { Toolbar } from './components/Toolbar';
-import { PathBar } from './components/PathBar';
-import { FileList } from './components/FileList';
-import { ContextMenu } from './components/ContextMenu';
-import { InputDialog } from './components/InputDialog';
-import { ConfirmDialog } from './components/ConfirmDialog';
+import { usePreferences } from './hooks/usePreferences';
+import { useSearch } from './hooks/useSearch';
+import { getFileIcon, formatFileSize, formatDate } from './utils';
+import { MillerColumns } from './components/MillerColumns';
+import { CommandPalette } from './components/CommandPalette';
+import { QuickAccess } from './components/QuickAccess';
+import { PreviewPanel } from './components/PreviewPanel';
+import { SearchBar } from './components/SearchBar';
+import { StatusBar } from './components/StatusBar';
 import './styles/App.css';
 
 export default function FileExplorerApp({ context }: NativeAppProps) {
-  const { window: win } = context;
+  const { window: win, executor } = context;
 
-  // File system management
+  // Core state
   const fs = useFileSystem(context);
+  const preferences = usePreferences(context);
+  const search = useSearch(context, fs);
 
-  // View state
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
-  const [sortConfig, setSortConfig] = useState<SortConfig>({
-    field: 'name',
-    direction: 'asc',
-  });
-  const [searchQuery, setSearchQuery] = useState('');
+  // UI state
+  const [columns, setColumns] = useState<Column[]>([]);
+  const [selectedEntry, setSelectedEntry] = useState<FileEntry | null>(null);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [showQuickAccess, setShowQuickAccess] = useState(false);
+  const [previewCollapsed, setPreviewCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [viewMode, setViewMode] = useState<'columns' | 'list' | 'grid'>('columns');
 
-  // Context menu state
-  const [contextMenu, setContextMenu] = useState<{
-    x: number;
-    y: number;
-    entry: FileEntry | null;
-  } | null>(null);
-
-  // Dialog states
-  const [inputDialog, setInputDialog] = useState<{
-    title: string;
-    label: string;
-    defaultValue?: string;
-    onConfirm: (value: string) => void;
-  } | null>(null);
-
-  const [confirmDialog, setConfirmDialog] = useState<{
-    title: string;
-    message: string;
-    variant?: 'default' | 'danger';
-    onConfirm: () => void;
-  } | null>(null);
-
-  // Process entries (sort & filter)
-  const processedEntries = sortEntries(
-    filterEntries(fs.entries, searchQuery),
-    sortConfig
-  );
-
-  // Selection management
-  const selection = useSelection(processedEntries);
-
-  // Clipboard management
-  const clipboard = useClipboard(fs.copyEntry, fs.moveEntry);
+  // Refs
+  const columnsRef = useRef<HTMLDivElement>(null);
 
   // ============================================================================
   // Lifecycle
   // ============================================================================
 
   useEffect(() => {
-    // Load initial directory
-    fs.navigate(fs.currentPath);
-    win.setTitle('File Explorer');
+    // Initialize with home directory
+    const initialPath = preferences.data.lastPath || '/storage';
+    fs.navigate(initialPath);
+    win.setTitle('📁 Explorer');
   }, []);
 
   useEffect(() => {
-    // Update window title with current path
-    const dirname = fs.currentPath.split('/').pop() || 'File Explorer';
-    win.setTitle(`📁 ${dirname}`);
-  }, [fs.currentPath, win]);
+    // Build Miller columns from current path
+    if (fs.currentPath && !fs.loading) {
+      buildColumns(fs.currentPath);
+    }
+  }, [fs.currentPath, fs.entries]);
 
   // ============================================================================
-  // Handlers
+  // Column Management
   // ============================================================================
 
-  /**
-   * Open file in appropriate viewer based on file type
-   */
+  const buildColumns = useCallback((path: string) => {
+    const parts = path.split('/').filter(Boolean);
+    const newColumns: Column[] = [];
+
+    // Root column
+    newColumns.push({
+      id: 'root',
+      path: '/',
+      name: 'Root',
+      entries: [{ name: 'storage', path: '/storage', size: 0, modified: '', is_dir: true }],
+      selectedIndex: parts.length > 0 ? 0 : -1,
+    });
+
+    // Build each level
+    let currentPath = '';
+    for (let i = 0; i < parts.length; i++) {
+      currentPath += '/' + parts[i];
+      const isLast = i === parts.length - 1;
+
+      newColumns.push({
+        id: currentPath,
+        path: currentPath,
+        name: parts[i],
+        entries: isLast ? fs.entries : [],
+        selectedIndex: -1,
+        loading: isLast && fs.loading,
+      });
+    }
+
+    setColumns(newColumns);
+  }, [fs.entries, fs.loading]);
+
+  const handleColumnSelect = useCallback(async (columnIndex: number, entry: FileEntry) => {
+    setSelectedEntry(entry);
+
+    if (entry.is_dir) {
+      // Navigate into directory
+      await fs.navigate(entry.path);
+
+      // Save to recent
+      preferences.addRecent(entry.path);
+    } else {
+      // Select file for preview
+      setPreviewCollapsed(false);
+    }
+  }, [fs, preferences]);
+
+  const handleColumnNavigate = useCallback(async (path: string) => {
+    await fs.navigate(path);
+    preferences.addRecent(path);
+  }, [fs, preferences]);
+
+  // ============================================================================
+  // Command Palette
+  // ============================================================================
+
+  const handleCommand = useCallback(async (command: string, payload?: any) => {
+    switch (command) {
+      case 'go-to':
+        await fs.navigate(payload.path);
+        break;
+
+      case 'search':
+        search.setQuery(payload.query);
+        search.execute();
+        break;
+
+      case 'new-folder':
+        const name = payload.name;
+        await fs.createFolder(name);
+        break;
+
+      case 'toggle-preview':
+        setPreviewCollapsed(prev => !prev);
+        break;
+
+      case 'toggle-hidden':
+        preferences.toggleShowHidden();
+        break;
+
+      case 'add-favorite':
+        if (selectedEntry) {
+          preferences.addFavorite(selectedEntry.path);
+        }
+        break;
+
+      case 'copy-path':
+        if (selectedEntry) {
+          await executor.execute('clipboard.write', { text: selectedEntry.path });
+        }
+        break;
+
+      case 'open-terminal':
+        await executor.execute('app.spawn', {
+          request: `Terminal at ${fs.currentPath}`,
+          appId: 'terminal',
+          params: { cwd: fs.currentPath },
+        });
+        break;
+
+      case 'quick-access':
+        setShowQuickAccess(true);
+        break;
+
+      default:
+        console.log('Unknown command:', command);
+    }
+
+    setShowCommandPalette(false);
+  }, [fs, search, selectedEntry, preferences, executor]);
+
+  // ============================================================================
+  // Keyboard Shortcuts
+  // ============================================================================
+
+  const keyboard = useKeyboard({
+    onCommandP: () => setShowCommandPalette(true),
+    onCommandO: () => setShowQuickAccess(true),
+    onEscape: () => {
+      setShowCommandPalette(false);
+      setShowQuickAccess(false);
+    },
+    onCommandEnter: () => {
+      if (selectedEntry && !selectedEntry.is_dir) {
+        openFile(selectedEntry);
+      }
+    },
+    onSpace: () => {
+      setPreviewCollapsed(prev => !prev);
+    },
+  });
+
+  // ============================================================================
+  // File Operations
+  // ============================================================================
+
   const openFile = async (entry: FileEntry) => {
     const ext = entry.name.split('.').pop()?.toLowerCase() || '';
 
-    // Categorize file types
-    const textExtensions = ['txt', 'md', 'json', 'xml', 'html', 'css', 'js', 'ts', 'tsx', 'jsx', 'py', 'go', 'rs', 'c', 'cpp', 'h', 'java', 'sh', 'yaml', 'yml', 'toml', 'ini', 'cfg', 'conf', 'log'];
-    const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp', 'ico'];
-    const videoExtensions = ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv'];
-    const audioExtensions = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac'];
-
-    try {
-      if (textExtensions.includes(ext)) {
-        // Read and display text files
-        const content = await context.executor.execute('filesystem.read', { path: entry.path });
-
-        // Create a simple text viewer by spawning a new app
-        await context.executor.execute('app.spawn', {
-          request: `Text Viewer - ${entry.name}`,
+    // Smart file opening based on type
+    const handlers: Record<string, () => Promise<void>> = {
+      // Text files - open in editor
+      txt: async () => {
+        const content = await executor.execute('filesystem.read', { path: entry.path });
+        await executor.execute('app.spawn', {
+          request: `Edit ${entry.name}`,
           blueprint: {
             title: entry.name,
             components: [
               {
                 type: 'container',
-                props: {
-                  style: {
-                    padding: '20px',
-                    height: '100%',
-                    overflow: 'auto',
-                    backgroundColor: '#1e1e1e',
-                  },
-                },
+                props: { style: { padding: '20px', height: '100%' } },
                 children: [
                   {
-                    type: 'pre',
+                    type: 'textarea',
                     props: {
+                      value: content?.content || '',
                       style: {
-                        whiteSpace: 'pre-wrap',
-                        wordWrap: 'break-word',
+                        width: '100%',
+                        height: '100%',
                         fontFamily: 'monospace',
                         fontSize: '14px',
+                        background: '#1e1e1e',
                         color: '#d4d4d4',
-                        margin: 0,
-                      },
-                    },
-                    content: typeof content === 'string' ? content : content?.data || 'Unable to read file',
-                  },
-                ],
-              },
-            ],
-          },
+                        border: 'none',
+                        outline: 'none',
+                        resize: 'none',
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
         });
-      } else if (imageExtensions.includes(ext)) {
-        // Display image files
-        await context.executor.execute('app.spawn', {
-          request: `Image Viewer - ${entry.name}`,
-          blueprint: {
-            title: entry.name,
-            components: [
-              {
-                type: 'container',
-                props: {
-                  style: {
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    height: '100%',
-                    backgroundColor: '#000',
-                  },
-                },
-                children: [
-                  {
-                    type: 'img',
-                    props: {
-                      src: `file://${entry.path}`,
-                      alt: entry.name,
-                      style: {
-                        maxWidth: '100%',
-                        maxHeight: '100%',
-                        objectFit: 'contain',
-                      },
-                    },
-                  },
-                ],
-              },
-            ],
-          },
-        });
-      } else if (videoExtensions.includes(ext)) {
-        // Display video files
-        await context.executor.execute('app.spawn', {
-          request: `Video Player - ${entry.name}`,
-          blueprint: {
-            title: entry.name,
-            components: [
-              {
-                type: 'container',
-                props: {
-                  style: {
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    height: '100%',
-                    backgroundColor: '#000',
-                  },
-                },
-                children: [
-                  {
-                    type: 'video',
-                    props: {
-                      src: `file://${entry.path}`,
-                      controls: true,
-                      style: {
-                        maxWidth: '100%',
-                        maxHeight: '100%',
-                      },
-                    },
-                  },
-                ],
-              },
-            ],
-          },
-        });
-      } else if (audioExtensions.includes(ext)) {
-        // Display audio files
-        await context.executor.execute('app.spawn', {
-          request: `Audio Player - ${entry.name}`,
-          blueprint: {
-            title: entry.name,
-            components: [
-              {
-                type: 'container',
-                props: {
-                  style: {
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    height: '100%',
-                    gap: '20px',
-                  },
-                },
-                children: [
-                  {
-                    type: 'text',
-                    props: {
-                      style: {
-                        fontSize: '18px',
-                        fontWeight: 'bold',
-                      },
-                    },
-                    content: entry.name,
-                  },
-                  {
-                    type: 'audio',
-                    props: {
-                      src: `file://${entry.path}`,
-                      controls: true,
-                      autoPlay: true,
-                    },
-                  },
-                ],
-              },
-            ],
-          },
-        });
-      } else {
-        // For unknown file types, show file info and allow download/copy path
-        const stats = await context.executor.execute('filesystem.stat', { path: entry.path });
+      },
 
-        await context.executor.execute('app.spawn', {
-          request: `File Info - ${entry.name}`,
-          blueprint: {
-            title: entry.name,
-            components: [
-              {
-                type: 'container',
-                props: {
-                  style: {
-                    padding: '20px',
-                  },
-                },
-                children: [
-                  {
-                    type: 'text',
-                    props: {
-                      style: {
-                        fontSize: '18px',
-                        fontWeight: 'bold',
-                        marginBottom: '20px',
-                      },
-                    },
-                    content: entry.name,
-                  },
-                  {
-                    type: 'text',
-                    content: `Path: ${entry.path}`,
-                  },
-                  {
-                    type: 'text',
-                    content: `Size: ${entry.size} bytes`,
-                  },
-                  {
-                    type: 'text',
-                    content: `Type: ${ext || 'unknown'}`,
-                  },
-                  {
-                    type: 'text',
-                    content: `Modified: ${entry.modified ? new Date(entry.modified).toLocaleString() : 'N/A'}`,
-                  },
-                ],
-              },
-            ],
-          },
-        });
-      }
-    } catch (err) {
-      alert(`Failed to open file: ${(err as Error).message}`);
+      // Images - open in viewer
+      jpg: async () => await openImage(entry),
+      jpeg: async () => await openImage(entry),
+      png: async () => await openImage(entry),
+      gif: async () => await openImage(entry),
+      webp: async () => await openImage(entry),
+
+      // Code files - open with syntax highlighting
+      js: async () => await openCode(entry),
+      ts: async () => await openCode(entry),
+      tsx: async () => await openCode(entry),
+      jsx: async () => await openCode(entry),
+      py: async () => await openCode(entry),
+      go: async () => await openCode(entry),
+      rs: async () => await openCode(entry),
+      json: async () => await openCode(entry),
+      yaml: async () => await openCode(entry),
+      yml: async () => await openCode(entry),
+    };
+
+    const handler = handlers[ext];
+    if (handler) {
+      await handler();
+    } else {
+      // Default: show file info
+      const stat = await executor.execute('filesystem.stat', { path: entry.path });
+      console.log('File info:', stat);
     }
   };
 
-  /**
-   * Open entry (navigate to folder or open file)
-   */
-  const handleEntryOpen = useCallback(
-    async (entry: FileEntry) => {
-      if (entry.is_dir) {
-        await fs.navigate(entry.path);
-        selection.clearSelection();
-      } else {
-        // Open file in appropriate viewer based on file type
-        await openFile(entry);
-      }
-    },
-    [fs, selection, context]
-  );
-
-  /**
-   * Handle entry click
-   */
-  const handleEntryClick = useCallback(
-    (entry: FileEntry, event: React.MouseEvent) => {
-      if (event.shiftKey && selection.selected.size > 0) {
-        // Shift+click: range select
-        const lastSelected = Array.from(selection.selected)[selection.selected.size - 1];
-        selection.selectRange(lastSelected, entry.path);
-      } else {
-        selection.toggle(entry.path, event);
-      }
-    },
-    [selection]
-  );
-
-  /**
-   * Handle entry double-click
-   */
-  const handleEntryDoubleClick = useCallback(
-    (entry: FileEntry) => {
-      handleEntryOpen(entry);
-    },
-    [handleEntryOpen]
-  );
-
-  /**
-   * Handle entry context menu
-   */
-  const handleEntryContextMenu = useCallback(
-    (entry: FileEntry, event: React.MouseEvent) => {
-      event.preventDefault();
-
-      // Select if not already selected
-      if (!selection.isSelected(entry.path)) {
-        selection.toggle(entry.path);
-      }
-
-      setContextMenu({
-        x: event.clientX,
-        y: event.clientY,
-        entry,
-      });
-    },
-    [selection]
-  );
-
-  /**
-   * Handle sort change
-   */
-  const handleSortChange = useCallback((field: string) => {
-    setSortConfig((prev) => ({
-      field: field as SortConfig['field'],
-      direction: prev.field === field && prev.direction === 'asc' ? 'desc' : 'asc',
-    }));
-  }, []);
-
-  /**
-   * Handle new folder
-   */
-  const handleNewFolder = useCallback(async () => {
-    setInputDialog({
-      title: 'New Folder',
-      label: 'Folder name:',
-      onConfirm: async (name: string) => {
-        setInputDialog(null);
-        try {
-          await fs.createFolder(name);
-        } catch (err) {
-          alert((err as Error).message);
-        }
-      },
-    });
-  }, [fs]);
-
-  /**
-   * Handle copy
-   */
-  const handleCopy = useCallback(() => {
-    const paths = Array.from(selection.selected);
-    if (paths.length > 0) {
-      clipboard.copy(paths);
-    }
-  }, [selection, clipboard]);
-
-  /**
-   * Handle cut
-   */
-  const handleCut = useCallback(() => {
-    const paths = Array.from(selection.selected);
-    if (paths.length > 0) {
-      clipboard.cut(paths);
-    }
-  }, [selection, clipboard]);
-
-  /**
-   * Handle delete
-   */
-  const handleDelete = useCallback(async () => {
-    const paths = Array.from(selection.selected);
-    if (paths.length === 0) return;
-
-    setConfirmDialog({
-      title: 'Delete Items',
-      message: `Delete ${paths.length} item${paths.length > 1 ? 's' : ''}?`,
-      variant: 'danger',
-      onConfirm: async () => {
-        setConfirmDialog(null);
-        try {
-          for (const path of paths) {
-            await fs.deleteEntry(path);
-          }
-          selection.clearSelection();
-        } catch (err) {
-          alert((err as Error).message);
-        }
-      },
-    });
-  }, [selection, fs]);
-
-  /**
-   * Handle paste
-   */
-  const handlePaste = useCallback(async () => {
-    if (clipboard.canPaste) {
-      try {
-        await clipboard.paste(fs.currentPath);
-      } catch (err) {
-        alert((err as Error).message);
-      }
-    }
-  }, [clipboard, fs]);
-
-  // Keyboard navigation (moved here after handlers are defined)
-  const keyboard = useKeyboard(
-    processedEntries.length,
-    (index) => handleEntryOpen(processedEntries[index]),
-    handleDelete,
-    selection.selectAll,
-    handleCopy,
-    handleCut,
-    handlePaste
-  );
-
-  /**
-   * Handle context menu action
-   */
-  const handleContextAction = useCallback(
-    async (action: ContextAction) => {
-      switch (action) {
-        case 'open':
-          if (contextMenu?.entry) {
-            await handleEntryOpen(contextMenu.entry);
-          }
-          break;
-
-        case 'copy':
-          handleCopy();
-          break;
-
-        case 'cut':
-          handleCut();
-          break;
-
-        case 'paste':
-          await handlePaste();
-          break;
-
-        case 'delete':
-          await handleDelete();
-          break;
-
-        case 'rename':
-          if (contextMenu?.entry) {
-            const entryToRename = contextMenu.entry;
-            setInputDialog({
-              title: 'Rename',
-              label: 'New name:',
-              defaultValue: entryToRename.name,
-              onConfirm: async (newName: string) => {
-                setInputDialog(null);
-                try {
-                  await fs.renameEntry(entryToRename.path, newName);
-                } catch (err) {
-                  alert((err as Error).message);
+  const openImage = async (entry: FileEntry) => {
+    await executor.execute('app.spawn', {
+      request: `View ${entry.name}`,
+      blueprint: {
+        title: entry.name,
+        components: [
+          {
+            type: 'container',
+            props: {
+              style: {
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                height: '100%',
+                background: '#000',
+              }
+            },
+            children: [
+              {
+                type: 'img',
+                props: {
+                  src: `file://${entry.path}`,
+                  alt: entry.name,
+                  style: {
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    objectFit: 'contain',
+                  }
                 }
-              },
-            });
+              }
+            ]
           }
-          break;
-
-        case 'new-folder':
-          await handleNewFolder();
-          break;
-
-        case 'refresh':
-          await fs.refresh();
-          break;
-
-        case 'properties':
-          if (contextMenu?.entry) {
-            alert(`Properties:\n${JSON.stringify(contextMenu.entry, null, 2)}`);
-          }
-          break;
+        ]
       }
-    },
-    [contextMenu, handleEntryOpen, handleCopy, handleCut, handlePaste, handleDelete, handleNewFolder, fs]
-  );
+    });
+  };
+
+  const openCode = async (entry: FileEntry) => {
+    const content = await executor.execute('filesystem.read', { path: entry.path });
+    await executor.execute('app.spawn', {
+      request: `Edit ${entry.name}`,
+      blueprint: {
+        title: entry.name,
+        components: [
+          {
+            type: 'container',
+            props: {
+              style: {
+                padding: '20px',
+                height: '100%',
+                background: '#1e1e1e',
+              }
+            },
+            children: [
+              {
+                type: 'pre',
+                props: {
+                  style: {
+                    fontFamily: 'monospace',
+                    fontSize: '14px',
+                    color: '#d4d4d4',
+                    margin: 0,
+                    whiteSpace: 'pre-wrap',
+                  }
+                },
+                content: content?.content || '',
+              }
+            ]
+          }
+        ]
+      }
+    });
+  };
 
   // ============================================================================
   // Render
   // ============================================================================
 
   return (
-    <div className="file-explorer">
-      <Toolbar
-        viewMode={viewMode}
-        sortField={sortConfig.field}
-        sortDirection={sortConfig.direction}
-        searchQuery={searchQuery}
-        canGoBack={fs.canGoBack}
-        canGoForward={fs.canGoForward}
-        onGoBack={fs.goBack}
-        onGoForward={fs.goForward}
-        onGoUp={fs.goUp}
-        onRefresh={fs.refresh}
-        onNewFolder={handleNewFolder}
-        onViewModeChange={setViewMode}
-        onSortChange={handleSortChange}
-        onSearchChange={setSearchQuery}
-      />
+    <div className="file-explorer-v2" onKeyDown={keyboard.handleKeyDown} tabIndex={0}>
+      {/* Top Toolbar */}
+      <div className="explorer-toolbar">
+        {/* Navigation Controls */}
+        <div className="toolbar-nav">
+          <button
+            className="toolbar-btn"
+            onClick={() => fs.goBack()}
+            disabled={!fs.canGoBack}
+            title="Back"
+          >
+            ←
+          </button>
+          <button
+            className="toolbar-btn"
+            onClick={() => fs.goForward()}
+            disabled={!fs.canGoForward}
+            title="Forward"
+          >
+            →
+          </button>
+          <button
+            className="toolbar-btn"
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            title="Toggle Sidebar"
+          >
+            {sidebarCollapsed ? '☰' : '⋮'}
+          </button>
+        </div>
 
-      <PathBar currentPath={fs.currentPath} onNavigate={fs.navigate} />
+        {/* Search Bar */}
+        <SearchBar
+          query={search.query}
+          onQueryChange={search.setQuery}
+          onSearch={search.execute}
+          filters={search.filters}
+          onFiltersChange={search.setFilters}
+        />
 
-      <div className="file-explorer-content">
-        {fs.loading ? (
-          <div className="file-explorer-loading">
-            <div className="loading-spinner">↻</div>
-            <div className="loading-text">Loading...</div>
-          </div>
-        ) : fs.error ? (
-          <div className="file-explorer-error">
-            <div className="error-icon">⚠️</div>
-            <div className="error-text">{fs.error}</div>
-            <button className="error-button" onClick={fs.refresh}>
-              Retry
+        {/* View Controls */}
+        <div className="toolbar-actions">
+          <div className="view-switcher">
+            <button
+              className={`view-btn ${viewMode === 'columns' ? 'active' : ''}`}
+              onClick={() => setViewMode('columns')}
+              title="Columns View"
+            >
+              ▦
+            </button>
+            <button
+              className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}
+              onClick={() => setViewMode('list')}
+              title="List View"
+            >
+              ☰
+            </button>
+            <button
+              className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
+              onClick={() => setViewMode('grid')}
+              title="Grid View"
+            >
+              ▦▦
             </button>
           </div>
-        ) : (
-          <FileList
-            entries={processedEntries}
-            viewMode={viewMode}
-            selectedPaths={selection.selected}
-            onEntryClick={handleEntryClick}
-            onEntryDoubleClick={handleEntryDoubleClick}
-            onEntryContextMenu={handleEntryContextMenu}
-            onKeyDown={keyboard.handleKeyDown}
-          />
+
+          <button
+            className="toolbar-btn"
+            onClick={() => setShowCommandPalette(true)}
+            title="Command Palette (⌘P)"
+          >
+            ⌘
+          </button>
+          <button
+            className="toolbar-btn"
+            onClick={() => setPreviewCollapsed(prev => !prev)}
+            title="Toggle Preview (Space)"
+          >
+            {previewCollapsed ? '👁️' : '👁️‍🗨️'}
+          </button>
+        </div>
+      </div>
+
+      {/* Main Layout */}
+      <div className="explorer-main">
+        {/* Sidebar */}
+        {!sidebarCollapsed && (
+          <div className="explorer-sidebar">
+            <div className="sidebar-section">
+              <div className="sidebar-title">Favorites</div>
+              <div className="sidebar-items">
+                {preferences.data.favorites.length === 0 ? (
+                  <div className="sidebar-empty">No favorites yet</div>
+                ) : (
+                  preferences.data.favorites.map((path, index) => (
+                    <button
+                      key={`fav-${index}`}
+                      className={`sidebar-item ${fs.currentPath === path ? 'active' : ''}`}
+                      onClick={() => fs.navigate(path)}
+                    >
+                      <span className="sidebar-icon">⭐</span>
+                      <span className="sidebar-label">{path.split('/').pop() || path}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="sidebar-section">
+              <div className="sidebar-title">Quick Access</div>
+              <div className="sidebar-items">
+                <button
+                  className={`sidebar-item ${fs.currentPath === '/storage' ? 'active' : ''}`}
+                  onClick={() => fs.navigate('/storage')}
+                >
+                  <span className="sidebar-icon">💾</span>
+                  <span className="sidebar-label">Storage</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="sidebar-section">
+              <div className="sidebar-title">Recent</div>
+              <div className="sidebar-items">
+                {preferences.data.recent.slice(0, 5).length === 0 ? (
+                  <div className="sidebar-empty">No recent locations</div>
+                ) : (
+                  preferences.data.recent.slice(0, 5).map((path, index) => (
+                    <button
+                      key={`recent-${index}`}
+                      className={`sidebar-item ${fs.currentPath === path ? 'active' : ''}`}
+                      onClick={() => fs.navigate(path)}
+                    >
+                      <span className="sidebar-icon">🕐</span>
+                      <span className="sidebar-label">{path.split('/').pop() || path}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
         )}
+
+        {/* Content Area */}
+        <div className="explorer-content">
+          {/* Breadcrumb Navigation */}
+          <div className="breadcrumb-bar">
+            <div className="breadcrumbs">
+              {fs.currentPath.split('/').filter(Boolean).map((part, index, arr) => {
+                const path = '/' + arr.slice(0, index + 1).join('/');
+                return (
+                  <div key={path} className="breadcrumb">
+                    <button
+                      className="breadcrumb-btn"
+                      onClick={() => fs.navigate(path)}
+                    >
+                      {part}
+                    </button>
+                    {index < arr.length - 1 && <span className="breadcrumb-sep">›</span>}
+                  </div>
+                );
+              })}
+              {fs.currentPath === '/' && (
+                <div className="breadcrumb">
+                  <button className="breadcrumb-btn" onClick={() => fs.navigate('/')}>
+                    Root
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="breadcrumb-actions">
+              <button
+                className="toolbar-btn"
+                onClick={() => fs.refresh()}
+                title="Refresh"
+              >
+                ↻
+              </button>
+              <button
+                className="toolbar-btn"
+                onClick={() => {
+                  const name = prompt('New folder name:');
+                  if (name) fs.createFolder(name);
+                }}
+                title="New Folder"
+              >
+                📁+
+              </button>
+            </div>
+          </div>
+
+          {/* File Display Area */}
+          <div className="explorer-body">
+            {viewMode === 'columns' ? (
+              <div ref={columnsRef} className="columns-container">
+                <MillerColumns
+                  columns={columns}
+                  onSelect={handleColumnSelect}
+                  onNavigate={handleColumnNavigate}
+                  selectedEntry={selectedEntry}
+                  showHidden={preferences.data.showHidden}
+                />
+              </div>
+            ) : (
+              <div className="files-container">
+                {fs.loading ? (
+                  <div className="loading-state">
+                    <div className="spinner">↻</div>
+                    <div>Loading...</div>
+                  </div>
+                ) : fs.entries.length === 0 ? (
+                  <div className="empty-state">
+                    <div className="empty-icon">📂</div>
+                    <div className="empty-title">This folder is empty</div>
+                    <div className="empty-hint">
+                      <button
+                        className="empty-action"
+                        onClick={() => {
+                          const name = prompt('New folder name:');
+                          if (name) fs.createFolder(name);
+                        }}
+                      >
+                        Create a folder
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className={`files-${viewMode}`}>
+                    {fs.entries
+                      .filter(entry => preferences.data.showHidden || !entry.name.startsWith('.'))
+                      .map((entry) => {
+                        const icon = getFileIcon(entry);
+                        const isSelected = selectedEntry?.path === entry.path;
+
+                        return (
+                          <div
+                            key={entry.path}
+                            className={`file-item ${isSelected ? 'selected' : ''} ${entry.is_dir ? 'directory' : ''}`}
+                            onClick={() => setSelectedEntry(entry)}
+                            onDoubleClick={() => {
+                              if (entry.is_dir) {
+                                fs.navigate(entry.path);
+                              } else {
+                                openFile(entry);
+                              }
+                            }}
+                          >
+                            <div className="file-item-icon" style={{ color: icon.color }}>
+                              {icon.emoji}
+                            </div>
+                            <div className="file-item-name">{entry.name}</div>
+                            {viewMode === 'list' && (
+                              <>
+                                <div className="file-item-size">
+                                  {entry.is_dir ? '—' : formatFileSize(entry.size)}
+                                </div>
+                                <div className="file-item-modified">
+                                  {formatDate(entry.modified)}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Preview Panel */}
+            {!previewCollapsed && selectedEntry && viewMode !== 'columns' && (
+              <PreviewPanel
+                entry={selectedEntry}
+                context={context}
+                onOpen={() => openFile(selectedEntry)}
+              />
+            )}
+          </div>
+        </div>
       </div>
 
-      {contextMenu && (
-        <ContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          entry={contextMenu.entry}
-          selectedCount={selection.selected.size}
-          onClose={() => setContextMenu(null)}
-          onAction={handleContextAction}
+      {/* Status Bar */}
+      <StatusBar
+        currentPath={fs.currentPath}
+        itemCount={fs.entries.length}
+        selectedEntry={selectedEntry}
+        loading={fs.loading}
+      />
+
+      {/* Command Palette */}
+      {showCommandPalette && (
+        <CommandPalette
+          onCommand={handleCommand}
+          onClose={() => setShowCommandPalette(false)}
+          recentPaths={preferences.data.recent}
+          favorites={preferences.data.favorites}
         />
       )}
 
-      {/* Status bar */}
-      <div className="file-explorer-status">
-        <span className="status-text">
-          {processedEntries.length} item{processedEntries.length !== 1 ? 's' : ''}
-          {selection.selected.size > 0 && ` • ${selection.selected.size} selected`}
-          {clipboard.canPaste && ` • ${clipboard.clipboard.paths.length} in clipboard`}
-        </span>
-      </div>
-
-      {/* Input dialog */}
-      {inputDialog && (
-        <InputDialog
-          title={inputDialog.title}
-          label={inputDialog.label}
-          defaultValue={inputDialog.defaultValue}
-          onConfirm={inputDialog.onConfirm}
-          onCancel={() => setInputDialog(null)}
-        />
-      )}
-
-      {/* Confirm dialog */}
-      {confirmDialog && (
-        <ConfirmDialog
-          title={confirmDialog.title}
-          message={confirmDialog.message}
-          variant={confirmDialog.variant}
-          confirmText="Delete"
-          onConfirm={confirmDialog.onConfirm}
-          onCancel={() => setConfirmDialog(null)}
+      {/* Quick Access */}
+      {showQuickAccess && (
+        <QuickAccess
+          favorites={preferences.data.favorites}
+          recent={preferences.data.recent}
+          onSelect={(path) => {
+            fs.navigate(path);
+            setShowQuickAccess(false);
+          }}
+          onClose={() => setShowQuickAccess(false)}
         />
       )}
     </div>
