@@ -147,7 +147,7 @@ export function BrowserView({ tab, context, onLoadComplete, onError }: BrowserVi
           ref={iframeRef}
           src={tab.url}
           className="content-iframe"
-          sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
+          sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
           onLoad={handleIframeLoad}
           onError={handleIframeError}
           title={tab.title}
