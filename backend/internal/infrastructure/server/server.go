@@ -27,11 +27,15 @@ import (
 	httpProvider "github.com/GriffinCanCode/AgentOS/backend/internal/providers/http"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/ipc"
 	mathProvider "github.com/GriffinCanCode/AgentOS/backend/internal/providers/math"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/monitor"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/permissions"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/pipeline"
 	scraperProvider "github.com/GriffinCanCode/AgentOS/backend/internal/providers/scraper"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/settings"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/storage"
 	systemProvider "github.com/GriffinCanCode/AgentOS/backend/internal/providers/system"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/terminal"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/providers/theme"
 )
 
 // Server wraps the HTTP server and dependencies
@@ -349,5 +353,29 @@ func registerProviders(registry *service.Registry, kernel *kernel.KernelClient) 
 		if err := registry.Register(pipelineProvider); err != nil {
 			fmt.Printf("Warning: Failed to register pipeline provider: %v\n", err)
 		}
+	}
+
+	// Settings provider
+	settingsProvider := settings.NewProvider(kernel, storagePID, storagePath)
+	if err := registry.Register(settingsProvider); err != nil {
+		fmt.Printf("Warning: Failed to register settings provider: %v\n", err)
+	}
+
+	// Monitor provider
+	monitorProvider := monitor.NewProvider(kernel, storagePID)
+	if err := registry.Register(monitorProvider); err != nil {
+		fmt.Printf("Warning: Failed to register monitor provider: %v\n", err)
+	}
+
+	// Permissions provider
+	permissionsProvider := permissions.NewProvider(kernel, storagePID)
+	if err := registry.Register(permissionsProvider); err != nil {
+		fmt.Printf("Warning: Failed to register permissions provider: %v\n", err)
+	}
+
+	// Theme provider
+	themeProvider := theme.NewProvider(kernel, storagePID, storagePath)
+	if err := registry.Register(themeProvider); err != nil {
+		fmt.Printf("Warning: Failed to register theme provider: %v\n", err)
 	}
 }

@@ -1,0 +1,28 @@
+{
+  "id": "settings",
+  "name": "Settings",
+  "description": "System configuration and preferences management",
+  "version": "1.0.0",
+  "type": "native_web",
+  "icon": "⚙️",
+  "category": "system",
+  "author": "AI-OS",
+  "bundle_path": "/native-apps/settings/index.js",
+  "services": [
+    "settings",
+    "monitor",
+    "permissions",
+    "theme",
+    "storage",
+    "system"
+  ],
+  "permissions": [
+    "system_read",
+    "system_write",
+    "settings_read",
+    "settings_write",
+    "storage_read",
+    "storage_write"
+  ],
+  "tags": ["system", "configuration", "settings", "preferences"]
+}
