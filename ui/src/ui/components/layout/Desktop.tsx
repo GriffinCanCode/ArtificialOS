@@ -157,11 +157,6 @@ export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpen
           </button>
         </Tooltip>
       </div>
-
-      {/* Hint Overlay */}
-      <div className="desktop-hint">
-        Press <kbd>⌘K</kbd> to create something
-      </div>
     </div>
   );
 };

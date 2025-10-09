@@ -4,7 +4,7 @@
 
 import React, { useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { Save, Sparkles, CheckCircle } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import ThoughtStream from "../ui/components/chat/ThoughtStream";
@@ -20,8 +20,7 @@ import { useActions, useStore as useWindowStore } from "../features/windows";
 import { useSessionManager } from "../core/hooks/useSessionManager";
 import { ServerMessage } from "../core/types/api";
 import { useLogger } from "../core/utils/monitoring/useLogger";
-import { formatRelativeTime } from "../core/utils/dates";
-import { useFadeIn, useSlideInUp } from "../ui/hooks/useGSAP";
+import { useFadeIn } from "../ui/hooks/useGSAP";
 import { queryClient } from "../core/lib/queryClient";
 import { useScope, useShortcuts } from "../features/input";
 import { Tooltip } from "../features/floating";
@@ -182,7 +181,6 @@ function AppContent() {
   // GSAP Animation hooks
   const spotlightContainerRef = useFadeIn<HTMLDivElement>({ duration: 0.3 });
   const hintRef = useFadeIn<HTMLDivElement>({ duration: 0.3 });
-  const sessionStatusRef = useSlideInUp<HTMLDivElement>({ duration: 0.3 });
 
   // Welcome screen animation - hide after 2 seconds
   useEffect(() => {
@@ -327,10 +325,6 @@ function AppContent() {
     [log, openWindow]
   );
 
-  const formatTimeSinceMemo = useCallback((date: Date): string => {
-    return formatRelativeTime(date);
-  }, []);
-
   return (
     <div className="app os-interface">
       {/* Toast Container */}
@@ -450,20 +444,6 @@ function AppContent() {
           setShowSpotlight(false);
         }}
       />
-
-      {/* Session Status Indicator */}
-      {sessionManager.isSaving && (
-        <div ref={sessionStatusRef} className="session-status saving">
-          <Save size={14} style={{ marginRight: "6px", verticalAlign: "middle" }} />
-          Saving...
-        </div>
-      )}
-      {sessionManager.lastSaveTime && !sessionManager.isSaving && (
-        <div ref={sessionStatusRef} className="session-status saved">
-          <CheckCircle size={14} style={{ marginRight: "6px", verticalAlign: "middle" }} />
-          Saved {formatTimeSinceMemo(sessionManager.lastSaveTime)}
-        </div>
-      )}
     </div>
   );
 }
