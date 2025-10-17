@@ -72,11 +72,23 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
       });
     }
 
-    // Cleanup on unmount
+    // Cleanup on unmount - DO NOT disconnect in development (React StrictMode)
+    // In production, this component never unmounts, so no cleanup needed
     return () => {
-      logger.debug("WebSocketProvider effect cleanup", { component: "WebSocketProvider" });
-      // Client will be garbage collected on unmount
-      // The useWebSocketConnection hook manages its own subscription cleanup
+      if (process.env.NODE_ENV === 'production') {
+        logger.debug("WebSocketProvider unmounting (production), disconnecting WebSocket", {
+          component: "WebSocketProvider",
+          wasConnected: client.isConnected(),
+        });
+        client.disconnect();
+      } else {
+        logger.debug("WebSocketProvider cleanup (dev mode), keeping connection alive for StrictMode", {
+          component: "WebSocketProvider",
+          wasConnected: client.isConnected(),
+        });
+        // Don't disconnect in development - React StrictMode causes false unmounts
+        // The connection will stay alive and be reused on remount
+      }
     };
   }, [client]);
 

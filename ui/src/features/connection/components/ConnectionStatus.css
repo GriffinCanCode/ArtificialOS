@@ -1,0 +1,67 @@
+/**
+ * ConnectionStatus Styles
+ */
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.connection-status--connected {
+  color: oklch(0.75 0.15 150);
+  background: oklch(0.25 0.05 150 / 0.3);
+}
+
+.connection-status--connected svg {
+  color: oklch(0.75 0.15 150);
+}
+
+.connection-status--disconnected {
+  color: oklch(0.75 0.15 30);
+  background: oklch(0.25 0.05 30 / 0.3);
+}
+
+.connection-status--disconnected svg {
+  color: oklch(0.75 0.15 30);
+}
+
+.connection-status--reconnecting {
+  color: oklch(0.75 0.15 60);
+  background: oklch(0.25 0.05 60 / 0.3);
+}
+
+.connection-status--reconnecting svg {
+  color: oklch(0.75 0.15 60);
+}
+
+.connection-status__text {
+  white-space: nowrap;
+}
+
+/* Spinning animation for reconnecting icon */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Hide on small screens to save space */
+@media (max-width: 640px) {
+  .connection-status__text {
+    display: none;
+  }
+}
+

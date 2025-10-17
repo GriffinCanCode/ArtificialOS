@@ -97,9 +97,10 @@ async def serve_async():
     chat_handler = container.get(ChatHandler)
     service = AsyncAIService(ui_handler, chat_handler)
 
-    # Create async server with keepalive options and tracing interceptor
+    # Create async server with keepalive options
+    # TODO: Fix tracing_interceptor to be a proper ServerInterceptor class
     server = aio.server(
-        interceptors=[tracing_interceptor],
+        # interceptors=[tracing_interceptor],  # Temporarily disabled - needs proper ServerInterceptor class
         options=[
             # Keepalive settings to match client expectations
             ("grpc.keepalive_time_ms", 10000),  # 10 seconds

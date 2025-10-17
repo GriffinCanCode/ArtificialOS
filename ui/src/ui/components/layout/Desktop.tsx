@@ -14,6 +14,7 @@ import { Launchpad } from "./Launchpad";
 import { Grid as IconGrid } from "../../../features/icons";
 import type { IconType } from "../../../features/icons";
 import { useScope, useShortcuts } from "../../../features/input";
+import { ConnectionStatus } from "../../../features/connection";
 import "./Desktop.css";
 
 interface DesktopProps {
@@ -143,6 +144,7 @@ export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpen
           </Tooltip>
         </div>
         <div className="menubar-right">
+          <ConnectionStatus />
           <div className="menubar-clock">
             <div className="clock-time">{formatTime(time, false)}</div>
             <div className="clock-separator">•</div>
