@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useCallback, useRef } from "react";
-import { newULID } from "../../../core/id";
+import { generateRaw } from "../../../core/id";
 import { Dropzone } from "../../../features/dnd/components/Dropzone";
 import type { FileDropConfig, DropResult, FileValidator } from "../../../features/dnd/core/types";
 import { formatFileSize } from "../../../features/dnd/core/utils";
@@ -77,7 +77,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
   // Generate unique ID for each file
   const generateFileId = useCallback(() => {
-    return newULID();
+    return generateRaw();
   }, []);
 
   // Upload a single file

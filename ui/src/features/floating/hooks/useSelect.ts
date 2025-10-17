@@ -86,7 +86,7 @@ export function useSelect({
     placement: position?.placement ?? "bottom-start",
     strategy: position?.strategy ?? "absolute",
     middleware: position?.middleware ?? createDropdownMiddleware(position),
-    whileElementsMounted: (reference, floating, update) => {
+    whileElementsMounted: (_reference, _floating, update) => {
       const cleanup = () => update();
       window.addEventListener("scroll", cleanup, true);
       window.addEventListener("resize", cleanup);

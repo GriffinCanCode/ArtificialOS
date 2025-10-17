@@ -3,7 +3,7 @@
  * Easy-to-use hooks for integrating GSAP animations into React components
  */
 
-import { useEffect, useRef, useCallback, RefObject } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import gsap from "gsap";
 import * as animations from "../../core/utils/animation/gsapAnimations";
 

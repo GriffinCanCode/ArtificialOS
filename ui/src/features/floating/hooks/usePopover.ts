@@ -10,7 +10,6 @@ import {
   useClick,
   useDismiss,
   useRole,
-  FloatingFocusManager,
 } from "@floating-ui/react";
 import { createArrowMiddleware, generateId } from "../core/utils";
 import type { UsePopoverReturn, PositionConfig, InteractionConfig } from "../core/types";
@@ -40,7 +39,7 @@ export function usePopover({
   interaction,
   initialOpen = false,
   onOpenChange,
-  modal = false,
+  modal: _modal = false,
   arrow: showArrow = true,
 }: UsePopoverConfig = {}): UsePopoverReturn {
   const [isOpen, setIsOpen] = useState(initialOpen);
@@ -55,7 +54,7 @@ export function usePopover({
     placement: position?.placement ?? "bottom",
     strategy: position?.strategy ?? "absolute",
     middleware: showArrow ? createArrowMiddleware(arrowRef, position) : position?.middleware,
-    whileElementsMounted: (reference, floating, update) => {
+    whileElementsMounted: (_reference, _floating, update) => {
       const cleanup = () => update();
       window.addEventListener("scroll", cleanup, true);
       window.addEventListener("resize", cleanup);

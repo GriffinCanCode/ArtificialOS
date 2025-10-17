@@ -194,7 +194,7 @@ class Loader {
       link.setAttribute("data-app-id", packageId);
 
       // Wait for CSS to load
-      await new Promise<void>((resolve, reject) => {
+      await new Promise<void>((resolve, _reject) => {
         link.onload = () => {
           logger.debug("CSS loaded successfully", {
             component: "NativeLoader",

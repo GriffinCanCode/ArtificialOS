@@ -58,7 +58,7 @@ export function useDefaults() {
       // Auto-fix: spread out overlapping icons
       const fixes = new Map<string, { row: number; col: number }>();
 
-      overlaps.forEach(([posKey, iconIds]) => {
+      overlaps.forEach(([_posKey, iconIds]) => {
         // Keep first icon in place, move others to nearby positions
         iconIds.slice(1).forEach((iconId, index) => {
           const icon = icons.find((i) => i.id === iconId);

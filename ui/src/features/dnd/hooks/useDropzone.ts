@@ -6,7 +6,6 @@
 import { useState, useCallback, useRef } from "react";
 import type {
   FileDropConfig,
-  DropResult,
   DroppedFile,
   DropHandler,
   FileValidator,

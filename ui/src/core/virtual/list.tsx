@@ -114,7 +114,7 @@ export const DynamicList = <T,>({ items, defaultSize = 60, ...rest }: DynamicLis
   return (
     <VirtualList
       items={items}
-      estimateSize={(index) => {
+      estimateSize={(_index) => {
         // Could be enhanced with actual measurement logic
         return defaultSize;
       }}

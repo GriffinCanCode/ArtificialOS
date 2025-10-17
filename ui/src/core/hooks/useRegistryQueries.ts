@@ -6,12 +6,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { RegistryClient } from "../api/registryClient";
 import type {
-  Package,
-  PackageMetadata,
   SaveAppRequest,
-  SaveAppResponse,
   ListAppsResponse,
-  LaunchAppResponse,
 } from "../types/registry";
 import { logger } from "../utils/monitoring/logger";
 
@@ -81,7 +77,7 @@ export function useRegistryApp(packageId: string, options?: { enabled?: boolean 
  * - Automatically updates cache after successful launch
  */
 export function useLaunchApp() {
-  const queryClient = useQueryClient();
+  // const queryClient = useQueryClient(); // Currently unused but may be needed for cache invalidation
 
   return useMutation({
     mutationFn: async (packageId: string) => {
@@ -123,7 +119,7 @@ export function useSaveApp() {
       });
       return RegistryClient.saveApp(request);
     },
-    onSuccess: (data, request) => {
+    onSuccess: (data, _request) => {
       logger.info("App saved to registry", {
         component: "useSaveApp",
         packageId: data.package_id,

@@ -273,7 +273,7 @@ export const realWorldExamples = {
     let saveTimeoutId: NodeJS.Timeout;
     let isSaving = false;
 
-    return (content: string) => {
+    return (_content: string) => {
       // Clear previous timeout
       clearTimeout(saveTimeoutId);
 
@@ -348,7 +348,7 @@ export const realWorldExamples = {
 
     toast.loading("Updating items...", { id: "batch-update" });
 
-    for (const item of items) {
+    for (const _item of items) {
       try {
         // Simulate update
         await new Promise((resolve) => setTimeout(resolve, 100));

@@ -4,7 +4,7 @@
  */
 
 import type { SearchEngine, SearchConfig, Searchable } from "./types";
-import { Engine, createEngine as createEngineInstance } from "../engine/engine";
+import { createEngine as createEngineInstance } from "../engine/engine";
 
 // ============================================================================
 // Factory Function

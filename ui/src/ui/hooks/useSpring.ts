@@ -180,7 +180,7 @@ export function useParallax(depth: number = 0.05, springConfig = springConfigs.g
  */
 export function useFloatSpring(
   amplitude: number = 10,
-  duration: number = 3000,
+  _duration: number = 3000,
   springConfig = springConfigs.gentle
 ) {
   const [flip, setFlip] = useState(false);

@@ -59,7 +59,7 @@ export const PieChart: React.FC<BaseComponentProps> = ({ component, state }) => 
             label
             {...(animate && { isAnimationActive: true })}
           >
-            {data.map((entry, index) => (
+            {data.map((_entry, index) => (
               <Cell key={`cell-${index}`} fill={colors[index] || getSeriesColor(index)} />
             ))}
           </Pie>
