@@ -95,86 +95,80 @@ impl IoUringExecutor {
     }
 
     /// Execute a single operation
+    ///
+    /// Executes syscalls directly without spawn_blocking for better performance.
+    /// io_uring already handles async I/O, so we don't need additional threading.
     async fn execute_operation(
         &self,
         op: &SyscallOpType,
         pid: crate::core::types::Pid,
     ) -> crate::syscalls::types::SyscallResult {
-        use tokio::task;
+        // Direct execution - io_uring handles the async I/O
+        // No spawn_blocking needed since this is already off the main thread
+        match op {
+            // File I/O operations
+            SyscallOpType::ReadFile { path } => self.syscall_executor.read_file(pid, path),
+            SyscallOpType::WriteFile { path, data } => {
+                self.syscall_executor.write_file(pid, path, data)
+            }
+            SyscallOpType::Open { path, flags, mode } => {
+                self.syscall_executor.open(pid, path, *flags, *mode)
+            }
+            SyscallOpType::Close { fd } => self.syscall_executor.close_fd(pid, *fd),
+            SyscallOpType::Fsync { fd } => self.syscall_executor.fsync_fd(pid, *fd),
+            SyscallOpType::Lseek { fd, offset, whence } => {
+                self.syscall_executor.lseek(pid, *fd, *offset, *whence)
+            }
 
-        // Most operations are blocking, so run them on blocking thread pool
-        let executor = self.syscall_executor.clone();
-        let op = op.clone();
+            // Network I/O operations
+            SyscallOpType::Send {
+                sockfd,
+                data,
+                flags,
+            } => self.syscall_executor.send(pid, *sockfd, data, *flags),
+            SyscallOpType::Recv {
+                sockfd,
+                size,
+                flags,
+            } => self.syscall_executor.recv(pid, *sockfd, *size, *flags),
+            SyscallOpType::Accept { sockfd } => self.syscall_executor.accept(pid, *sockfd),
+            SyscallOpType::Connect { sockfd, address } => {
+                self.syscall_executor.connect(pid, *sockfd, address)
+            }
+            SyscallOpType::SendTo {
+                sockfd,
+                data,
+                address,
+                flags,
+            } => self
+                .syscall_executor
+                .sendto(pid, *sockfd, data, address, *flags),
+            SyscallOpType::RecvFrom {
+                sockfd,
+                size,
+                flags,
+            } => self.syscall_executor.recvfrom(pid, *sockfd, *size, *flags),
 
-        task::spawn_blocking(move || {
-            match op {
-                // File I/O operations
-                SyscallOpType::ReadFile { path } => executor.read_file(pid, &path),
-                SyscallOpType::WriteFile { path, data } => executor.write_file(pid, &path, &data),
-                SyscallOpType::Open { path, flags, mode } => executor.open(pid, &path, flags, mode),
-                SyscallOpType::Close { fd } => executor.close_fd(pid, fd),
-                SyscallOpType::Fsync { fd } => executor.fsync_fd(pid, fd),
-                SyscallOpType::Lseek { fd, offset, whence } => {
-                    executor.lseek(pid, fd, offset, whence)
-                }
-
-                // Network I/O operations
-                SyscallOpType::Send {
-                    sockfd,
-                    data,
-                    flags,
-                } => executor.send(pid, sockfd, &data, flags),
-                SyscallOpType::Recv {
-                    sockfd,
-                    size,
-                    flags,
-                } => executor.recv(pid, sockfd, size, flags),
-                SyscallOpType::Accept { sockfd } => executor.accept(pid, sockfd),
-                SyscallOpType::Connect { sockfd, address } => {
-                    executor.connect(pid, sockfd, &address)
-                }
-                SyscallOpType::SendTo {
-                    sockfd,
-                    data,
-                    address,
-                    flags,
-                } => executor.sendto(pid, sockfd, &data, &address, flags),
-                SyscallOpType::RecvFrom {
-                    sockfd,
-                    size,
-                    flags,
-                } => executor.recvfrom(pid, sockfd, size, flags),
-
-                // IPC operations (using queues)
-                SyscallOpType::IpcSend {
-                    target_pid: _,
-                    data: _,
-                } => {
-                    // IPC via SendQueue - would need a queue_id mapping
-                    // For now, return error indicating need for explicit queue usage
-                    crate::syscalls::types::SyscallResult::Error {
-                        message:
-                            "Direct IPC send not supported via io_uring, use SendQueue instead"
-                                .into(),
-                    }
-                }
-                SyscallOpType::IpcRecv { size: _ } => {
-                    // IPC via ReceiveQueue - would need a queue_id mapping
-                    // For now, return error indicating need for explicit queue usage
-                    crate::syscalls::types::SyscallResult::Error {
-                        message:
-                            "Direct IPC recv not supported via io_uring, use ReceiveQueue instead"
-                                .into(),
-                    }
+            // IPC operations (using queues)
+            SyscallOpType::IpcSend {
+                target_pid: _,
+                data: _,
+            } => {
+                // IPC via SendQueue - would need a queue_id mapping
+                // For now, return error indicating need for explicit queue usage
+                crate::syscalls::types::SyscallResult::Error {
+                    message: "Direct IPC send not supported via io_uring, use SendQueue instead"
+                        .into(),
                 }
             }
-        })
-        .await
-        .unwrap_or_else(|e| {
-            error!("Task execution panic: {}", e);
-            crate::syscalls::types::SyscallResult::Error {
-                message: format!("Execution panic: {}", e).into(),
+            SyscallOpType::IpcRecv { size: _ } => {
+                // IPC via ReceiveQueue - would need a queue_id mapping
+                // For now, return error indicating need for explicit queue usage
+                crate::syscalls::types::SyscallResult::Error {
+                    message: "Direct IPC recv not supported via io_uring, use ReceiveQueue instead"
+                        .into(),
+                }
             }
-        })
+        }
     }
 }

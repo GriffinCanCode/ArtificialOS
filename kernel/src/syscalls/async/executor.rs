@@ -52,6 +52,7 @@
  */
 
 use super::classification::SyscallClass;
+use super::dispatcher::AdaptiveDispatcher;
 use crate::core::types::Pid;
 use crate::monitoring::{span_syscall, Collector};
 use crate::syscalls::core::executor::SyscallExecutorWithIpc;
@@ -69,6 +70,9 @@ pub struct AsyncSyscallExecutor {
     /// Underlying synchronous executor (for fast-path operations)
     sync_executor: SyscallExecutorWithIpc,
 
+    /// Adaptive dispatcher (Phase 2 & 3: tokio::fs + io_uring)
+    dispatcher: Option<Arc<AdaptiveDispatcher>>,
+
     /// Optional observability collector
     collector: Option<Arc<Collector>>,
 }
@@ -78,6 +82,24 @@ impl AsyncSyscallExecutor {
     pub fn new(sync_executor: SyscallExecutorWithIpc) -> Self {
         Self {
             collector: sync_executor.optional().collector.clone(),
+            dispatcher: None,
+            sync_executor,
+        }
+    }
+
+    /// Create new async executor with adaptive dispatcher
+    ///
+    /// This enables Phase 2 & 3 features:
+    /// - True async I/O with tokio::fs
+    /// - io_uring for large file operations
+    /// - Native async IPC
+    pub fn with_dispatcher(
+        sync_executor: SyscallExecutorWithIpc,
+        dispatcher: Arc<AdaptiveDispatcher>,
+    ) -> Self {
+        Self {
+            collector: sync_executor.optional().collector.clone(),
+            dispatcher: Some(dispatcher),
             sync_executor,
         }
     }
@@ -125,35 +147,16 @@ impl AsyncSyscallExecutor {
 
     /// Execute blocking syscalls asynchronously
     ///
-    /// Blocking syscalls involve I/O or can block for extended periods.
-    /// We execute them using:
+    /// Phase 2 & 3 Implementation:
+    /// 1. **Adaptive dispatcher** chooses between tokio::fs and io_uring
+    /// 2. **True async I/O** with tokio::fs (no spawn_blocking)
+    /// 3. **io_uring** for large files and batched operations
+    /// 4. **Fallback** to spawn_blocking for unsupported operations
     ///
-    /// 1. **tokio::spawn_blocking** for CPU-bound work (default)
-    /// 2. **Direct async I/O** for file/network operations (future enhancement)
-    /// 3. **io_uring** for high-performance I/O (future enhancement)
+    /// # Execution Paths
     ///
-    /// # Current Implementation
-    ///
-    /// Uses `tokio::spawn_blocking` to move blocking work off the async
-    /// runtime. Future versions will use true async I/O (tokio::fs, io_uring).
-    ///
-    /// # Future Optimization
-    ///
-    /// ```ignore
-    /// match syscall {
-    ///     Syscall::ReadFile { path } => {
-    ///         // True async I/O - no blocking
-    ///         let content = tokio::fs::read(&path).await?;
-    ///         SyscallResult::success_with_data(content)
-    ///     }
-    ///     _ => {
-    ///         // Fallback to spawn_blocking for now
-    ///         tokio::spawn_blocking(move || {
-    ///             executor.execute(pid, syscall)
-    ///         }).await
-    ///     }
-    /// }
-    /// ```
+    /// - **With dispatcher**: Uses adaptive path (tokio::fs or io_uring)
+    /// - **Without dispatcher**: Falls back to spawn_blocking (backward compat)
     async fn execute_async_path(&self, pid: Pid, syscall: Syscall) -> SyscallResult {
         let syscall_name = syscall.name();
 
@@ -161,35 +164,44 @@ impl AsyncSyscallExecutor {
         let span = span_syscall(syscall_name, pid);
         let _guard = span.enter();
 
-        info!(
-            pid = pid,
-            syscall = syscall_name,
-            trace_id = %span.trace_id(),
-            execution_mode = "async",
-            "Executing syscall (async path)"
-        );
-
         let start = Instant::now();
 
-        // Clone executor for move into async block
-        let executor = self.sync_executor.clone();
-        let collector = self.collector.clone();
+        // Phase 2 & 3: Use adaptive dispatcher if available
+        let result = if let Some(ref dispatcher) = self.dispatcher {
+            info!(
+                pid = pid,
+                syscall = syscall_name,
+                trace_id = %span.trace_id(),
+                execution_mode = "adaptive",
+                "Executing syscall (adaptive async path)"
+            );
 
-        // Execute in blocking thread pool (for now)
-        // TODO: Replace with true async I/O for file/network operations
-        let result = tokio::task::spawn_blocking(move || executor.execute(pid, syscall)).await;
+            // True async I/O (tokio::fs or io_uring)
+            dispatcher.execute(pid, syscall).await
+        } else {
+            // Fallback: spawn_blocking for backward compatibility
+            info!(
+                pid = pid,
+                syscall = syscall_name,
+                trace_id = %span.trace_id(),
+                execution_mode = "spawn_blocking",
+                "Executing syscall (fallback async path)"
+            );
 
-        // Handle spawn error
-        let result = match result {
-            Ok(res) => res,
-            Err(e) => {
-                error!("Async syscall execution failed: {}", e);
-                SyscallResult::error(format!("Async execution error: {}", e))
+            let executor = self.sync_executor.clone();
+            let result = tokio::task::spawn_blocking(move || executor.execute(pid, syscall)).await;
+
+            match result {
+                Ok(res) => res,
+                Err(e) => {
+                    error!("Async syscall execution failed: {}", e);
+                    SyscallResult::error(format!("Async execution error: {}", e))
+                }
             }
         };
 
         // Emit observability event
-        if let Some(ref collector) = collector {
+        if let Some(ref collector) = self.collector {
             let duration_us = start.elapsed().as_micros() as u64;
             let success = matches!(result, SyscallResult::Success { .. });
             collector.syscall_exit(pid, syscall_name.to_string(), duration_us, success);
@@ -216,8 +228,9 @@ impl AsyncSyscallExecutor {
 
     /// Execute batch of syscalls concurrently
     ///
-    /// This demonstrates the power of async traits - we can now execute
-    /// multiple syscalls concurrently and await them all together.
+    /// Phase 2 & 3 Enhancement:
+    /// - With dispatcher: Uses adaptive batch execution (io_uring for large batches)
+    /// - Without dispatcher: Concurrent futures (tokio concurrency)
     ///
     /// # Example
     ///
@@ -232,16 +245,21 @@ impl AsyncSyscallExecutor {
     /// # Performance
     ///
     /// - Fast syscalls execute synchronously (no concurrency benefit)
-    /// - Blocking syscalls execute concurrently (significant speedup)
+    /// - Blocking syscalls with dispatcher: io_uring batching (best throughput)
+    /// - Blocking syscalls without dispatcher: concurrent futures (good latency)
     /// - Mixed batches get best of both worlds
     pub async fn execute_batch(&self, pid: Pid, syscalls: Vec<Syscall>) -> Vec<SyscallResult> {
-        // Execute all syscalls concurrently
+        // Phase 2 & 3: Use dispatcher's batch execution if available
+        if let Some(ref dispatcher) = self.dispatcher {
+            return dispatcher.execute_batch(pid, syscalls).await;
+        }
+
+        // Fallback: Execute all syscalls concurrently using futures
         let futures: Vec<_> = syscalls
             .into_iter()
             .map(|syscall| self.execute(pid, syscall))
             .collect();
 
-        // Await all results
         futures::future::join_all(futures).await
     }
 
@@ -282,42 +300,10 @@ impl AsyncSyscallExecutor {
     pub fn sync_executor(&self) -> &SyscallExecutorWithIpc {
         &self.sync_executor
     }
-}
 
-// ============================================================================
-// True Async I/O Implementations (Future Enhancement)
-// ============================================================================
-
-/// This module will contain true async I/O implementations using tokio::fs
-/// and io_uring when ready. For now, we use spawn_blocking as a bridge.
-///
-/// # Future Roadmap
-///
-/// 1. **Phase 1** (Current): spawn_blocking for all blocking ops
-/// 2. **Phase 2**: tokio::fs for file operations
-/// 3. **Phase 3**: io_uring for high-performance I/O
-/// 4. **Phase 4**: async IPC with tokio channels
-mod true_async_io {
-    use std::path::PathBuf;
-
-    /// Example of true async file read (to be implemented)
-    #[allow(dead_code)]
-    async fn read_file_async(_path: &PathBuf) -> std::io::Result<Vec<u8>> {
-        // Future implementation:
-        // tokio::fs::read(path).await
-
-        // For now, this is just a placeholder
-        todo!("True async I/O coming in Phase 2")
-    }
-
-    /// Example of io_uring integration (to be implemented)
-    #[allow(dead_code)]
-    async fn read_file_uring(_path: &PathBuf) -> std::io::Result<Vec<u8>> {
-        // Future implementation with io_uring
-        // let ring = IoUring::new()?;
-        // ring.read(path).await
-
-        todo!("io_uring integration coming in Phase 3")
+    /// Check if adaptive dispatcher is enabled
+    pub fn has_dispatcher(&self) -> bool {
+        self.dispatcher.is_some()
     }
 }
 
