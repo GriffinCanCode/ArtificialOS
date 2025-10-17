@@ -5,7 +5,7 @@
  *
  * Features:
  * - IPC channel validation and whitelisting
- * - Type-safe API with JSDoc annotations
+ * - Type-safe API with TypeScript
  * - Structured error handling with fallbacks
  * - Performance monitoring
  * - Secure contextBridge implementation
@@ -36,17 +36,15 @@ try {
   // LOGGING SETUP
   // ============================================================================
 
-  /**
-   * @typedef {Object} Logger
-   * @property {(...args: any[]) => void} error
-   * @property {(...args: any[]) => void} warn
-   * @property {(...args: any[]) => void} info
-   * @property {(...args: any[]) => void} debug
-   * @property {(...args: any[]) => void} verbose
-   */
+  interface Logger {
+    error: (...args: any[]) => void;
+    warn: (...args: any[]) => void;
+    info: (...args: any[]) => void;
+    debug: (...args: any[]) => void;
+    verbose: (...args: any[]) => void;
+  }
 
-  /** @type {Logger} */
-  let log;
+  let log: Logger;
 
   try {
     log = require('electron-log');
@@ -71,9 +69,8 @@ try {
 
   /**
    * Whitelist of allowed IPC channels for security
-   * Only these channels can be invoked from the renderer process
    */
-  const ALLOWED_CHANNELS = {
+  const ALLOWED_CHANNELS: Record<string, boolean> = {
     // Window controls
     'minimize-window': true,
     'maximize-window': true,
@@ -85,10 +82,8 @@ try {
 
   /**
    * Validates if an IPC channel is whitelisted
-   * @param {string} channel - The IPC channel name
-   * @returns {boolean} Whether the channel is allowed
    */
-  const isChannelAllowed = (channel) => {
+  const isChannelAllowed = (channel: string): boolean => {
     const allowed = ALLOWED_CHANNELS[channel] === true;
     if (!allowed) {
       log.error(`[PRELOAD] ⛔ Blocked unauthorized IPC channel: ${channel}`);
@@ -98,12 +93,8 @@ try {
 
   /**
    * Safely invokes an IPC channel with validation and error handling
-   * @param {string} channel - The IPC channel name
-   * @param {...any} args - Arguments to pass to the IPC handler
-   * @returns {Promise<any>} The result from the main process
-   * @throws {Error} If the channel is not whitelisted or IPC fails
    */
-  const safeInvoke = async (channel, ...args) => {
+  const safeInvoke = async <T = any>(channel: string, ...args: any[]): Promise<T> => {
     if (!isChannelAllowed(channel)) {
       throw new Error(`IPC channel '${channel}' is not whitelisted`);
     }
@@ -115,32 +106,36 @@ try {
       return result;
     } catch (error) {
       log.error(`[PRELOAD] ✗ IPC error on channel '${channel}':`, error);
-      throw new Error(`IPC call failed: ${error.message}`);
+      throw new Error(`IPC call failed: ${(error as Error).message}`);
     }
   };
+
+  // ============================================================================
+  // TYPE DEFINITIONS
+  // ============================================================================
+
+  interface SystemInfo {
+    platform: string;
+    arch: string;
+    version: string;
+    electron: string;
+    chrome: string;
+    node: string;
+    isDev: boolean;
+  }
 
   // ============================================================================
   // WINDOW CONTROLS API
   // ============================================================================
 
-  /**
-   * @typedef {Object} WindowControlsAPI
-   * @property {() => Promise<boolean>} minimize - Minimize the window
-   * @property {() => Promise<boolean>} maximize - Toggle maximize/unmaximize
-   * @property {() => Promise<boolean>} close - Close the window
-   * @property {() => Promise<boolean>} isMaximized - Check if window is maximized
-   */
-
-  /** @type {WindowControlsAPI} */
   const windowControls = {
     /**
      * Minimizes the application window
-     * @returns {Promise<boolean>} Success status
      */
-    minimize: async () => {
+    minimize: async (): Promise<boolean> => {
       try {
         log.debug('[PRELOAD] Window minimize requested');
-        return await safeInvoke('minimize-window');
+        return await safeInvoke<boolean>('minimize-window');
       } catch (error) {
         log.error('[PRELOAD] Failed to minimize window:', error);
         return false;
@@ -149,12 +144,11 @@ try {
 
     /**
      * Toggles window between maximized and normal state
-     * @returns {Promise<boolean>} New maximized state
      */
-    maximize: async () => {
+    maximize: async (): Promise<boolean> => {
       try {
         log.debug('[PRELOAD] Window maximize toggle requested');
-        return await safeInvoke('maximize-window');
+        return await safeInvoke<boolean>('maximize-window');
       } catch (error) {
         log.error('[PRELOAD] Failed to toggle maximize:', error);
         return false;
@@ -163,12 +157,11 @@ try {
 
     /**
      * Closes the application window
-     * @returns {Promise<boolean>} Success status
      */
-    close: async () => {
+    close: async (): Promise<boolean> => {
       try {
         log.debug('[PRELOAD] Window close requested');
-        return await safeInvoke('close-window');
+        return await safeInvoke<boolean>('close-window');
       } catch (error) {
         log.error('[PRELOAD] Failed to close window:', error);
         return false;
@@ -180,32 +173,13 @@ try {
   // SYSTEM INFO API
   // ============================================================================
 
-  /**
-   * @typedef {Object} SystemInfo
-   * @property {string} platform - Operating system platform
-   * @property {string} arch - CPU architecture
-   * @property {string} version - Application version
-   * @property {string} electron - Electron version
-   * @property {string} chrome - Chrome version
-   * @property {string} node - Node.js version
-   * @property {boolean} isDev - Development mode flag
-   */
-
-  /**
-   * @typedef {Object} SystemAPI
-   * @property {() => Promise<SystemInfo>} getInfo - Get system information
-   * @property {() => Promise<'dark'|'light'>} getTheme - Get native theme
-   */
-
-  /** @type {SystemAPI} */
   const system = {
     /**
      * Gets comprehensive system and application information
-     * @returns {Promise<SystemInfo>} System information object
      */
-    getInfo: async () => {
+    getInfo: async (): Promise<SystemInfo> => {
       try {
-        return await safeInvoke('get-system-info');
+        return await safeInvoke<SystemInfo>('get-system-info');
       } catch (error) {
         log.error('[PRELOAD] Failed to get system info:', error);
         // Return sensible defaults on error
@@ -223,11 +197,10 @@ try {
 
     /**
      * Gets the native system theme preference
-     * @returns {Promise<'dark'|'light'>} Theme preference
      */
-    getTheme: async () => {
+    getTheme: async (): Promise<'dark' | 'light'> => {
       try {
-        return await safeInvoke('get-native-theme');
+        return await safeInvoke<'dark' | 'light'>('get-native-theme');
       } catch (error) {
         log.error('[PRELOAD] Failed to get native theme:', error);
         return 'dark'; // Default fallback
@@ -241,7 +214,6 @@ try {
 
   /**
    * Main Electron API exposed to renderer process
-   * All methods are validated and sandboxed through contextBridge
    */
   contextBridge.exposeInMainWorld('electron', {
     // Window controls
@@ -272,46 +244,40 @@ try {
 
   /**
    * Logger API exposed to renderer process
-   * Provides consistent logging across main and renderer processes
    */
   contextBridge.exposeInMainWorld('electronLog', {
     /**
      * Log error message
-     * @param {...any} args - Arguments to log
      */
-    error: (...args) => {
+    error: (...args: any[]): void => {
       log.error('[RENDERER]', ...args);
     },
 
     /**
      * Log warning message
-     * @param {...any} args - Arguments to log
      */
-    warn: (...args) => {
+    warn: (...args: any[]): void => {
       log.warn('[RENDERER]', ...args);
     },
 
     /**
      * Log info message
-     * @param {...any} args - Arguments to log
      */
-    info: (...args) => {
+    info: (...args: any[]): void => {
       log.info('[RENDERER]', ...args);
     },
 
     /**
      * Log debug message (dev only)
-     * @param {...any} args - Arguments to log
      */
-    debug: (...args) => {
+    debug: (...args: any[]): void => {
       log.debug('[RENDERER]', ...args);
     },
 
     /**
      * Log verbose message (dev only)
-     * @param {...any} args - Arguments to log
      */
-    verbose: (...args) => {
+    verbose: (...args: any[]): void => {
       log.verbose('[RENDERER]', ...args);
     },
   });
@@ -342,23 +308,24 @@ try {
   // ============================================================================
 
   console.error('[PRELOAD] ✗ Critical error loading preload script:', error);
-  console.error('[PRELOAD] Stack trace:', error.stack);
+  console.error('[PRELOAD] Stack trace:', (error as Error).stack);
 
   // Attempt to expose a minimal error API to renderer
   try {
     const { contextBridge } = require('electron');
     contextBridge.exposeInMainWorld('electron', {
-      error: error.message,
+      error: (error as Error).message,
       available: false,
     });
     contextBridge.exposeInMainWorld('electronLog', {
-      error: (...args) => console.error('[RENDERER ERROR]', ...args),
-      warn: (...args) => console.warn('[RENDERER WARN]', ...args),
-      info: (...args) => console.info('[RENDERER INFO]', ...args),
-      debug: (...args) => console.debug('[RENDERER DEBUG]', ...args),
-      verbose: (...args) => console.log('[RENDERER VERBOSE]', ...args),
+      error: (...args: any[]) => console.error('[RENDERER ERROR]', ...args),
+      warn: (...args: any[]) => console.warn('[RENDERER WARN]', ...args),
+      info: (...args: any[]) => console.info('[RENDERER INFO]', ...args),
+      debug: (...args: any[]) => console.debug('[RENDERER DEBUG]', ...args),
+      verbose: (...args: any[]) => console.log('[RENDERER VERBOSE]', ...args),
     });
   } catch (bridgeError) {
     console.error('[PRELOAD] ✗ Failed to expose fallback API:', bridgeError);
   }
 }
+

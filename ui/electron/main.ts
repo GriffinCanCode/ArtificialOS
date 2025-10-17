@@ -16,40 +16,46 @@
  * @version 2.0.0
  */
 
-const { app, BrowserWindow, ipcMain, Menu, shell, dialog, nativeTheme } = require('electron');
-const path = require('path');
-const fs = require('fs');
-const log = require('electron-log');
+import { app, BrowserWindow, ipcMain, Menu, shell, dialog, nativeTheme, IpcMainInvokeEvent } from 'electron';
+import path from 'path';
+import fs from 'fs';
+import log from 'electron-log';
+import { fileURLToPath } from 'url';
+
+// ============================================================================
+// ESM COMPATIBILITY
+// ============================================================================
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // ============================================================================
 // CONFIGURATION & CONSTANTS
 // ============================================================================
 
-/**
- * @typedef {Object} WindowState
- * @property {number} width - Window width in pixels
- * @property {number} height - Window height in pixels
- * @property {number} [x] - Window x position (undefined for center)
- * @property {number} [y] - Window y position (undefined for center)
- * @property {boolean} isMaximized - Whether window is maximized
- */
+interface WindowState {
+  width: number;
+  height: number;
+  x?: number;
+  y?: number;
+  isMaximized: boolean;
+}
 
-/**
- * @typedef {Object} SystemInfo
- * @property {string} platform - Operating system platform
- * @property {string} arch - CPU architecture
- * @property {string} version - Application version
- * @property {string} electron - Electron version
- * @property {string} chrome - Chrome version
- * @property {string} node - Node.js version
- * @property {boolean} isDev - Development mode flag
- */
+interface SystemInfo {
+  platform: string;
+  arch: string;
+  version: string;
+  electron: string;
+  chrome: string;
+  node: string;
+  isDev: boolean;
+}
 
-/** @type {boolean} Development mode flag based on package status */
-const isDev = !app.isPackaged;
+/** Development mode flag based on package status */
+const isDev: boolean = !app.isPackaged;
 
-/** @type {string} Path to window state persistence file */
-const WINDOW_STATE_FILE = path.join(app.getPath('userData'), 'window-state.json');
+/** Path to window state persistence file */
+const WINDOW_STATE_FILE: string = path.join(app.getPath('userData'), 'window-state.json');
 
 // Configure electron-log with rotation and better formatting
 log.transports.file.level = isDev ? 'debug' : 'info';
@@ -84,56 +90,49 @@ log.info('='.repeat(80));
  * Manages window state persistence across application restarts.
  * Automatically saves window size, position, and maximized state to disk
  * and restores it on next launch.
- *
- * @class WindowStateManager
  */
 class WindowStateManager {
-  /**
-   * Creates a new WindowStateManager instance
-   * @constructor
-   */
+  private defaultState: WindowState;
+  private state: WindowState;
+
   constructor() {
-    /** @type {WindowState} Default window state for first launch */
     this.defaultState = {
       width: 1400,
       height: 900,
       x: undefined,
       y: undefined,
-      isMaximized: false,
+      isMaximized: true,
     };
-    /** @type {WindowState} Current window state */
     this.state = this.loadState();
   }
 
   /**
    * Loads window state from disk
    * Falls back to default state if file doesn't exist or is corrupted
-   * @returns {WindowState} Loaded or default window state
    */
-  loadState() {
+  private loadState(): WindowState {
     try {
       if (fs.existsSync(WINDOW_STATE_FILE)) {
         const data = fs.readFileSync(WINDOW_STATE_FILE, 'utf8');
-        const state = JSON.parse(data);
+        const state = JSON.parse(data) as Partial<WindowState>;
         log.info('Loaded window state:', state);
         return { ...this.defaultState, ...state };
       }
     } catch (error) {
-      log.warn('Failed to load window state:', error.message);
+      log.warn('Failed to load window state:', (error as Error).message);
     }
     return { ...this.defaultState };
   }
 
   /**
    * Saves current window state to disk
-   * @param {BrowserWindow} window - The window to save state from
    */
-  saveState(window) {
+  saveState(window: BrowserWindow | null): void {
     try {
       if (!window) return;
 
       const bounds = window.getBounds();
-      const state = {
+      const state: WindowState = {
         width: bounds.width,
         height: bounds.height,
         x: bounds.x,
@@ -151,9 +150,8 @@ class WindowStateManager {
   /**
    * Tracks window events and automatically saves state on changes
    * Also restores maximized state if window was maximized on last close
-   * @param {BrowserWindow} window - The window to track
    */
-  track(window) {
+  track(window: BrowserWindow): void {
     // Save state on window events
     const saveHandler = () => this.saveState(window);
 
@@ -171,14 +169,12 @@ class WindowStateManager {
 
   /**
    * Gets the current window state
-   * @returns {WindowState} Current window state
    */
-  getState() {
+  getState(): WindowState {
     return this.state;
   }
 }
 
-/** @type {WindowStateManager} Global window state manager instance */
 const windowStateManager = new WindowStateManager();
 
 // ============================================================================
@@ -189,26 +185,19 @@ const windowStateManager = new WindowStateManager();
  * Creates and sets the native application menu.
  * Includes File, Edit, View, Window, and Help menus with platform-specific
  * items (e.g., different accelerators for macOS vs Windows/Linux).
- *
- * Menu structure:
- * - File: Reload, Quit
- * - Edit: Undo, Redo, Cut, Copy, Paste, Select All
- * - View: Zoom controls, Toggle Fullscreen, Toggle DevTools (dev only)
- * - Window: Minimize, Zoom/Maximize, Close, macOS-specific items
- * - Help: Learn More, Toggle Developer Tools
- *
- * @function createApplicationMenu
  */
-function createApplicationMenu() {
-  const template = [
+function createApplicationMenu(): void {
+  const template: Electron.MenuItemConstructorOptions[] = [
     {
       label: 'File',
       submenu: [
         {
           label: 'Reload',
           accelerator: 'CmdOrCtrl+R',
-          click: (item, focusedWindow) => {
-            if (focusedWindow) focusedWindow.reload();
+          click: (_item, focusedWindow) => {
+            if (focusedWindow && 'reload' in focusedWindow) {
+              (focusedWindow as BrowserWindow).reload();
+            }
           }
         },
         { type: 'separator' },
@@ -240,8 +229,8 @@ function createApplicationMenu() {
         { type: 'separator' },
         { role: 'togglefullscreen' },
         ...(isDev ? [
-          { type: 'separator' },
-          { role: 'toggleDevTools' }
+          { type: 'separator' as const },
+          { role: 'toggleDevTools' as const }
         ] : [])
       ]
     },
@@ -251,12 +240,12 @@ function createApplicationMenu() {
         { role: 'minimize' },
         { role: 'zoom' },
         ...(process.platform === 'darwin' ? [
-          { type: 'separator' },
-          { role: 'front' },
-          { type: 'separator' },
-          { role: 'window' }
+          { type: 'separator' as const },
+          { role: 'front' as const },
+          { type: 'separator' as const },
+          { role: 'window' as const }
         ] : [
-          { role: 'close' }
+          { role: 'close' as const }
         ])
       ]
     },
@@ -273,8 +262,10 @@ function createApplicationMenu() {
         {
           label: 'Toggle Developer Tools',
           accelerator: process.platform === 'darwin' ? 'Alt+Command+I' : 'Ctrl+Shift+I',
-          click: (item, focusedWindow) => {
-            if (focusedWindow) focusedWindow.webContents.toggleDevTools();
+          click: (_item, focusedWindow) => {
+            if (focusedWindow && 'webContents' in focusedWindow) {
+              (focusedWindow as BrowserWindow).webContents.toggleDevTools();
+            }
           }
         }
       ]
@@ -290,11 +281,7 @@ function createApplicationMenu() {
 // WINDOW CREATION
 // ============================================================================
 
-/**
- * @type {BrowserWindow | null}
- * Reference to the main application window
- */
-let mainWindow = null;
+let mainWindow: BrowserWindow | null = null;
 
 /**
  * Creates the main application window with enhanced security and performance settings.
@@ -309,21 +296,12 @@ let mainWindow = null;
  * - ready-to-show pattern to prevent flickering
  * - Background throttling disabled for UI responsiveness
  * - Periodic cache clearing in development mode
- *
- * Window features:
- * - Frameless with custom title bar
- * - Persistent state (size, position, maximized)
- * - Crash recovery with user dialog
- * - DevTools auto-open in development
- *
- * @function createWindow
- * @returns {BrowserWindow} The created main window instance
  */
-function createWindow() {
+function createWindow(): BrowserWindow {
   log.info('Creating main window');
 
   const windowState = windowStateManager.getState();
-  const preloadPath = path.join(__dirname, 'preload.cjs');
+  const preloadPath = path.join(__dirname, 'preload.js');
 
   log.info('Preload script path:', preloadPath);
   log.info('Preload script exists:', fs.existsSync(preloadPath));
@@ -359,7 +337,7 @@ function createWindow() {
   // Show window when ready to prevent flickering
   mainWindow.once('ready-to-show', () => {
     log.info('Window ready to show');
-    mainWindow.show();
+    mainWindow?.show();
   });
 
   // Load the React app
@@ -370,7 +348,7 @@ function createWindow() {
   loadPromise.then(() => {
     log.info(`Successfully loaded ${isDev ? 'dev server' : 'built files'}`);
     if (isDev) {
-      mainWindow.webContents.openDevTools();
+      mainWindow?.webContents.openDevTools();
     }
   }).catch((error) => {
     log.error('Failed to load app:', error);
@@ -385,13 +363,13 @@ function createWindow() {
     log.info('Content finished loading');
   });
 
-  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
     log.error('Failed to load content:', { errorCode, errorDescription });
   });
 
-  mainWindow.webContents.on('crashed', (event) => {
-    log.error('Renderer process crashed');
-    const options = {
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    log.error('Renderer process crashed:', details);
+    const options: Electron.MessageBoxOptions = {
       type: 'error',
       title: 'Renderer Crashed',
       message: 'The application has crashed. Would you like to reload?',
@@ -399,7 +377,7 @@ function createWindow() {
     };
 
     dialog.showMessageBox(options).then(({ response }) => {
-      if (response === 0) {
+      if (response === 0 && mainWindow) {
         mainWindow.reload();
       } else {
         app.quit();
@@ -456,25 +434,12 @@ function createWindow() {
 
 /**
  * Registers all IPC handlers for communication between main and renderer processes.
- *
- * Registered handlers:
- * - minimize-window: Minimizes the main window
- * - maximize-window: Toggles window maximize/unmaximize state
- * - close-window: Closes the main window
- * - get-system-info: Returns system and application information
- * - get-native-theme: Returns current system theme (dark/light)
- * - set-native-theme: Sets the application theme
- *
- * All handlers are validated in the preload script via channel whitelist.
- *
- * @function setupIpcHandlers
  */
-function setupIpcHandlers() {
+function setupIpcHandlers(): void {
   /**
    * IPC Handler: Minimize window
-   * @returns {Promise<boolean>} Success status
    */
-  ipcMain.handle('minimize-window', () => {
+  ipcMain.handle('minimize-window', (): boolean => {
     log.debug('IPC: minimize-window');
     mainWindow?.minimize();
     return true;
@@ -482,9 +447,8 @@ function setupIpcHandlers() {
 
   /**
    * IPC Handler: Toggle maximize/unmaximize window
-   * @returns {Promise<boolean>} New maximized state
    */
-  ipcMain.handle('maximize-window', () => {
+  ipcMain.handle('maximize-window', (): boolean => {
     const isMaximized = mainWindow?.isMaximized();
     log.debug(`IPC: maximize-window (currently: ${isMaximized})`);
 
@@ -500,9 +464,8 @@ function setupIpcHandlers() {
 
   /**
    * IPC Handler: Close window
-   * @returns {Promise<boolean>} Success status
    */
-  ipcMain.handle('close-window', () => {
+  ipcMain.handle('close-window', (): boolean => {
     log.debug('IPC: close-window');
     mainWindow?.close();
     return true;
@@ -510,9 +473,8 @@ function setupIpcHandlers() {
 
   /**
    * IPC Handler: Get system information
-   * @returns {Promise<SystemInfo>} System and application information
    */
-  ipcMain.handle('get-system-info', () => {
+  ipcMain.handle('get-system-info', (): SystemInfo => {
     log.debug('IPC: get-system-info');
     return {
       platform: process.platform,
@@ -527,18 +489,15 @@ function setupIpcHandlers() {
 
   /**
    * IPC Handler: Get native system theme
-   * @returns {Promise<'dark'|'light'>} Current system theme
    */
-  ipcMain.handle('get-native-theme', () => {
+  ipcMain.handle('get-native-theme', (): 'dark' | 'light' => {
     return nativeTheme.shouldUseDarkColors ? 'dark' : 'light';
   });
 
   /**
    * IPC Handler: Set application theme
-   * @param {Electron.IpcMainEvent} event - IPC event object
-   * @param {'system'|'light'|'dark'} theme - Theme to set
    */
-  ipcMain.on('set-native-theme', (event, theme) => {
+  ipcMain.on('set-native-theme', (_event: IpcMainInvokeEvent, theme: 'system' | 'light' | 'dark') => {
     nativeTheme.themeSource = theme;
   });
 
@@ -551,10 +510,6 @@ function setupIpcHandlers() {
 
 /**
  * Single instance lock to prevent multiple instances of the application.
- * If another instance is already running, this instance will quit immediately
- * and focus the existing instance instead.
- *
- * @type {boolean}
  */
 const gotTheLock = app.requestSingleInstanceLock();
 
@@ -562,7 +517,7 @@ if (!gotTheLock) {
   log.warn('Another instance is already running. Quitting...');
   app.quit();
 } else {
-  app.on('second-instance', (event, commandLine, workingDirectory) => {
+  app.on('second-instance', () => {
     log.info('Second instance detected, focusing existing window');
 
     if (mainWindow) {
@@ -620,17 +575,14 @@ app.on('will-quit', () => {
 
 process.on('uncaughtException', (error) => {
   log.error('Uncaught exception in main process:', error);
-  // In production, you might want to send this to a crash reporting service
 });
 
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason) => {
   log.error('Unhandled rejection in main process:', reason);
 });
 
 // Configure GPU/rendering options
-// These flags can help with various GPU-related issues
 if (process.platform === 'darwin') {
-  // macOS-specific flags to reduce GPU-related warnings/errors
   app.commandLine.appendSwitch('disable-gpu-sandbox');
   app.commandLine.appendSwitch('disable-software-rasterizer');
   log.debug('Applied macOS-specific GPU flags');

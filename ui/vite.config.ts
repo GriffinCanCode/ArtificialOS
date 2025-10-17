@@ -102,6 +102,21 @@ export default defineConfig({
       // Ignore node_modules for better performance
       ignored: ["**/node_modules/**", "**/dist/**"],
     },
+    // Proxy configuration for backend API and assets
+    proxy: {
+      // Proxy /apps/native/* to backend for icon assets
+      '/apps/native': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+      },
+      // Proxy other API endpoints to backend
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
     // Serve native app bundles
     fs: {
       allow: [

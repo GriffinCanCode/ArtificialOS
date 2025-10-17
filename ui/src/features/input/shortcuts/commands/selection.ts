@@ -18,8 +18,14 @@ export const selectionCommands: ShortcutConfig[] = [
     category: "selection",
     priority: "high",
     scope: "global",
-    handler: () => {
-      // Will be implemented by context
+    allowInInput: true, // Allow native select all behavior in input fields
+    handler: (event) => {
+      // In input fields, allow native behavior (don't prevent default)
+      const target = event.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
+        return false; // Return false to allow native browser behavior
+      }
+      // For other contexts (icon grids, file lists, etc.), will be implemented by context
     },
   },
 

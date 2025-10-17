@@ -18,8 +18,7 @@ export default defineConfig({
         "**/*.d.ts",
         "**/*.config.*",
         "**/mockData.ts",
-        "src/main.cjs",
-        "src/preload.cjs",
+        "electron/**",
       ],
     },
     // Increase timeout for integration tests
