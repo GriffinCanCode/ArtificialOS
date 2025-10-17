@@ -11,9 +11,9 @@ import { Tooltip } from "../../../features/floating";
 import { BrandLogo } from "../typography/BrandLogo";
 import { DockItem } from "./DockItem";
 import { Launchpad } from "./Launchpad";
-import { Grid as IconGrid } from "../../../features/icons";
+import { Grid as IconGrid, useIconActions, useIcons as useIconsData, useSelectedIcons } from "../../../features/icons";
 import type { IconType } from "../../../features/icons";
-import { useScope, useShortcuts } from "../../../features/input";
+import { useScope, useShortcuts, createSelectionCommands } from "../../../features/input";
 import { ConnectionStatus } from "../../../features/connection";
 import "./Desktop.css";
 
@@ -30,6 +30,11 @@ export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpen
   const [time, setTime] = useState(new Date());
   const dockItems = useDockItems();
   const { reorder, toggle, remove } = useDockActions();
+
+  // Icon grid actions and data for wiring up selection commands
+  const iconActions = useIconActions();
+  const icons = useIconsData();
+  const selectedIcons = useSelectedIcons();
 
   // Activate desktop scope
   useScope("desktop");
@@ -58,6 +63,28 @@ export const Desktop: React.FC<DesktopProps> = ({ onLaunchApp, onOpenHub, onOpen
       handler: () => onToggleLaunchpad(),
     },
   ]);
+
+  // Register selection commands using factory pattern
+  // This establishes single source of truth while allowing context-specific actions
+  useShortcuts(
+    createSelectionCommands(
+      {
+        selectAll: iconActions.selectAll,
+        clearSelection: iconActions.clearSelection,
+        invertSelection: () => {
+          // Invert selection logic for icon grid
+          const allIds = icons.map((i: IconType) => i.id);
+          const selectedIds = selectedIcons.map((i: IconType) => i.id);
+          const selectedSet = new Set(selectedIds);
+          const invertedIds = allIds.filter((id: string) => !selectedSet.has(id));
+
+          iconActions.clearSelection();
+          invertedIds.forEach((id: string) => iconActions.select(id, true));
+        },
+      },
+      "desktop" // Scope for these shortcuts
+    )
+  );
 
   // Update clock
   useEffect(() => {

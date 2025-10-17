@@ -1,6 +1,7 @@
 /**
  * Keyboard Hook
- * Global keyboard shortcuts
+ * App-specific keyboard shortcuts (Command Palette, Quick Access, etc.)
+ * Selection shortcuts (Cmd+A, Escape) are handled by useSelectionShortcuts
  */
 
 import { useCallback, useEffect } from 'react';
@@ -13,6 +14,10 @@ interface UseKeyboardOptions {
   onSpace?: () => void;
 }
 
+/**
+ * Hook for app-specific keyboard shortcuts
+ * Handles File Explorer-specific commands only
+ */
 export function useKeyboard(options: UseKeyboardOptions) {
   const handleKeyDown = useCallback((event: React.KeyboardEvent | KeyboardEvent) => {
     const isCommand = event.metaKey || event.ctrlKey;
@@ -31,7 +36,7 @@ export function useKeyboard(options: UseKeyboardOptions) {
       return;
     }
 
-    // Escape
+    // Escape - Close modals
     if (event.key === 'Escape') {
       event.preventDefault();
       options.onEscape?.();

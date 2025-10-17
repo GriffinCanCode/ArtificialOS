@@ -14,8 +14,16 @@ import type { ShortcutConfig } from "../core/types";
 // ============================================================================
 
 export { systemCommands } from "./system";
-export { windowCommands } from "./window";
-export { selectionCommands } from "./selection";
+export {
+  windowCommands,
+  createWindowCommands,
+  type WindowActions
+} from "./window";
+export {
+  selectionCommands,
+  createSelectionCommands,
+  type SelectionActions
+} from "./selection";
 export { clipboardCommands } from "./clipboard";
 
 // ============================================================================

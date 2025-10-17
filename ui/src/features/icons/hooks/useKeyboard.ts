@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useCallback } from "react";
-import { useActions, useIcons, useSelectedIcons, useSearchState } from "../store/store";
+import { useActions, useIcons, useSelectedIcons } from "../store/store";
 import { shouldIgnoreKeyboardEvent } from "../../input";
 import type { Icon, GridPosition } from "../core/types";
 
@@ -100,8 +100,7 @@ function getLastIcon(icons: Icon[]): Icon | undefined {
 export function useKeyboard(options: KeyboardOptions = {}) {
   const icons = useIcons();
   const selectedIcons = useSelectedIcons();
-  const searchState = useSearchState();
-  const { select, selectAll, clearSelection, autoArrange, setSearchQuery } = useActions();
+  const { select, autoArrange } = useActions();
 
   // Get current focused icon (last selected)
   const focusedIcon = selectedIcons.length > 0 ? selectedIcons[selectedIcons.length - 1] : null;
@@ -124,19 +123,19 @@ export function useKeyboard(options: KeyboardOptions = {}) {
   );
 
   // Handle keyboard events
+  // Note: Selection shortcuts (Cmd+A, Cmd+I, Escape) are now handled centrally
+  // through the ShortcutRegistry in Desktop.tsx. This hook only handles
+  // grid-specific navigation (arrows, Home, End, etc.)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Allow Escape and Cmd+A even in inputs
-      const allowedKeys = ["Escape", "a", "A"];
-      const isAllowed = allowedKeys.includes(e.key) && (e.metaKey || e.ctrlKey || e.key === "Escape");
-
-      if (!isAllowed && shouldIgnoreKeyboardEvent(e)) {
-        return; // Let input handle the keystroke
+      // Ignore keyboard events in input fields for navigation keys
+      if (shouldIgnoreKeyboardEvent(e)) {
+        return;
       }
 
       if (options.disabled) return;
 
-      // Arrow keys - Navigate
+      // Arrow keys - Navigate (grid-specific behavior)
       if (e.key === "ArrowUp") {
         e.preventDefault();
         handleArrowKey("up", e.shiftKey);
@@ -161,49 +160,14 @@ export function useKeyboard(options: KeyboardOptions = {}) {
         return;
       }
 
-      // Cmd/Ctrl + A - Select all
-      if ((e.metaKey || e.ctrlKey) && e.key === "a") {
-        e.preventDefault();
-        selectAll();
-        return;
-      }
-
-      // Escape - Clear selection or exit search
-      if (e.key === "Escape") {
-        e.preventDefault();
-        if (searchState.isActive) {
-          setSearchQuery("");
-          if (options.onEscape) {
-            options.onEscape();
-          }
-        } else {
-          clearSelection();
-        }
-        return;
-      }
-
-      // Cmd/Ctrl + I - Invert selection
-      if ((e.metaKey || e.ctrlKey) && e.key === "i") {
-        e.preventDefault();
-        const allIds = icons.map((i) => i.id);
-        const selectedIds = new Set(selectedIcons.map((i) => i.id));
-        const invertedIds = allIds.filter((id) => !selectedIds.has(id));
-
-        clearSelection();
-        for (const id of invertedIds) {
-          select(id, true);
-        }
-        return;
-      }
-
-      // Cmd/Ctrl + Shift + A - Auto-arrange
+      // Cmd/Ctrl + Shift + A - Auto-arrange (grid-specific)
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "A") {
         e.preventDefault();
         autoArrange("grid");
         return;
       }
 
-      // Home - Select first icon
+      // Home - Select first icon (grid-specific navigation)
       if (e.key === "Home") {
         e.preventDefault();
         const first = getFirstIcon(icons);
@@ -213,7 +177,7 @@ export function useKeyboard(options: KeyboardOptions = {}) {
         return;
       }
 
-      // End - Select last icon
+      // End - Select last icon (grid-specific navigation)
       if (e.key === "End") {
         e.preventDefault();
         const last = getLastIcon(icons);
@@ -238,14 +202,9 @@ export function useKeyboard(options: KeyboardOptions = {}) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
     handleArrowKey,
-    selectAll,
-    clearSelection,
     autoArrange,
     select,
     icons,
-    selectedIcons,
-    searchState.isActive,
-    setSearchQuery,
     options,
   ]);
 
