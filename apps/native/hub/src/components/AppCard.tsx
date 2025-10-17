@@ -5,6 +5,7 @@
 
 import React from 'react';
 import type { AppMetadata } from '../types';
+import { IconRenderer } from '../lib/icon-renderer';
 
 interface AppCardProps {
   app: AppMetadata;
@@ -47,7 +48,9 @@ export const AppCard: React.FC<AppCardProps> = ({
         {isFavorite ? '⭐' : '☆'}
       </button>
 
-      <div className="app-card-icon">{app.icon}</div>
+      <div className="app-card-icon">
+        <IconRenderer icon={app.icon} alt={app.name} size={48} />
+      </div>
       <div className="app-card-name">{app.name}</div>
       <div className="app-card-description">{app.description}</div>
 

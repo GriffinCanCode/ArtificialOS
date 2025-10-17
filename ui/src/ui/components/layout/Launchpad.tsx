@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { Search } from "lucide-react";
+import { IconRenderer } from "../../../core/utils/icon-renderer";
 import "./Launchpad.css";
 
 interface LaunchpadApp {
@@ -118,7 +119,9 @@ export const Launchpad: React.FC<LaunchpadProps> = ({ isVisible, onLaunchApp }) 
                 animationDelay: `${index * 0.02}s`,
               }}
             >
-              <div className="launchpad-app-icon">{app.icon}</div>
+              <div className="launchpad-app-icon">
+                <IconRenderer icon={app.icon} alt={app.name} size={48} />
+              </div>
               <div className="launchpad-app-name">{app.name}</div>
             </div>
           ))
