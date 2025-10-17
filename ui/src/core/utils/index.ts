@@ -18,15 +18,10 @@ export { WebSocketClient } from "../api/websocketClient";
 export { SessionClient } from "../api/sessionClient";
 export { RegistryClient } from "../api/registryClient";
 
-// ID generation utilities
+// Sequential ID utilities (for ordered lists)
+// For general ID generation, use @/core/id instead
 export {
-  generateTimestampId,
-  generateShortId,
-  generateUUID,
-  generatePrefixedId,
   generateSequentialId,
-  extractTimestamp,
-  isValidUUID,
   IDGenerator,
   defaultIDGenerator,
 } from "./id";

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/id"
 	"go.uber.org/zap"
 )
 
@@ -63,14 +63,14 @@ func New(service string, logger *zap.Logger) *Tracer {
 func (t *Tracer) StartSpan(ctx context.Context, name string) (*Span, context.Context) {
 	traceID, _ := ctx.Value(traceIDKey).(TraceID)
 	if traceID == "" {
-		traceID = TraceID(uuid.New().String())
+		traceID = TraceID(id.NewRequestID())
 	}
 
 	parentID, _ := ctx.Value(spanIDKey).(SpanID)
 
 	span := &Span{
 		TraceID:   traceID,
-		SpanID:    SpanID(uuid.New().String()),
+		SpanID:    SpanID(id.NewRequestID()),
 		ParentID:  parentID,
 		Name:      name,
 		Service:   t.service,

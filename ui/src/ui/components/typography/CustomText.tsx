@@ -5,6 +5,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { typography, TypographyOptions, typographyPresets } from "../../../core/utils/typography";
+import { generatePrefixed } from "../../../core/id";
 import "./CustomText.css";
 
 export interface CustomTextProps extends TypographyOptions {
@@ -103,9 +104,9 @@ export const CustomText: React.FC<CustomTextProps> = ({
   }, [text, fontName, JSON.stringify(options), onLoad]);
 
   // Generate gradient ID for uniqueness
-  const gradientId = `text-gradient-${Math.random().toString(36).substr(2, 9)}`;
-  const shadowId = `text-shadow-${Math.random().toString(36).substr(2, 9)}`;
-  const glowId = `text-glow-${Math.random().toString(36).substr(2, 9)}`;
+  const gradientId = generatePrefixed("text-gradient");
+  const shadowId = generatePrefixed("text-shadow");
+  const glowId = generatePrefixed("text-glow");
 
   if (!isLoaded || !pathData) {
     // Fallback to regular text while loading

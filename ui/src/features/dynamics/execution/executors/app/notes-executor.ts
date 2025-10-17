@@ -4,7 +4,7 @@
  */
 
 import { logger } from "../../../../../core/utils/monitoring/logger";
-import { generatePrefixedId } from "../../../../../core/utils/id";
+import { generatePrefixed } from "../../../../../core/id";
 import { formatRelativeTime, compareTimestampsDesc } from "../../../../../core/utils/dates";
 import { toRgbaString } from "../../../../../core/utils/color";
 import { ExecutorContext, AsyncExecutor } from "../core/types";
@@ -54,7 +54,7 @@ export class NotesExecutor implements AsyncExecutor {
    * Create a new note with generated ID
    */
   private async createNote(): Promise<Note> {
-    const noteId = generatePrefixedId("note");
+    const noteId = generatePrefixed("note");
     const now = Date.now();
 
     const newNote: Note = {
@@ -88,7 +88,7 @@ export class NotesExecutor implements AsyncExecutor {
 
       // Auto-create note ID if none exists (user typed without clicking +)
       if (!noteId) {
-        noteId = generatePrefixedId("note");
+        noteId = generatePrefixed("note");
         this.context.componentState.set("current-note-id", noteId);
         logger.info("Auto-created note ID for new note", { component: "NotesExecutor", noteId });
       }

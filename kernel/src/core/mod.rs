@@ -19,6 +19,7 @@
 // Core abstractions
 pub mod errors;
 pub mod guard;
+pub mod id;
 pub mod limits;
 pub mod traits;
 pub mod types;
@@ -34,6 +35,7 @@ pub mod sync;
 
 // Re-export core abstractions
 pub use errors::*;
+pub use id::*;
 pub use limits::*;
 pub use traits::*;
 pub use types::*;

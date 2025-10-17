@@ -7,6 +7,7 @@ import { useEffect, useState, useCallback } from 'react';
 import type { NativeAppProps } from './sdk';
 import type { TerminalTab, TerminalSettings } from './types';
 import { TerminalView } from './components/TerminalView';
+import { generateTabId } from './utils/id';
 import './styles/App.css';
 
 export default function TerminalApp({ context }: NativeAppProps) {
@@ -38,7 +39,7 @@ export default function TerminalApp({ context }: NativeAppProps) {
 
       if (result?.id) {
         const newTab: TerminalTab = {
-          id: `tab-${crypto.randomUUID()}`,
+          id: generateTabId(),
           sessionId: result.id,
           title: `Terminal ${tabs.length + 1}`,
           active: true,

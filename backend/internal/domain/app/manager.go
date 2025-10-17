@@ -7,9 +7,9 @@ import (
 
 	"github.com/GriffinCanCode/AgentOS/backend/internal/grpc/kernel"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/infrastructure/monitoring"
+	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/id"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/types"
 	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/utils"
-	"github.com/google/uuid"
 )
 
 // Manager orchestrates app lifecycle
@@ -86,7 +86,7 @@ func (m *Manager) Spawn(ctx context.Context, request string, blueprint map[strin
 	}
 
 	app := &types.App{
-		ID:         uuid.New().String(),
+		ID:         string(id.NewAppID()),
 		Hash:       hash,
 		Title:      title,
 		Blueprint:  blueprint,

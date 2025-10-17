@@ -12,6 +12,7 @@ import { getMaximizedBounds, getCascadePosition } from "../core/bounds";
 import type { Blueprint } from "../../../core/store/appStore";
 import { filterValidComponents } from "../../../core/utils/blueprintParser";
 import { useInstanceStore } from "../../dynamics/store/instanceStore";
+import { newWindowID } from "../../../core/id";
 
 // ============================================================================
 // Store Interface
@@ -57,7 +58,7 @@ export const useStore = create<Store>()(
       nextZIndex: 1000,
 
       open: (appId, title, uiSpec, icon, metadata) => {
-        const windowId = `window-${appId}-${Date.now()}`;
+        const windowId = newWindowID();
         const state = get();
 
         const existingWindows = state.windows.filter((w) => !w.isMinimized);

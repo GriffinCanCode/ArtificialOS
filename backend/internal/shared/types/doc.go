@@ -25,7 +25,7 @@
 // Example Usage:
 //
 //	app := &types.App{
-//	    ID:        uuid.New().String(),
+//	    ID:        string(id.NewAppID()),
 //	    Title:     "Calculator",
 //	    State:     types.StateActive,
 //	    Blueprint: uiSpec,

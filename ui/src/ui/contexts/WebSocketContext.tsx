@@ -12,6 +12,7 @@ import { useWebSocketConnection } from "../../core/api/hooks/useWebSocketConnect
 import { logger } from "../../core/utils/monitoring/logger";
 import { useAppStore } from "../../core/store/appStore";
 import { useStore as useWindowStore, useActions } from "../../features/windows";
+import { generatePrefixed } from "../../core/id";
 
 interface WebSocketContextType {
   client: WebSocketClient | null;
@@ -178,7 +179,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
       }
 
       // Create builder window - DynamicRenderer will handle showing build UI
-      const builderId = `builder-${Date.now()}`;
+      const builderId = generatePrefixed("builder");
       openWindow(
         builderId,
         "🔨 Building App...",

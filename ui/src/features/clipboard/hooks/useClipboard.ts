@@ -100,7 +100,7 @@ export function useClipboard(options: UseClipboardOptions = {}) {
         if (navigator.clipboard) {
           const text = await navigator.clipboard.readText();
           const entry: ClipboardEntry = {
-            id: Date.now(),
+            id: Math.floor(Math.random() * Number.MAX_SAFE_INTEGER),
             data: { type: "Text", data: text },
             source_pid: 0,
             timestamp: Date.now(),

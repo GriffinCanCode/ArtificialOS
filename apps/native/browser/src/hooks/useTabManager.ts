@@ -5,6 +5,7 @@
 import { useCallback } from 'react';
 import type { BrowserTab } from '../types';
 import { getTitleFromUrl } from '../utils/url';
+import { generateTabId } from '../utils/id';
 
 export function useTabManager(
   setTabs: React.Dispatch<React.SetStateAction<BrowserTab[]>>,
@@ -17,7 +18,7 @@ export function useTabManager(
   const createTab = useCallback(
     (url: string = 'about:blank') => {
       const newTab: BrowserTab = {
-        id: `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: generateTabId(),
         title: getTitleFromUrl(url),
         url,
         loading: false,

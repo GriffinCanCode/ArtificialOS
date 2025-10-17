@@ -130,7 +130,7 @@ export class UIExecutor implements BaseExecutor {
           >("todos", []);
           const newTask = this.context.componentState.get<string>("task-input", "");
           if (newTask.trim()) {
-            todos.push({ id: Date.now(), text: newTask, done: false });
+            todos.push({ id: Math.floor(Math.random() * Number.MAX_SAFE_INTEGER), text: newTask, done: false });
             this.context.componentState.set("todos", [...todos]);
             this.context.componentState.set("task-input", "");
             this.context.componentState.set("todos.lastAdded", Date.now());

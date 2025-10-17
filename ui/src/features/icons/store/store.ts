@@ -11,6 +11,7 @@ import { buildCollisionMap, findNearestAvailable, findFirstAvailable } from "../
 import { arrange, compactLayout } from "../utils/arrange";
 import { filterIcons, sortByRelevance } from "../utils/search";
 import { getIconIdsInBox, getIconIdsInRange } from "../utils/selection";
+import { generatePrefixed } from "../../../core/id";
 
 // ============================================================================
 // Store Interface
@@ -83,7 +84,7 @@ interface Store {
 // ============================================================================
 
 function generateId(): string {
-  return `icon-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  return generatePrefixed("icon");
 }
 
 function now(): number {

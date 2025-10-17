@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/GriffinCanCode/AgentOS/backend/internal/shared/id"
 	"github.com/creack/pty"
-	"github.com/google/uuid"
 )
 
 // Manager manages terminal sessions
@@ -49,7 +49,7 @@ func (m *Manager) CreateSession(shell, workingDir string, cols, rows int, env ma
 	}
 
 	// Generate session ID
-	sessionID := uuid.New().String()
+	sessionID := string(id.NewSessionID())
 
 	// Create command
 	cmd := exec.Command(shell)

@@ -4,6 +4,7 @@ pydantic==2.10.5
 pydantic-settings==2.10.1
 pybreaker==1.2.0
 injector==0.21.0     # Dependency injection
+python-ulid==2.7.0   # ULID generation (lexicographically sortable IDs)
 
 # AI/ML
 google-generativeai==0.8.4

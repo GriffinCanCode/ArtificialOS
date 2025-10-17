@@ -8,10 +8,10 @@ option go_package = "github.com/GriffinCanCode/AgentOS/backend/proto/ai";
 service AIService {
   // Generate UI specification from natural language
   rpc GenerateUI(UIRequest) returns (UIResponse);
-  
+
   // Stream chat response with thoughts
   rpc StreamChat(ChatRequest) returns (stream ChatToken);
-  
+
   // Stream UI generation with real-time updates
   rpc StreamUI(UIRequest) returns (stream UIToken);
 }
@@ -19,11 +19,11 @@ service AIService {
 message UIRequest {
   string message = 1;
   map<string, string> context = 2;
-  optional string parent_id = 3;
+  optional string parent_id = 3;  // ULID format: app_01ARZ3NDEKTSV4RRFFQ69G5FAV
 }
 
 message UIResponse {
-  string app_id = 1;
+  string app_id = 1;           // ULID format: app_01ARZ3NDEKTSV4RRFFQ69G5FAV
   string ui_spec_json = 2;
   repeated string thoughts = 3;
   bool success = 4;
@@ -50,7 +50,7 @@ message ChatToken {
     COMPLETE = 3;
     ERROR = 4;
   }
-  
+
   Type type = 1;
   string content = 2;
   int64 timestamp = 3;
@@ -64,7 +64,7 @@ message UIToken {
     COMPLETE = 3;
     ERROR = 4;
   }
-  
+
   Type type = 1;
   string content = 2;
   int64 timestamp = 3;

@@ -340,13 +340,6 @@ export function movingAverage(values: number[], windowSize: number): number[] {
 }
 
 /**
- * Generate random ID (for UI elements, not cryptographic)
- */
-export function randomId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-}
-
-/**
  * Generate random number in range
  */
 export function randomInRange(min: number, max: number): number {
