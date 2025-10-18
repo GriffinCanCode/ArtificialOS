@@ -29,10 +29,9 @@ export const TypewriterText: React.FC<TypewriterTextProps> = ({
   const [isComplete, setIsComplete] = useState(false);
 
   useEffect(() => {
-    let timeout: NodeJS.Timeout;
     let interval: NodeJS.Timeout;
 
-    timeout = setTimeout(() => {
+    const timeout = setTimeout(() => {
       let index = 0;
       interval = setInterval(() => {
         if (index < text.length) {

@@ -31,7 +31,7 @@ const API_BASE_URL = "http://localhost:8000";
 /**
  * Generic fetch wrapper with Zod validation
  */
-async function fetchWithValidation<T>(url: string, schema: any, options?: RequestInit): Promise<T> {
+async function fetchWithValidation<T>(url: string, schema: any, options?: globalThis.RequestInit): Promise<T> {
   try {
     const response = await fetch(`${API_BASE_URL}${url}`, {
       ...options,

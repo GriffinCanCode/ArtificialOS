@@ -11,7 +11,7 @@
 
 import { useSpring, useTrail, useSprings, animated } from "@react-spring/web";
 import { useDrag } from "@use-gesture/react";
-import { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { springConfigs } from "../../core/utils/animation/gsapAnimations";
 
 // Re-export animated for convenience

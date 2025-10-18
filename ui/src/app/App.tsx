@@ -125,7 +125,7 @@ function AppContent() {
           break;
       }
     },
-    [addMessage, addThought, appendToLastMessage]
+    [addMessage, addThought, appendToLastMessage, log]
   );
 
   // Subscribe to WebSocket messages
