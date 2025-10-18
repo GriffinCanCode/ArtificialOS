@@ -4,6 +4,7 @@
  */
 
 import opentype, { Font } from "opentype.js";
+import { logger } from "../monitoring/logger";
 
 export interface TypographyOptions {
   fontSize?: number;
@@ -75,7 +76,7 @@ class TypographyManager {
   textToPath(text: string, fontName: string, options: TextPathOptions = {}): string | null {
     const font = this.fonts.get(fontName);
     if (!font) {
-      console.warn(`Font ${fontName} not loaded`);
+      logger.warn(`Font ${fontName} not loaded`, { fontName });
       return null;
     }
 
@@ -99,7 +100,7 @@ class TypographyManager {
 
       return path.toSVG(2); // 2 decimal places
     } catch (error) {
-      console.error("Error generating text path:", error);
+      logger.error("Error generating text path", error);
       return null;
     }
   }

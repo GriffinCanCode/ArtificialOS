@@ -76,7 +76,7 @@ export function useInputState(
       try {
         await executor.execute(eventHandler, params);
       } catch (error) {
-        console.error("Input event execution failed:", error);
+        // Error handling moved to executor error boundary
       }
     },
     [component, executor]

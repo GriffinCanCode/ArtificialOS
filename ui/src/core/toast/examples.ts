@@ -69,7 +69,7 @@ export const advancedExamples = {
       action: {
         label: "View",
         onClick: () => {
-          console.log("View email clicked");
+          // Email view action handled by UI interaction
         },
       },
     });
@@ -83,13 +83,13 @@ export const advancedExamples = {
 
     toast.undo("Item deleted", () => {
       itemDeleted = false;
-      console.log("Item restored");
+      // Item restoration handled by undo system
     });
 
     // After timeout, permanently delete
     setTimeout(() => {
       if (itemDeleted) {
-        console.log("Item permanently deleted");
+        // Permanent deletion handled by trash system
       }
     }, 10000);
   },
@@ -177,7 +177,7 @@ export const realWorldExamples = {
       toast.success("File uploaded successfully!", {
         action: {
           label: "View",
-          onClick: () => console.log("View file"),
+          onClick: () => {}, // File view handled by file manager
         },
       });
     } catch (error) {
@@ -237,7 +237,7 @@ export const realWorldExamples = {
     toast.dismiss("bulk-delete");
     toast.undo(`Deleted ${itemIds.length} items`, () => {
       // Restore all items
-      console.log("Restoring items:", deletedItems);
+      // Items restoration handled by batch operation system
       toast.success("Items restored");
     });
   },

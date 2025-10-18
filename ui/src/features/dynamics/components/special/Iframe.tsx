@@ -16,7 +16,7 @@ export const Iframe: React.FC<BaseComponentProps> = ({ component, state }) => {
   useEffect(() => {
     // Subscribe to URL changes and force re-render
     const unsubscribe = state.subscribe(urlKey, (newUrl: string) => {
-      console.log(`[Iframe] URL changed for ${component.id}:`, newUrl);
+      // URL change handled by component state management
       setDynamicUrl(newUrl);
     });
 

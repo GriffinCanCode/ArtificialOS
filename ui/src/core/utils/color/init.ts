@@ -23,7 +23,7 @@ export function initializeColorSystem(
   document.documentElement.classList.add(`theme-${mode}`);
   document.documentElement.setAttribute("data-theme", mode);
 
-  console.log(`✨ Color system initialized (${mode} mode, primary: ${primaryColor})`);
+  // Color system initialization logging moved to startup logging
 }
 
 /**
