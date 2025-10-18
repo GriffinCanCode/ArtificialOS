@@ -216,6 +216,10 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	// WebSocket
 	router.GET("/stream", wsHandler.HandleConnection)
 
+	// Logs endpoints
+	router.POST("/api/logs/stream", handlers.StreamLogs)
+	router.GET("/api/logs", handlers.GetLogs)
+
 	// Create metrics aggregator
 	metricsAggregator := http.NewMetricsAggregator(metrics, kernelClient)
 

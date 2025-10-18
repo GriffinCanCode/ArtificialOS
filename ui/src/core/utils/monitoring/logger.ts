@@ -1,22 +1,15 @@
 /**
  * Logging utility for the AI-OS frontend
  * Provides structured logging across main and renderer processes
+ * Enhanced with hierarchical context tracking (Desktop > Window > App > Component)
  */
 
-import { formatISO } from "../dates";
+// Note: formatISO removed as we're using performance.now() timestamps
+import { getHierarchicalLogContext } from "./hierarchicalContext";
+import { getCausalityLogContext } from "./causalityTracker";
+import { logBuffer } from "./logBuffer";
 
-// Extend Window interface for electronLog
-declare global {
-  interface Window {
-    electronLog?: {
-      error: (message: string, ...args: any[]) => void;
-      warn: (message: string, ...args: any[]) => void;
-      info: (message: string, ...args: any[]) => void;
-      debug: (message: string, ...args: any[]) => void;
-      verbose: (message: string, ...args: any[]) => void;
-    };
-  }
-}
+// Note: electronLog interface is declared in ui/src/core/types/global.d.ts
 
 export enum LogLevel {
   ERROR = "error",
@@ -31,7 +24,7 @@ export interface LogContext {
   action?: string;
   userId?: string;
   sessionId?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 class Logger {
@@ -112,6 +105,7 @@ class Logger {
 
   /**
    * Core logging method (non-blocking via setTimeout)
+   * Automatically includes hierarchical context (Desktop > Window > App > Component)
    */
   private log(
     level: LogLevel,
@@ -127,41 +121,24 @@ class Logger {
       }
     }
 
-    // Use setTimeout to make logging non-blocking
-    setTimeout(() => {
-      const fullContext = { ...this.context, ...context };
-      const timestamp = formatISO();
+    // Merge contexts: base context + hierarchical context + causality context + provided context
+    const hierarchicalContext = getHierarchicalLogContext();
+    const causalityContext = getCausalityLogContext();
+    const fullContext = {
+      ...this.context,
+      ...hierarchicalContext,
+      ...causalityContext,
+      ...context
+    };
 
-      // If running in Electron with electron-log available
-      if (window.electronLog) {
-        window.electronLog[level](message, fullContext);
-      } else {
-        // Fallback to console
-        switch (level) {
-          case LogLevel.ERROR:
-            console.error(`[${timestamp}] ERROR:`, message, fullContext);
-            break;
-          case LogLevel.WARN:
-            console.warn(`[${timestamp}] WARN:`, message, fullContext);
-            break;
-          case LogLevel.INFO:
-            console.info(`[${timestamp}] INFO:`, message, fullContext);
-            break;
-          case LogLevel.DEBUG:
-            console.debug(`[${timestamp}] DEBUG:`, message, fullContext);
-            break;
-          case LogLevel.VERBOSE:
-            console.log(`[${timestamp}] VERBOSE:`, message, fullContext);
-            break;
-        }
-      }
-    }, 0);
+    // Use high-performance log buffer instead of setTimeout
+    logBuffer.add(level, message, fullContext);
   }
 
   /**
    * Serialize error objects for logging
    */
-  private serializeError(error: Error | unknown): any {
+  private serializeError(error: Error | unknown): unknown {
     if (!error) return undefined;
 
     if (error instanceof Error) {
@@ -224,7 +201,7 @@ class Logger {
   /**
    * Log WebSocket events
    */
-  websocket(event: string, data?: any, context?: LogContext): void {
+  websocket(event: string, data?: unknown, context?: LogContext): void {
     this.debug("WebSocket event", {
       ...context,
       event,
@@ -261,7 +238,7 @@ class Logger {
   /**
    * Log WebSocket events with throttling
    */
-  websocketThrottled(event: string, data?: any, context?: LogContext): void {
+  websocketThrottled(event: string, data?: unknown, context?: LogContext): void {
     this.log(
       LogLevel.DEBUG,
       "WebSocket event",
@@ -273,6 +250,43 @@ class Logger {
       },
       true
     );
+  }
+
+  // ============================================================================
+  // Performance & Debugging Methods
+  // ============================================================================
+
+  /**
+   * Get logging system performance statistics
+   */
+  async getStats(): Promise<{
+    bufferSize: number;
+    memoryUsageMB: number;
+    droppedLogs: number;
+    totalLogs: number;
+    isProcessing: boolean;
+    throttleMapSize: number;
+  }> {
+    const bufferStats = await logBuffer.getStats();
+
+    return {
+      ...bufferStats,
+      throttleMapSize: this.throttleMap.size,
+    };
+  }
+
+  /**
+   * Manually flush the log buffer (useful for debugging or before critical operations)
+   */
+  flush(): void {
+    logBuffer.flush();
+  }
+
+  /**
+   * Clear throttle map (useful for testing)
+   */
+  clearThrottleMap(): void {
+    this.throttleMap.clear();
   }
 }
 

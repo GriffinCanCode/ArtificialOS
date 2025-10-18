@@ -202,3 +202,8 @@ func GetSpanID(ctx context.Context) SpanID {
 func FormatTrace(traceID TraceID, spanID SpanID) string {
 	return fmt.Sprintf("[trace:%s span:%s]", traceID, spanID)
 }
+
+// Logger returns the tracer's logger instance for use in handlers
+func (t *Tracer) Logger() *zap.Logger {
+	return t.logger
+}
