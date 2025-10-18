@@ -9,6 +9,7 @@ import { X, Minus, Maximize2, Minimize2 } from "lucide-react";
 import { useActions, useSnap, fadeIn, syncWindow, State } from "../../../features/windows";
 import type { Window as WindowType } from "../../../features/windows";
 import { useLogger } from "../../../core/utils/monitoring/useLogger";
+import { WindowJourneyProvider } from "../../../core/utils/monitoring";
 import { Tooltip } from "../../../features/floating";
 import { toRgbaString, THEME_COLORS, ALPHA_VALUES } from "../../../core/utils/color";
 import "./Window.css";
@@ -158,7 +159,11 @@ export const Window: React.FC<WindowProps> = ({ window, children }) => {
   const isMaximized = window.state === State.MAXIMIZED;
 
   return (
-    <>
+    <WindowJourneyProvider
+      windowId={window.id}
+      windowTitle={window.title}
+      appId={window.appId}
+    >
       <Rnd
         ref={windowRef}
         default={{
@@ -214,7 +219,7 @@ export const Window: React.FC<WindowProps> = ({ window, children }) => {
                   onClick={handleMaximize}
                   aria-label={isMaximized ? "Restore" : "Maximize"}
                 >
-                  {isMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                  {isMaximized ? <Minimize2 size={14} /> : <Minimize2 size={14} />}
                 </button>
               </Tooltip>
               <Tooltip content="Close (⌘W)" delay={700}>
@@ -252,6 +257,6 @@ export const Window: React.FC<WindowProps> = ({ window, children }) => {
           }}
         />
       )}
-    </>
+    </WindowJourneyProvider>
   );
 };

@@ -10,6 +10,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { WebSocketClient } from "../../core/api/websocketClient";
 import { useWebSocketConnection } from "../../core/api/hooks/useWebSocketConnection";
 import { logger } from "../../core/utils/monitoring/logger";
+import { startCausalChain, addCausalEvent } from "../../core/utils/monitoring";
 import { useAppStore } from "../../core/store/appStore";
 import { useStore as useWindowStore, useActions } from "../../features/windows";
 import { generatePrefixed } from "../../core/id";
@@ -114,11 +115,20 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
         });
         return;
       }
+
+      // Track WebSocket send with causality
+      const chainId = startCausalChain('user_action', 'User sent chat message', {
+        component: 'WebSocketProvider',
+        messageLength: message.length,
+      });
+
       logger.debug("Sending chat message", {
         component: "WebSocketProvider",
         messageLength: message.length,
         hasContext: !!context,
+        causalityChainId: chainId,
       });
+
       client.sendChat(message, context);
     },
     [client, isConnected]
@@ -145,6 +155,13 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
         return;
       }
 
+      // Track UI generation with causality chain
+      const chainId = startCausalChain('user_action', 'User requested UI generation', {
+        component: 'WebSocketProvider',
+        messageLength: message.length,
+        action: 'generate_ui',
+      });
+
       // Set generating flag
       (window as any).__isGenerating = true;
 
@@ -152,6 +169,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
         component: "WebSocketProvider",
         messageLength: message.length,
         hasContext: !!context,
+        causalityChainId: chainId,
       });
 
       // CRITICAL: Open a builder window immediately
@@ -180,6 +198,13 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
       // Create builder window - DynamicRenderer will handle showing build UI
       const builderId = generatePrefixed("builder");
+
+      addCausalEvent('navigation', 'Opening builder window for UI generation', {
+        component: 'WebSocketProvider',
+        builderId,
+        action: 'open_builder_window',
+      });
+
       openWindow(
         builderId,
         "🔨 Building App...",
@@ -198,6 +223,13 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
       // Store builder window ID for updates during streaming
       (window as any).__builderWindowId = builderId;
+
+      // Track WebSocket call
+      addCausalEvent('api_call', 'Sending UI generation request to AI service', {
+        component: 'WebSocketProvider',
+        builderId,
+        action: 'generate_ui_request',
+      });
 
       client.generateUI(message, context);
     },

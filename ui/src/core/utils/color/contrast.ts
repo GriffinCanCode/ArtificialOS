@@ -166,7 +166,7 @@ export function ensureContrast(
   level: WCAGLevel = "AA",
   size: WCAGSize = "normal"
 ): string {
-  let fg = color(foreground);
+  const fg = color(foreground);
   const bg = color(background);
 
   // Already readable
@@ -181,7 +181,7 @@ export function ensureContrast(
   const bgLuminance = bg.luminance();
   const shouldLighten = bgLuminance < 0.5;
 
-  let step = shouldLighten ? 0.05 : -0.05;
+  const step = shouldLighten ? 0.05 : -0.05;
   let attempts = 0;
   const maxAttempts = 20;
 

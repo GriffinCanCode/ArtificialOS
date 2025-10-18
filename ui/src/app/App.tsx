@@ -20,6 +20,7 @@ import { useActions, useStore as useWindowStore } from "../features/windows";
 import { useSessionManager } from "../core/hooks/useSessionManager";
 import { ServerMessage } from "../core/types/api";
 import { useLogger } from "../core/utils/monitoring/useLogger";
+import { useJourney } from "../core/utils/monitoring";
 import { useFadeIn } from "../ui/hooks/useGSAP";
 import { queryClient } from "../core/lib/queryClient";
 import { useScope, useShortcuts } from "../features/input";
@@ -29,6 +30,7 @@ import { TypewriterText } from "../ui/components/typography/TypewriterText";
 import "./App.css";
 import "../core/toast/styles.css";
 import { initWebVitals } from "../core/monitoring";
+import { MonitorProvider } from "../core/utils/monitoring";
 
 // Expose window store globally for native apps
 if (typeof window !== "undefined") {
@@ -41,16 +43,24 @@ interface SpotlightFormData {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <WebSocketProvider>
-        <AppContent />
-      </WebSocketProvider>
-    </QueryClientProvider>
+    <MonitorProvider
+      autoStart={true}
+      desktopContext={{
+        environment: process.env.NODE_ENV as 'development' | 'production',
+      }}
+    >
+      <QueryClientProvider client={queryClient}>
+        <WebSocketProvider>
+          <AppContent />
+        </WebSocketProvider>
+      </QueryClientProvider>
+    </MonitorProvider>
   );
 }
 
 function AppContent() {
   const log = useLogger("AppContent");
+  const journey = useJourney("AppContent", true, "User opened AgentOS");
   const [showAbout, setShowAbout] = React.useState(false);
   const [showSpotlight, setShowSpotlight] = React.useState(false);
   const [showLaunchpad, setShowLaunchpad] = React.useState(false);
@@ -275,17 +285,31 @@ function AppContent() {
     (data: SpotlightFormData) => {
       const message = data.prompt.trim();
       if (message) {
+        // Track form submission
+        journey.trackInteraction('spotlight-form', 'submit');
+        journey.addStep('user_action', `User submitted prompt: "${message.substring(0, 50)}${message.length > 50 ? '...' : ''}"`, {
+          promptLength: message.length,
+          action: 'submit_spotlight_form',
+        });
+
         // Start generation immediately - this will trigger the builder UI
         generateUI(message, {});
         reset(); // Clear form after submission
         setShowCreator(false); // Hide creator - builder screen will take over
       }
     },
-    [generateUI, reset]
+    [generateUI, reset, journey]
   );
 
   const handleLaunchApp = useCallback(
     async (appId: string) => {
+      // Track app launch
+      journey.trackInteraction('app-launcher', `launch-${appId}`);
+      journey.addStep('user_action', `User launching app: ${appId}`, {
+        appId,
+        action: 'launch_app',
+      });
+
       try {
         const response = await fetch(`http://localhost:8000/registry/apps/${appId}/launch`, {
           method: "POST",
@@ -293,6 +317,7 @@ function AppContent() {
         const data = await response.json();
         if (data.error) {
           log.error("Failed to launch app", undefined, { appId, error: data.error });
+          journey.trackError(new Error(`Failed to launch app: ${data.error}`), { appId });
         } else if (data.type === "native_web") {
           // Native web app launched
           log.info("Native web app launched successfully", {
@@ -300,6 +325,13 @@ function AppContent() {
             appInstanceId: data.app_id,
             packageId: data.package_id,
             bundlePath: data.bundle_path,
+          });
+
+          journey.trackResponse('launch_app', performance.now(), true);
+          journey.addStep('navigation', `Opening window for native app: ${data.title}`, {
+            appId: data.app_id,
+            appType: 'native_web',
+            packageId: data.package_id,
           });
 
           // Open window with native app metadata
@@ -326,6 +358,12 @@ function AppContent() {
           // Blueprint app launched - open in a window
           log.info("App launched successfully", { appId, appInstanceId: data.app_id });
 
+          journey.trackResponse('launch_app', performance.now(), true);
+          journey.addStep('navigation', `Opening window for blueprint app: ${data.blueprint.title}`, {
+            appId: data.app_id,
+            appType: 'blueprint',
+          });
+
           // Get app metadata for icon
           const metaResponse = await fetch(`http://localhost:8000/registry/apps/${appId}`);
           const metaData = await metaResponse.json();
@@ -335,9 +373,10 @@ function AppContent() {
         }
       } catch (error) {
         log.error("Failed to launch app", error as Error, { appId });
+        journey.trackError(error as Error, { appId, action: 'launch_app' });
       }
     },
-    [log, openWindow]
+    [log, openWindow, journey]
   );
 
   return (

@@ -511,6 +511,30 @@ it("shows tooltip on hover", async () => {
 - Viewport adaptation
 - Orientation handling
 
+## Technical Note: ESLint Exception
+
+This module has a **strategic ESLint exception** for `react-hooks/refs` in `/.eslintrc.cjs`.
+
+### Why?
+`@floating-ui/react` intentionally accesses refs during render for positioning calculations. This pattern:
+- Is safe and battle-tested across millions of React apps
+- Works correctly with React 18's concurrent rendering
+- Predates React's stricter hooks rules
+
+### The Alternative (Not Chosen)
+Refactoring to eliminate ref access during render would require:
+- Major changes across 6+ component types
+- Risk of breaking production-tested positioning logic
+- Significant engineering effort with minimal practical benefit
+
+### Future Migration Path
+When [CSS Anchor Positioning](https://developer.chrome.com/blog/anchor-positioning-api) achieves broad browser support (currently Chrome 125+), we'll migrate to native CSS positioning which:
+- Eliminates JavaScript positioning entirely
+- Provides better performance
+- Removes this linting issue naturally
+
+**Last reviewed:** 2025-10-17
+
 ## Examples
 
 See `tests/floating/` for comprehensive examples and test cases.

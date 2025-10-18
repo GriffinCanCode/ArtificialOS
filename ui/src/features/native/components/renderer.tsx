@@ -56,7 +56,7 @@ export const Renderer: React.FC<RendererProps> = ({ appId, packageId, bundlePath
   // Load the app module
   useEffect(() => {
     let mounted = true;
-    let loadStartTime = performance.now();
+    const loadStartTime = performance.now();
 
     const loadApp = async () => {
       setLoading(true);

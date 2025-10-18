@@ -6,7 +6,6 @@ This document describes the bincode integration for high-performance internal IP
 
 ## Performance Characteristics
 
-- **5-10x faster** than JSON for binary data
 - **2-4x smaller** payload sizes (no text encoding overhead)
 - **Zero-copy deserialization** for certain types
 - **Predictable size** - can calculate serialized size without serializing

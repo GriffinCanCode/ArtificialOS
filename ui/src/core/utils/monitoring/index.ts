@@ -119,6 +119,69 @@ export {
   type CausalityOptions
 } from './causalityTracker';
 
+// ============================================================================
+// Journey Tracking System (NEW)
+// ============================================================================
+
+export {
+  useJourneyStore,
+  journeyStore,
+} from './stores/journey';
+
+export {
+  useTrackerStore,
+  trackerStore,
+} from './stores/tracker';
+
+export {
+  useJourney,
+  useInteractionTracking,
+  useAsyncTracking,
+  usePerformanceJourney,
+  useTracker,
+  useTrackerFeature,
+  useTrackerPlugin,
+  useTrackerHealth,
+} from './hooks';
+
+export {
+  MonitorProvider,
+  MonitoringStatus,
+  useMonitor,
+  withMonitoring,
+  JourneyProvider,
+  WindowJourneyProvider,
+  AppJourneyProvider,
+  FormJourneyProvider,
+  useJourneyContext,
+  withJourneyTracking,
+} from './providers';
+
+export type {
+  Journey,
+  JourneyStep,
+  JourneyStepType,
+  JourneyStepContext,
+  JourneyConfig,
+  JourneyAnalytics,
+  TrackerConfig,
+  TrackerPlugin,
+} from './types';
+
+export type {
+  UseJourneyReturn,
+} from './hooks/useJourney';
+
+export type {
+  UseTrackerReturn,
+} from './hooks/useTracker';
+
+export type {
+  WindowJourneyProviderProps,
+  AppJourneyProviderProps,
+  FormJourneyProviderProps,
+} from './providers/journey';
+
 // Import items we need for functions below
 import { logger } from './logger';
 import { performanceMonitor, measurePerf } from './performanceMonitor';
