@@ -1,46 +1,39 @@
-# Selection Shortcuts Architecture
+# Selection Shortcuts
 
-**Status**: Implemented  
-**Pattern**: Factory Pattern  
-**Last Updated**: 2025-01-17
+Implementation of selection keyboard shortcuts (Cmd+A, Cmd+I, Escape) using factory pattern for maintainability and extensibility.
 
 ## Overview
 
-This document describes the implementation of selection keyboard shortcuts (Cmd+A, Cmd+I, Escape) in AgentOS. The factory pattern approach maintains a single definition of shortcuts while allowing context-specific behavior across different components.
+Selection shortcuts are defined centrally and wired to context-specific implementations via a factory pattern. This ensures single source of truth while allowing each component to handle selection differently.
 
-## Problem
+## Architecture
+
+### Factory Pattern Approach
+
+```
+createSelectionCommands() Factory
+  (Central definition)
+         
+         ├─ Desktop (Icons)
+         ├─ File Explorer
+         └─ Other Contexts
+         
+         ▼ ▼ ▼
+      Component Actions
+```
+
+## Problem Statement
 
 Selection shortcuts need to:
-1. Work in input fields with native browser behavior
+1. Work in input fields with native browser behavior (Cmd+A selects text)
 2. Work in desktop icon grid selecting icons
 3. Work in file explorers selecting files
-4. Work in other contexts (text editors, lists, etc.)
+4. Work in other contexts (lists, etc.)
 5. Be centrally defined (DRY principle)
 6. Be discoverable through ShortcutRegistry
 7. Allow context-specific implementations
 
-### Failed Approaches
-
-Hardcoding shortcuts in each component violates DRY principles and prevents discoverability.
-
-Using placeholder handlers creates confusion with non-functional implementations.
-
 ## Solution: Factory Pattern
-
-### Architecture
-
-```
-         createSelectionCommands() Factory            
-  (Central definition of shortcuts + interface)      
-                         
-           ├─┬─┬
-           ▼ ▼ ▼
-    Desktop      File        Other   
-    (Icons)     Explorer    Context  
-           
-         ▼       ▼       ▼
-    Icon Store   File Store  Custom Logic
-```
 
 ### Implementation
 
@@ -53,7 +46,7 @@ Using placeholder handlers creates confusion with non-functional implementations
 export interface SelectionActions {
   selectAll: () => void;
   clearSelection: () => void;
-  invertSelection?: () => void; // Optional
+  invertSelection?: () => void; // Optional - not all contexts support this
 }
 
 // Factory creates shortcuts wired to actions
@@ -65,24 +58,40 @@ export function createSelectionCommands(
     {
       id: `selection.all.${scope}`,
       sequence: "$mod+a",
+      label: "Select All",
       handler: (event) => {
-        // Input field detection - allow native behavior
+        // In input fields, allow native browser behavior
         const target = event.target as HTMLElement;
-        if (isInputField(target)) {
+        if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
           return false; // Browser handles it
         }
         actions.selectAll(); // Context handles it
       },
     },
-    // ... other commands
+    {
+      id: `selection.clear.${scope}`,
+      sequence: "Escape",
+      label: "Clear Selection",
+      handler: () => {
+        actions.clearSelection();
+      },
+    },
+    // Invert command only if action is provided
+    ...(actions.invertSelection ? [{
+      id: `selection.invert.${scope}`,
+      sequence: "$mod+i",
+      label: "Invert Selection",
+      handler: () => {
+        actions.invertSelection!();
+      },
+    }] : []),
   ];
 }
 ```
 
 #### 2. Use in Components
 
-**File**: `ui/src/ui/components/layout/Desktop.tsx`
-
+**Desktop Component:**
 ```typescript
 import { createSelectionCommands } from "../../../features/input";
 
@@ -112,8 +121,7 @@ export const Desktop = () => {
 };
 ```
 
-#### 3. File Explorer Example
-
+**File Explorer Component:**
 ```typescript
 export const FileExplorer = () => {
   const fileActions = useFileActions();
@@ -135,14 +143,15 @@ export const FileExplorer = () => {
 
 ### Single Source of Truth
 
-One definition of what selection shortcuts are (`createSelectionCommands`)
-One place to update if shortcuts change
-One interface (`SelectionActions`) that all contexts must implement
+- One definition of what selection shortcuts are (`createSelectionCommands`)
+- One place to update if shortcuts change
+- One interface (`SelectionActions`) that all contexts must implement
 
-### DRY
+### DRY (Don't Repeat Yourself)
 
-Instead of repeating in every component:
+Instead of repeating shortcut definitions:
 ```typescript
+// Bad - repeated in every component
 useShortcuts([{
   id: "my-select-all",
   sequence: "$mod+a",
@@ -150,8 +159,9 @@ useShortcuts([{
 }]);
 ```
 
-Just call the factory:
+Use the factory:
 ```typescript
+// Good - centralized definition
 useShortcuts(createSelectionCommands(actions));
 ```
 
@@ -167,21 +177,22 @@ createSelectionCommands({
 });
 ```
 
-### Discoverable
+### Discoverability
 
-All selection shortcuts are registered in `ShortcutRegistry`
-Can query: `registry.findBySequence("$mod+a")`
-Shows in shortcuts panel/help
-Searchable and inspectable
+All selection shortcuts are registered in `ShortcutRegistry`:
+- Query: `registry.findBySequence("$mod+a")`
+- Shows in shortcuts panel/help
+- Searchable and inspectable
 
 ### Context-Aware
 
-In input fields: Native browser behavior (text selection)
-On desktop: Icon grid selection
-In file explorer: File selection
-Automatic detection of context via event.target
+Shortcuts intelligently handle context:
+- In input fields: Native browser behavior
+- On desktop: Icon grid selection
+- In file explorer: File selection
+- Automatic detection via event.target
 
-### Extensible
+### Extensibility
 
 Adding a new context is trivial:
 ```typescript
@@ -220,11 +231,19 @@ interface SelectionActions {
 }
 ```
 
+## Shortcuts Registered
+
+| Shortcut | Scope | Action | Notes |
+|----------|-------|--------|-------|
+| Cmd/Ctrl+A | All | Select All | Native in input fields |
+| Escape | All | Clear Selection | Clears current selection |
+| Cmd/Ctrl+I | Desktop/Optional | Invert Selection | Only when action provided |
+
 ## Migration Path
 
-If adding more selection-related shortcuts:
+To add more selection-related shortcuts:
 
-1. Add to factory (single change):
+1. Add to factory:
 ```typescript
 export function createSelectionCommands(actions: SelectionActions) {
   return [
@@ -245,29 +264,29 @@ interface SelectionActions {
 }
 ```
 
-3. All components automatically get the new shortcut definition
-4. Components opt-in by providing the action
+3. All components automatically get the new shortcut
 
 ## Comparison with Alternatives
 
 | Solution | DRY | Type Safe | Discoverable | Context-Aware |
 |----------|-----|-----------|--------------|---------------|
-| Factory Pattern | Yes | Yes | Yes | Yes |
+| **Factory Pattern** | Yes | Yes | Yes | Yes |
 | Placeholder handlers | Yes | No | Yes | Yes |
 | Component-specific | No | Maybe | No | Yes |
 | Global context provider | Yes | Maybe | Yes | Maybe |
 
-## Benefits in Practice
+## Integration with Shortcut System
 
-1. **Developer onboarding**: New developers see `SelectionActions` interface and know exactly what to implement
+The factory integrates with the centralized shortcut system:
 
-2. **Consistency**: Impossible to have different shortcuts for selection across the app
+```typescript
+// Shortcuts are automatically registered
+useShortcuts(createSelectionCommands(actions));
 
-3. **Refactoring**: Change `$mod+a` to `$mod+shift+a` in ONE place
-
-4. **Debugging**: Can inspect all registered selection shortcuts via registry
-
-5. **Documentation**: The factory IS the documentation
+// Can be queried later
+const selectionShortcuts = registry.getByCategory("selection");
+const cmdA = registry.findBySequence("$mod+a");
+```
 
 ## Future Enhancements
 
@@ -312,9 +331,9 @@ The factory pattern with `createSelectionCommands()` provides:
 - Type safety through TypeScript
 - Easy extension for new contexts
 - Self-documenting interface
-- Integration with existing architecture (ShortcutRegistry)
+- Integration with existing architecture
 
-This approach scales to any number of contexts while maintaining simplicity.
+This approach scales to any number of contexts while maintaining simplicity and clarity.
 
 ---
 

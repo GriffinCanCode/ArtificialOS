@@ -1,10 +1,10 @@
 # io_uring-style Async Syscall Completion
 
-This document describes the io_uring-inspired async syscall completion system for AgentOS.
+This document describes the io_uring-inspired async syscall completion system for efficient batched I/O operations.
 
 ## Overview
 
-The io_uring-style completion system provides efficient batched syscall submission and completion for I/O-heavy operations. It augments the existing AsyncTaskManager with a more efficient model for operations that benefit from it, without replacing existing patterns.
+The io_uring-style completion system provides efficient batched syscall submission and completion for I/O-heavy operations. It augments the existing AsyncSyscallExecutor with a more efficient batched model for I/O operations, without replacing existing patterns.
 
 ## Architecture
 
@@ -15,6 +15,7 @@ The io_uring-style completion system provides efficient batched syscall submissi
 3. **SyscallSubmissionEntry**: Represents a syscall to be executed asynchronously
 4. **SyscallCompletionEntry**: Represents the result of an executed syscall
 5. **IoUringExecutor**: Executes operations from submission queues
+6. **IoUringHandler**: Integrates with existing syscall handler registry
 
 ### Queues
 
@@ -27,8 +28,6 @@ The io_uring-style completion system provides efficient batched syscall submissi
   - Ring buffer behavior (oldest entries dropped if full)
 
 ## Best Candidates for io_uring Completion
-
-The following syscalls benefit most from io_uring-style completion:
 
 ### File I/O Operations
 - `ReadFile` - Asynchronous file reads
@@ -46,22 +45,20 @@ The following syscalls benefit most from io_uring-style completion:
 - `SendTo` - Asynchronous UDP send
 - `RecvFrom` - Asynchronous UDP receive
 
-### IPC Operations
-- `IpcSend` - Asynchronous IPC message send
-- `IpcRecv` - Asynchronous IPC message receive
-
 ## Usage Patterns
 
-### Basic Submission and Completion
+### Basic Submission
 
 ```rust
-use ai_os_kernel::syscalls::{IoUringManager, SyscallSubmissionEntry};
+use ai_os_kernel::syscalls::{IoUringManager, SyscallSubmissionEntry, SyscallOpType};
 
-// Submit a file read operation
-let entry = SyscallSubmissionEntry::read_file(
+let manager = IoUringManager::new();
+
+// Create a file read operation
+let entry = SyscallSubmissionEntry::new(
     pid,
-    PathBuf::from("/path/to/file"),
-    user_data, // For correlation
+    SyscallOpType::Read { fd: 3, size: 4096 },
+    0, // user_data for correlation
 );
 
 let seq = manager.submit(pid, entry)?;
@@ -70,67 +67,46 @@ let seq = manager.submit(pid, entry)?;
 let completions = manager.reap_completions(pid, Some(32))?;
 for completion in completions {
     if completion.status.is_success() {
-        // Handle success
-        let result = completion.result;
+        let result = &completion.result;
     }
 }
 ```
 
-### Batch Submission
+### Blocking Wait for Completion
 
 ```rust
-// Submit multiple operations at once
-let entries = vec![
-    SyscallSubmissionEntry::read_file(pid, path1, 1),
-    SyscallSubmissionEntry::read_file(pid, path2, 2),
-    SyscallSubmissionEntry::write_file(pid, path3, data, 3),
-];
-
-let seqs = manager.submit_batch(pid, entries)?;
-
-// All operations execute concurrently
-```
-
-### Blocking Wait for Specific Completion
-
-```rust
-// Wait for a specific operation to complete
 let seq = manager.submit(pid, entry)?;
+
+// Wait for a specific operation to complete
 let completion = manager.wait_completion(pid, seq)?;
 ```
 
 ## Integration with Existing Patterns
 
-### Coexistence with AsyncTaskManager
+### Coexistence with AsyncSyscallExecutor
 
-The io_uring system **complements** the existing AsyncTaskManager:
+The io_uring system complements the existing AsyncSyscallExecutor:
 
-- **AsyncTaskManager**: Best for long-running, complex operations
-  - Process spawning
-  - Long-running computations
-  - Operations requiring progress tracking
+- **AsyncSyscallExecutor**: General-purpose async syscall execution
+  - Supports all syscalls
+  - Flexible, but less optimized for I/O batching
   
-- **io_uring**: Best for I/O-bound operations
+- **io_uring**: Optimized for I/O-bound operations
   - File reads/writes
   - Network I/O
   - Operations that benefit from batching
 
 Both can be used simultaneously without conflict.
 
-### Integration with AsyncSyscallHandler
+### Integration with Handler Registry
 
-The `IoUringAsyncHandler` integrates with the existing `AsyncSyscallHandlerRegistry`:
+The `IoUringHandler` integrates with the existing `SyscallHandlerRegistry`:
 
 ```rust
-let registry = AsyncSyscallHandlerRegistry::new()
-    .register(Arc::new(IoUringAsyncHandler::new(manager)));
+let manager = Arc::new(IoUringManager::new());
+let handler = IoUringHandler::new(manager, true); // blocking_mode=true
+// handler can be registered with handler registry
 ```
-
-This allows io_uring operations to be used through the async handler interface.
-
-### Integration with Zero-Copy IPC
-
-io_uring IPC operations (`IpcSend`, `IpcRecv`) integrate with the existing `ZeroCopyIpc` system, providing async completion for zero-copy transfers.
 
 ## Performance Benefits
 
@@ -147,29 +123,21 @@ io_uring IPC operations (`IpcSend`, `IpcRecv`) integrate with the existing `Zero
 ### Efficient Polling
 - Reap multiple completions in one call
 - Minimize syscall overhead
-- Better for high-throughput scenarios
 
 ## Configuration
 
 ### Ring Sizes
 
 ```rust
-// Create ring with custom sizes
+// Default sizes are used by most workloads
+let manager = IoUringManager::new();
+
+// Custom sizes can be configured per process
 manager.create_ring(
     pid,
     Some(512),  // SQ size
     Some(1024), // CQ size
 )?;
-```
-
-### Blocking vs Non-blocking
-
-```rust
-// Blocking mode: wait for completion immediately
-let handler = IoUringHandler::new(manager, true);
-
-// Non-blocking mode: return task ID for later polling
-let handler = IoUringHandler::new(manager, false);
 ```
 
 ## Error Handling
@@ -205,25 +173,62 @@ println!("Completions: {}", stats.total_completions);
 println!("Pending: {}", stats.pending);
 ```
 
-## Comparison with Other Approaches
+## Implementation Details
 
-### vs AsyncTaskManager
-- **io_uring**: Lower overhead, better for I/O-bound operations
-- **AsyncTaskManager**: Better for complex, long-running operations
+### Operation Types
+
+The `SyscallOpType` enum covers I/O-bound operations:
+
+```rust
+pub enum SyscallOpType {
+    // File I/O
+    Read { fd: i32, size: usize },
+    Write { fd: i32, data: Vec<u8> },
+    Open { path: String, flags: u32 },
+    Close { fd: i32 },
+    Fsync { fd: i32 },
+    Lseek { fd: i32, offset: i64, whence: i32 },
+    
+    // Network I/O
+    Send { sockfd: i32, size: usize, flags: u32 },
+    Recv { sockfd: i32, size: usize, flags: u32 },
+    Accept { sockfd: i32 },
+    Connect { sockfd: i32, addr: Vec<u8> },
+    SendTo { sockfd: i32, size: usize, flags: u32 },
+    RecvFrom { sockfd: i32, size: usize, flags: u32 },
+}
+```
+
+### Executor
+
+The IoUringExecutor handles actual execution:
+
+```rust
+pub struct IoUringExecutor {
+    // Tokio-based executor for async operations
+    // (not true kernel io_uring, but provides similar interface)
+}
+```
+
+## Comparison with Alternatives
+
+### vs AsyncSyscallExecutor
+- **io_uring**: Lower overhead, batched, optimized for I/O
+- **AsyncSyscallExecutor**: More flexible, supports all syscalls
 
 ### vs Synchronous Syscalls
 - **io_uring**: Non-blocking, better throughput
-- **Synchronous**: Simpler, better for single operations
+- **Synchronous**: Simpler, blocks calling task
 
-### vs Streaming Syscalls
-- **io_uring**: Better for multiple small operations
-- **Streaming**: Better for large data transfers
+## Testing
 
-## Future Enhancements
+```bash
+cargo test --lib iouring
+cargo test --test iouring
+```
 
-Potential improvements:
-1. True kernel-level io_uring support (currently uses tokio)
-2. Registered buffers for zero-copy I/O
-3. Linked operations (dependencies between operations)
-4. Timeout support per operation
-5. Priority queues for urgent operations
+## References
+
+- Linux io_uring documentation
+- io_uring man pages
+- Ring buffer design patterns

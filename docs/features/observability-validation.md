@@ -2,128 +2,56 @@
 
 ## System Integration
 
-The observability system provides a dual-layer architecture that complements the existing infrastructure:
+The observability system provides a unified architecture for monitoring and tracing:
 
 ```
-Layer 1: Distributed Tracing (Existing)
- span_syscall(), span_operation(), span_grpc()
+Event Streaming Layer (Primary)
+ Lock-free ring buffers
+ Adaptive sampling
+ Anomaly detection
+ Query API
+
+Distributed Tracing Layer (Complementary)
  Structured logging with tracing crate
  Request correlation across async boundaries
-
-Layer 2: Event Streaming (New)
- Lock-free ring buffers for zero-copy events
- Adaptive sampling (automatic overhead control)
- Built-in query API
- Anomaly detection
- Causality tracking
+ Spans for performance profiling
 ```
 
----
+## Core Components
 
-## Implementation Status
+### Collector
 
-### Completed Subsystems
+Central orchestrator for observability data:
+- Event stream management
+- Metrics collection
+- Adaptive sampling
+- Anomaly detection
+- Causality tracking
 
-The following subsystems are integrated with the event collector:
+### Event Stream
 
-1. **ProcessManager** - Process lifecycle events (creation, termination, cleanup)
-2. **SyscallExecutor** - Syscall entry/exit, duration tracking, anomaly detection
-3. **Scheduler** - Context switch tracking, preemption events, scheduling latency
-4. **MemoryManager** - Memory pressure alerts, allocation/deallocation tracking
-5. **IPC QueueManager** - Message send/receive events, queue depth monitoring
-6. **IPC PipeManager** - Pipe read/write operations, throughput tracking
-7. **IPC ShmManager** - Shared memory create/read/write/destroy events
-8. **VFS MountManager** - Slow file operation detection
-9. **PermissionManager** - Permission denial tracking, audit integration
-10. **SandboxManager** - Security violation alerts, capability denial tracking
+Lock-free MPMC ring buffer for event transport:
+- Non-blocking event publishing
+- Multiple subscribers
+- Automatic ring buffer management
 
-### Architecture
+### Analysis
 
-```rust
-pub struct ProcessManager {
-    collector: Option<Arc<Collector>>,  // Event streaming
-}
-
-pub struct SyscallExecutor {
-    collector: Option<Arc<Collector>>,  // Event streaming
-}
-```
-
----
-
-## Integration Points
-
-### SyscallExecutor Integration
-
-Real-time syscall performance tracking with anomaly detection:
-
-```rust
-pub fn execute(&self, pid: Pid, syscall: Syscall) -> SyscallResult {
-    let start = Instant::now();
-    let span = span_syscall(syscall_name, pid);
-    
-    // ... execution ...
-    
-    if let Some(ref collector) = self.collector {
-        let duration_us = start.elapsed().as_micros() as u64;
-        let success = matches!(result, SyscallResult::Success{..});
-        collector.syscall_exit(pid, syscall_name.to_string(), duration_us, success);
-    }
-    
-    result
-}
-```
-
-### Scheduler Integration
-
-Context switch tracking and scheduling decisions:
-
-```rust
-collector.emit(Event::new(
-    Severity::Debug,
-    Category::Scheduler,
-    Payload::ContextSwitch {
-        from_pid: current_pid,
-        to_pid: next_pid,
-        reason: "time_slice_expired".to_string(),
-    },
-));
-```
-
-### Memory Monitoring
-
-Memory pressure and allocation tracking:
-
-```rust
-impl MemoryManager {
-    pub fn check_pressure(&self, collector: &Collector) {
-        let stats = self.get_stats();
-        let usage_pct = (stats.used_bytes * 100) / stats.total_bytes;
-        
-        if usage_pct > 75 {
-            collector.memory_pressure(
-                usage_pct as u8,
-                (stats.available_bytes / 1024 / 1024) as u64,
-            );
-        }
-    }
-}
-```
-
----
+Real-time event processing:
+- Statistical anomaly detection
+- Query execution
+- Adaptive sampling for overhead control
 
 ## Initialization
 
 To initialize the observability system:
 
 ```rust
-use ai_os_kernel::monitoring::{init_collector, Collector};
+use ai_os_kernel::monitoring::{Collector, init_collector};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    init_tracing();
-    
-    let collector = Arc::new(Collector::new());
+    let collector = Collector::new();
     init_collector(collector.clone());
     
     // Build subsystems with collector
@@ -131,14 +59,45 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .with_collector(Arc::clone(&collector))
         .build();
     
-    let syscall_executor = SyscallExecutor::new(sandbox_manager)
+    let scheduler = Scheduler::new(SchedulingPolicy::Fair)
         .with_collector(Arc::clone(&collector));
     
-    // ... rest of initialization
+    Ok(())
 }
 ```
 
----
+## Integration Points
+
+### Scheduler Integration
+
+Scheduling decisions and context switches are observable:
+
+```rust
+// Scheduler emits events for scheduling decisions
+// Tracks scheduling policy and quantum settings
+```
+
+### Memory Monitoring
+
+Memory allocation and pressure tracking:
+
+```rust
+// Memory operations trigger events
+collector.emit(Event::new(
+    Severity::Info,
+    Category::Memory,
+    Payload::MemoryAllocated { size, pid },
+));
+```
+
+### SyscallExecutor Integration
+
+Syscall execution with performance tracking:
+
+```rust
+// Syscalls emit entry/exit events with duration
+// Automatic anomaly detection for slow operations
+```
 
 ## Configuration
 
@@ -158,9 +117,6 @@ KERNEL_ANOMALY_THRESHOLD=3.0     # Z-score threshold (default)
 ### Runtime Tuning
 
 ```rust
-// Adjust sampling based on load
-collector.update_overhead(overhead_pct);
-
 // Get real-time stats
 let stats = collector.stream_stats();
 println!("Events: {} produced, {} consumed, {} dropped",
@@ -169,7 +125,51 @@ println!("Events: {} produced, {} consumed, {} dropped",
     stats.events_dropped);
 ```
 
----
+## Event Categories
+
+The event system covers these categories:
+
+1. **Process**: Process lifecycle events (creation, termination)
+2. **Syscall**: Syscall entry/exit with duration tracking
+3. **Memory**: Memory allocation/deallocation
+4. **IPC**: Message send/receive operations
+5. **Scheduler**: Scheduling decisions
+6. **Performance**: Performance anomalies
+7. **Security**: Permission denials, capability checks
+
+## Usage Patterns
+
+### Real-time Monitoring
+
+```rust
+let mut subscriber = collector.subscribe();
+
+loop {
+    while let Some(event) = subscriber.next() {
+        if event.severity >= Severity::Warn {
+            eprintln!("{}: {:?}", event.category, event.payload);
+        }
+    }
+    tokio::time::sleep(Duration::from_millis(100)).await;
+}
+```
+
+### Causality Tracking
+
+```rust
+let causality_id = collector.emit_causal(Event::new(
+    Severity::Info,
+    Category::Process,
+    Payload::ProcessCreated { name, priority },
+));
+
+// Emit related events in the same chain
+collector.emit_in_chain(Event::new(
+    Severity::Info,
+    Category::Memory,
+    Payload::MemoryAllocated { size: 1024, pid },
+), causality_id);
+```
 
 ## Performance Impact
 
@@ -181,21 +181,9 @@ println!("Events: {} produced, {} consumed, {} dropped",
 
 ### CPU Overhead
 
-- Without sampling: 1-2% at 10K events/sec
-- With adaptive sampling: <1% (auto-adjusts)
-- Per-event cost: ~50-100ns (lock-free)
-
-### Benchmark Results
-
-```
-Event emission:        20ns
-Event filtering:       10ns
-Event serialization:   100ns (when needed)
-Query execution:       1-5µs (1K events)
-Anomaly detection:     50ns (online algorithm)
-```
-
----
+- Event emission: ~50-100ns per event (lock-free)
+- With adaptive sampling: <1% at typical workloads
+- Overhead auto-adjusts based on system load
 
 ## Known Limitations
 
@@ -207,91 +195,36 @@ Anomaly detection:     50ns (online algorithm)
    - Monitor: stream_stats().events_dropped
 
 3. **Memory Bounded**: Fixed-size ring buffer (65,536 events)
-   - Sufficient for most workloads at 1M events/sec
+   - Sufficient for most workloads at typical event rates
    - Configurable if needed
 
 4. **No Persistence**: Events are in-memory only
-   - External subscriber can write to disk/DB
+   - External subscriber can write to disk if needed
 
----
+## Query API
 
-## Usage Patterns
-
-### Real-time Monitoring
+Basic query support for event analysis:
 
 ```rust
-let mut sub = collector.subscribe();
-
-loop {
-    while let Some(event) = sub.next() {
-        if event.severity >= Severity::Warn {
-            eprintln!("{}: {:?}", event.category, event.payload);
-        }
-    }
-    tokio::time::sleep(Duration::from_millis(100)).await;
-}
-```
-
-### Performance Analysis
-
-```rust
-let mut sub = collector.subscribe();
+let mut subscriber = collector.subscribe();
 let query = CommonQueries::syscall_performance();
-let result = collector.query(query, &mut sub);
-
-if let Some(Aggregation::Percentile { p50, p95, p99 }) = 
-    result.aggregations.get("duration_stats") 
-{
-    println!("Syscall latency: p50={:.2}µs p95={:.2}µs p99={:.2}µs", 
-        p50, p95, p99);
-}
+let result = collector.query(query, &mut subscriber);
 ```
-
-### Causality Tracing
-
-```rust
-let causality_id = collector.emit_causal(Event::new(
-    Severity::Info,
-    Category::Process,
-    Payload::ProcessCreated { name, priority },
-));
-
-collector.emit_in_chain(memory_event, causality_id);
-collector.emit_in_chain(ipc_event, causality_id);
-
-let chain = CausalityTracer::trace(&events, causality_id);
-```
-
----
 
 ## Testing
 
 Comprehensive test suite included:
-- 46+ unit tests
-- Integration tests with ProcessManager
+- Unit tests for event emission
+- Integration tests with subsystems
 - Concurrent subscriber tests
 - Causality tracking tests
 - Anomaly detection tests
-- Query system tests
 
 Run tests:
 ```bash
 cd kernel
 cargo test --test observability
 ```
-
----
-
-## Future Enhancements
-
-1. Persistent storage backend option
-2. Sampling configuration via environment variables
-3. External exporters (Prometheus, OpenTelemetry)
-4. ML-based anomaly detection
-5. Historical trend analysis
-6. Network event tracking
-
----
 
 ## References
 
