@@ -1,0 +1,207 @@
+---
+alwaysApply: false
+---
+# Feature Name
+```
+
+## Maintenance
+
+### Updates
+
+When updating documentation:
+
+1. Update file content to match current code
+2. Verify all code examples still work
+3. Remove outdated information
+4. Add new sections if implementation changed
+
+### Change Log
+
+For significant documentation changes, add a note:
+
+```markdown
+## Documentation Updates
+
+- 2025-10-19: Simplified examples, removed speculative features
+- 2025-10-15: Added TypeScript examples
+```
+
+### Review Process
+
+Before committing documentation:
+
+1. Read it as if you don't know the system (or have it reviewed)
+2. Verify all code examples work
+3. Check all file paths are correct
+4. Ensure no claims are speculative
+5. Remove marketing language
+6. Confirm headings and structure are consistent
+
+## Checklist for Documentation
+
+Before considering a doc complete:
+
+- [ ] Accurately reflects implementation
+- [ ] All code examples are tested/real
+- [ ] File paths are correct
+- [ ] No speculative content
+- [ ] Professional tone, no marketing language
+- [ ] No emojis or decorative characters
+- [ ] Related files/docs are linked
+- [ ] Headings are logical and shallow
+- [ ] Related components are mentioned
+- [ ] Examples are concrete and working
+- [ ] Technical terms are precise
+- [ ] Structure follows standard template
+- [ ] No redundant sections
+- [ ] Links are relative and work
+
+## Examples: Before and After
+
+### Example 1: Feature Description
+
+**Before:**
+```markdown
+# Launchpad Feature
+
+The amazing Launchpad provides a beautiful app grid that seamlessly integrates
+with the desktop! It's REALLY fast and provides an incredible search experience
+with fuzzy matching capabilities. You can use Cmd+L to open it and it looks
+absolutely gorgeous with smooth animations.
+```
+
+**After:**
+```markdown
+# Launchpad Feature
+
+A desktop app grid that integrates with the desktop environment and replaces
+desktop icons when activated.
+
+## Overview
+
+The launchpad provides quick access to installed applications through a searchable
+grid interface. It integrates with the desktop component and can be toggled via
+keyboard shortcut or menu bar button.
+```
+
+### Example 2: Implementation Details
+
+**Before:**
+```markdown
+## How It Works
+
+The launchpad uses a super advanced state management system that automatically
+handles all the complexity. It's incredibly performant and uses cutting-edge
+techniques for rendering.
+```
+
+**After:**
+```markdown
+## Implementation
+
+### Key Implementation Details
+
+1. **Dynamic App Loading** - Apps are fetched from the backend when launchpad opens
+2. **Search Filtering** - Performed locally for instant response
+3. **Animation Stagger** - Each app receives animation delay based on index
+4. **State Management** - Uses React hooks for visibility and app list
+5. **Error Handling** - Gracefully handles fetch failures and displays empty state
+```
+
+### Example 3: Code Examples
+
+**Before:**
+```typescript
+// Magic button that does everything
+<MagicalButton />
+```
+
+**After:**
+```typescript
+import { buttonVariants, cn } from "../utils/animation/componentVariants";
+
+<button
+  className={cn(buttonVariants({ variant: "primary", size: "large" }))}
+  onClick={handleClick}
+>
+  Click Me
+</button>
+```
+
+## Questions to Ask
+
+When writing documentation, ask:
+
+1. Does this reflect the actual code right now?
+2. Would someone unfamiliar with the system understand this?
+3. Are all code examples tested and real?
+4. Did I use marketing language anywhere?
+5. Are file paths correct and specific?
+6. What are the limitations or constraints?
+7. Is this section necessary, or does it add nothing?
+8. Would a diagram help more than text?
+
+## Special Cases
+
+### Deprecated Features
+
+```markdown
+## Legacy Component (Deprecated)
+
+This component is deprecated and will be removed in version 2.0.
+Use [NewComponent](./new-component.md) instead.
+
+[Deprecation plan](../planning/deprecations.md)
+```
+
+### Experimental Features
+
+```markdown
+## Experimental: Async Task Cancellation
+
+This feature is experimental and may change. Currently in testing phase.
+Feedback at [#1234](https://github.com/.../issues/1234).
+```
+
+### Known Issues
+
+```markdown
+## Known Issues
+
+- Search doesn't filter by category yet ([#567](https://github.com/.../issues/567))
+- Animation stutter on Safari 14 with >500 apps
+- App loading fails if registry is unavailable
+```
+
+## Common Mistakes to Avoid
+
+1. **Don't update docs separately from code** - Update both when changes happen
+2. **Don't include future plans as implemented** - Use separate planning docs
+3. **Don't assume reader familiarity** - Link to prerequisites
+4. **Don't copy code without testing** - Examples must work
+5. **Don't write marketing copy** - Be technical and factual
+6. **Don't mix multiple ideas in one section** - Keep focused
+7. **Don't include commented-out code** - Remove it
+8. **Don't reference files that don't exist** - Verify paths
+9. **Don't use outdated examples** - Keep current
+10. **Don't skip limitations** - Mention constraints
+
+## Glossary
+
+When documentation introduces terms, maintain consistency:
+
+- Use same term throughout (not "app" and "application" interchangeably)
+- Define on first use
+- Consider adding glossary for domain-specific terms
+- Link to related concepts
+
+## Questions?
+
+If a documentation guideline isn't covered here, prioritize:
+
+1. **Accuracy** - Is it correct?
+2. **Clarity** - Is it understandable?
+3. **Specificity** - Is it precise, not vague?
+4. **Brevity** - Is it concise?
+
+In that order.

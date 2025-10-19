@@ -17,7 +17,6 @@ Performance optimization strategies and implementation details.
 
 - **`advanced-optimizations.md`** - Expert-level performance optimizations
 - **`bincode-optimization.md`** - Binary serialization for high-performance IPC
-- **`async-traits-migration.md`** - Async traits and dual-mode execution
 
 ### `/patterns`
 Design patterns, coding standards, and best practices.
@@ -43,6 +42,11 @@ User interface and frontend-specific documentation.
 - **`cva-setup.md`** - Class Variance Authority setup for component variants
 - **`launchpad.md`** - App launcher UI implementation
 
+### `/monitoring`
+Observability, monitoring, and system tracing documentation.
+
+- **`journey-tracking.md`** - Request journey tracking and observability
+
 ### `/apps`
 Application development, ecosystem, and native apps.
 
@@ -60,14 +64,22 @@ Roadmaps, future ideas, and implementation planning.
 ## Quick Navigation
 
 ### Getting Started
-1. Start with [`architecture/system-architecture.md`](architecture/system-architecture.md)
-2. Review [`patterns/code-standards.md`](patterns/code-standards.md)
-3. Explore specific features in [`/features`](features/)
+1. Read [`DOCUMENTATION_STANDARDS.md`](./DOCUMENTATION_STANDARDS.md)
+2. Start with [`architecture/system-architecture.md`](architecture/system-architecture.md)
+3. Review [`patterns/code-standards.md`](patterns/code-standards.md)
+4. Explore specific features in [`/features`](features/)
 
 ### For Contributors
+- Read [`DOCUMENTATION_STANDARDS.md`](./DOCUMENTATION_STANDARDS.md) before writing docs
 - Read [`patterns/code-standards.md`](patterns/code-standards.md) for coding guidelines
 - Check [`planning/implementation-guide.md`](planning/implementation-guide.md) for implementation details
 - Review relevant feature docs in [`/features`](features/)
+
+### For Documentation Maintainers
+- Refer to [`DOCUMENTATION_STANDARDS.md`](./DOCUMENTATION_STANDARDS.md) for writing guidelines
+- Use the checklist in the standards document before considering docs complete
+- Keep all examples tested and current with the codebase
+- Update documentation when code changes
 
 ### For App Developers
 - Start with [`apps/native-apps-dev-guide.md`](apps/native-apps-dev-guide.md)
@@ -79,42 +91,18 @@ Roadmaps, future ideas, and implementation planning.
 - Check [`patterns/sharded-slot.md`](patterns/sharded-slot.md) for lock-free patterns
 - See [`performance/bincode-optimization.md`](performance/bincode-optimization.md) for serialization
 
-## Documentation Standards
+## Contributing to Documentation
 
-### Naming Conventions
-- **Folders**: lowercase with hyphens (e.g., `ui-frontend`, `performance`)
-- **Files**: lowercase with hyphens (e.g., `system-architecture.md`, `code-standards.md`)
+When adding or updating documentation:
 
-### File Structure
-Each documentation file should include:
-- Overview section at the top
-- Clear headings and subheadings
-- Code examples where applicable
-- Cross-references to related documents
-
-### Cross-References
-When referencing other docs, use relative paths:
-```markdown
-See [System Architecture](architecture/system-architecture.md) for details.
-```
-
-## Migration Notes
-
-**Previous Structure**  **New Structure**
-
-- `ARCHITECTURE.md`  `architecture/system-architecture.md`
-- `CODE_STANDARDS_2025.md`  `patterns/code-standards.md`
-- `NATIVE_APPS_DEV_GUIDE.md`  `apps/native-apps-dev-guide.md`
-- `FUTURE_IDEAS.md`  `planning/future-ideas.md`
-- *(All files reorganized with consistent naming)*
-
-## Contributing to Docs
-
-When adding new documentation:
-1. Choose the appropriate category folder
-2. Use lowercase-with-hyphens naming
-3. Add entry to this README
-4. Include cross-references to related docs
+1. **Read the standards first** - Review [`DOCUMENTATION_STANDARDS.md`](./DOCUMENTATION_STANDARDS.md)
+2. **Choose appropriate category** - Place docs in the relevant folder
+3. **Use consistent naming** - Use lowercase-with-hyphens (e.g., `feature-name.md`)
+4. **Verify accuracy** - All code examples must work, all paths must be correct
+5. **Remove marketing language** - Use technical, developer voice
+6. **Add to this README** - Include entry in the appropriate section
+7. **Cross-reference** - Link to related documents
+8. **Use the checklist** - Run through the documentation checklist before committing
 
 ## External Resources
 

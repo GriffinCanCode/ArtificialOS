@@ -1,68 +1,77 @@
 # Launchpad Feature
 
-A macOS-style launchpad that seamlessly replaces the desktop icons with a beautiful app grid when activated.
+A desktop app grid that integrates with the desktop environment and replaces desktop icons when activated.
+
+## Overview
+
+The launchpad provides quick access to installed applications through a searchable grid interface. It integrates with the desktop component and can be toggled via keyboard shortcut or menu bar button.
 
 ## Features
 
-- **Desktop Integration**: Replaces desktop icons area while keeping menubar and dock visible
-- **Smooth Transitions**: Desktop icons fade out as launchpad apps fade in with scale animations
-- **Search Functionality**: Real-time search to filter apps by name, description, or category
-- **Keyboard Shortcuts**: 
-  - `L` - Toggle launchpad
-  - `ESC` - Close launchpad
-  - Type to search apps
-- **Click to Launch**: Click any app to launch it immediately
-- **Persistent Background**: Desktop background, gradient, menubar, and dock stay visible
-- **Responsive Design**: Adapts to different screen sizes
+- **Desktop Integration** - Replaces desktop icons area while preserving background, menu bar, and dock
+- **Smooth Animations** - Scale and opacity transitions for opening/closing
+- **Search** - Real-time filtering by app name, description, or category
+- **Keyboard Support** - Cmd+L (Mac) / Ctrl+L (Windows/Linux) to toggle
+- **Click to Launch** - Select and launch apps directly
+- **Loading States** - Visual feedback while fetching apps
+- **Empty States** - Graceful handling when no apps are available
 
 ## Usage
 
 ### Opening the Launchpad
 
-There are three ways to open the launchpad:
+Three methods are available:
 
-1. **Keyboard Shortcut**: Press `L` (Cmd+L on Mac, Ctrl+L on Windows/Linux)
-2. **Menu Bar Button**: Click the ⚡ lightning bolt icon in the menu bar
-3. **Programmatically**: Call `setShowLaunchpad(true)` in the app
+1. **Keyboard Shortcut** - Cmd+L (Mac) or Ctrl+L (Windows/Linux)
+2. **Menu Bar** - Click the lightning bolt icon in the menu bar
+3. **Programmatically** - Call `onToggleLaunchpad()` from parent component
 
 ### Closing the Launchpad
 
-1. **Keyboard**: Press `ESC`
-2. **Button**: Click the ⚡ lightning bolt button again
-3. **Launch App**: Optionally auto-closes after launching an app (currently disabled)
+1. **Keyboard** - Press ESC or Cmd+L again
+2. **Menu Bar Button** - Click the lightning bolt button
+3. **Click Outside** - Click on the background to dismiss
 
-## Implementation Details
+### Searching Apps
+
+Type in the search bar to filter by:
+- App name
+- App description
+- App category
+
+## Implementation
 
 ### Components
 
-- **`Launchpad.tsx`**: Main component that fetches and displays apps
-- **`Launchpad.css`**: Styling with smooth animations and responsive design
-- **`Desktop.tsx`**: Integrates launchpad and handles icon visibility transitions
+- **`Launchpad.tsx`** - Main component that fetches and displays apps
+- **`Launchpad.css`** - Styling with animations
+- **`Desktop.tsx`** - Integrates launchpad with desktop environment
 
-### Key Features
+### Key Implementation Details
 
-1. **Dynamic App Loading**: Fetches apps from the registry API when opened
-2. **Fuzzy Search**: Real-time filtering of apps based on search query
-3. **Animation Stagger**: Each app card animates in with a slight delay for a cascading effect
-4. **Seamless Transition**: Desktop icons and launchpad cross-fade with scale transforms
-5. **Keyboard Navigation**: Full keyboard support for accessibility
-6. **Active State**: Lightning bolt button glows when launchpad is active
+1. **Dynamic App Loading** - Apps are fetched from the backend when the launchpad is opened
+2. **Search Filtering** - Performed locally for instant response
+3. **Animation Stagger** - Each app card receives an animation delay based on its index
+4. **State Management** - Uses React hooks for visibility, search query, and app list
+5. **Error Handling** - Gracefully handles fetch failures and displays empty state
 
 ### API Integration
 
 The launchpad fetches apps from:
+
 ```
 GET http://localhost:8000/registry/apps
 ```
 
 Expected response format:
+
 ```json
 {
   "apps": [
     {
       "id": "app-id",
       "name": "App Name",
-      "icon": "",
+      "icon": "icon-string",
       "description": "App description",
       "category": "productivity",
       "type": "blueprint"
@@ -73,62 +82,59 @@ Expected response format:
 
 ## Styling
 
-The launchpad uses the following design tokens:
+The launchpad uses absolute positioning within the desktop viewport. Key CSS properties:
 
-- **Integration**: Absolutely positioned within desktop, below menubar
-- **App Cards**: Glass-morphism style with backdrop blur and hover effects
-- **Animations**: Cubic bezier easing for smooth cross-fade transitions
-- **Grid**: Responsive with `auto-fill` and `minmax(140px, 1fr)`
-- **Desktop Icons**: Fade out with opacity and scale when launchpad activates
+- **Position** - Absolutely positioned below the menu bar (36px offset)
+- **Visibility** - Toggled via opacity and pointer-events
+- **Animation** - 0.5s cubic bezier easing with scale transform
+- **Grid** - Responsive with `auto-fill` and `minmax(140px, 1fr)` for flexible columns
+- **Search Bar** - Glass morphism effect with blur and backdrop filter
+- **App Cards** - Hover effects with scale, shadow, and icon transformation
 
 ### Customization
 
-You can customize the appearance by modifying `Launchpad.css`:
+Styling can be adjusted in `Launchpad.css`:
 
-- **Grid columns**: Change `grid-template-columns` in `.launchpad-grid`
-- **Animation speed**: Modify `transition` duration in `.launchpad`
-- **Card size**: Adjust `minmax` values in the grid
-- **Colors**: Update RGBA values for different backgrounds
+- **Grid columns** - Modify `minmax()` values in `.launchpad-grid`
+- **Animation speed** - Adjust `transition` durations
+- **Card size** - Change grid sizing and padding values
+- **Colors** - Update RGBA values for backgrounds and borders
 
-## Accessibility
+## Performance Considerations
 
-- **Keyboard shortcuts**: Full keyboard navigation support
-- **Focus management**: Auto-focus on search input when opened
-- **ESC key**: Standard behavior to close overlay
-- **Click outside**: Click anywhere to close
-- **Screen readers**: Semantic HTML with proper ARIA labels
+- Apps are fetched only when the launchpad is opened
+- Search filtering runs locally for immediate results
+- CSS animations use `transform` and `opacity` for GPU acceleration
+- Custom scrollbar styling for visual consistency
+- Staggered animation delays prevent visual complexity
 
-## Performance
+## Keyboard Shortcuts
 
-- **Lazy loading**: Only fetches apps when launchpad is opened
-- **Optimized animations**: Uses transform and opacity for 60fps animations
-- **Backdrop filter**: Hardware-accelerated for smooth performance
-- **Efficient re-renders**: Only updates when search query or apps change
+| Shortcut | Action |
+|----------|--------|
+| Cmd+L / Ctrl+L | Toggle launchpad visibility |
+| ESC | Close launchpad |
+| Type | Search for apps |
 
-## Future Enhancements
+## Component Props
 
-Potential improvements for the launchpad:
+```typescript
+interface LaunchpadProps {
+  isVisible: boolean;           // Current visibility state
+  onLaunchApp: (appId: string) => void;  // Callback when app is selected
+}
+```
 
-1. **Categories**: Filter apps by category (productivity, utilities, etc.)
-2. **Favorites**: Pin favorite apps to the top
-3. **Drag to Reorder**: Customize app order
-4. **App Info**: Show more details on hover or long-press
-5. **Recent Apps**: Show recently used apps first
-6. **Folders**: Group apps into folders
-7. **Multi-page**: Support pagination for many apps
-8. **Gestures**: Pinch to close, swipe between pages
+## Related Components
 
-## Browser Compatibility
+- `Desktop.tsx` - Parent component integrating launchpad
+- `DockItem.tsx` - Related dock interface for quick app access
+- `IconGrid.tsx` - Alternative icon-based app access
 
-- ✅ Chrome/Edge 88+ (full support)
-- ✅ Firefox 87+ (full support)
-- ✅ Safari 14+ (full support with `-webkit-` prefixes)
-- ⚠️ Older browsers: Fallback to solid background (no blur)
+## Files
 
-## Related Files
-
-- [`ui/src/ui/components/layout/Launchpad.tsx`](../ui/src/ui/components/layout/Launchpad.tsx)
-- [`ui/src/ui/components/layout/Launchpad.css`](../ui/src/ui/components/layout/Launchpad.css)
-- [`ui/src/ui/components/layout/Desktop.tsx`](../ui/src/ui/components/layout/Desktop.tsx)
-- [`ui/src/app/App.tsx`](../ui/src/app/App.tsx)
+- Implementation: `ui/src/ui/components/layout/Launchpad.tsx`
+- Styling: `ui/src/ui/components/layout/Launchpad.css`
+- Integration: `ui/src/ui/components/layout/Desktop.tsx`
+- API: `backend/internal/api/registry.go`
 

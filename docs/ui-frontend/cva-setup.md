@@ -1,29 +1,33 @@
 # CVA (Class Variance Authority) Setup
 
-Complete type-safe variant management for Tailwind CSS in our dynamic UI system.
+Type-safe component variant management for Tailwind CSS in the dynamic UI system.
 
 ## Overview
 
-CVA provides type-safe component variants that ensure consistency across AI-generated and manually-created components. It integrates perfectly with our dynamic renderer architecture.
+CVA provides type-safe component variants that ensure consistency across AI-generated and manually-created components. It integrates with the dynamic renderer architecture to handle variant application from backend-generated specifications.
 
 ## Architecture Integration
 
-### Frontend Flow
+Component variants flow from backend specifications through the frontend type system:
+
 ```
-AI Backend  UISpec JSON (with variant props)  DynamicRenderer  CVA  CSS Classes
+UISpec JSON → DynamicRenderer → CVA variant functions → CSS classes
 ```
 
-### Backend Flow
-```
-ComponentTemplates  UIComponent (with variant props)  JSON Response
-```
+Backend components can specify variants as part of their props, and the frontend applies the correct CSS classes automatically through CVA.
+
+## Implementation Location
+
+Variant definitions are centralized in:
+- `ui/src/core/utils/animation/componentVariants.ts` - All CVA variant definitions and type exports
+- `ui/src/features/dynamics/styles/_variants.css` - Corresponding CSS class implementations
 
 ## Available Variants
 
 ### Button Variants
 
 ```typescript
-import { buttonVariants, cn } from "../utils/componentVariants";
+import { buttonVariants, cn } from "../utils/animation/componentVariants";
 
 <button className={cn(buttonVariants({ variant: "primary", size: "large" }))}>
   Click Me
@@ -31,18 +35,17 @@ import { buttonVariants, cn } from "../utils/componentVariants";
 ```
 
 **Variants:**
-- `variant`: `default` | `primary` | `secondary` | `danger` | `ghost` | `outline`
-- `size`: `small` | `medium` | `large`
-- `fullWidth`: `boolean`
+- `variant`: default, primary, secondary, danger, ghost, outline
+- `size`: small, medium, large
+- `fullWidth`: boolean
 
-**Example from Backend:**
+**Backend Usage:**
 ```python
-button = templates.button(
+button = Templates.button(
     id="submit-btn",
     text="Submit",
     on_click="form.submit",
-    variant="primary",
-    size="large"
+    variant="primary"
 )
 ```
 
@@ -53,10 +56,10 @@ button = templates.button(
 ```
 
 **Variants:**
-- `variant`: `default` | `filled` | `outline` | `underline`
-- `size`: `small` | `medium` | `large`
-- `error`: `boolean`
-- `disabled`: `boolean`
+- `variant`: default, filled, outline, underline
+- `size`: small, medium, large
+- `error`: boolean
+- `disabled`: boolean
 
 ### Text Variants
 
@@ -67,10 +70,10 @@ button = templates.button(
 ```
 
 **Variants:**
-- `variant`: `h1` | `h2` | `h3` | `body` | `caption` | `label`
-- `weight`: `normal` | `medium` | `semibold` | `bold`
-- `color`: `primary` | `secondary` | `accent` | `muted` | `error` | `success`
-- `align`: `left` | `center` | `right`
+- `variant`: h1, h2, h3, body, caption, label
+- `weight`: normal, medium, semibold, bold
+- `color`: primary, secondary, accent, muted, error, success
+- `align`: left, center, right
 
 ### Container Variants
 
@@ -86,11 +89,11 @@ button = templates.button(
 ```
 
 **Variants:**
-- `layout`: `vertical` | `horizontal`
-- `spacing`: `none` | `small` | `medium` | `large`
-- `padding`: `none` | `small` | `medium` | `large`
-- `align`: `start` | `center` | `end` | `stretch`
-- `justify`: `start` | `center` | `end` | `between` | `around`
+- `layout`: vertical, horizontal
+- `spacing`: none, small, medium, large
+- `padding`: none, small, medium, large
+- `align`: start, center, end, stretch
+- `justify`: start, center, end, between, around
 
 ### Grid Variants
 
@@ -101,11 +104,11 @@ button = templates.button(
 ```
 
 **Variants:**
-- `columns`: `1` | `2` | `3` | `4` | `5` | `6`
-- `spacing`: `none` | `small` | `medium` | `large`
-- `responsive`: `boolean`
+- `columns`: 1, 2, 3, 4, 5, 6
+- `spacing`: none, small, medium, large
+- `responsive`: boolean
 
-### Card Variants (Launcher)
+### Card Variants
 
 ```typescript
 <div className={cn(cardVariants({ variant: "elevated", hoverable: true, interactive: true }))}>
@@ -114,26 +117,14 @@ button = templates.button(
 ```
 
 **Variants:**
-- `variant`: `default` | `elevated` | `outlined` | `ghost`
-- `padding`: `none` | `small` | `medium` | `large`
-- `hoverable`: `boolean`
-- `interactive`: `boolean`
-
-### Category Button Variants (Launcher)
-
-```typescript
-<button className={cn(categoryButtonVariants({ active: true, size: "large" }))}>
-  Category
-</button>
-```
-
-**Variants:**
-- `active`: `boolean`
-- `size`: `small` | `medium` | `large`
+- `variant`: default, elevated, outlined, ghost
+- `padding`: none, small, medium, large
+- `hoverable`: boolean
+- `interactive`: boolean
 
 ## Usage in DynamicRenderer
 
-The `ComponentRenderer` automatically applies CVA variants based on props from the backend:
+The `DynamicRenderer` component applies CVA variants based on props from backend specifications. Component rendering automatically maps variant props to the appropriate CVA functions:
 
 ```typescript
 case "button":
@@ -153,43 +144,40 @@ case "button":
   );
 ```
 
-## Backend Template System
+## Backend Component Templates
 
-All component templates in `ai-service/src/agents/ui_generator.py` now support CVA variants:
+Component templates in `ai-service/src/agents/ui_generator.py` provide a consistent interface for generating typed components:
 
 ```python
-class ComponentTemplates:
+class Templates:
     @staticmethod
     def button(
         id: str, 
         text: str, 
         on_click: Optional[str] = None,
-        variant: str = "default",
-        size: str = "medium"
-    ) -> UIComponent:
-        return UIComponent(
+        variant: str = "default"
+    ) -> BlueprintComponent:
+        return BlueprintComponent(
             type="button",
             id=id,
-            props={"text": text, "variant": variant, "size": size},
+            props={"text": text, "variant": variant},
             on_event={"click": on_click} if on_click else None
         )
 ```
 
-## CSS Architecture
+## CSS Implementation
 
-All variant classes are defined in component-specific CSS files:
+Variant classes are defined in `ui/src/features/dynamics/styles/_variants.css` and organized by component type. Each variant applies specific styling through Tailwind-defined custom CSS properties:
 
-- `DynamicRenderer.css` - Dynamic component variants
-- `Launcher.css` - Launcher-specific variants
-- `TitleBar.css` - Title bar control variants
-
-Each variant class follows the pattern: `{component}-{variant}-{value}`
-
-Example:
 ```css
 .button-primary {
-  background: linear-gradient(140deg, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.3) 100%);
-  border-color: rgba(99, 102, 241, 0.6);
+  background: var(--gradient-primary);
+  border-color: var(--color-primary-500);
+}
+
+.button-primary:hover {
+  background: var(--gradient-primary-hover);
+  box-shadow: var(--shadow-glow-primary);
 }
 ```
 
@@ -197,8 +185,10 @@ Example:
 
 ### `cn()` - Class Name Combiner
 
+Combines multiple class sources, handling undefined and falsy values:
+
 ```typescript
-import { cn } from "../utils/componentVariants";
+import { cn } from "../utils/animation/componentVariants";
 
 <div className={cn(
   "base-class",
@@ -209,8 +199,10 @@ import { cn } from "../utils/componentVariants";
 
 ### `extractVariantProps()` - Props Separator
 
+Separates variant props from other component props for selective application:
+
 ```typescript
-import { extractVariantProps } from "../utils/componentVariants";
+import { extractVariantProps } from "../utils/animation/componentVariants";
 
 const [variantProps, otherProps] = extractVariantProps(
   props,
@@ -218,9 +210,9 @@ const [variantProps, otherProps] = extractVariantProps(
 );
 ```
 
-## AI-Generated Components
+## JSON Specification Example
 
-When the AI generates UISpec JSON, it can now include variant props:
+Components can include variant specifications in their JSON representation:
 
 ```json
 {
@@ -236,18 +228,29 @@ When the AI generates UISpec JSON, it can now include variant props:
 }
 ```
 
-The `DynamicRenderer` will automatically apply the correct CVA variant classes.
+The `DynamicRenderer` applies the correct CVA variant classes based on these props.
+
+## Type Safety
+
+CVA provides compile-time type inference for all variants:
+
+```typescript
+type ButtonVariants = VariantProps<typeof buttonVariants>;
+// { variant?: "default" | "primary" | ..., size?: "small" | "medium" | "large", ... }
+```
+
+This ensures invalid variant values are caught during development.
 
 ## Adding New Variants
 
-1. **Define in TypeScript:**
+1. **Define CVA Variants in TypeScript:**
 ```typescript
-// ui/src/utils/componentVariants.ts
-export const newComponentVariants = cva("base-class", {
+// ui/src/core/utils/animation/componentVariants.ts
+export const newComponentVariants = cva("new-component-base", {
   variants: {
     variant: {
-      default: "variant-default",
-      special: "variant-special",
+      default: "new-variant-default",
+      special: "new-variant-special",
     },
   },
   defaultVariants: {
@@ -258,17 +261,17 @@ export const newComponentVariants = cva("base-class", {
 
 2. **Add CSS Classes:**
 ```css
-/* Component.css */
-.variant-default { /* styles */ }
-.variant-special { /* styles */ }
+/* ui/src/features/dynamics/styles/_variants.css */
+.new-variant-default { /* styles */ }
+.new-variant-special { /* styles */ }
 ```
 
-3. **Update Backend Template:**
+3. **Update Backend Template (Optional):**
 ```python
-# ui_generator.py
+# ai-service/src/agents/ui_generator.py
 @staticmethod
-def new_component(id: str, variant: str = "default") -> UIComponent:
-    return UIComponent(
+def new_component(id: str, variant: str = "default") -> BlueprintComponent:
+    return BlueprintComponent(
         type="new_component",
         id=id,
         props={"variant": variant}
@@ -282,57 +285,24 @@ case "new_component":
     <div className={cn(newComponentVariants({ 
       variant: component.props?.variant 
     }))}>
-      {/* component */}
+      {/* component content */}
     </div>
   );
 ```
 
-## Type Safety
-
-CVA provides full TypeScript type inference:
-
-```typescript
-type ButtonVariants = VariantProps<typeof buttonVariants>;
-// { variant?: "default" | "primary" | ..., size?: "small" | "medium" | "large", ... }
-```
-
-This ensures you can't pass invalid variant values at compile time.
-
 ## Benefits
 
-✅ **Type Safety** - Invalid variants caught at compile time  
-✅ **Consistency** - Same styling system across all components  
-✅ **Maintainability** - Centralized variant definitions  
-✅ **DX** - Auto-complete for all variant options  
-✅ **Performance** - No runtime overhead, just class strings  
-✅ **AI-Friendly** - Easy for LLM to generate correct variant props
-
-## Examples
-
-### Primary Call-to-Action Button
-```typescript
-buttonVariants({ variant: "primary", size: "large" })
-```
-
-### Error Input Field
-```typescript
-inputVariants({ variant: "outline", error: true })
-```
-
-### Centered Heading
-```typescript
-textVariants({ variant: "h1", weight: "bold", align: "center", color: "accent" })
-```
-
-### Responsive Grid
-```typescript
-gridVariants({ columns: 3, spacing: "large", responsive: true })
-```
+- **Type Safety** - Invalid variants caught at compile time
+- **Consistency** - Unified styling system across all components
+- **Maintainability** - Centralized variant definitions
+- **Developer Experience** - Auto-complete for all variant options
+- **Performance** - No runtime overhead, just static class strings
+- **Backend Integration** - Straightforward for LLM to generate valid variant props
 
 ## References
 
 - [CVA Documentation](https://cva.style/docs)
 - [Tailwind CSS](https://tailwindcss.com)
-- Component Variants: `ui/src/utils/componentVariants.ts`
+- Component Variants: `ui/src/core/utils/animation/componentVariants.ts`
 - Backend Templates: `ai-service/src/agents/ui_generator.py`
 
