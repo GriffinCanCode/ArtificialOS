@@ -5,7 +5,7 @@
  * via environment variables or runtime configuration.
  */
 
-import type { LogLevel } from './logger';
+import type { LogLevel } from './types';
 import type { LogBufferConfig } from './buffer';
 
 // ============================================================================

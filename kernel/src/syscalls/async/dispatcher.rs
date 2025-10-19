@@ -17,7 +17,6 @@ use super::ipc::AsyncIpcOps;
 use crate::core::types::Pid;
 use crate::syscalls::iouring::{IoUringManager, SyscallOpType, SyscallSubmissionEntry};
 use crate::syscalls::types::{Syscall, SyscallResult};
-use std::path::PathBuf;
 use std::sync::Arc;
 use tracing::{debug, info};
 
@@ -111,7 +110,7 @@ impl AdaptiveDispatcher {
                 DispatchPath::TokioFs
             }
 
-            Syscall::WriteFile { path, data } => {
+            Syscall::WriteFile { path: _, data } => {
                 if data.len() as u64 >= LARGE_FILE_THRESHOLD {
                     return DispatchPath::IoUring;
                 }
@@ -175,28 +174,24 @@ impl AdaptiveDispatcher {
             Syscall::WritePipe {
                 pipe_id,
                 data,
-                timeout_ms,
             } => {
-                let timeout = timeout_ms.map(|ms| std::time::Duration::from_millis(ms as u64));
-                self.ipc_ops.pipe_write(pipe_id, pid, &data, timeout).await
+                self.ipc_ops.pipe_write(pipe_id as u64, pid, &data, None).await
             }
             Syscall::ReadPipe {
                 pipe_id,
                 size,
-                timeout_ms,
             } => {
-                let timeout = timeout_ms.map(|ms| std::time::Duration::from_millis(ms as u64));
-                self.ipc_ops.pipe_read(pipe_id, pid, size, timeout).await
+                self.ipc_ops.pipe_read(pipe_id as u64, pid, size, None).await
             }
             Syscall::SendQueue {
                 queue_id,
                 data,
                 priority,
             } => {
-                self.ipc_ops.queue_send(queue_id, pid, data, priority, None).await
+                self.ipc_ops.queue_send(queue_id as u64, pid, data, priority, None).await
             }
             Syscall::ReceiveQueue { queue_id } => {
-                self.ipc_ops.queue_receive(queue_id, pid, None).await
+                self.ipc_ops.queue_receive(queue_id as u64, pid, None).await
             }
 
             // Not yet implemented - return error
@@ -389,13 +384,11 @@ mod tests {
     fn create_test_dispatcher() -> AdaptiveDispatcher {
         use crate::memory::MemoryManager;
         use crate::security::SandboxManager;
-        use crate::vfs::VirtualFileSystem;
-        use tempfile::TempDir;
+        use crate::vfs::MountManager;
 
-        let temp_dir = TempDir::new().unwrap();
         let sandbox = Arc::new(SandboxManager::new());
-        let vfs = Arc::new(VirtualFileSystem::new(temp_dir.path().to_path_buf()));
-        let file_ops = Arc::new(AsyncFileOps::new(sandbox, vfs));
+        let mount_manager = Arc::new(MountManager::new());
+        let file_ops = Arc::new(AsyncFileOps::new(sandbox, mount_manager));
 
         let memory_manager = MemoryManager::new();
         let pipe_manager = crate::ipc::PipeManager::new(memory_manager.clone());

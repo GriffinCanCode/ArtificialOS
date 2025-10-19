@@ -27,11 +27,11 @@ func NewAIClient(addr string) (*AIClient, error) {
 	// Configure connection options for production use
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		// Configure keepalive to detect broken connections
+		// Configure keepalive to detect broken connections (reduced frequency to avoid "too_many_pings")
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{
-			Time:                10 * time.Second, // Send pings every 10 seconds
-			Timeout:             3 * time.Second,  // Wait 3 seconds for ping ack
-			PermitWithoutStream: true,             // Allow pings without active streams
+			Time:                60 * time.Second, // Send pings every 60 seconds
+			Timeout:             20 * time.Second, // Wait 20 seconds for ping ack
+			PermitWithoutStream: false,            // Only send pings when streams are active
 		}),
 		// Set larger message size limits for AI responses (can be large)
 		grpc.WithDefaultCallOptions(

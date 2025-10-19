@@ -12,7 +12,7 @@
  * - Optional async processing for complex log enrichment
  */
 
-import { LogLevel, type LogContext } from './logger';
+import { LogLevel, type LogContext } from './types';
 import { formatISO } from '../../utils/dates';
 
 // ============================================================================

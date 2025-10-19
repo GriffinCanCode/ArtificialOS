@@ -8,24 +8,12 @@
 import { getHierarchicalLogContext } from "../context/store";
 import { getCausalityLogContext } from "../causality/tracker";
 import { logBuffer } from "./buffer";
+import { LogLevel, type LogContext } from "./types";
 
 // Note: electronLog interface is declared in ui/src/core/types/global.d.ts
 
-export enum LogLevel {
-  ERROR = "error",
-  WARN = "warn",
-  INFO = "info",
-  DEBUG = "debug",
-  VERBOSE = "verbose",
-}
-
-export interface LogContext {
-  component?: string;
-  action?: string;
-  userId?: string;
-  sessionId?: string;
-  [key: string]: unknown;
-}
+// Re-export for backward compatibility
+export { LogLevel, type LogContext } from "./types";
 
 class Logger {
   private context: LogContext = {};

@@ -255,10 +255,13 @@ export default defineConfig({
       "gsap",
       "clsx",
       "lucide-react",
+      // Include recharts and es-toolkit to fix module resolution issues
+      "recharts",
+      "es-toolkit",
+      "es-toolkit/compat",
     ],
     exclude: [
       // Don't pre-bundle lazy-loaded heavy deps
-      "recharts",
       "reactflow",
     ],
     // Use esbuild for fast pre-bundling
