@@ -98,15 +98,15 @@ if let Some(task) = process_manager.scheduler_task() {
 
 ### Time Quantum
 
-Default: 10ms (10,000 microseconds)
+Default: 10 milliseconds (10,000 microseconds)
 
 Can be adjusted:
 ```rust
-process_manager.set_time_quantum(5_000)?; // 5ms
+process_manager.set_time_quantum(5_000)?; // 5 milliseconds
 ```
 
-Smaller quantum = More responsive but higher overhead
-Larger quantum = Less overhead but less responsive
+Smaller quantum: More responsive but higher overhead
+Larger quantum: Less overhead but less responsive
 
 ### Priority
 
@@ -139,7 +139,7 @@ if let Some(stats) = process_manager.get_scheduler_stats() {
 
 ```rust
 if let Some(stats) = process_manager.get_process_stats(pid) {
-    println!("CPU time: {} µs", stats.cpu_time_micros);
+    println!("CPU time: {} microseconds", stats.cpu_time_micros);
     println!("Priority: {}", stats.priority);
 }
 ```

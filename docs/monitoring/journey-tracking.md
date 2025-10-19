@@ -319,7 +319,7 @@ Real-time health monitoring, automatic error reporting with full context, and de
 
 ## Performance Impact
 
-- **Memory**: Approximately 5-10MB for 100 concurrent journeys
+- **Memory**: Approximately 5-10 MB for 100 concurrent journeys
 - **CPU**: Less than 2% overhead for tracking
 - **Network**: Local processing only, no external calls
 - **Storage**: Automatic cleanup of old journeys every 60 seconds

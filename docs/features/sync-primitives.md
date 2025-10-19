@@ -28,7 +28,7 @@ kernel/src/core/sync/
 The system supports three core strategies selected based on platform:
 
 1. **Futex** (Linux) - Direct futex syscalls with minimal overhead
-2. **Condvar** (Cross-platform) - Parking lot condvar for reliable parking
+2. **Condvar** (Cross-platform) - Parking lot condvar for reliable blocking
 3. **SpinWait** (Low-latency) - Adaptive spinning before fallback to condvar
 
 Platform-aware automatic selection:
@@ -39,41 +39,41 @@ Platform-aware automatic selection:
 
 ### Futex Strategy
 
-**When used:** Long waits (> 100µs) on Linux
+**When used**: Long waits (greater than 100 microseconds) on Linux
 
-**Performance:**
-- Wake latency: 1-2µs
+**Performance**:
+- Wake latency: 1-2 microseconds
 - CPU usage: Zero while waiting
 - Platform: Linux only
 
-**Use cases:**
+**Use cases**:
 - IPC wait operations
 - Long-running syscall completions
 - Cross-process synchronization
 
 ### Condvar Strategy
 
-**When used:** Cross-platform code, general-purpose waiting
+**When used**: Cross-platform code, general-purpose waiting
 
-**Performance:**
-- Wake latency: 2-5µs
+**Performance**:
+- Wake latency: 2-5 microseconds
 - CPU usage: Zero while waiting
 - Platform: All
 
-**Use cases:**
+**Use cases**:
 - Default fallback across platforms
 - General-purpose blocking operations
 
 ### SpinWait Strategy
 
-**When used:** Very short waits (< 50µs)
+**When used**: Very short waits (less than 50 microseconds)
 
-**Performance:**
-- Wake latency: 0.5-1µs for short waits
+**Performance**:
+- Wake latency: 0.5-1 microsecond for short waits
 - CPU usage: High during spin phase, then falls back to condvar
 - Adaptive: Falls back to condvar for longer waits
 
-**Use cases:**
+**Use cases**:
 - Lock-free data structure synchronization
 - Ultra-low-latency syscall completions
 
@@ -176,15 +176,15 @@ impl IpcChannel {
 
 | Duration | Strategy | Rationale |
 |----------|----------|-----------|
-| < 10µs | SpinWait | Spinning faster than syscall overhead |
-| 10-100µs | SpinWait | Adaptive spinning avoids syscall |
-| 100µs-1ms | Futex/Condvar | Syscall overhead acceptable |
-| > 1ms | Futex/Condvar | Zero CPU usage preferred |
+| < 10 microseconds | SpinWait | Spinning faster than syscall overhead |
+| 10-100 microseconds | SpinWait | Adaptive spinning avoids syscall |
+| 100 microseconds-1 millisecond | Futex/Condvar | Syscall overhead acceptable |
+| > 1 millisecond | Futex/Condvar | Zero CPU usage preferred |
 
 ### Configuration Recommendations
 
 - Use `WaitQueue::with_defaults()` for general purposes
-- Use SpinWait strategy for < 100µs expected waits
+- Use SpinWait strategy for less than 100 microseconds expected waits
 - Use Futex strategy on Linux for maximum efficiency
 - Key types should be Copy and hashable (u64, tuples)
 
