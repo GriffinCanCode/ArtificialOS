@@ -2,7 +2,7 @@
 
 ## Overview
 
-The **Graceful-with-Fallback** pattern is a solution to the async Drop problem in Rust, providing safe, ergonomic cleanup for long-lived background tasks. This pattern is implemented in our kernel for components that spawn autonomous async tasks.
+The **Graceful-with-Fallback** pattern is a solution to the async Drop problem in Rust, providing safe, ergonomic cleanup for long-lived background tasks. This pattern is implemented in the kernel for components that spawn autonomous async tasks.
 
 ## The Problem
 
@@ -11,7 +11,7 @@ Rust's `Drop` trait cannot be async, but many background tasks require async cle
 ```rust
 impl Drop for MyManager {
     fn drop(&mut self) {
-        // ❌ Can't do this - Drop is not async!
+        // Cannot do this - Drop is not async!
         // self.background_task.await;
     }
 }
@@ -27,7 +27,7 @@ All have significant drawbacks: resource leaks, ungraceful termination, poor erg
 
 ## The Solution: Multi-Layered Shutdown
 
-Our pattern combines **two complementary cleanup paths**:
+This pattern combines **two complementary cleanup paths**:
 
 ### Path 1: Graceful Shutdown (Preferred)
 ```rust
@@ -49,7 +49,7 @@ manager.shutdown().await;
 
 ### Path 2: Fallback Abort (Safety Net)
 ```rust
-// Automatic on Drop if shutdown wasn't called
+// Automatic on Drop if shutdown was not called
 drop(manager);
 ```
 
@@ -180,7 +180,7 @@ impl Drop for BackgroundTaskHandle {
 
 ## When to Use This Pattern
 
-### ✅ **Perfect Fit - Apply Pattern**
+### Suitable Scenarios
 
 Use this pattern when **ALL** of these conditions are true:
 
@@ -188,13 +188,13 @@ Use this pattern when **ALL** of these conditions are true:
 2. **Infinite loop or long iterations** - Not self-terminating
 3. **Droppable at any time** - Parent struct can be dropped mid-execution
 4. **Needs graceful cleanup** - Logging, state finalization, or resource cleanup
-5. **Reusable component** - Part of a library or framework, not one-off app code
+5. **Reusable component** - Part of a library or framework, not one-off application code
 
-**Examples in our codebase:**
-- ✅ `SchedulerTask` - Preemptive scheduling loop (100μs intervals, runs forever)
-- ✅ `AsyncTaskManager` - Cleanup task (5-minute intervals, runs forever)
+**Examples in the codebase:**
+- `SchedulerTask` - Preemptive scheduling loop (microsecond intervals, runs indefinitely)
+- `AsyncTaskManager` - Cleanup task (5-minute intervals, runs indefinitely)
 
-### ⚠️ **Consider Carefully**
+### When to Consider Alternatives
 
 Think twice about applying if:
 
@@ -203,7 +203,7 @@ Think twice about applying if:
 - Task is short-lived (runs once and completes)
 - Component is not reusable (one-off application code)
 
-### ❌ **Don't Apply**
+### When Not to Apply
 
 Skip this pattern for:
 
@@ -226,17 +226,17 @@ shutdown_initiated.load(Ordering::SeqCst)
 ```
 
 **Simplicity**: No deadlock potential, no lock contention
-**Sufficient**: Boolean flag doesn't need RwLock's capabilities
+**Sufficient**: Boolean flag does not need RwLock's capabilities
 
 ### Why Abort Instead of Channel Signal in Drop?
 
 **Non-blocking requirement**: Drop cannot await
 ```rust
-// ❌ Can't do this in Drop
+// Cannot do this in Drop
 let _ = shutdown_tx.send(());
 handle.await; // Drop is not async!
 
-// ✅ Can do this in Drop
+// Can do this in Drop
 handle.abort(); // Immediate, non-blocking
 ```
 
@@ -244,9 +244,9 @@ handle.abort(); // Immediate, non-blocking
 
 ### Why Both Graceful and Abort Paths?
 
-**Ergonomics vs Safety tradeoff**:
+**Ergonomics versus Safety tradeoff**:
 - Graceful path: Best developer experience, clean shutdown
-- Abort path: Safety net, prevents leaks when graceful forgotten
+- Abort path: Safety net, prevents leaks when graceful is forgotten
 
 **Real-world usage**:
 - Production: Graceful shutdown in main.rs shutdown sequence
@@ -270,8 +270,8 @@ handle.abort(); // Immediate, non-blocking
 
 ### Runtime Overhead
 - **During normal operation**: Zero (flag only checked on shutdown/drop)
-- **On graceful shutdown**: Single atomic load + channel send + await
-- **On abort**: Single atomic load + abort call
+- **On graceful shutdown**: Single atomic load, channel send, and await
+- **On abort**: Single atomic load and abort call
 
 ## Testing Strategy
 
@@ -302,7 +302,7 @@ handle.abort(); // Immediate, non-blocking
    async fn test_drop_aborts() {
        {
            let manager = Manager::new();
-           // Don't call shutdown
+           // Do not call shutdown
        } // Should log warning and abort
        tokio::time::sleep(Duration::from_millis(10)).await;
    }
@@ -321,14 +321,14 @@ handle.abort(); // Immediate, non-blocking
 
 ## Common Pitfalls
 
-### ❌ Pitfall 1: Forgetting to Call Shutdown in Tests
+### Pitfall 1: Forgetting to Call Shutdown in Tests
 
 ```rust
 #[tokio::test]
 async fn test_something() {
     let manager = Manager::new();
     // Do test...
-    // ❌ Forgot to call shutdown - will trigger abort warning
+    // Forgot to call shutdown - will trigger abort warning
 }
 ```
 
@@ -338,25 +338,25 @@ async fn test_something() {
 async fn test_something() {
     let manager = Manager::new();
     // Do test...
-    manager.shutdown().await; // ✅ Graceful cleanup
+    manager.shutdown().await; // Graceful cleanup
 }
 ```
 
-### ❌ Pitfall 2: Calling Shutdown on Every Clone
+### Pitfall 2: Calling Shutdown on Every Clone
 
 For Clone managers, only call shutdown once:
 ```rust
 let manager1 = Manager::new();
 let manager2 = manager1.clone();
 
-// ✅ Good: Shutdown once
+// Good: Shutdown once
 manager1.shutdown().await;
 
-// ⚠️ Unnecessary but harmless: Shutdown is idempotent
+// Unnecessary but harmless: Shutdown is idempotent
 manager2.shutdown().await; // No-op, already shut down
 ```
 
-### ❌ Pitfall 3: Not Handling Task Errors in Loop
+### Pitfall 3: Not Handling Task Errors in Loop
 
 Ensure your background task handles errors gracefully:
 ```rust
@@ -364,10 +364,10 @@ loop {
     tokio::select! {
         _ = &mut shutdown_rx => break,
         _ = interval.tick() => {
-            // ❌ Bad: Panic will abort task
+            // Bad: Panic will abort task
             do_work().unwrap();
             
-            // ✅ Good: Handle errors
+            // Good: Handle errors
             if let Err(e) = do_work() {
                 log::error!("Background work failed: {}", e);
             }
@@ -405,9 +405,9 @@ When implementing this pattern:
 
 ### SchedulerTask (Canonical Example)
 
-**Location**: `kernel/src/process/scheduler_task.rs`
+**Location**: `kernel/src/process/scheduler/task.rs`
 
-**Use case**: Autonomous preemptive scheduling that runs every 100μs
+**Use case**: Autonomous preemptive scheduling that runs every microsecond interval
 
 **Key aspects**:
 - Consumes self on shutdown (not Clone)
@@ -451,18 +451,17 @@ When implementing this pattern:
 
 ## Conclusion
 
-The Graceful-with-Fallback pattern elegantly solves the async Drop problem by:
+The Graceful-with-Fallback pattern solves the async Drop problem by:
 
 - **Preferring ergonomics**: Graceful shutdown for best practices
 - **Ensuring safety**: Abort fallback prevents resource leaks
 - **Providing feedback**: Clear warnings when fallback used
 - **Zero cost**: Minimal overhead, only pays when needed
 
-Apply this pattern judiciously to long-lived background tasks in reusable components. It's not a universal solution, but where it fits, it provides excellent ergonomics with strong safety guarantees.
+Apply this pattern judiciously to long-lived background tasks in reusable components. It is not a universal solution, but where it fits, it provides excellent ergonomics with strong safety guarantees.
 
----
+## References
 
-**References**:
-- SchedulerTask implementation: `kernel/src/process/scheduler_task.rs`
+- SchedulerTask implementation: `kernel/src/process/scheduler/task.rs`
 - AsyncTaskManager implementation: `kernel/src/api/execution/async_task.rs`
-- Test examples: `kernel/tests/syscalls/async_task_test.rs`
+- Guard system: `kernel/src/core/guard/`

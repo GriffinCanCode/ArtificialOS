@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document outlines the modernized code standards for the OS kernel project, updated to meet best practices.
+This document outlines the modernized code standards for the kernel project, aligned with current best practices for production-grade Rust systems software.
 
 ## Standards
 
@@ -19,8 +19,8 @@ too-many-lines-threshold = 50
 ### File Size Limits
 
 - **Maximum file length**: 500 lines
-- **Function length**: 50 lines max
-- **Cognitive complexity**: 15-20 max
+- **Function length**: 50 lines maximum
+- **Cognitive complexity**: 15-20 maximum
 
 ## Refactoring Patterns
 
@@ -64,7 +64,7 @@ original_file.rs (< 500 lines)
 
 - **clippy**: Enforces complexity and line limits
 - **cargo check**: Validates refactored code
-- **cargo test**: Ensures refactorings don't break functionality
+- **cargo test**: Ensures refactorings do not break functionality
 
 ## Next Steps
 
@@ -77,4 +77,4 @@ original_file.rs (< 500 lines)
 
 - Clippy Configuration: `kernel/clippy.toml`
 - Refactoring Examples: See completed modules above
-- Modern Rust Best Practices: [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/)
+- Modern Rust Best Practices: https://rust-lang.github.io/api-guidelines/
