@@ -4,7 +4,7 @@
  */
 
 import opentype, { Font } from "opentype.js";
-import { logger } from "../monitoring/logger";
+import { logger } from "../monitoring/core/logger";
 
 export interface TypographyOptions {
   fontSize?: number;

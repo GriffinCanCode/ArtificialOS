@@ -11,7 +11,7 @@ import {
   createGenerateUIMessage,
   createPingMessage,
 } from "../types/api";
-import { logger } from "../utils/monitoring/logger";
+import { logger } from "../monitoring/core/logger";
 
 export type MessageHandler = (message: ServerMessage) => void;
 export type ConnectionHandler = (connected: boolean) => void;

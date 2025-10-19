@@ -8,7 +8,7 @@ import { useForm } from "react-hook-form";
 import { Send } from "lucide-react";
 import { useMessages, useAppActions } from "../../../core/store/appStore";
 import { useWebSocket } from "../../contexts/WebSocketContext";
-import { useLogger } from "../../../core/utils/monitoring/useLogger";
+import { useLogger } from "../../../core/monitoring/hooks/useLogger";
 import { formatTime } from "../../../core/utils/dates";
 import { Tooltip } from "../../../features/floating";
 import "./ChatInterface.css";

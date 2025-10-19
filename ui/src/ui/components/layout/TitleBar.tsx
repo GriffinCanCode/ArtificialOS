@@ -6,7 +6,7 @@
 import React, { useState, useCallback } from "react";
 import { X, Trash2, Info, Search } from "lucide-react";
 import { useSessions, useDeleteSession } from "../../../core/hooks/useSessionQueries";
-import { useLogger } from "../../../core/utils/monitoring/useLogger";
+import { useLogger } from "../../../core/monitoring/hooks/useLogger";
 import { formatRelativeTime } from "../../../core/utils/dates";
 import { SaveSessionDialog } from "../dialogs/SaveSessionDialog";
 import { AboutPanel } from "../dialogs/AboutPanel";

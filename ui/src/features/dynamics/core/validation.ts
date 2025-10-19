@@ -4,7 +4,7 @@
  */
 
 import { z } from "zod";
-import { logger } from "../../../core/utils/monitoring/logger";
+import { logger } from "../../../core/monitoring/core/logger";
 
 // ============================================================================
 // Validation Types

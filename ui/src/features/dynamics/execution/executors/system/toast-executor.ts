@@ -3,7 +3,7 @@
  * Handles toast notifications using Sonner
  */
 
-import { logger } from "../../../../../core/utils/monitoring/logger";
+import { logger } from "../../../../../core/monitoring/core/logger";
 import { ExecutorContext, BaseExecutor } from "../core/types";
 import { toast } from "../../../../../core/toast";
 import type { ToastOptions, PromiseToastOptions } from "../../../../../core/toast";

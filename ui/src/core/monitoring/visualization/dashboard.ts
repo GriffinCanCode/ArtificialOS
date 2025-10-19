@@ -3,11 +3,11 @@
  * Central location for viewing all system metrics
  */
 
-import { metricsCollector } from "./metrics";
-import { getWebVitalsMetrics } from "./vitals";
-import { formatDate } from "../utils/dates";
-import { THEME_COLORS } from "../utils/color";
-import type { MetricsSnapshot } from "./types";
+import { metricsCollector } from "../core/metrics";
+import { getWebVitalsMetrics } from "../core/vitals";
+import { formatDate } from "../../utils/dates";
+import { THEME_COLORS } from "../../utils/color";
+import type { MetricsSnapshot } from "../core/types";
 
 // Brand color for console styling
 const BRAND_COLOR = THEME_COLORS.primary;

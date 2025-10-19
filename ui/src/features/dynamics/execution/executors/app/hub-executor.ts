@@ -3,7 +3,7 @@
  * Handles app registry operations (loading and launching apps)
  */
 
-import { logger } from "../../../../../core/utils/monitoring/logger";
+import { logger } from "../../../../../core/monitoring/core/logger";
 import { ExecutorContext, AsyncExecutor } from "../core/types";
 
 export class HubExecutor implements AsyncExecutor {

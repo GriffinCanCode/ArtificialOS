@@ -19,8 +19,8 @@ import { useAppActions } from "../core/store/appStore";
 import { useActions, useStore as useWindowStore } from "../features/windows";
 import { useSessionManager } from "../core/hooks/useSessionManager";
 import { ServerMessage } from "../core/types/api";
-import { useLogger } from "../core/utils/monitoring/useLogger";
-import { useJourney } from "../core/utils/monitoring";
+import { useLogger } from "../core/monitoring/hooks/useLogger";
+import { useJourney } from "../core/monitoring";
 import { useFadeIn } from "../ui/hooks/useGSAP";
 import { queryClient } from "../core/lib/queryClient";
 import { useScope, useShortcuts } from "../features/input";
@@ -29,8 +29,7 @@ import { AnimatedTitle } from "../ui/components/typography";
 import { TypewriterText } from "../ui/components/typography/TypewriterText";
 import "./App.css";
 import "../core/toast/styles.css";
-import { initWebVitals } from "../core/monitoring";
-import { MonitorProvider } from "../core/utils/monitoring";
+import { initWebVitals, MonitorProvider } from "../core/monitoring";
 
 // Expose window store globally for native apps
 if (typeof window !== "undefined") {

@@ -3,7 +3,7 @@
  * Full observer pattern implementation for component state
  */
 
-import { logger } from "../../../core/utils/monitoring/logger";
+import { logger } from "../../../core/monitoring/core/logger";
 
 // ============================================================================
 // Type Definitions

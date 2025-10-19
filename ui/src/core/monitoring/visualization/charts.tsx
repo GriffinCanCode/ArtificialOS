@@ -19,7 +19,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { getAllMetrics, getMetricsSummary, type SystemMetrics } from "./dashboard";
-import { getRechartsTheme, CHART_COLORS } from "../../features/visualization/utils";
+import { getRechartsTheme, CHART_COLORS } from "../../../features/visualization/utils";
 
 // ============================================================================
 // Chart Components

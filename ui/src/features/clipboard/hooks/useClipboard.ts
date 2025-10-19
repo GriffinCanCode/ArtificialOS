@@ -6,7 +6,7 @@
 import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
 import type { ClipboardEntry, ClipboardOptions, ClipboardStats, ClipboardState } from "../core/types";
 import { clipboardManager } from "../core/manager";
-import { logger } from "@/core/utils/monitoring/logger";
+import { logger } from "@/core/monitoring/core/logger";
 
 interface UseClipboardOptions {
   /**

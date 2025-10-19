@@ -6,7 +6,7 @@
 import React from "react";
 import type { BaseComponentProps } from "../core/types";
 import { registry } from "../core/registry";
-import { logger } from "../../../core/utils/monitoring/logger";
+import { logger } from "../../../core/monitoring/core/logger";
 import { safeParseProps } from "../core/validation";
 
 // ============================================================================

@@ -6,7 +6,7 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
-import { logger } from "../utils/monitoring/logger";
+import { logger } from "../monitoring/core/logger";
 
 // ============================================================================
 // Type Definitions

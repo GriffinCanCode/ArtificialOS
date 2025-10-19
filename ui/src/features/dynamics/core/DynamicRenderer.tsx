@@ -7,7 +7,7 @@ import React, { useEffect } from "react";
 import { useWebSocket } from "../../../ui/contexts/WebSocketContext";
 import { useBlueprint, useAppActions, useAppStore } from "../../../core/store/appStore";
 import { useActions, useStore as useWindowStore } from "../../windows";
-import { logger } from "../../../core/utils/monitoring/logger";
+import { logger } from "../../../core/monitoring/core/logger";
 
 // CRITICAL: Import registration to ensure components are registered
 // This triggers the side-effect that registers all component renderers

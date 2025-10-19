@@ -4,7 +4,7 @@
  * Note: For in-app toasts, use ToastExecutor instead
  */
 
-import { logger } from "../../../../../core/utils/monitoring/logger";
+import { logger } from "../../../../../core/monitoring/core/logger";
 import { ExecutorContext, BaseExecutor } from "../core/types";
 import { toast } from "../../../../../core/toast";
 

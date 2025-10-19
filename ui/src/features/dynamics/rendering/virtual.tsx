@@ -9,7 +9,7 @@ import { BlueprintComponent } from "../../../core/store/appStore";
 import { ComponentState } from "../state/state";
 import { ToolExecutor } from "../execution/executor";
 import { VIRTUAL_SCROLL_THRESHOLD, DEFAULT_ITEM_HEIGHT } from "../core/constants";
-import { logger } from "../../../core/utils/monitoring/logger";
+import { logger } from "../../../core/monitoring/core/logger";
 
 // Forward declaration to avoid circular dependency
 type ComponentRendererType = React.ComponentType<{

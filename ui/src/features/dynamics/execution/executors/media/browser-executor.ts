@@ -3,7 +3,7 @@
  * Handles iframe navigation and browser-like operations
  */
 
-import { logger } from "../../../../../core/utils/monitoring/logger";
+import { logger } from "../../../../../core/monitoring/core/logger";
 import { ExecutorContext, BaseExecutor } from "../core/types";
 
 export class BrowserExecutor implements BaseExecutor {

@@ -19,7 +19,7 @@ import { VirtualizedList } from "./virtual";
 import { VIRTUAL_SCROLL_THRESHOLD, DEFAULT_ITEM_HEIGHT } from "../core/constants";
 import { useSpin, useBuildPulse, useStaggerSlideUp } from "../../../ui/hooks/useGSAP";
 import * as gsapAnimations from "../../../core/utils/animation/gsapAnimations";
-import { logger } from "../../../core/utils/monitoring/logger";
+import { logger } from "../../../core/monitoring/core/logger";
 import "../core/styles.css";
 
 interface BuilderViewProps {

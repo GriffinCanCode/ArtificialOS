@@ -4,7 +4,7 @@
  */
 
 import { QueryClient } from "@tanstack/react-query";
-import { logger } from "../utils/monitoring/logger";
+import { logger } from "../monitoring/core/logger";
 
 /**
  * Create and configure the Query Client with sensible defaults

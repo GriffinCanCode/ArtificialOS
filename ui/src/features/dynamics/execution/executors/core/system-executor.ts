@@ -3,7 +3,7 @@
  * Handles system-level operations (alerts, undo/redo, state management)
  */
 
-import { logger } from "../../../../../core/utils/monitoring/logger";
+import { logger } from "../../../../../core/monitoring/core/logger";
 import { ExecutorContext, BaseExecutor } from "./types";
 
 export class SystemExecutor implements BaseExecutor {

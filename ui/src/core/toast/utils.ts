@@ -5,7 +5,7 @@
 
 import { toast as sonnerToast } from "sonner";
 import type { ToastOptions, PromiseToastOptions } from "./types";
-import { logger } from "../utils/monitoring/logger";
+import { logger } from "../monitoring/core/logger";
 
 /**
  * Show a success toast

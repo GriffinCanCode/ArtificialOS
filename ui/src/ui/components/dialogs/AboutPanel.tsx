@@ -5,7 +5,7 @@
 
 import React, { useCallback, useEffect } from "react";
 import { X, Github, Book, Sparkles, Cpu, Zap } from "lucide-react";
-import { useLogger } from "../../../core/utils/monitoring/useLogger";
+import { useLogger } from "../../../core/monitoring/hooks/useLogger";
 import { Tooltip } from "../../../features/floating";
 import "./AboutPanel.css";
 

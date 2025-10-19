@@ -3,7 +3,7 @@
  * Handles filesystem operations with dynamic UI updates
  */
 
-import { logger } from "../../../../../core/utils/monitoring/logger";
+import { logger } from "../../../../../core/monitoring/core/logger";
 import { toRgbaString, UI_COLORS, ALPHA_VALUES } from "../../../../../core/utils/color";
 import { normalizePath } from "../../../../../core/utils/paths";
 import { ExecutorContext, AsyncExecutor } from "../core/types";

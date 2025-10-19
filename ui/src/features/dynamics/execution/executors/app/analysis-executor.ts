@@ -4,7 +4,7 @@
  */
 
 import { formatBytes, formatDuration, formatCompact } from "../../../../../core/utils/math";
-import { logger } from "../../../../../core/utils/monitoring/logger";
+import { logger } from "../../../../../core/monitoring/core/logger";
 import { getAllMetrics } from "../../../../../core/monitoring";
 import { formatTime } from "../../../../../core/utils/dates";
 import { ExecutorContext, AsyncExecutor } from "../core/types";

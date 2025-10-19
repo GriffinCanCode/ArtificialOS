@@ -8,7 +8,7 @@
 
 import { ComponentState } from "../../features/dynamics/state/state";
 import { ToolExecutor } from "../../features/dynamics/execution/executor";
-import { logger } from "../utils/monitoring/logger";
+import { logger } from "../monitoring/core/logger";
 
 // ============================================================================
 // Type Definitions

@@ -6,7 +6,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { SaveSessionRequest, ListSessionsResponse } from "../types/session";
 import { SessionClient } from "../api/sessionClient";
-import { logger } from "../utils/monitoring/logger";
+import { logger } from "../monitoring/core/logger";
 import { compareDatesDesc } from "../utils/dates";
 
 // ============================================================================

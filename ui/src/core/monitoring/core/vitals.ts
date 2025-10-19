@@ -4,9 +4,9 @@
  */
 
 import type { Metric } from "web-vitals";
-import { onCLS, onFID, onFCP, onLCP, onTTFB, onINP } from "web-vitals";
+import { onCLS, onFCP, onLCP, onTTFB, onINP } from "web-vitals";
 import { metricsCollector } from "./metrics";
-import { logger } from "../utils/monitoring/logger";
+import { logger } from "./logger";
 
 /**
  * Initialize Web Vitals monitoring
@@ -14,7 +14,6 @@ import { logger } from "../utils/monitoring/logger";
 export function initWebVitals(): void {
   // Core Web Vitals
   onCLS(handleMetric);
-  onFID(handleMetric);
   onLCP(handleMetric);
 
   // Other metrics

@@ -3,7 +3,7 @@
  * Handles network graph operations for AI thought visualization
  */
 
-import { logger } from "../../../../../core/utils/monitoring/logger";
+import { logger } from "../../../../../core/monitoring/core/logger";
 import { THEME_COLORS } from "../../../../../core/utils/color";
 import { ExecutorContext, BaseExecutor } from "../core/types";
 import type { GraphNode, GraphEdge } from "../../../../visualization/types";

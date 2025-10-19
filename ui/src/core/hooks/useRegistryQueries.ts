@@ -9,7 +9,7 @@ import type {
   SaveAppRequest,
   ListAppsResponse,
 } from "../types/registry";
-import { logger } from "../utils/monitoring/logger";
+import { logger } from "../monitoring/core/logger";
 
 // ============================================================================
 // Query Keys - Centralized for consistency

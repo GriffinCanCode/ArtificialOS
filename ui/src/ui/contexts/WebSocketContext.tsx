@@ -9,8 +9,8 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { WebSocketClient } from "../../core/api/websocketClient";
 import { useWebSocketConnection } from "../../core/api/hooks/useWebSocketConnection";
-import { logger } from "../../core/utils/monitoring/logger";
-import { startCausalChain, addCausalEvent } from "../../core/utils/monitoring";
+import { logger } from "../../core/monitoring/core/logger";
+import { startCausalChain, addCausalEvent } from "../../core/monitoring";
 import { useAppStore } from "../../core/store/appStore";
 import { useStore as useWindowStore, useActions } from "../../features/windows";
 import { generatePrefixed } from "../../core/id";

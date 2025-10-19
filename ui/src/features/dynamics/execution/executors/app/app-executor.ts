@@ -3,7 +3,7 @@
  * Handles app lifecycle operations (spawn, close, state persistence)
  */
 
-import { logger } from "../../../../../core/utils/monitoring/logger";
+import { logger } from "../../../../../core/monitoring/core/logger";
 import { ExecutorContext, AsyncExecutor } from "../core/types";
 
 export class AppExecutor implements AsyncExecutor {

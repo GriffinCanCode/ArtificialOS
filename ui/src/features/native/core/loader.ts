@@ -12,7 +12,7 @@
 
 /// <reference types="vite/client" />
 
-import { logger } from "../../../core/utils/monitoring/logger";
+import { logger } from "../../../core/monitoring/core/logger";
 import type { LoadedApp, CacheEntry } from "./types";
 import { NativeAppError, ErrorCode } from "./types";
 

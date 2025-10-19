@@ -3,7 +3,7 @@
  * Handles chart data manipulation and updates
  */
 
-import { logger } from "../../../../../core/utils/monitoring/logger";
+import { logger } from "../../../../../core/monitoring/core/logger";
 import { ExecutorContext, BaseExecutor } from "../core/types";
 import {
   normalize,

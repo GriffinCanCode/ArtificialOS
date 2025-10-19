@@ -24,7 +24,7 @@ import {
   ServiceExecuteResponse,
   ServiceExecuteResponseSchema,
 } from "../types/api";
-import { logger } from "../utils/monitoring/logger";
+import { logger } from "../monitoring/core/logger";
 
 const API_BASE_URL = "http://localhost:8000";
 

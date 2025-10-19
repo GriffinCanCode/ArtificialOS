@@ -4,7 +4,7 @@
  */
 
 import { evaluateExpression } from "../../../../../core/utils/math";
-import { logger } from "../../../../../core/utils/monitoring/logger";
+import { logger } from "../../../../../core/monitoring/core/logger";
 import { ExecutorContext, BaseExecutor } from "../core/types";
 
 export class CalcExecutor implements BaseExecutor {

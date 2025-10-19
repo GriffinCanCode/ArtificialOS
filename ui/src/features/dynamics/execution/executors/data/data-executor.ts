@@ -3,7 +3,7 @@
  * Handles data manipulation (filter, sort, search)
  */
 
-import { logger } from "../../../../../core/utils/monitoring/logger";
+import { logger } from "../../../../../core/monitoring/core/logger";
 import { compareTimestampsAsc, compareTimestampsDesc } from "../../../../../core/utils/dates";
 import { ExecutorContext, BaseExecutor } from "../core/types";
 

@@ -3,7 +3,7 @@
  * Main coordinator for tool execution using modular executors
  */
 
-import { logger } from "../../../core/utils/monitoring/logger";
+import { logger } from "../../../core/monitoring/core/logger";
 import { ComponentState } from "../state/state";
 import {
   ExecutorContext,

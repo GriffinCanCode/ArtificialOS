@@ -3,7 +3,7 @@
  * Handles backend service tool execution
  */
 
-import { logger } from "../../../../../core/utils/monitoring/logger";
+import { logger } from "../../../../../core/monitoring/core/logger";
 import { ExecutorContext, AsyncExecutor } from "./types";
 
 export class ServiceExecutor implements AsyncExecutor {

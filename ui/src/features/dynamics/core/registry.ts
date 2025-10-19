@@ -4,7 +4,7 @@
  */
 
 import type { ComponentRenderer } from "./types";
-import { logger } from "../../../core/utils/monitoring/logger";
+import { logger } from "../../../core/monitoring/core/logger";
 
 // ============================================================================
 // Registry Class

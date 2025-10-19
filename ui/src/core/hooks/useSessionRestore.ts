@@ -5,7 +5,7 @@
 
 import { useCallback } from "react";
 import { useActions } from "../../features/windows";
-import { logger } from "../utils/monitoring/logger";
+import { logger } from "../monitoring/core/logger";
 
 interface SavedWindow {
   id: string;

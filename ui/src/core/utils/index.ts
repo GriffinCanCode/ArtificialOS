@@ -3,10 +3,10 @@
  */
 
 // Re-export from organized subdirectories
-export { logger, LogLevel } from "./monitoring/logger";
-export type { LogContext } from "./monitoring/logger";
-export { useLogger, usePerformanceLogger, withLogging } from "./monitoring/useLogger";
-export { startPerf, endPerf } from "./monitoring/performanceMonitor";
+export { logger, LogLevel } from "../monitoring/core/logger";
+export type { LogContext } from "../monitoring/core/logger";
+export { useLogger, usePerformanceLogger, withLogging } from "../monitoring/hooks/useLogger";
+export { startPerf, endPerf } from "../monitoring/core/performance";
 
 // Animation utilities
 export * from "./animation/gsapAnimations";

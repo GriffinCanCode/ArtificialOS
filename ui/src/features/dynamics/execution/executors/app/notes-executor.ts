@@ -3,7 +3,7 @@
  * Handles note creation, saving, loading, and list management
  */
 
-import { logger } from "../../../../../core/utils/monitoring/logger";
+import { logger } from "../../../../../core/monitoring/core/logger";
 import { generatePrefixed } from "../../../../../core/id";
 import { formatRelativeTime, compareTimestampsDesc } from "../../../../../core/utils/dates";
 import { toRgbaString } from "../../../../../core/utils/color";

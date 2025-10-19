@@ -14,7 +14,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { loader } from "../core/loader";
 import { createAppContext } from "../../../core/sdk";
 import { useActions } from "../../windows";
-import { logger } from "../../../core/utils/monitoring/logger";
+import { logger } from "../../../core/monitoring/core/logger";
 import type { NativeAppContext, NativeAppProps } from "../../../core/sdk";
 import "./renderer.css";
 

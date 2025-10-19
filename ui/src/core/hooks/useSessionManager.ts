@@ -8,7 +8,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useAppStore } from "../store/appStore";
 import { useActions } from "../../features/windows";
 import type { ChatState, UIState } from "../types/session";
-import { logger } from "../utils/monitoring/logger";
+import { logger } from "../monitoring/core/logger";
 import {
   useSaveSession,
   useSaveDefaultSession,

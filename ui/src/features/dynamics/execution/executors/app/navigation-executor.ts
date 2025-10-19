@@ -3,7 +3,7 @@
  * Handles navigation operations (tabs, modals)
  */
 
-import { logger } from "../../../../../core/utils/monitoring/logger";
+import { logger } from "../../../../../core/monitoring/core/logger";
 import { ExecutorContext, BaseExecutor } from "../core/types";
 
 export class NavigationExecutor implements BaseExecutor {
