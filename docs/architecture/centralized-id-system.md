@@ -18,7 +18,7 @@ AgentOS uses a unified, type-safe ID generation system across all four languages
 2. **Type Safety**: Compile-time guarantees prevent ID misuse
 3. **K-Sortable**: Timeline queries without explicit timestamps
 4. **Debuggable**: Prefixed IDs make logs immediately readable
-5. **Performance**: Lock-free generation, <2μs per ID
+5. **Performance**: Lock-free generation, under 2 microseconds per ID
 
 ---
 
@@ -27,27 +27,23 @@ AgentOS uses a unified, type-safe ID generation system across all four languages
 ### Two-Tier ID System
 
 ```
-┌
-                     APPLICATION LAYER                        
-  (Go Backend, TypeScript UI, Python AI Service)             
-                                                              
-  ULIDs: app_01ARZ3NDEKTSV4RRFFQ69G5FAV                      
-  - Lexicographically sortable                               
-  - 26 characters (timestamp + random)                       
-  - Prefixed by type (app_, win_, req_)                     
-  - Global uniqueness                                        
-┘
-                              
-┌
-                      KERNEL LAYER                            
-                    (Rust Kernel)                             
-                                                              
-  u32 Atomic Counters: 1, 2, 3, ...                         
-  - Fast (atomic increment only)                             
-  - Compact (4 bytes)                                        
-  - Local to kernel subsystems                               
-  - Recycling support for IPC                                
-┘
+APPLICATION LAYER                        
+(Go Backend, TypeScript UI, Python AI Service)             
+
+ULIDs: app_01ARZ3NDEKTSV4RRFFQ69G5FAV                      
+- Lexicographically sortable                               
+- 26 characters (timestamp + random)                       
+- Prefixed by type (app_, win_, req_)                     
+- Global uniqueness  
+
+KERNEL LAYER                            
+(Rust Kernel)                             
+
+u32 Atomic Counters: 1, 2, 3, ...                         
+- Fast (atomic increment only)                           
+- Compact (4 bytes)                                       
+- Local to kernel subsystems                             
+- Recycling support for IPC
 ```
 
 **Why Two Tiers?**
@@ -154,8 +150,8 @@ export function newAppID(): AppID {
 
 // Type safety: can't pass WindowID where AppID is expected
 function openApp(id: AppID) { ... }
-openApp(newAppID());     // ✅ OK
-openApp(newWindowID());  // ❌ Compile error
+openApp(newAppID());     // OK
+openApp(newWindowID());  // Compile error
 ```
 
 **Monotonic Factory**
@@ -289,38 +285,38 @@ SELECT * FROM apps WHERE id > 'app_' || ulid_from_time(NOW() - INTERVAL '1 hour'
 
 | Operation | Rust (kernel) | Go (backend) | TypeScript (frontend) | Python (AI) |
 |-----------|---------------|--------------|----------------------|-------------|
-| Single ID | 5 ns | 2 μs | 0.5 μs | 1 μs |
-| Batch (100) | 500 ns | 150 μs | 50 μs | 100 μs |
-| Concurrent (10K) | 50 μs | 2 ms | 1 ms | 5 ms |
+| Single ID | 5 ns | 2 µs | 0.5 µs | 1 µs |
+| Batch (100) | 500 ns | 150 µs | 50 µs | 100 µs |
+| Concurrent (10K) | 50 µs | 2 ms | 1 ms | 5 ms |
 
 **Kernel atomic counters**: Lock-free, cache-line aligned, ~5ns per ID  
-**Application ULIDs**: Monotonic, thread-safe, <2μs per ID
+**Application ULIDs**: Monotonic, thread-safe, under 2µs per ID
 
 ---
 
-## Migration Path
+## Implementation Status
 
-### Phase 1: ✅ Core Infrastructure (Completed)
+### Phase 1: Core Infrastructure (Completed)
 
-- [x] Rust kernel ID module
-- [x] Go backend ID module with ULID
-- [x] TypeScript frontend ID module with ULID
-- [x] Python AI service ID module
-- [x] Comprehensive test suites
+- Rust kernel ID module
+- Go backend ID module with ULID
+- TypeScript frontend ID module with ULID
+- Python AI service ID module
+- Comprehensive test suites
 
 ### Phase 2: Integration (Next)
 
-- [ ] Migrate backend app manager to use typed AppID
-- [ ] Migrate frontend window store to use typed WindowID
-- [ ] Migrate AI service to use typed RequestID/ConversationID
-- [ ] Update protobuf definitions for cross-service IDs
+- Migrate backend app manager to use typed AppID
+- Migrate frontend window store to use typed WindowID
+- Migrate AI service to use typed RequestID/ConversationID
+- Update protobuf definitions for cross-service IDs
 
 ### Phase 3: Optimization (Future)
 
-- [ ] Add ID caching for frequently accessed entities
-- [ ] Implement ID batch pre-generation for performance
-- [ ] Add distributed tracing via request IDs
-- [ ] Performance profiling and optimization
+- Add ID caching for frequently accessed entities
+- Implement ID batch pre-generation for performance
+- Add distributed tracing via request IDs
+- Performance profiling and optimization
 
 ---
 
@@ -400,10 +396,10 @@ pipes.insert(pipe_id, pipe);
 
 | Module | Unit Tests | Integration Tests | Benchmarks |
 |--------|------------|-------------------|------------|
-| Rust kernel | ✅ 12 tests | ✅ Concurrent | ✅ 3 benches |
-| Go backend | ✅ 15 tests | ✅ Load test | ✅ 5 benches |
-| TypeScript frontend | ✅ 18 tests | ✅ Type guards | ❌ TBD |
-| Python AI service | ✅ 16 tests | ✅ Sorting | ❌ TBD |
+| Rust kernel | 12 tests | Concurrent | 3 benches |
+| Go backend | 15 tests | Load test | 5 benches |
+| TypeScript frontend | 18 tests | Type guards | Planned |
+| Python AI service | 16 tests | Sorting | Planned |
 
 ### Running Tests
 
@@ -464,6 +460,5 @@ cd ai-service && pytest tests/unit/test_id.py
 
 ---
 
-**Last Updated**: October 2025  
-**Next Review**: Q1 2026
+**Last Updated**: October 2025
 

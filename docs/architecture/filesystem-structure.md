@@ -37,9 +37,9 @@ The AgentOS filesystem is **automatically initialized** on first kernel startup 
 ### What Happens on First Startup
 
 1. **VFS Mounts** are created automatically:
-   - `/storage`  Persistent local filesystem
-   - `/tmp`  In-memory filesystem (100MB)
-   - `/cache`  In-memory filesystem (50MB)
+   - `/storage` - Persistent local filesystem
+   - `/tmp` - In-memory filesystem (100MB)
+   - `/cache` - In-memory filesystem (50MB)
 
 2. **Standard directories** are created:
    - All directories shown above are automatically created
@@ -227,7 +227,7 @@ Clean up old files or increase limits in `kernel/src/core/limits.rs`.
 
 ## Future Enhancements
 
-Planned features (see `docs/FILESYSTEM_REDESIGN.md`):
+Planned features:
 - Content-addressable storage (automatic deduplication)
 - File versioning and snapshots
 - Intelligent caching layer

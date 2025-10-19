@@ -1,61 +1,45 @@
-# AI-OS Architecture️
+# AI-OS Architecture
 
-## Core Principle: **Generate Once, Execute Many**
+## Core Principle: Generate Once, Execute Many
 
-The system generates UI specifications once via LLM, then executes tools to handle all interactions. No re-prompting needed for normal use.
+The system generates UI specifications once, then executes tools to handle all interactions. No re-prompting needed for normal use.
 
 ---
 
 ## Data Flow Architecture
 
 ```
-┌
-  1. USER/APP: "create a calculator"                         
-┬┘
-                    
-┌
-  2. AppManager (Orchestrator)                                 
-  - Coordinates app lifecycle                                  
-  - Tracks all running apps                                    
-  - Handles parent-child relationships                         
-  - Manages focus/foreground/background                        
-┬┘
-                    
-┌
-  3. UIGeneratorAgent                                          
-  - LLM generates UISpec (JSON) ONCE                           
-  - Includes all components + tool bindings                    
-  - NO CODE EXECUTION - pure data                              
-┬┘
-                    
-┌
-  4. Backend returns: {app_id, ui_spec, thoughts}              
-┬┘
-                    
-┌
-  5. DynamicRenderer (Frontend)                                
-  - Parses UISpec JSON                                         
-  - Renders React components                                   
-  - Creates ComponentState                                     
-  - Initializes ToolExecutor                                   
-┬┘
-                    
-┌
-  6. USER CLICKS BUTTON                                        
-┬┘
-                    
-┌
-  7. Event Handler  ToolExecutor.execute(tool_id, params)     
-  - calc.add: Arithmetic operations                            
-  - ui.set_state: Update component state                       
-  - system.alert: Show dialogs                                 
-  - app.spawn: CREATE NEW APP! (back to step 1)                
-┬┘
-                    
-┌
-  8. ComponentState updates  React re-renders                 
-  (automatic, no LLM needed)                                   
-┘
+1. USER/APP: "create a calculator"
+   
+2. AppManager (Orchestrator)
+   - Coordinates app lifecycle
+   - Tracks all running apps
+   - Handles parent-child relationships
+   - Manages focus/foreground/background
+   
+3. UIGeneratorAgent
+   - LLM generates UISpec (JSON) ONCE
+   - Includes all components + tool bindings
+   - NO CODE EXECUTION - pure data
+   
+4. Backend returns: {app_id, ui_spec, thoughts}
+   
+5. DynamicRenderer (Frontend)
+   - Parses UISpec JSON
+   - Renders React components
+   - Creates ComponentState
+   - Initializes ToolExecutor
+   
+6. USER CLICKS BUTTON
+   
+7. Event Handler -> ToolExecutor.execute(tool_id, params)
+   - calc.add: Arithmetic operations
+   - ui.set_state: Update component state
+   - system.alert: Show dialogs
+   - app.spawn: CREATE NEW APP! (back to step 1)
+   
+8. ComponentState updates -> React re-renders
+   (automatic, no LLM needed)
 ```
 
 ---
@@ -68,7 +52,7 @@ The system generates UI specifications once via LLM, then executes tools to hand
 **Responsibilities:**
 - Track all running app instances
 - Handle app spawning (from user OR from apps)
-- Manage app lifecycle (spawning  active  background  destroyed)
+- Manage app lifecycle (spawning → active → background → destroyed)
 - Coordinate parent-child relationships
 - Handle focus management
 - Clean up destroyed apps
@@ -102,14 +86,13 @@ The system generates UI specifications once via LLM, then executes tools to hand
 - Generate structured UISpec (JSON)
 - Bind tools to UI events
 - Provide component templates
-- Currently rule-based (Phase 1)
-- Will use LLM with function calling (Phase 2)
+- Currently uses rule-based generation with LLM fallback
 
 **Tool Registry:**
 - `calc.*`: Arithmetic (add, subtract, multiply, divide, etc.)
 - `ui.*`: State management (set_state, get_state, add_todo)
 - `system.*`: System operations (alert, log)
-- `app.*`: **App management (spawn, close, list)** ⭐
+- `app.*`: App management (spawn, close, list)
 
 **Output Format:**
 ```json
@@ -152,18 +135,18 @@ The system generates UI specifications once via LLM, then executes tools to hand
 2. Create `ComponentState` for this app
 3. Create `ToolExecutor` with state
 4. Render components recursively
-5. On user interaction  execute tool  update state  React re-renders
+5. On user interaction → execute tool → update state → React re-renders
 
 ---
 
-### ⚡ ToolExecutor (`ui/src/components/DynamicRenderer.tsx`)
+### ToolExecutor (`ui/src/components/DynamicRenderer.tsx`)
 **Role:** Execute tools and update state
 
 **Responsibilities:**
 - Execute tool functions
 - Update ComponentState
 - Handle async operations
-- **Trigger app spawning via IPC**
+- Trigger app spawning via IPC
 
 **Tool Categories:**
 - `calc.*`: Local arithmetic
@@ -213,9 +196,9 @@ state.subscribe('display', (value) => {
 ## App Lifecycle States
 
 ```
-SPAWNING  ACTIVE  BACKGROUND  SUSPENDED  DESTROYED
-                                             
-  LLM    Running   Unfocused    Paused      Closed
+SPAWNING  ->  ACTIVE  ->  BACKGROUND  ->  SUSPENDED  ->  DESTROYED
+   
+  LLM        Running      Unfocused        Paused          Closed
   Gen
 ```
 
@@ -230,7 +213,7 @@ SPAWNING  ACTIVE  BACKGROUND  SUSPENDED  DESTROYED
 
 ## Key Features
 
-###  Apps Can Spawn Apps
+### Apps Can Spawn Apps
 Apps can create other apps via the `app.spawn` tool:
 
 ```json
@@ -252,15 +235,15 @@ Apps can create other apps via the `app.spawn` tool:
 
 ### No Re-Prompting for Normal Use
 
-**Traditional Approach (BAD):**
+**Traditional Approach (Inefficient):**
 ```
-User clicks button  LLM  Generate new UI  Render
+User clicks button -> LLM -> Generate new UI -> Render
 (Slow, expensive, unpredictable)
 ```
 
-**Our Approach (GOOD):**
+**This System's Approach:**
 ```
-User clicks button  ToolExecutor  Update state  React re-renders
+User clicks button -> ToolExecutor -> Update state -> React re-renders
 (Fast, deterministic, efficient)
 ```
 
@@ -282,10 +265,10 @@ The system supports multiple concurrent apps:
 
 **Example:**
 ```
- Calculator (active, focused)
- Todo List (background)
-    Add Task Dialog (active, child)
- Settings (background)
+Calculator (active, focused)
+Todo List (background)
+   Add Task Dialog (active, child)
+Settings (background)
 ```
 
 ---
@@ -332,34 +315,11 @@ The system supports multiple concurrent apps:
 
 ---
 
-## Future Enhancements
-
-### Phase 2: LLM-Powered Generation
-- Replace rule-based generation with LLM function calling
-- Support complex, custom UIs
-- Learn from user feedback
-- Generate novel component combinations
-
-### Phase 3: IPC Integration
-- Connect tools to kernel via IPC
-- Real system operations (file I/O, process management, etc.)
-- Cross-app communication
-- System-wide services
-
-### Phase 4: Advanced Features
-- App persistence (save/restore apps)
-- App marketplace (share UI specs)
-- Custom component registration
-- Theme system
-- Accessibility features
-
----
-
 ## Design Principles
 
-1. **Separation of Concerns**: Generation (LLM) ≠ Execution (Tools)
+1. **Separation of Concerns**: Generation (LLM) != Execution (Tools)
 2. **Security**: No arbitrary code execution - only structured data
-3. **Performance**: Generate once, execute many
+3. **Performance**: Generate once, execute many times
 4. **Composability**: Apps can spawn apps
 5. **Predictability**: Tools have defined behavior
 6. **Debuggability**: All state changes are traceable
@@ -373,7 +333,7 @@ The system supports multiple concurrent apps:
 ```
 User: "create a calculator"
    AppManager.spawn_app()
-   UIGeneratorAgent.generate_ui() [rule-based]
+   UIGeneratorAgent.generate_ui() [rule-based + LLM]
    Returns UISpec with buttons bound to calc.* tools
    DynamicRenderer renders
    User clicks "7" button
@@ -411,19 +371,19 @@ User: "create a project manager"
 
 ## Summary
 
-This architecture enables a **magical** experience where:
-- ✅ Users can create ANY app with natural language
-- ✅ Apps are fast and responsive (no LLM in the loop)
-- ✅ Apps can create other apps (composability)
-- ✅ System is secure (no code execution)
-- ✅ System is scalable (multi-app from day 1)
-- ✅ System is debuggable (structured data flow)
+This architecture enables the following capabilities:
+- Users can create any app with natural language
+- Apps are fast and responsive (no LLM in the loop for normal interaction)
+- Apps can create other apps (composability)
+- System is secure (no code execution)
+- System is scalable (multi-app from day 1)
+- System is debuggable (structured data flow)
 
-**Next Steps:**
-1. ✅ Implement AppManager (DONE)
-2. ✅ Add app.* tools (DONE)
-3. ✅ Update API endpoints (DONE)
-4. ⏳ Test app spawning flow
-5. ⏳ Replace rule-based generation with LLM function calling
-6. ⏳ Add IPC integration for tools
+**Implementation Status:**
+1. AppManager: Implemented
+2. App spawning tools: Implemented
+3. API endpoints: Implemented
+4. Rule-based UI generation: Implemented
+5. LLM UI generation: In progress
+6. IPC integration for tools: Planned
 

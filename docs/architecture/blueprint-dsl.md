@@ -21,11 +21,11 @@ Blueprint is a JSON-based DSL for describing full-stack applications in the AI O
 ```
 
 **Why this works for streaming:**
-- ✅ Type and ID are VALUES (easy to extract with regex during streaming)
-- ✅ Complete objects render immediately as they finish
-- ✅ No special parsing logic for key syntax
-- ✅ Simpler parsers across all languages
-- ✅ Clear component boundaries for incremental rendering
+- Type and ID are VALUES (easy to extract with regex during streaming)
+- Complete objects render immediately as they finish
+- No special parsing logic for key syntax
+- Simpler parsers across all languages
+- Clear component boundaries for incremental rendering
 
 ## File Format
 
@@ -424,10 +424,10 @@ For complex applications with multiple views, use the `tabs` component with cont
 **Why This Structure?**
 
 Each page is a complete container with all its children. This structure:
-- ✅ Allows AI to output complete pages sequentially
-- ✅ Pages are stacked vertically in code (natural for generation)
-- ✅ Each page is self-contained with its own layout and styling
-- ✅ Easy to stream incrementally during generation
+- Allows AI to output complete pages sequentially
+- Pages are stacked vertically in code (natural for generation)
+- Each page is self-contained with its own layout and styling
+- Easy to stream incrementally during generation
 
 **Tab Properties:**
 - `defaultTab` - ID of the tab to show initially (in tabs props)
@@ -535,18 +535,18 @@ You can nest tabs within tab pages for complex navigation:
                 "children": [
                   {
                     "button#home-btn": {
-                      "text": " Home",
+                      "text": "Home",
                       "variant": "ghost",
                       "fullWidth": true,
-                      "@click": "filesystem.list"
+                      "on_event": {"click": "filesystem.list"}
                     }
                   },
                   {
                     "button#documents-btn": {
-                      "text": " Documents",
+                      "text": "Documents",
                       "variant": "ghost",
                       "fullWidth": true,
-                      "@click": "filesystem.list"
+                      "on_event": {"click": "filesystem.list"}
                     }
                   }
                 ]
@@ -571,26 +571,26 @@ You can nest tabs within tab pages for complex navigation:
                 "children": [
                   {
                     "button#back": {
-                      "text": "",
+                      "text": "Back",
                       "variant": "outline",
                       "size": "small",
-                      "@click": "ui.set"
+                      "on_event": {"click": "ui.set"}
                     }
                   },
                   {
                     "button#forward": {
-                      "text": "",
+                      "text": "Forward",
                       "variant": "outline",
                       "size": "small",
-                      "@click": "ui.set"
+                      "on_event": {"click": "ui.set"}
                     }
                   },
                   {
                     "button#up": {
-                      "text": "",
+                      "text": "Up",
                       "variant": "outline",
                       "size": "small",
-                      "@click": "ui.set"
+                      "on_event": {"click": "ui.set"}
                     }
                   },
                   {
@@ -601,15 +601,15 @@ You can nest tabs within tab pages for complex navigation:
                       "style": {
                         "flex": 1
                       },
-                      "@change": "filesystem.list"
+                      "on_event": {"change": "filesystem.list"}
                     }
                   },
                   {
                     "button#refresh": {
-                      "text": "",
+                      "text": "Refresh",
                       "variant": "outline",
                       "size": "small",
-                      "@click": "filesystem.list"
+                      "on_event": {"click": "filesystem.list"}
                     }
                   },
                   {
@@ -617,7 +617,7 @@ You can nest tabs within tab pages for complex navigation:
                       "text": "+ Folder",
                       "variant": "primary",
                       "size": "small",
-                      "@click": "filesystem.mkdir"
+                      "on_event": {"click": "filesystem.mkdir"}
                     }
                   }
                 ]
@@ -727,11 +727,11 @@ You can nest tabs within tab pages for complex navigation:
 
 The Blueprint parser will:
 
-1. **Parse JSON**  Internal representation
-2. **Expand shortcuts**  Full component tree
-3. **Validate services**  Check against registry
-4. **Resolve templates**  Apply reusable patterns
-5. **Generate UISpec**  Compatible with existing DynamicRenderer
+1. **Parse JSON** - Internal representation
+2. **Expand shortcuts** - Full component tree
+3. **Validate services** - Check against registry
+4. **Resolve templates** - Apply reusable patterns
+5. **Generate UISpec** - Compatible with existing DynamicRenderer
 
 ### Python Parser (ai-service)
 
@@ -865,12 +865,12 @@ func Parse(content []byte) (*types.Package, error) {
 | Feature | Legacy .aiapp | Blueprint (.bp) |
 |---------|---------------|-----------------|
 | Format | Raw JSON | Structured JSON with shortcuts |
-| Readability | Medium | **High** |
-| IDE Support | Good | **Excellent** |
-| AI generation | Good | **Excellent** |
+| Readability | Medium | High |
+| IDE Support | Good | Excellent |
+| AI generation | Good | Excellent |
 | Type safety | Runtime | Runtime |
 | Parsing speed | Fast | Fast |
-| Shortcuts | No | **Yes** (row/col, @events, #id) |
+| Shortcuts | No | Yes (row/col, on_event, #id) |
 
 ## AI System Prompt
 
@@ -880,8 +880,8 @@ To teach AI models the Blueprint DSL:
 You are generating Blueprint (.bp) files for the AI OS platform.
 
 Blueprint is a JSON-based DSL with these conventions:
-1. Components use type#id syntax: {"button#save": {...}}
-2. Events use @ prefix: "@click": "tool.name"
+1. Components use explicit format: {"type": "button", "id": "save", ...}
+2. Events use standard key: "on_event": {"click": "tool.name"}
 3. Layouts use shortcuts: "row", "col", "grid"
 4. Services are simple imports or objects: ["storage"] or [{"storage": ["get", "set"]}]
 5. Keep it structured and clear
@@ -895,20 +895,18 @@ Example:
     "layout": "vertical",
     "components": [
       {
-        "input#result": {
-          "type": "input",
-          "value": "0",
-          "readonly": true
-        }
+        "type": "input",
+        "id": "result",
+        "props": {"value": "0", "readonly": true}
       },
       {
-        "grid": {
-          "columns": 4,
-          "children": [
-            {"button#btn-1": {"text": "1", "@click": "calc.digit"}},
-            {"button#btn-2": {"text": "2", "@click": "calc.digit"}}
-          ]
-        }
+        "type": "grid",
+        "id": "buttons",
+        "props": {"columns": 4},
+        "children": [
+          {"type": "button", "id": "btn-1", "props": {"text": "1"}, "on_event": {"click": "calc.digit"}},
+          {"type": "button", "id": "btn-2", "props": {"text": "2"}, "on_event": {"click": "calc.digit"}}
+        ]
       }
     ]
   }
@@ -919,9 +917,9 @@ Always output valid JSON. Validate your syntax.
 
 ## Next Steps
 
-1. ✓ Implement Blueprint parser in Python (ai-service)
-2. ✓ Implement Blueprint parser in Go (backend)
-3. ✓ Update registry seeder to support `.bp` files
+1. Implement Blueprint parser in Python (ai-service)
+2. Implement Blueprint parser in Go (backend)
+3. Update registry seeder to support `.bp` files
 4. Add Blueprint validation
-5. Create migration tool: `.aiapp`  `.bp`
+5. Create migration tool: `.aiapp` to `.bp`
 6. Update documentation

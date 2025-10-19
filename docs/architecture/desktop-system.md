@@ -1,34 +1,34 @@
-# Desktop System & UI Architecture
+# Desktop System and UI Architecture
 
 ## Overview
 
-AgentOS now features a beautiful desktop experience with animated welcome screen, app shortcuts, dock, and a creator overlay system.
+The AgentOS UI features a desktop experience with animated welcome screen, app shortcuts, dock, and a creator overlay system.
 
 ## User Experience Flow
 
-### 1. **Welcome Animation** (0-2 seconds)
+### 1. Welcome Animation (0-2 seconds)
 - User sees welcome screen with floating sparkle icon
 - "Welcome to Griffin's AgentOS" with gradient text
 - Subtitle: "Press K or click below to create something"
 - After 2 seconds: Screen slides up (Y-axis) and fades out
 - Reveals desktop beneath
 
-### 2. **Desktop** (Main Interface)
+### 2. Desktop (Main Interface)
 **Components:**
 - **Top Menu Bar**: System menu with clock, date, and Hub access
 - **Desktop Icons**: Grid of pinned apps (first 6 from registry)
 - **Dock**: macOS-style dock at bottom with:
-  - Hub () - Opens app store
-  - Files () - File explorer
-  - Browser () - Web browser
-  - Calculator () - Calculator
-  - Notes () - Note taking
-  - System Analysis () - Performance monitoring
+  - Hub - Opens app store
+  - Files - File explorer
+  - Browser - Web browser
+  - Calculator - Calculator
+  - Notes - Note taking
+  - System Analysis - Performance monitoring
   - Separator line
-  - Creator () - Opens Cmd+K overlay
+  - Creator - Opens Cmd+K overlay
 - **Hint**: "Press K to create something" (fades in after 2s)
 
-### 3. **Creator Overlay** (K)
+### 3. Creator Overlay (K)
 - **Trigger**: Cmd+K or Ctrl+K (cross-platform)
 - **Effect**: Blurred backdrop with centered creation interface
 - **Features**:
@@ -54,12 +54,6 @@ ui/src/
          AppShortcut.css       # Shortcut styles
          DynamicRenderer.*     # Dynamic app rendering
          ...
-
-apps/
- system/
-    hub.aiapp         # App store/launcher
-    file-explorer.aiapp
- ...
 ```
 
 ## Components
@@ -108,7 +102,7 @@ apps/
 ### Desktop Reveal
 ```css
 - Transition: opacity 0.5s ease
-- State: hidden (opacity: 0)  visible (opacity: 1)
+- State: hidden (opacity: 0) -> visible (opacity: 1)
 - Synced with welcome screen exit
 ```
 
@@ -230,7 +224,7 @@ Glass: rgba(255,255,255,0.05-0.15) + backdrop-filter
 ## Future Enhancements
 
 1. **Desktop Customization**
-   - Drag & drop icons
+   - Drag and drop icons
    - Custom wallpapers
    - Icon grid size options
 
@@ -251,29 +245,29 @@ Glass: rgba(255,255,255,0.05-0.15) + backdrop-filter
 ## Testing
 
 **User Acceptance:**
-- ✅ Welcome screen appears on load
-- ✅ Animates away after 2 seconds
-- ✅ Desktop reveals smoothly
-- ✅ K opens creator overlay
-- ✅ Apps launch from desktop/dock/Hub
-- ✅ Keyboard shortcuts work
-- ✅ Mobile responsive
+- Welcome screen appears on load
+- Animates away after 2 seconds
+- Desktop reveals smoothly
+- K opens creator overlay
+- Apps launch from desktop/dock/Hub
+- Keyboard shortcuts work
+- Mobile responsive
 
 **Technical:**
-- ✅ No console errors
-- ✅ Smooth 60fps animations
-- ✅ Memory-efficient (no leaks)
-- ✅ Fast initial load (<2s)
+- No console errors
+- Smooth 60fps animations
+- Memory-efficient (no leaks)
+- Fast initial load (under 2s)
 
 ## Summary
 
-AgentOS now has a polished, modern desktop experience that:
--  Welcomes users with beautiful animation
--️ Provides familiar desktop metaphor
-- ⚡ Enables fast app launching
-- K Keeps AI creation accessible
+AgentOS now has a desktop experience that:
+- Welcomes users with beautiful animation
+- Provides familiar desktop metaphor
+- Enables fast app launching
+- Keeps AI creation accessible
 - Works on mobile and desktop
-- Looks gorgeous with glass morphism
+- Uses glass morphism design
 
-The system balances aesthetics, usability, and performance to create a delightful user experience.
+The system balances aesthetics, usability, and performance.
 
