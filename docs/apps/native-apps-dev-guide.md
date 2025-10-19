@@ -17,16 +17,17 @@ Complete guide to developing native TypeScript/React applications for the OS.
 
 ## Overview
 
-Native apps are **full React applications** with complete freedom to:
-- ✅ Use any npm packages
-- ✅ Write custom React components
-- ✅ Use any CSS/styling solution
-- ✅ Implement any architecture (MVC, Flux, etc.)
+Native apps are full React applications with complete freedom to:
+- Use any npm packages
+- Write custom React components
+- Use any CSS/styling solution
+- Implement any architecture
 
-**Unlike Blueprint apps**, native apps:
-- ❌ Do NOT use prebuilt components
-- ❌ Do NOT use JSON definitions
-- ✅ Are hand-coded TypeScript/React
+**Key Distinction from Blueprint Apps:**
+- Native apps do NOT use prebuilt components
+- Native apps are hand-coded TypeScript/React
+- Native apps have no JSON definition format
+- Each native app is independently bundled and loaded
 
 ---
 
@@ -92,9 +93,9 @@ make build-native-apps
 
 ## Development Workflow
 
-### 1. **Hot Module Replacement (HMR)**
+### 1. Hot Module Replacement (HMR)
 
-The development server supports HMR for instant feedback:
+The development server supports HMR for fast iteration:
 
 ```bash
 # Watch single app with HMR
@@ -104,11 +105,11 @@ make watch-native-app name=my-awesome-app
 make watch-native-apps
 ```
 
-Changes to source files trigger automatic rebuilds without full page reloads.
+Changes to source files trigger automatic rebuilds.
 
-### 2. **Type Checking**
+### 2. Type Checking
 
-TypeScript type checking ensures code quality:
+TypeScript strict mode ensures code quality:
 
 ```bash
 # In app directory
@@ -118,9 +119,7 @@ npm run type-check
 make lint-native-apps
 ```
 
-### 3. **Linting & Formatting**
-
-Automated code quality tools:
+### 3. Linting & Formatting
 
 ```bash
 # Lint single app
@@ -135,7 +134,7 @@ make lint-native-app name=my-awesome-app
 make fix-native-apps    # Auto-fix all apps
 ```
 
-### 4. **Validation**
+### 4. Validation
 
 Validate app structure and manifests:
 
@@ -144,10 +143,10 @@ make validate-native-apps
 ```
 
 Checks:
-- ✅ Valid manifest.json format
-- ✅ Required files present
-- ✅ Correct TypeScript configuration
-- ✅ Dependencies properly declared
+- Valid manifest.json format
+- Required files present
+- Correct TypeScript configuration
+- Dependencies properly declared
 
 ---
 
@@ -166,7 +165,7 @@ export default defineNativeAppConfig('MyApp', {
 });
 ```
 
-#### What's Included
+#### Configuration Features
 
 - **Fast Refresh**: React HMR enabled
 - **Automatic JSX**: No need for `React` imports
@@ -175,7 +174,7 @@ export default defineNativeAppConfig('MyApp', {
 - **Optimized Minification**: esbuild for fast builds
 - **Source Maps**: Dev only (disabled in production)
 - **Code Splitting**: Intelligent chunk strategy
-- **Asset Optimization**: Inline assets < 4KB
+- **Asset Optimization**: Inline assets under 4KB
 
 ### Build Output
 
@@ -294,7 +293,7 @@ Lints and type-checks apps:
 
 ## Best Practices
 
-### 1. **TypeScript Strict Mode**
+### 1. TypeScript Strict Mode
 
 Enable strict type checking:
 
@@ -308,7 +307,7 @@ Enable strict type checking:
 }
 ```
 
-### 2. **Component Structure**
+### 2. Component Structure
 
 Keep components small and focused:
 
@@ -318,13 +317,13 @@ export function UserCard({ user }: { user: User }) {
   return <div>{user.name}</div>;
 }
 
-// Bad: Large, multi-responsibility component
+// Avoid: Large, multi-responsibility component
 export function Dashboard() {
   // 500 lines of code...
 }
 ```
 
-### 3. **State Management**
+### 3. State Management
 
 Use OS state management for app-level state:
 
@@ -343,19 +342,19 @@ export default function App({ context }: NativeAppProps) {
 }
 ```
 
-### 4. **Service Calls**
+### 4. Service Calls
 
 Use executor for backend services:
 
 ```typescript
-// Good: Use executor
+// Correct: Use executor
 const result = await context.executor.execute('filesystem.read', { path });
 
-// Bad: Direct HTTP calls
+// Avoid: Direct HTTP calls
 const result = await fetch('/api/filesystem/read');
 ```
 
-### 5. **Error Handling**
+### 5. Error Handling
 
 Handle errors gracefully:
 
@@ -368,7 +367,7 @@ try {
 }
 ```
 
-### 6. **Performance**
+### 6. Performance
 
 Optimize for performance:
 
@@ -390,7 +389,7 @@ const handleClick = useCallback(() => {
 }, [deps]);
 ```
 
-### 7. **Styling**
+### 7. Styling
 
 Use CSS modules or styled components:
 
@@ -693,8 +692,7 @@ describe('App', () => {
 - **SDK Reference**: `ui/src/core/sdk/index.ts`
 - **Example Apps**: `apps/native/`
 - **Shared Vite Config**: `apps/native/vite.config.base.ts`
-- **Native Apps Plan**: `docs/NATIVE_APPS_PLAN.md`
-- **Architecture**: `docs/ARCHITECTURE.md`
+- **Architecture**: `docs/architecture/system-architecture.md`
 
 ---
 
