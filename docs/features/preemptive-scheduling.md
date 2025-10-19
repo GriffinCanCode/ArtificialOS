@@ -2,134 +2,97 @@
 
 ## Overview
 
-This document describes the preemptive scheduling system implemented in the AgentOS kernel, which provides true OS-level process preemption using POSIX signals.
+This document describes the CPU scheduler in the AgentOS kernel, which manages process scheduling with multiple policies including round-robin, priority-based, and fair scheduling.
 
 ## Architecture
 
 ### Components
 
-1. **Scheduler (`kernel/src/process/scheduler.rs`)**
+1. **Scheduler (`kernel/src/process/scheduler/mod.rs`)**
    - Implements multiple scheduling policies (Round-Robin, Priority, Fair)
    - Tracks process virtual runtime (vruntime) for fair scheduling
-   - Enforces time quantum-based preemption decisions
-   - Supports dynamic priority and quantum adjustment
+   - Enforces time quantum-based preemption
+   - Lock-free atomic statistics for high-frequency updates
+   - Cache-line aligned for optimal performance
 
-2. **Preemption Controller (`kernel/src/process/preemption.rs`)**
-   - Bridges scheduler decisions with OS-level process control
-   - Uses SIGSTOP/SIGCONT to pause/resume processes
-   - Manages context switches between OS processes
-   - Tracks currently scheduled process
+2. **Scheduling Policies**
+   - Round-robin scheduling with VecDeque queue
+   - Priority-based scheduling with binary heap
+   - Fair scheduling (CFS-inspired) with vruntime tracking
 
-3. **Scheduler Task (`kernel/src/process/scheduler_task.rs`)**
+3. **Process Entries**
+   - Tracks per-process scheduling state (quantum remaining, vruntime, priority)
+   - Location index for O(1) lookup across queues
+   - Integration with process manager lifecycle
+
+4. **Scheduler Task (`kernel/src/process/scheduler/task.rs`)**
    - Autonomous background task running at quantum intervals
-   - Triggers scheduling decisions periodically
-   - Supports dynamic configuration (pause/resume, quantum updates)
-   - Can operate with or without OS preemption
-
-4. **Process Manager (`kernel/src/process/manager.rs`)**
-   - Orchestrates all components
-   - Creates PreemptionController when both scheduler and executor are available
-   - Manages process lifecycle and cleanup
-
-## How It Works
-
-### Without Executor (Logical Scheduling)
-
-When the ProcessManager is built without `.with_executor()`:
-
-```rust
-let process_manager = ProcessManager::builder()
-    .with_scheduler(Policy::Fair)
-    .build();
-```
-
-The system performs logical scheduling only:
-- Scheduler tracks which process should be running
-- No OS-level process control (no SIGSTOP/SIGCONT)
-- Suitable for managing virtual processes without OS execution
-
-### With Executor (OS-Level Preemption)
-
-When the ProcessManager is built with `.with_executor()`:
-
-```rust
-let process_manager = ProcessManager::builder()
-    .with_executor()
-    .with_scheduler(Policy::Fair)
-    .build();
-```
-
-The system enables true preemptive multitasking:
-
-1. Process Spawning: When a process is created with an ExecutionConfig, an actual OS process is spawned
-2. Preemption Controller Created: The ProcessManager creates a PreemptionController that bridges the scheduler with the executor
-3. Autonomous Scheduling: The SchedulerTask runs in the background, calling preemption.schedule() every quantum interval
-4. OS-Level Context Switch:
-   - When quantum expires, scheduler selects next process
-   - If different from current, PreemptionController sends SIGSTOP to old process
-   - PreemptionController sends SIGCONT to new process
-   - Actual OS-level context switch occurs
-
-### Scheduling Flow
-
-```
-┌
-                     SchedulerTask (Background)                   
-                                                                   
-  Every quantum μs:                                               
-    if PreemptionController available:                           
-      1. Call scheduler.schedule()                                
-      2. If process changes:                                      
-         - Send SIGSTOP to old process (pause)                    
-         - Send SIGCONT to new process (resume)                   
-    else:                                                         
-      - Just call scheduler.schedule() (logical only)             
-┘
-                              
-                              ▼
-┌
-                         Scheduler                                
-                                                                   
-  schedule():                                                     
-    1. Check if current process quantum expired                   
-    2. If expired, preempt and requeue                           
-    3. Select next process based on policy:                       
-       - RoundRobin: FIFO order                                  
-       - Priority: Highest priority first                         
-       - Fair: Lowest vruntime first                             
-    4. Return selected PID                                        
-┘
-                              
-                              ▼
-┌
-                   PreemptionController                           
-                                                                   
-  schedule():                                                     
-    1. Get next PID from scheduler                                
-    2. Get OS PID from executor                                   
-    3. Send SIGSTOP to old OS process                            
-    4. Send SIGCONT to new OS process                            
-    5. Track new process as current                              
-┘
-```
+   - Periodically invokes scheduling decisions
+   - Supports pause/resume for testing and control
 
 ## Scheduling Policies
 
 ### Round-Robin
+
 - Processes scheduled in FIFO order
 - Each process gets equal time quantum
 - Simple and fair for similar workloads
+- Queue-based: VecDeque for O(1) enqueue/dequeue
 
 ### Priority-Based
+
 - Processes with higher priority values scheduled first
 - Within same priority, FIFO order
 - Can lead to starvation of low-priority processes
+- Queue-based: BinaryHeap (max-heap by priority)
 
 ### Fair (CFS-inspired)
+
 - Tracks virtual runtime (vruntime) for each process
 - Lower priority processes accumulate vruntime slower (get more CPU time)
 - Prevents starvation while respecting priorities
-- Most sophisticated and recommended for general use
+- Queue-based: BinaryHeap (min-heap by vruntime)
+- Recommended for general-purpose workloads
+
+## How It Works
+
+### Scheduler Operation
+
+1. **Scheduling Decision**: At each quantum interval, the scheduler checks if the current process's quantum has expired
+2. **Preemption Check**: If expired, the current process is preempted and requeued
+3. **Selection**: Next process selected based on active policy
+4. **Update Tracking**: Statistics updated for process location and policy state
+
+### Integration with Process Manager
+
+The scheduler is integrated with the ProcessManager:
+
+```rust
+let process_manager = ProcessManager::builder()
+    .with_scheduler(Policy::Fair)
+    .build();
+```
+
+### SchedulerTask
+
+The autonomous scheduler task runs at configurable intervals:
+
+```rust
+// Pause scheduling (processes keep running, no new scheduling decisions)
+if let Some(task) = process_manager.scheduler_task() {
+    task.pause();
+}
+
+// Resume scheduling
+if let Some(task) = process_manager.scheduler_task() {
+    task.resume();
+}
+
+// Trigger immediate scheduling decision
+if let Some(task) = process_manager.scheduler_task() {
+    task.trigger();
+}
+```
 
 ## Configuration
 
@@ -160,25 +123,6 @@ process_manager.lower_process_priority(pid)?;
 process_manager.set_process_priority(pid, 8);
 ```
 
-### Scheduler Control
-
-```rust
-// Pause scheduling (processes keep running, no preemption)
-if let Some(task) = process_manager.scheduler_task() {
-    task.pause();
-}
-
-// Resume scheduling
-if let Some(task) = process_manager.scheduler_task() {
-    task.resume();
-}
-
-// Trigger immediate schedule decision
-if let Some(task) = process_manager.scheduler_task() {
-    task.trigger();
-}
-```
-
 ## Statistics
 
 ### Scheduler Statistics
@@ -187,7 +131,6 @@ if let Some(task) = process_manager.scheduler_task() {
 if let Some(stats) = process_manager.get_scheduler_stats() {
     println!("Total scheduled: {}", stats.total_scheduled);
     println!("Context switches: {}", stats.context_switches);
-    println!("Preemptions: {}", stats.preemptions);
     println!("Active processes: {}", stats.active_processes);
 }
 ```
@@ -196,40 +139,76 @@ if let Some(stats) = process_manager.get_scheduler_stats() {
 
 ```rust
 if let Some(stats) = process_manager.get_process_stats(pid) {
-    println!("CPU time: {} μs", stats.cpu_time_micros);
-    println!("Virtual runtime: {}", stats.vruntime);
+    println!("CPU time: {} µs", stats.cpu_time_micros);
     println!("Priority: {}", stats.priority);
 }
 ```
 
+## Implementation Characteristics
+
+### Performance Optimizations
+
+- **Cache-line Aligned**: Scheduler structure is 64-byte aligned to prevent false sharing
+- **Lock-free Statistics**: AtomicSchedulerStats for zero-contention monitoring
+- **O(log n) Operations**: Binary heaps for priority and fair queues
+- **O(1) Location Lookup**: DashMap index for process location queries
+
+### Observability
+
+- Integration with monitoring::Collector for event streaming
+- Scheduling decisions can emit observability events
+- Statistics tracked via atomic counters
+
+## Use Cases
+
+### Virtual Process Scheduling (No OS Execution)
+
+```rust
+let process_manager = ProcessManager::builder()
+    .with_scheduler(Policy::Fair)
+    .build();
+
+// Create virtual processes
+let pid1 = process_manager.create_process("app1".to_string(), 5);
+let pid2 = process_manager.create_process("app2".to_string(), 7);
+
+// Scheduler runs in background
+// Tracks which process should be active
+```
+
+### Logical Scheduling Only
+
+When ProcessManager is built without `.with_executor()`:
+
+```rust
+let process_manager = ProcessManager::builder()
+    .with_scheduler(Policy::Fair)
+    .build();
+```
+
+The system performs logical scheduling only:
+- Scheduler tracks which process should be running
+- No OS-level process control
+- Suitable for managing virtual processes
+
 ## Platform Support
 
-**Unix/Linux**: Full support with SIGSTOP/SIGCONT
+**Unix/Linux**: Full support with configurable scheduling
 
-**Windows**: Graceful degradation - logical scheduling only (no OS preemption)
+**Windows**: Compatible with process management
 
-**macOS**: Full support with SIGSTOP/SIGCONT
+**macOS**: Full support with configurable scheduling
 
-## Limitations & Future Work
-
-### Current Limitations
+## Limitations
 
 1. **No CPU Affinity**: Processes can migrate between cores
 2. **No I/O Scheduling**: Only CPU scheduling is managed
-3. **Basic cgroups**: Limited cgroups v2 integration
+3. **Limited cgroups**: No cgroups v2 integration
 4. **No Real-Time**: SCHED_FIFO/SCHED_RR not implemented
-
-### Potential Improvements
-
-1. **Signal Integration**: Hook scheduler into signal delivery (SignalDeliveryHook exists but not yet integrated)
-2. **I/O Scheduler**: Integrate with async I/O subsystem
-3. **Advanced cgroups**: CPU quotas, I/O limits, memory pressure
-4. **Real-Time Scheduling**: POSIX real-time scheduling classes
-5. **Multicore Awareness**: Load balancing across cores
 
 ## Example Usage
 
-### Basic Setup (No OS Execution)
+### Basic Setup
 
 ```rust
 let process_manager = ProcessManager::builder()
@@ -241,30 +220,16 @@ let pid1 = process_manager.create_process("app1".to_string(), 5);
 let pid2 = process_manager.create_process("app2".to_string(), 7);
 
 // Scheduler runs autonomously in background
-// Tracks which process should be active
+// Tracks which process should be active based on policy
 ```
 
-### Full Setup (With OS Preemption)
+### Policy Changes
 
 ```rust
-let process_manager = ProcessManager::builder()
-    .with_executor()
-    .with_limits()
-    .with_scheduler(Policy::Fair)
-    .build();
+// Change scheduling policy at runtime
+process_manager.set_scheduler_policy(Policy::Priority);
 
-// Spawn actual OS processes
-let config = ExecutionConfig::new("my-app".to_string())
-    .with_args(vec!["--worker".to_string()]);
-
-let pid = process_manager.create_process_with_command(
-    "worker".to_string(),
-    7, // priority
-    Some(config),
-);
-
-// OS process spawned, scheduler automatically preempts at quantum intervals
-// SIGSTOP/SIGCONT used for true preemptive multitasking
+// This requeues all processes under the new policy
 ```
 
 ## Testing
@@ -272,17 +237,19 @@ let pid = process_manager.create_process_with_command(
 Run scheduler tests:
 ```bash
 cargo test --lib scheduler
-cargo test --lib preemption
-cargo test --lib scheduler_task
+cargo test --test process
 ```
 
-Integration tests:
-```bash
-cargo test --test integration_process_test
-```
+Tests cover:
+- Round-robin scheduling
+- Priority-based scheduling
+- Fair scheduling (vruntime)
+- Process addition/removal
+- Policy changes
+- Quantum enforcement
 
 ## References
 
 - Linux CFS (Completely Fair Scheduler): Inspiration for vruntime tracking
-- POSIX Signals: SIGSTOP, SIGCONT for process control
-- Real-Time Linux: Priority handling concepts
+- Process scheduling algorithms
+- Lock-free data structures for high-frequency updates

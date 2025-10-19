@@ -2,26 +2,32 @@
 
 ## Overview
 
-The AgentOS kernel implements memory-mapped files (mmap), providing file-backed shared memory functionality similar to POSIX mmap(). This enables efficient file I/O and inter-process communication through shared memory regions.
+The kernel implements memory-mapped files (mmap) for file-backed memory access. Processes can map files into their address space for efficient I/O and inter-process communication through shared memory regions.
 
 ## Architecture
 
 ### Components
 
-1. **MmapManager (`kernel/src/ipc/mmap.rs`)**
+1. **MmapManager (`kernel/src/ipc/utils/mmap.rs`)**
    - Central manager for memory-mapped file regions
    - Integrates with VFS for file access
-   - Supports both shared and private (copy-on-write) mappings
-   - Automatic synchronization on unmap
+   - Supports shared and private (copy-on-write) mappings
+   - Automatic cleanup on process termination
+   - Copy-on-write semantics for private mappings
 
-2. **Syscalls (`kernel/src/syscalls/mmap.rs`)**
-   - Syscall handlers for mmap operations
-   - Permission checking and validation
-   - JSON serialization of results
+2. **MmapEntry**
+   - Represents a single memory mapping
+   - Stores file path, offset, length, protection flags
+   - Data backed by Arc<Mutex<CowMemory>> for shared ownership
+   - Tracks owner process and mapping type
 
-3. **IPC Module Integration**
-   - Mmap is part of the IPC subsystem alongside pipes, queues, and shared memory
-   - Consistent API and patterns
+3. **Syscall Handlers**
+   - Mmap: Create a new mapping
+   - MmapRead: Read from mapping
+   - MmapWrite: Write to mapping
+   - Msync: Synchronize to file
+   - Munmap: Unmap region
+   - MmapStats: Get mapping information
 
 ## Features
 
@@ -31,12 +37,13 @@ The AgentOS kernel implements memory-mapped files (mmap), providing file-backed 
 - Changes visible to all processes mapping the same file
 - Modifications sync back to file on msync() or munmap()
 - Useful for IPC through files
+- Based on shared Arc backing
 
 **Private Mappings (`MapFlags::Private`)**
 - Copy-on-write semantics
 - Changes private to the mapping process
 - Modifications do NOT sync to file
-- Useful for loading executables
+- Useful for loading file data with CoW
 
 ### Protection Flags
 
@@ -48,7 +55,6 @@ The AgentOS kernel implements memory-mapped files (mmap), providing file-backed 
 
 **Execute (`ProtFlags::PROT_EXEC`)**
 - Allow executing code from mapped region
-- Useful for loading shared libraries
 
 **Combined Protection**
 ```rust
@@ -99,7 +105,7 @@ mmap_manager.write(
 ### Synchronizing to File
 
 ```rust
-// Force write-back to file
+// Force write-back to file (for shared writable mappings)
 mmap_manager.msync(pid, mmap_id)?;
 ```
 
@@ -250,7 +256,7 @@ mmap_manager.munmap(pid, mmap_id)?;
 
 ## Use Cases
 
-### 1. Large File Processing
+### Large File Processing
 
 ```rust
 // Map large file into memory for random access
@@ -267,7 +273,7 @@ let mmap_id = mmap_manager.mmap(
 let chunk = mmap_manager.read(pid, mmap_id, offset, chunk_size)?;
 ```
 
-### 2. Inter-Process Communication
+### Inter-Process Communication
 
 ```rust
 // Process A creates shared mapping
@@ -299,7 +305,7 @@ let data = mmap_manager.read(pid_b, mmap_id_b, 0, 5)?;
 // data == b"Hello"
 ```
 
-### 3. Configuration File Updates
+### Configuration File Updates
 
 ```rust
 // Map config file
@@ -323,17 +329,14 @@ mmap_manager.msync(pid, mmap_id)?;
 
 ### Copy-on-Write (Private Mappings)
 
-For private mappings, the first write operation triggers a copy:
+For private mappings, the first write operation triggers a copy via CowMemory:
 
 ```rust
-if entry.flags == MapFlags::Private {
-    // Clone the data (copy-on-write)
-    let mut new_data = (*entry.data).clone();
-    
-    // Write to the copy
-    new_data[offset..offset + data.len()].copy_from_slice(data);
-    entry.data = Arc::new(new_data);
-}
+// CowMemory handles CoW semantics internally
+let mut cow_guard = entry.data.lock();
+cow_guard.write(|buf| {
+    buf[offset..offset + data.len()].copy_from_slice(data);
+});
 ```
 
 ### Automatic Cleanup
@@ -357,25 +360,14 @@ Shared writable mappings are synced before cleanup.
 - **Munmap**: None
 - **MmapStats**: `SystemInfo`
 
-## Limitations & Future Work
+## Current Limitations
 
-### Current Limitations
-
-1. **No True Shared Write**: Shared mappings are read-only after initial mapping due to Arc immutability
-2. **No MAP_ANONYMOUS**: Only file-backed mappings supported
-3. **No Page-Level Granularity**: Operations work on byte ranges, not pages
-4. **No Memory Protection**: Cannot enforce protection flags at OS level
-5. **In-Memory Copy**: Entire mapped region loaded into memory (not demand-paged)
-
-### Future Improvements
-
-1. **Demand Paging**: Only load pages as accessed
-2. **True Shared Memory**: Use unsafe + locking for mutable shared mappings
-3. **Anonymous Mappings**: MAP_ANONYMOUS for malloc-style allocations
-4. **Memory Protection**: Integrate with OS memory protection (mprotect)
-5. **Page Faults**: Handle page faults for lazy loading
-6. **File Locking**: Coordinate with file locking subsystem
-7. **Huge Pages**: Support transparent huge pages for large mappings
+1. **Entire File Loaded**: The complete mapped region is loaded into memory (not demand-paged)
+2. **Shared CoW Model**: Shared mappings use Arc-based sharing with CoW semantics
+3. **No Anonymous Mappings**: Only file-backed mappings are supported
+4. **No Page-Level Granularity**: Operations work on byte ranges, not individual pages
+5. **No mprotect**: Cannot change protection flags after mapping creation
+6. **In-Memory Only**: No persistence beyond manual msync()
 
 ## Testing
 
@@ -400,13 +392,14 @@ cargo test mmap_integration
 - ID-based instead of pointer-based
 - Automatic cleanup on process termination
 - In-memory representation (not demand-paged)
+- Arc-based sharing model
 
 ## Security Considerations
 
 1. **Path Traversal**: File paths validated by VFS layer
-2. **Permission Checks**: Sandbox capabilities enforced
-3. **Isolation**: Private mappings truly private (separate Arc)
-4. **Automatic Cleanup**: No orphaned mappings
+2. **Permission Checks**: Sandbox capabilities enforced at syscall
+3. **Isolation**: Private mappings truly private (separate Arc/CoW)
+4. **Automatic Cleanup**: No orphaned mappings after process termination
 
 ## Performance
 
@@ -414,6 +407,7 @@ cargo test mmap_integration
 - Fast random access to file data
 - Reduces syscalls for repeated I/O
 - Efficient IPC through shared mappings
+- CoW reduces memory overhead for private mappings
 
 **Trade-offs:**
 - Initial map loads entire region
@@ -424,4 +418,4 @@ cargo test mmap_integration
 
 - POSIX mmap(): IEEE Std 1003.1-2017
 - Linux mmap(2): man page
-- Copy-on-Write: Operating Systems design pattern
+- Copy-on-Write design pattern

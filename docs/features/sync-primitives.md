@@ -10,34 +10,40 @@ The kernel provides high-performance synchronization primitives optimized for di
 
 ```
 kernel/src/core/sync/
- mod.rs       - Public API and exports
- traits.rs    - WaitStrategy trait abstraction
- wait.rs      - WaitQueue (main user-facing type)
- futex.rs     - Futex-based implementation (Linux)
- condvar.rs   - Condvar-based fallback (cross-platform)
- spinwait.rs  - Adaptive spinwait (low-latency)
- config.rs    - Strategy selection logic
+ mod.rs              - Public API and exports
+ wait/               - Wait/notify primitives (main abstraction)
+   wait.rs           - WaitQueue implementation
+   futex.rs          - Linux futex-based implementation
+   condvar.rs        - Parking lot condvar fallback
+   spinwait.rs       - Adaptive spinwait for low-latency
+   config.rs         - Strategy selection logic
+   traits.rs         - WaitStrategy trait
+ lockfree/           - Lock-free data structures (RCU, seqlock, flat combining)
+ locks/              - Advanced lock primitives (adaptive locks, striped maps)
+ management/         - Configuration management (ShardManager, WorkloadProfile)
 ```
 
 ### Strategy Selection
 
-The system supports four strategies:
+The system supports three core strategies selected based on platform:
 
-1. **Futex** (Linux) - Direct futex syscalls for minimal overhead
-2. **Condvar** (Cross-platform) - Reliable parking_lot::Condvar
-3. **SpinWait** (Low-latency) - Adaptive spinning before parking
-4. **Auto** - Platform-aware automatic selection
+1. **Futex** (Linux) - Direct futex syscalls with minimal overhead
+2. **Condvar** (Cross-platform) - Parking lot condvar for reliable parking
+3. **SpinWait** (Low-latency) - Adaptive spinning before fallback to condvar
+
+Platform-aware automatic selection:
+- Linux: Futex strategy
+- Other platforms: Condvar strategy
 
 ## Performance Characteristics
 
 ### Futex Strategy
 
-Best for long waits (> 100µs) on Linux
+**When used:** Long waits (> 100µs) on Linux
 
-**Characteristics:**
-- Direct kernel futex syscalls
-- 1-2µs wake latency
-- Zero CPU usage while waiting
+**Performance:**
+- Wake latency: 1-2µs
+- CPU usage: Zero while waiting
 - Platform: Linux only
 
 **Use cases:**
@@ -47,39 +53,29 @@ Best for long waits (> 100µs) on Linux
 
 ### Condvar Strategy
 
-Best for cross-platform reliability
+**When used:** Cross-platform code, general-purpose waiting
 
-**Characteristics:**
-- Uses parking_lot::Condvar (futex on Linux internally)
-- 2-5µs wake latency
-- Zero CPU usage while waiting
+**Performance:**
+- Wake latency: 2-5µs
+- CPU usage: Zero while waiting
 - Platform: All
 
 **Use cases:**
-- Default fallback
-- Cross-platform code
-- General-purpose waiting
+- Default fallback across platforms
+- General-purpose blocking operations
 
 ### SpinWait Strategy
 
-Best for very short waits (< 50µs)
+**When used:** Very short waits (< 50µs)
 
-**Characteristics:**
-- Adaptive spinning before parking
-- 0.1-1µs wake latency for short waits
-- High CPU usage during spin phase
-- Falls back to condvar for longer waits
+**Performance:**
+- Wake latency: 0.5-1µs for short waits
+- CPU usage: High during spin phase, then falls back to condvar
+- Adaptive: Falls back to condvar for longer waits
 
 **Use cases:**
 - Lock-free data structure synchronization
-- Ultra-low-latency syscalls
-- Ring buffer completions
-
-### Auto Strategy
-
-**Behavior:**
-- Linux: Selects Futex
-- Other platforms: Selects Condvar
+- Ultra-low-latency syscall completions
 
 ## API Usage
 
@@ -95,18 +91,21 @@ let queue = WaitQueue::<u64>::with_defaults();
 // Wait for a specific key (sequence number)
 queue.wait(42, Some(Duration::from_secs(1)))?;
 
-// Wake waiters from another thread
+// Wake single waiter
 queue.wake_one(42);
+
+// Wake all waiters on a key
+queue.wake_all(42);
 ```
 
-### Advanced Configuration
+### Configuration
 
 ```rust
 use ai_os_kernel::core::sync::{WaitQueue, SyncConfig, StrategyType};
+use std::time::Duration;
 
-// Low-latency configuration
-let config = SyncConfig::low_latency();
-let queue = WaitQueue::<u64>::new(config);
+// Platform-aware automatic selection
+let queue = WaitQueue::<u64>::with_defaults();
 
 // Custom configuration
 let config = SyncConfig {
@@ -115,22 +114,6 @@ let config = SyncConfig {
     max_spins: 1000,
 };
 let queue = WaitQueue::<u64>::new(config);
-```
-
-### Predicate-Based Waiting
-
-```rust
-use parking_lot::Mutex;
-use std::sync::Arc;
-
-let queue = WaitQueue::<u64>::with_defaults();
-let value = Arc::new(Mutex::new(0));
-let value_clone = value.clone();
-
-// Wait until predicate is satisfied
-queue.wait_while(100, Some(Duration::from_secs(1)), || {
-    *value_clone.lock() < 10
-})?;
 ```
 
 ## Integration Examples
@@ -147,25 +130,25 @@ impl CompletionRing {
     pub fn complete(&self, seq: u64, result: usize) {
         // Add to completion queue...
         
-        // Wake waiters
+        // Wake waiters for this sequence
         self.wait_queue.wake_one(seq);
     }
 
-    pub fn wait_completion(&self, seq: u64) -> Result<Entry> {
+    pub fn wait_completion(&self, seq: u64, timeout: Duration) -> Result<Entry> {
         loop {
             // Check if already complete
             if let Some(entry) = self.try_get(seq) {
                 return Ok(entry);
             }
 
-            // Efficient wait (no polling)
-            self.wait_queue.wait(seq, Some(Duration::from_secs(1)))?;
+            // Efficient wait
+            self.wait_queue.wait(seq, Some(timeout))?;
         }
     }
 }
 ```
 
-### IPC Synchronization
+### IPC Message Synchronization
 
 ```rust
 pub struct IpcChannel {
@@ -176,8 +159,6 @@ pub struct IpcChannel {
 impl IpcChannel {
     pub fn send(&self, msg_id: MessageId, data: &[u8]) -> Result<()> {
         // Send message...
-        
-        // Wake receiver
         self.wait_queue.wake_one(msg_id);
         Ok(())
     }
@@ -191,51 +172,21 @@ impl IpcChannel {
 
 ## Performance Guidelines
 
-### When to Use Each Strategy
+### Wait Duration Selection
 
-| Wait Duration | Strategy | Reason |
-|--------------|----------|--------|
-| < 10µs | SpinWait | Spinning faster than syscall |
-| 10-100µs | SpinWait | Adaptive spin avoids syscall |
+| Duration | Strategy | Rationale |
+|----------|----------|-----------|
+| < 10µs | SpinWait | Spinning faster than syscall overhead |
+| 10-100µs | SpinWait | Adaptive spinning avoids syscall |
 | 100µs-1ms | Futex/Condvar | Syscall overhead acceptable |
-| > 1ms | Futex/Condvar | Zero CPU usage critical |
+| > 1ms | Futex/Condvar | Zero CPU usage preferred |
 
-### Optimization Tips
+### Configuration Recommendations
 
-1. Use appropriate configuration:
-   - `WaitQueue::low_latency()` for < 100µs waits
-   - `WaitQueue::long_wait()` for > 1ms waits
-   - `WaitQueue::with_defaults()` for general use
-
-2. Key selection:
-   - Use u64 for sequence numbers (efficient hashing)
-   - Use tuple types for composite keys: `(Pid, SeqNum)`
-   - Keep keys small (Copy types)
-
-3. Wake strategies:
-   - Use `wake_one()` for single waiter per key
-   - Use `wake_all()` for broadcast patterns
-   - Check `waiter_count()` for diagnostics
-
-4. Predicate-based waiting:
-   - Keep predicates fast (< 1µs)
-   - Avoid locks in predicates if possible
-   - Use for complex wait conditions
-
-## Benchmarks
-
-Run benchmarks to compare strategies:
-
-```bash
-cd kernel
-cargo bench --bench sync_benchmark
-```
-
-Expected results (Linux, AMD Ryzen 9):
-- Futex wake latency: 1-2µs
-- Condvar wake latency: 2-5µs  
-- SpinWait wake latency: 0.5-1µs (for < 10µs waits)
-- Multi-waiter throughput: 500K ops/sec
+- Use `WaitQueue::with_defaults()` for general purposes
+- Use SpinWait strategy for < 100µs expected waits
+- Use Futex strategy on Linux for maximum efficiency
+- Key types should be Copy and hashable (u64, tuples)
 
 ## Testing
 
@@ -243,32 +194,30 @@ Run comprehensive tests:
 
 ```bash
 cd kernel
+cargo test --lib sync
 cargo test --test sync_primitives
 ```
 
 Tests cover:
 - Single and multiple waiters
 - Timeout behavior
-- Predicate-based waiting
 - Concurrent operations
 - Strategy selection
 - Edge cases
 
-## Migration Guide
+## Migration from Polling
 
-### From Busy-Wait Polling
-
-Before:
+Before (inefficient):
 ```rust
 loop {
     if let Some(entry) = queue.try_pop() {
         return Ok(entry);
     }
-    std::thread::yield_now(); // Inefficient
+    std::thread::yield_now();
 }
 ```
 
-After:
+After (efficient):
 ```rust
 let wait_queue = WaitQueue::<u64>::with_defaults();
 
@@ -276,65 +225,38 @@ loop {
     if let Some(entry) = queue.try_pop() {
         return Ok(entry);
     }
-    wait_queue.wait(seq, Some(timeout))?; // Efficient
+    wait_queue.wait(seq, Some(timeout))?;
 }
 
 // On completion:
 wait_queue.wake_one(seq);
 ```
 
-### From tokio::sync::Notify
-
-Before:
-```rust
-use tokio::sync::Notify;
-
-let notify = Arc::new(Notify::new());
-notify.notified().await; // Async only
-```
-
-After:
-```rust
-use ai_os_kernel::core::sync::WaitQueue;
-
-let queue = WaitQueue::<u64>::with_defaults();
-queue.wait(key, timeout)?; // Works in sync contexts
-```
-
 ## Implementation Details
 
 ### Futex Strategy
 
-- Uses `parking_lot_core::park/unpark` for futex operations
+- Direct kernel futex syscalls via parking_lot_core
 - Converts keys to parking addresses via hash
-- Maintains waiter counts for diagnostics
 - Cache-line aligned for performance
+- Zero-cost abstraction via monomorphization
 
 ### Condvar Strategy
 
 - One condvar per key (lazy allocation)
-- Tracks waiter count per key
 - Auto-cleanup when last waiter leaves
-- Timeout support via `wait_for`
+- Timeout support via wait_for
+- Cross-platform compatible
 
 ### SpinWait Strategy
 
-- Adaptive spinning with backoff
+- Adaptive spinning with exponential backoff
 - Falls back to condvar after spin phase
-- Configurable spin duration and count
+- Configurable spin duration and iteration count
 - Optimized for low-latency scenarios
-
-## Future Enhancements
-
-- Cross-process futex support
-- Priority-based wakeup
-- Wait-free fast path for uncontended case
-- Integration with io_uring IORING_OP_POLL_ADD
-- Kernel-level wait queues (when running as actual kernel)
 
 ## References
 
-- [Linux futex man page](https://man7.org/linux/man-pages/man2/futex.2.html)
-- [parking_lot documentation](https://docs.rs/parking_lot/)
-- [io_uring wait mechanisms](https://kernel.dk/io_uring.pdf)
-- [Lock-Free Programming](https://preshing.com/20120612/an-introduction-to-lock-free-programming/)
+- Linux futex man page: https://man7.org/linux/man-pages/man2/futex.2.html
+- parking_lot documentation: https://docs.rs/parking_lot/
+- Lock-free programming: https://preshing.com/20120612/an-introduction-to-lock-free-programming/

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `ShardManager` is a CPU-topology-aware system that dynamically calculates optimal shard counts for concurrent data structures (DashMap) based on the host system's hardware characteristics.
+The `ShardManager` is a CPU-topology-aware configuration system that calculates optimal shard counts for concurrent data structures (DashMap) based on the host system's hardware characteristics.
 
 ## Problem Statement
 
@@ -12,7 +12,7 @@ The `ShardManager` is a CPU-topology-aware system that dynamically calculates op
 - Manual guesses at contention levels
 - No adaptation to hardware reality
 
-**Root Cause:** Static allocation doesn't adapt to runtime hardware topology and actual workload patterns.
+**Root Cause:** Static allocation does not adapt to runtime hardware topology and actual workload patterns.
 
 ## Solution: CPU-Topology-Aware Dynamic Sharding
 
@@ -20,14 +20,22 @@ The `ShardManager` is a CPU-topology-aware system that dynamically calculates op
 
 1. **Hardware-Driven**: Shard counts based on actual CPU count
 2. **Contention-Aware**: Different multipliers for different access patterns
-3. **Zero Runtime Cost**: Computed once at initialization (singleton pattern)
+3. **Zero Runtime Cost**: Computed once at initialization via pure functions with `#[inline]`
 4. **Power-of-2 Optimization**: Enables fast modulo via bitwise AND
 
 ### Architecture
 
 ```rust
-// Global singleton initialized once
-static SHARD_MANAGER: OnceLock<ShardManager> = OnceLock::new();
+// Pure functions with #[inline] for zero-cost abstraction
+pub struct ShardManager;
+
+impl ShardManager {
+    #[inline]
+    pub fn cpu_count() -> usize { /* ... */ }
+
+    #[inline]
+    pub fn shards(profile: WorkloadProfile) -> usize { /* ... */ }
+}
 
 pub enum WorkloadProfile {
     HighContention,   // 4x CPU cores (blocks, processes, storage)
@@ -40,6 +48,15 @@ let shards = ShardManager::shards(WorkloadProfile::HighContention);
 let map = DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new(), shards);
 ```
 
+### Implementation Strategy
+
+Rather than using a singleton pattern, the implementation employs pure functions with `#[inline]` annotations. This allows the compiler to:
+- Constant-fold CPU count checks at compile time in many cases
+- Inline all calculations into call sites
+- Eliminate redundant calls via common subexpression elimination
+
+Result: Faster, simpler, and better inlining than singleton patterns would provide.
+
 ### Shard Count Calculation
 
 **Formula:** `(cpu_count * multiplier).next_power_of_two().clamp(8, 512)`
@@ -49,9 +66,9 @@ let map = DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new
   - Used by: memory blocks, storage maps, process tables, signal delivery
   - Rationale: These are hot paths with constant concurrent access
   
-- **Medium Contention (2x)**: Balanced memory overhead vs parallelism
+- **Medium Contention (2x)**: Balanced memory overhead versus parallelism
   - Used by: child tracking, sandboxes, pipes, per-process metrics
-  - Rationale: Moderate access patterns don't justify 4x memory overhead
+  - Rationale: Moderate access patterns do not justify 4x memory overhead
   
 - **Low Contention (1x)**: Minimal sharding, saves memory
   - Used by: spawn counts, metrics, mmap
@@ -76,13 +93,13 @@ let map = DashMap::with_capacity_and_hasher_and_shard_amount(0, RandomState::new
 
 ### Core Module
 
-**File:** `kernel/src/core/shard_manager.rs`
+**File:** `kernel/src/core/sync/management/shard_manager.rs`
 
 Key features:
-- Singleton pattern via `OnceLock`
+- Pure functions with `#[inline]` for compiler optimization
 - Detects CPU count via `std::thread::available_parallelism()`
 - Fallback to sensible defaults if detection fails
-- Cache line size detection (currently 64-byte assumption)
+- Cache line size constant (64-byte assumption)
 - Comprehensive unit tests
 
 ### Integrated Components
@@ -118,7 +135,7 @@ All DashMap instances across the codebase now use `ShardManager`:
 ## Benefits
 
 ### 1. Self-Tuning
-- Automatically adapts to hardware: works optimally on any system
+- Automatically adapts to hardware; works optimally on any system
 - No manual tuning required for different deployments
 
 ### 2. Principled Design
@@ -145,8 +162,7 @@ All DashMap instances across the codebase now use `ShardManager`:
 Monitor actual contention and dynamically adjust:
 ```rust
 // Hypothetical future enhancement
-ShardManager::adaptive(WorkloadProfile::HighContention)
-    .with_monitoring(metrics_collector)
+ShardManager::with_adaptive_monitoring(metrics_collector)
     .auto_adjust_on_contention_threshold(0.80)
 ```
 
@@ -183,7 +199,7 @@ Tests verify:
 - Power-of-2 property (required for efficient modulo)
 - Minimum/maximum bounds enforcement
 - Contention level ordering (high >= medium >= low)
-- Singleton consistency
+- Consistency across calls
 
 ## Migration Guide
 
@@ -223,14 +239,14 @@ cargo bench --bench sync_benchmark
 ## Related Patterns
 
 This implementation uses several design patterns:
-- **Singleton Pattern**: Global configuration instance
+- **Pure Function Pattern**: Zero-cost abstraction via `#[inline]`
 - **Strategy Pattern**: Different workload profiles
 - **Template Method**: Calculation formula with variable multipliers
-- **Lazy Initialization**: Computed on first access
+- **Compiler Optimization**: Let the compiler constant-fold calculations
 
 ## References
 
-- [Sharded Slot Pattern](SHARDED_SLOT_PATTERN.md)
-- [DashMap Documentation](https://docs.rs/dashmap/)
-- [CPU Topology Detection](https://doc.rust-lang.org/std/thread/fn.available_parallelism.html)
+- Sharded Slot Pattern: `docs/patterns/sharded-slot.md`
+- DashMap Documentation: https://docs.rs/dashmap/
+- CPU Topology Detection: https://doc.rust-lang.org/std/thread/fn.available_parallelism.html
 

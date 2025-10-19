@@ -2,27 +2,28 @@
 
 ## Overview
 
-The Journey Tracking System provides unprecedented debugging capabilities for AgentOS by tracking user journeys across windows, apps, and components. It automatically records the complete cause-and-effect chain of user actions, system responses, and cross-window interactions.
+The Journey Tracking System provides debugging and observability capabilities for AgentOS by tracking user journeys across windows, apps, and components. It records the complete cause-and-effect chain of user actions, system responses, and cross-window interactions.
 
 ## Architecture
 
 ### Core Components
 
 1. **MonitorProvider** - Top-level provider that initializes the monitoring system
-2. **WindowJourneyProvider** - Tracks journeys within specific windows
-3. **useJourney** - React hook for component-level journey tracking
-4. **Causality Tracker** - Links events across the entire system
+2. **JourneyProvider** - Context-based provider for journey tracking in specific contexts
+3. **WindowJourneyProvider** - Specialized journey provider for window-level tracking
+4. **useJourney** - React hook for component-level journey tracking
+5. **Causality Tracker** - Links events across the entire system to establish cause-and-effect relationships
 
 ### Data Flow
 
 ```
-User Action (Click) 
-   Causality Chain Started
-     Journey Step Added
-       API Call Made
-         Response Received
-           Window Opened
-             Journey Completed
+User Action (Click)
+  → Causality Chain Started
+    → Journey Step Added
+      → API Call Made
+        → Response Received
+          → Window Opened
+            → Journey Completed
 ```
 
 ## Integration Points
@@ -39,23 +40,29 @@ User Action (Click)
 </MonitorProvider>
 ```
 
-**What it does:**
+**Purpose:**
 - Initializes journey tracking system on app startup
 - Sets desktop-level context (environment, session ID)
 - Enables global monitoring features
+- Manages tracker lifecycle and health monitoring
 
 ### 2. Window Level (Window.tsx)
 
 ```tsx
-<WindowJourneyProvider windowId={window.id} windowTitle={window.title} appId={window.appId}>
+<WindowJourneyProvider
+  windowId={window.id}
+  windowTitle={window.title}
+  appId={window.appId}
+>
   {/* Window content */}
 </WindowJourneyProvider>
 ```
 
-**What it does:**
+**Purpose:**
 - Automatically tracks when windows are opened/closed
 - Records window focus changes
 - Links journeys across multiple windows
+- Provides window-specific context to all child components
 
 ### 3. Component Level (Any component)
 
@@ -87,21 +94,22 @@ const chainId = startCausalChain('user_action', 'User requested UI generation');
 addCausalEvent('api_call', 'Sending request to AI service');
 ```
 
-**What it tracks:**
+**Tracked events:**
 - Chat messages sent
 - UI generation requests
 - Builder window creation
 - WebSocket responses
+- API state changes
 
 ## Current Implementation Status
 
-### ✅ Implemented
+### Implemented Features
 
 1. **App.tsx**
    - MonitorProvider wrapping entire app
    - Desktop context initialization
    - Journey tracking in AppContent
-   - Form submission tracking (Spotlight)
+   - Form submission tracking
    - App launch tracking with success/error handling
 
 2. **Window.tsx**
@@ -115,37 +123,36 @@ addCausalEvent('api_call', 'Sending request to AI service');
    - Builder window creation tracking
    - API call event tracking
 
-### What Gets Tracked
+### Tracked Events
 
 **User Actions:**
-- Form submissions (Spotlight/Creator)
-- Button clicks (App launcher, window controls)
+- Form submissions
+- Button clicks
 - App launches (Native and Blueprint)
 - Window operations (open, close, focus, minimize, maximize)
 
 **System Responses:**
 - API calls (fetch requests, WebSocket messages)
-- Window navigation (opening builder, opening apps)
+- Window navigation
 - Success/failure outcomes
 - Error occurrences with full context
 
 **Performance Data:**
 - Operation durations
 - Response times
-- Resource usage
 - Bottleneck identification
 
 **Cross-Window Relationships:**
-- Which window spawned which
-- Communication between windows
-- Shared journeys across apps
+- Window parent-child relationships
+- Communication patterns between windows
+- Shared journey context across apps
 
 ## Usage Examples
 
 ### Example 1: Tracking a Complete User Flow
 
 ```tsx
-// User opens app  types prompt  submits  UI generates  window opens
+// User opens app → types prompt → submits → UI generates → window opens
 
 // 1. Journey starts automatically when AppContent mounts
 const journey = useJourney("AppContent", true, "User opened AgentOS");
@@ -157,7 +164,7 @@ journey.addStep('user_action', `User submitted prompt: "${message}"`, {
 });
 
 // 3. WebSocket call tracked
-startCausalChain('user_action', 'User requested UI generation');
+const chainId = startCausalChain('user_action', 'User requested UI generation');
 addCausalEvent('navigation', 'Opening builder window');
 addCausalEvent('api_call', 'Sending UI generation request');
 
@@ -169,10 +176,10 @@ addCausalEvent('api_call', 'Sending UI generation request');
 ### Example 2: Debugging Multi-Window Workflow
 
 ```tsx
-// User opens Hub  clicks on app  new window opens  user interacts
+// User opens Hub → clicks on app → new window opens → user interacts
 
 // Access journey data in development console:
-window.agentOSLogging.DEBUG.exportCausalityData();
+window.agentOSMonitoring.DEBUG.exportCausalityData();
 
 // Returns complete chain:
 {
@@ -183,11 +190,7 @@ window.agentOSLogging.DEBUG.exportCausalityData();
     { type: "api_call", description: "Fetching app metadata" },
     { type: "navigation", description: "Opening window for app" },
     { type: "system_response", description: "App loaded successfully" }
-  ],
-  performance: {
-    totalDuration: 234,
-    bottlenecks: []
-  }
+  ]
 }
 ```
 
@@ -203,9 +206,9 @@ try {
 }
 
 // In console, view journey with error:
-window.agentOSLogging.DEBUG.getStats();
+window.agentOSMonitoring.DEBUG.getStats();
 
-// Shows:
+// Shows causality context:
 {
   causality: {
     totalChains: 5,
@@ -224,25 +227,25 @@ window.agentOSLogging.DEBUG.getStats();
 ### Development Console
 
 ```javascript
-// Available in development mode via window.agentOSLogging
+// Available in development mode via window.agentOSMonitoring
 
 // Get current stats
-await window.agentOSLogging.DEBUG.getStats();
+await window.agentOSMonitoring.DEBUG.getStats();
 
 // Export all causality chains
-window.agentOSLogging.DEBUG.exportCausalityData();
+window.agentOSMonitoring.DEBUG.exportCausalityData();
 
 // Get performance report
-window.agentOSLogging.DEBUG.getPerformanceReport();
+window.agentOSMonitoring.DEBUG.getPerformanceReport();
 
 // Test the system
-window.agentOSLogging.DEBUG.test();
+window.agentOSMonitoring.DEBUG.test();
 ```
 
 ### Viewing Journey Data
 
 ```typescript
-import { useJourneyStore } from '@/core/utils/monitoring';
+import { useJourneyStore } from '@/core/monitoring/journey';
 
 // Get current journey
 const currentJourney = useJourneyStore.getState().getCurrentJourney();
@@ -261,25 +264,21 @@ const exportData = useJourneyStore.getState().export();
 
 ## Benefits
 
-### 1. **Unprecedented Debugging**
-- Complete visibility into multi-window workflows
-- Automatic cause-and-effect tracking
-- Error context with full journey history
+### Debugging Capability
 
-### 2. **Performance Insights**
-- Identify slow operations linked to user actions
-- Bottleneck detection across windows
-- Performance trends over time
+Complete visibility into multi-window workflows with automatic cause-and-effect tracking. Full journey history available when errors occur.
 
-### 3. **UX Optimization**
-- Understand real user workflows
-- Identify pain points and abandonment
-- A/B testing infrastructure ready
+### Performance Insights
 
-### 4. **Production Monitoring**
-- Real-time health monitoring
-- Automatic error reporting with context
-- Performance degradation alerts
+Identify slow operations linked to user actions and detect performance bottlenecks across window boundaries.
+
+### User Interaction Analysis
+
+Understand which workflows are used most frequently and identify pain points in multi-step processes.
+
+### Production Monitoring
+
+Real-time health monitoring, automatic error reporting with full context, and detection of performance degradation patterns.
 
 ## Configuration
 
@@ -296,8 +295,8 @@ const exportData = useJourneyStore.getState().export();
     },
     performance: {
       sampling: {
-        journeys: 1.0,     // Track 100% of journeys
-        performance: 1.0,  // Track 100% of perf metrics
+        journeys: 1.0,     // Track all journeys
+        performance: 1.0,  // Track all perf metrics
       },
     },
   }}
@@ -320,41 +319,40 @@ const exportData = useJourneyStore.getState().export();
 
 ## Performance Impact
 
-- **Memory**: ~5-10MB for 100 concurrent journeys
-- **CPU**: <2% overhead for tracking
-- **Network**: No network calls (local only)
-- **Storage**: Automatic cleanup of old journeys
+- **Memory**: Approximately 5-10MB for 100 concurrent journeys
+- **CPU**: Less than 2% overhead for tracking
+- **Network**: Local processing only, no external calls
+- **Storage**: Automatic cleanup of old journeys every 60 seconds
 
 ## Future Enhancements
 
-- [ ] Backend persistence of journey data
-- [ ] Real-time journey visualization UI
-- [ ] Predictive analysis (predict user abandonment)
-- [ ] A/B testing framework integration
-- [ ] Journey replay for debugging
-- [ ] Cross-session journey correlation
+- Backend persistence of journey data
+- Real-time journey visualization dashboard
+- Pattern analysis for common user workflows
+- Journey export and replay for debugging
+- Cross-session journey correlation
 
 ## Troubleshooting
 
-### Journey not starting?
+### Journey not starting
 
-Check that MonitorProvider is wrapping your app:
+Verify that MonitorProvider is wrapping your app:
 
 ```tsx
-// ✅ Correct
+// Correct
 <MonitorProvider>
   <App />
 </MonitorProvider>
 
-// ❌ Wrong
+// Incorrect
 <App>
   <MonitorProvider />
 </App>
 ```
 
-### Events not being linked?
+### Events not being linked
 
-Ensure you're using the causality functions:
+Ensure causality functions are called for major actions:
 
 ```tsx
 // Start a chain for major actions
@@ -364,9 +362,9 @@ const chainId = startCausalChain('user_action', 'Description');
 addCausalEvent('api_call', 'Making API call');
 ```
 
-### Memory growing?
+### Memory usage growing
 
-Journey store auto-cleans every 60 seconds. Force cleanup:
+Journey store performs automatic cleanup every 60 seconds. Force cleanup manually:
 
 ```tsx
 useJourneyStore.getState().cleanup();
@@ -374,13 +372,13 @@ useJourneyStore.getState().cleanup();
 
 ## Summary
 
-The Journey Tracking System is now **fully integrated** into AgentOS and provides:
+The Journey Tracking System is fully integrated into AgentOS and provides:
 
-✅ **Cross-window journey tracking**  
-✅ **Automatic causality chain linking**  
-✅ **Performance monitoring**  
-✅ **Error tracking with context**  
-✅ **Debug tools in development**  
-✅ **Privacy-aware data collection**  
+- Cross-window journey tracking
+- Automatic causality chain linking
+- Performance monitoring
+- Error tracking with full context
+- Debug tools in development mode
+- Privacy-aware data collection
 
-Start the app and watch journeys being tracked automatically in real-time!
+Start the app and journey tracking begins automatically. Access debugging tools via the browser console in development mode.
