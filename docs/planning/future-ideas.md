@@ -395,11 +395,11 @@ pub struct AutoHealer {
 ```
 
 **Auto-fix scenarios:**
-- Memory leak → Force GC
-- CPU hog → Lower priority
-- IPC congestion → Increase buffers
-- Slow syscall → JIT compile
-- Process stuck → Preempt forcefully
+- Memory leak  Force GC
+- CPU hog  Lower priority
+- IPC congestion  Increase buffers
+- Slow syscall  JIT compile
+- Process stuck  Preempt forcefully
 
 **Impact:**
 - Self-healing system
@@ -488,8 +488,8 @@ impl UndoManager {
 **UI Controls:**
 ```typescript
 <UndoControls>
-  <Button onClick={() => kernel.undo()}>⌘Z Undo</Button>
-  <Button onClick={() => kernel.redo()}>⌘⇧Z Redo</Button>
+  <Button onClick={() => kernel.undo()}>Z Undo</Button>
+  <Button onClick={() => kernel.redo()}>⇧Z Redo</Button>
   <Button onClick={() => kernel.undo_n(10)}>Undo Last 10 Ops</Button>
 </UndoControls>
 ```
@@ -778,11 +778,11 @@ resource_spec! {
 ```
 
 **Kernel decides:**
-- For high throughput + low latency → Use shared memory (zero-copy)
-- For reliability + simplicity → Use pipe (buffered)
-- For large data + sequential access → Use mmap
-- For small allocations → Use small bucket segregated list
-- For large allocations → Use large bucket or direct allocation
+- For high throughput + low latency  Use shared memory (zero-copy)
+- For reliability + simplicity  Use pipe (buffered)
+- For large data + sequential access  Use mmap
+- For small allocations  Use small bucket segregated list
+- For large allocations  Use large bucket or direct allocation
 
 **Benefits:**
 - Optimal resource selection automatically
@@ -831,16 +831,16 @@ struct ProcessRelationship {
   {/* Show process tree */}
   <TreeView>
     Hub (PID 1)
-    ├── File Explorer (PID 5)
-    ├── Calculator (PID 7)
-    └── Notes (PID 9)
-        └── PDF Export (PID 15)
+     File Explorer (PID 5)
+     Calculator (PID 7)
+     Notes (PID 9)
+         PDF Export (PID 15)
   </TreeView>
   
   {/* Show IPC communication */}
   <CommunicationGraph>
-    [PID 5] ──→ [PID 1]  (100 messages/sec)
-    [PID 7] ──→ [PID 9]  (shared memory)
+    [PID 5]  [PID 1]  (100 messages/sec)
+    [PID 7]  [PID 9]  (shared memory)
   </CommunicationGraph>
 </ProcessGraph>
 ```
@@ -987,9 +987,9 @@ pub struct KernelShell {
     </StateView>
     
     <LiveTrace>
-      15:34:21.123 | read_file("/data.txt") → 234μs ✓
-      15:34:21.357 | allocate(1024) → 0x1a2b3c ✓
-      15:34:21.489 | ipc_send(queue=5) → 12μs ✓
+      15:34:21.123 | read_file("/data.txt")  234μs ✓
+      15:34:21.357 | allocate(1024)  0x1a2b3c ✓
+      15:34:21.489 | ipc_send(queue=5)  12μs ✓
     </LiveTrace>
   </ProcessInspector>
   
@@ -1003,8 +1003,8 @@ pub struct KernelShell {
   
   {/* IPC Flow Diagram */}
   <IpcFlowDiagram>
-    PID 1 ──(pipe 3)──→ PID 5  (1000 msg/s)
-    PID 5 ──(shm 7)───→ PID 7  (zero-copy)
+    PID 1 (pipe 3) PID 5  (1000 msg/s)
+    PID 5 (shm 7) PID 7  (zero-copy)
   </IpcFlowDiagram>
   
   {/* Timeline Scrubber */}
@@ -1269,7 +1269,7 @@ pub struct PersistentProcessManager {
   
   // Kernel replaces current app with evolved version
 }}>
-  ✨ Ask AI to Improve This App
+   Ask AI to Improve This App
 </Button>
 ```
 
@@ -1550,9 +1550,9 @@ pub struct SpeculativeExecutor {
 **Pattern detection:**
 ```rust
 // Common patterns:
-// 1. open() → read() → close()
-// 2. allocate() → write() → deallocate()
-// 3. list_directory() → stat() → read_file()
+// 1. open()  read()  close()
+// 2. allocate()  write()  deallocate()
+// 3. list_directory()  stat()  read_file()
 
 // After seeing open(), speculatively execute read()
 if last_syscall == Syscall::Open { path } {
@@ -1682,9 +1682,9 @@ pub struct CapabilityBroker {
 ```
 
 **Use cases:**
-- App needs temporary file access → Ask user
-- Plugin needs network access → Parent app delegates
-- Service needs elevated privilege → Time-limited delegation
+- App needs temporary file access  Ask user
+- Plugin needs network access  Parent app delegates
+- Service needs elevated privilege  Time-limited delegation
 
 **Benefits:**
 - Principle of least privilege
@@ -1759,7 +1759,7 @@ impl SandboxManager {
 
 **Implementation:**
 ```typescript
-<GlobalSearch trigger="⌘K">
+<GlobalSearch trigger="K">
   <SearchBar>
     <Results>
       {/* Apps */}
@@ -1949,8 +1949,8 @@ fn switch_to(&mut self, workspace_id: WorkspaceId) {
 **Architecture:**
 ```
 Browser:
-  ├── UI (React) ──────→ Backend (Go on server)
-  └── Kernel (WASM) ───┘
+   UI (React)  Backend (Go on server)
+   Kernel (WASM) ┘
 ```
 
 **Benefits:**

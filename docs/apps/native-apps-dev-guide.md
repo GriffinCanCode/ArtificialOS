@@ -45,20 +45,20 @@ make create-native-app name="My Awesome App"
 This generates:
 ```
 apps/native/my-awesome-app/
-├── manifest.json       # App metadata
-├── package.json        # Dependencies
-├── tsconfig.json       # TypeScript config
-├── vite.config.ts      # Build config (extends shared base)
-├── .eslintrc.json      # Linting rules
-├── .prettierrc         # Code formatting
-├── .gitignore          # Git ignore rules
-├── README.md           # App documentation
-└── src/
-    ├── index.tsx       # Entry point (default export)
-    ├── App.tsx         # Main component
-    ├── components/     # Custom components
-    ├── hooks/          # Custom hooks
-    └── styles/         # CSS files
+ manifest.json       # App metadata
+ package.json        # Dependencies
+ tsconfig.json       # TypeScript config
+ vite.config.ts      # Build config (extends shared base)
+ .eslintrc.json      # Linting rules
+ .prettierrc         # Code formatting
+ .gitignore          # Git ignore rules
+ README.md           # App documentation
+ src/
+     index.tsx       # Entry point (default export)
+     App.tsx         # Main component
+     components/     # Custom components
+     hooks/          # Custom hooks
+     styles/         # CSS files
 ```
 
 ### Install Dependencies
@@ -183,9 +183,9 @@ Apps build to `apps/dist/<app-id>/`:
 
 ```
 apps/dist/my-awesome-app/
-├── index.js           # Main bundle (ES module)
-└── assets/
-    └── *.css          # Extracted CSS
+ index.js           # Main bundle (ES module)
+ assets/
+     *.css          # Extracted CSS
 ```
 
 ### Production Optimization

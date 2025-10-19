@@ -9,7 +9,7 @@ AgentOS now features a beautiful desktop experience with animated welcome screen
 ### 1. **Welcome Animation** (0-2 seconds)
 - User sees welcome screen with floating sparkle icon
 - "Welcome to Griffin's AgentOS" with gradient text
-- Subtitle: "Press ⌘K or click below to create something"
+- Subtitle: "Press K or click below to create something"
 - After 2 seconds: Screen slides up (Y-axis) and fades out
 - Reveals desktop beneath
 
@@ -25,10 +25,10 @@ AgentOS now features a beautiful desktop experience with animated welcome screen
   - Notes () - Note taking
   - System Analysis () - Performance monitoring
   - Separator line
-  - Creator (✨) - Opens Cmd+K overlay
-- **Hint**: "Press ⌘K to create something" (fades in after 2s)
+  - Creator () - Opens Cmd+K overlay
+- **Hint**: "Press K to create something" (fades in after 2s)
 
-### 3. **Creator Overlay** (⌘K)
+### 3. **Creator Overlay** (K)
 - **Trigger**: Cmd+K or Ctrl+K (cross-platform)
 - **Effect**: Blurred backdrop with centered creation interface
 - **Features**:
@@ -42,24 +42,24 @@ AgentOS now features a beautiful desktop experience with animated welcome screen
 
 ```
 ui/src/
-├── renderer/
-│   ├── App.tsx           # Main app with welcome/desktop/creator logic
-│   └── App.css           # Animations and styles
-└── components/
-    ├── layout/
-    │   ├── Desktop.tsx   # Desktop component
-    │   └── Desktop.css   # Desktop styles
-    └── dynamics/
-        ├── AppShortcut.tsx       # App shortcut component
-        ├── AppShortcut.css       # Shortcut styles
-        ├── DynamicRenderer.*     # Dynamic app rendering
-        └── ...
+ renderer/
+    App.tsx           # Main app with welcome/desktop/creator logic
+    App.css           # Animations and styles
+ components/
+     layout/
+        Desktop.tsx   # Desktop component
+        Desktop.css   # Desktop styles
+     dynamics/
+         AppShortcut.tsx       # App shortcut component
+         AppShortcut.css       # Shortcut styles
+         DynamicRenderer.*     # Dynamic app rendering
+         ...
 
 apps/
-├── system/
-│   ├── hub.aiapp         # App store/launcher
-│   └── file-explorer.aiapp
-└── ...
+ system/
+    hub.aiapp         # App store/launcher
+    file-explorer.aiapp
+ ...
 ```
 
 ## Components
@@ -75,8 +75,8 @@ apps/
 - Loads first 6 apps from registry for desktop shortcuts
 - Real-time clock in menu bar
 - Keyboard shortcuts:
-  - `⌘K` / `Ctrl+K` - Open creator
-  - `⌘Space` / `Ctrl+Space` - Open Hub
+  - `K` / `Ctrl+K` - Open creator
+  - `Space` / `Ctrl+Space` - Open Hub
 - Responsive dock with hover effects
 
 ### AppShortcut Component (`AppShortcut.tsx`)
@@ -108,7 +108,7 @@ apps/
 ### Desktop Reveal
 ```css
 - Transition: opacity 0.5s ease
-- State: hidden (opacity: 0) → visible (opacity: 1)
+- State: hidden (opacity: 0)  visible (opacity: 1)
 - Synced with welcome screen exit
 ```
 
@@ -132,8 +132,8 @@ apps/
 
 | Shortcut | Action |
 |----------|--------|
-| `⌘K` / `Ctrl+K` | Toggle creator overlay |
-| `⌘Space` / `Ctrl+Space` | Open Hub |
+| `K` / `Ctrl+K` | Toggle creator overlay |
+| `Space` / `Ctrl+Space` | Open Hub |
 | `Esc` | Close creator overlay |
 
 ## State Management
@@ -177,18 +177,18 @@ private async executeHubTool(action, params)
 
 ```
 /tmp/ai-os-storage/
-├── Home/              # User home directory
-├── Applications/      # Installed apps
-├── Documents/         # User documents
-├── Data/              # App data
-│   └── storage/       # Key-value storage per app
-├── System/            # System config
-│   ├── config/
-│   └── logs/
-└── system/            # Backend files
-    ├── apps/          # Registry (.aiapp files)
-    ├── sessions/      # Saved sessions
-    └── users/         # User data
+ Home/              # User home directory
+ Applications/      # Installed apps
+ Documents/         # User documents
+ Data/              # App data
+    storage/       # Key-value storage per app
+ System/            # System config
+    config/
+    logs/
+ system/            # Backend files
+     apps/          # Registry (.aiapp files)
+     sessions/      # Saved sessions
+     users/         # User data
 ```
 
 ## Design Philosophy
@@ -200,8 +200,8 @@ private async executeHubTool(action, params)
 
 ### Color Palette
 ```css
-Background: #1a1a2e → #16213e → #0f3460 (gradient)
-Accents: #667eea → #764ba2 (gradient)
+Background: #1a1a2e  #16213e  #0f3460 (gradient)
+Accents: #667eea  #764ba2 (gradient)
 Glass: rgba(255,255,255,0.05-0.15) + backdrop-filter
 ```
 
@@ -254,7 +254,7 @@ Glass: rgba(255,255,255,0.05-0.15) + backdrop-filter
 - ✅ Welcome screen appears on load
 - ✅ Animates away after 2 seconds
 - ✅ Desktop reveals smoothly
-- ✅ ⌘K opens creator overlay
+- ✅ K opens creator overlay
 - ✅ Apps launch from desktop/dock/Hub
 - ✅ Keyboard shortcuts work
 - ✅ Mobile responsive
@@ -268,10 +268,10 @@ Glass: rgba(255,255,255,0.05-0.15) + backdrop-filter
 ## Summary
 
 AgentOS now has a polished, modern desktop experience that:
-- ✨ Welcomes users with beautiful animation
+-  Welcomes users with beautiful animation
 -️ Provides familiar desktop metaphor
 - ⚡ Enables fast app launching
-- ⌘K Keeps AI creation accessible
+- K Keeps AI creation accessible
 - Works on mobile and desktop
 - Looks gorgeous with glass morphism
 

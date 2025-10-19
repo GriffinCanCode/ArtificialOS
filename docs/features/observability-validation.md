@@ -8,19 +8,19 @@ The new observability system introduces a **dual-layer architecture** that compl
 
 ```
 Layer 1: Distributed Tracing (Existing)
-├── span_syscall(), span_operation(), span_grpc()
-├── Structured logging with tracing crate
-└── Request correlation across async boundaries
+ span_syscall(), span_operation(), span_grpc()
+ Structured logging with tracing crate
+ Request correlation across async boundaries
 
 Layer 2: Event Streaming (New)
-├── Lock-free ring buffers for zero-copy events
-├── Adaptive sampling (auto overhead control)
-├── Built-in query API (no external tools)
-├── Anomaly detection (automatic outliers)
-└── Causality tracking (linked events)
+ Lock-free ring buffers for zero-copy events
+ Adaptive sampling (auto overhead control)
+ Built-in query API (no external tools)
+ Anomaly detection (automatic outliers)
+ Causality tracking (linked events)
 
 Bridge: Integration Layer
-└── Optional global collector for span→event emission
+ Optional global collector for spanevent emission
 ```
 
 ---
@@ -371,7 +371,7 @@ println!("Events: {} produced, {} consumed, {} dropped",
 ## Expected Performance Impact
 
 ### Memory Overhead
-- **Event Stream**: 65,536 slots × ~200 bytes = ~13 MB
+- **Event Stream**: 65,536 slots  ~200 bytes = ~13 MB
 - **Collector State**: ~1 MB (metrics, sampling, detection)
 - **Total**: ~14 MB per collector instance
 

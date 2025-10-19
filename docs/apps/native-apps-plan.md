@@ -21,52 +21,52 @@ This document outlines the comprehensive plan to support **TWO types of native a
 ### **Architecture Overview**
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│  CURRENT SYSTEM                                               │
-├──────────────────────────────────────────────────────────────┤
-│                                                               │
-│  1. Blueprint Apps (.bp/.aiapp files)                        │
-│     → Parsed by Go blueprint.Parser                          │
-│     → Stored in registry as types.Package                    │
-│     → Frontend receives JSON blueprint via /registry/...     │
-│     → DynamicRenderer interprets JSON                        │
-│     → ComponentRenderer delegates to registered components   │
-│                                                               │
-│  2. Component Rendering                                      │
-│     → ComponentRegistry holds component renderers            │
-│     → Each component type (button, input, etc.) registered   │
-│     → Components receive: { component, state, executor }     │
-│                                                               │
-│  3. Tool Execution                                           │
-│     → ToolExecutor coordinates execution                     │
-│     → ServiceExecutor → Backend HTTP /services/execute       │
-│     → Backend providers → Kernel syscalls via gRPC           │
-│     → Results returned to ComponentState                     │
-│                                                               │
-│  4. State Management                                         │
-│     → ComponentState: Observable key-value store             │
-│     → Supports computed values, middleware, subscriptions    │
-│     → Per-app isolation                                      │
-│                                                               │
-└──────────────────────────────────────────────────────────────┘
+┌
+  CURRENT SYSTEM                                               
+┤
+                                                               
+  1. Blueprint Apps (.bp/.aiapp files)                        
+      Parsed by Go blueprint.Parser                          
+      Stored in registry as types.Package                    
+      Frontend receives JSON blueprint via /registry/...     
+      DynamicRenderer interprets JSON                        
+      ComponentRenderer delegates to registered components   
+                                                               
+  2. Component Rendering                                      
+      ComponentRegistry holds component renderers            
+      Each component type (button, input, etc.) registered   
+      Components receive: { component, state, executor }     
+                                                               
+  3. Tool Execution                                           
+      ToolExecutor coordinates execution                     
+      ServiceExecutor  Backend HTTP /services/execute       
+      Backend providers  Kernel syscalls via gRPC           
+      Results returned to ComponentState                     
+                                                               
+  4. State Management                                         
+      ComponentState: Observable key-value store             
+      Supports computed values, middleware, subscriptions    
+      Per-app isolation                                      
+                                                               
+┘
 ```
 
 ### **Current Data Flow**
 
 ```
 App Launch (Blueprint):
-  User clicks app → 
-  /registry/apps/{id}/launch → 
-  Backend loads Package → 
-  Returns blueprint JSON → 
-  DynamicRenderer receives → 
-  ComponentRenderer renders → 
-  User interacts → 
-  ToolExecutor.execute() → 
-  ServiceExecutor → 
-  Backend /services/execute → 
-  Provider.Execute() → 
-  Kernel syscall → 
+  User clicks app  
+  /registry/apps/{id}/launch  
+  Backend loads Package  
+  Returns blueprint JSON  
+  DynamicRenderer receives  
+  ComponentRenderer renders  
+  User interacts  
+  ToolExecutor.execute()  
+  ServiceExecutor  
+  Backend /services/execute  
+  Provider.Execute()  
+  Kernel syscall  
   Result returned
 ```
 
@@ -88,59 +88,59 @@ App Launch (Blueprint):
 ### **Three-Tier App System**
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│  NEW SYSTEM: Three Types of Apps                                             │
-├──────────────────────────────────────────────────────────────────────────────┤
-│  BROWSER LAYER                                                                │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────────────┐  │
-│  │  Blueprint Apps  │  │  Native TS/React │  │  Process Proxy UI        │  │
-│  │  (.bp)           │  │  Apps (.tsx)     │  │  (Terminal, Logs, etc.)  │  │
-│  ├──────────────────┤  ├──────────────────┤  ├──────────────────────────┤  │
-│  │  JSON-based      │  │  FULL REACT      │  │  WebSocket/IPC UI        │  │
-│  │  AI-generated    │  │  Custom JSX/TSX  │  │  Displays process        │  │
-│  │  Prebuilt UI     │  │  Any npm pkgs    │  │  stdout/stderr           │  │
-│  │  DynamicRenderer │  │  NO prebuilts    │  │  Sends input to process  │  │
-│  └──────────────────┘  └──────────────────┘  └──────────────────────────┘  │
-│           │                     │                         │                   │
-│           └──────────┬──────────┴─────────────────────────┘                   │
-│                      ↓                                                         │
-│           ┌──────────────────────┐                                           │
-│           │   App Registry       │                                           │
-│           │   - Type: blueprint  │                                           │
-│           │   - Type: native_web │  (TS/React apps)                         │
-│           │   - Type: native_proc│  (OS processes)                          │
-│           └──────────────────────┘                                           │
-└──────────────────────────────────────────────────────────────────────────────┘
-                                  ↓
-┌──────────────────────────────────────────────────────────────────────────────┐
-│  BACKEND LAYER (Go)                                                          │
-│  ┌────────────────────────────────────────────────────────────────────────┐ │
-│  │  Shared APIs (all apps use these):                                     │ │
-│  │  - ToolExecutor                                                         │ │
-│  │  - ServiceExecutor                                                      │ │
-│  │  - All providers (filesystem, storage, auth, http, etc.)              │ │
-│  └────────────────────────────────────────────────────────────────────────┘ │
-│  ┌────────────────────────────────────────────────────────────────────────┐ │
-│  │  NEW: Process Manager                                                  │ │
-│  │  - Spawn OS processes                                                  │ │
-│  │  - Manage stdio/stderr streams                                         │ │
-│  │  - Resource limits & sandboxing                                        │ │
-│  │  - WebSocket for real-time I/O                                         │ │
-│  └────────────────────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────────────────────┘
-                                  ↓
-┌──────────────────────────────────────────────────────────────────────────────┐
-│  KERNEL LAYER (Rust)                                                         │
-│  ┌────────────────────────────────────────────────────────────────────────┐ │
-│  │  NEW: Native OS Processes                                              │ │
-│  │  - Python scripts (python3 script.py)                                  │ │
-│  │  - CLI tools (ls, grep, git, etc.)                                     │ │
-│  │  - Compiled binaries (Rust, Go, C++)                                   │ │
-│  │  - Node.js applications                                                │ │
-│  │  - Shell scripts                                                       │ │
-│  │  - ANY executable on the host system                                   │ │
-│  └────────────────────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────────────────────┘
+┌
+  NEW SYSTEM: Three Types of Apps                                             
+┤
+  BROWSER LAYER                                                                
+  ┌  ┌  ┌  
+    Blueprint Apps      Native TS/React     Process Proxy UI          
+    (.bp)               Apps (.tsx)         (Terminal, Logs, etc.)    
+  ┤  ┤  ┤  
+    JSON-based          FULL REACT          WebSocket/IPC UI          
+    AI-generated        Custom JSX/TSX      Displays process          
+    Prebuilt UI         Any npm pkgs        stdout/stderr             
+    DynamicRenderer     NO prebuilts        Sends input to process    
+  ┘  ┘  ┘  
+                                                                            
+           ┬┴┘                   
+                                                                               
+           ┌                                           
+              App Registry                                                  
+              - Type: blueprint                                             
+              - Type: native_web   (TS/React apps)                         
+              - Type: native_proc  (OS processes)                          
+           ┘                                           
+┘
+                                  
+┌
+  BACKEND LAYER (Go)                                                          
+  ┌ 
+    Shared APIs (all apps use these):                                      
+    - ToolExecutor                                                          
+    - ServiceExecutor                                                       
+    - All providers (filesystem, storage, auth, http, etc.)               
+  ┘ 
+  ┌ 
+    NEW: Process Manager                                                   
+    - Spawn OS processes                                                   
+    - Manage stdio/stderr streams                                          
+    - Resource limits & sandboxing                                         
+    - WebSocket for real-time I/O                                          
+  ┘ 
+┘
+                                  
+┌
+  KERNEL LAYER (Rust)                                                         
+  ┌ 
+    NEW: Native OS Processes                                               
+    - Python scripts (python3 script.py)                                   
+    - CLI tools (ls, grep, git, etc.)                                      
+    - Compiled binaries (Rust, Go, C++)                                    
+    - Node.js applications                                                 
+    - Shell scripts                                                        
+    - ANY executable on the host system                                    
+  ┘ 
+┘
 ```
 
 ### **Key Differences**
@@ -230,31 +230,31 @@ type NativeProcManifest struct {
 
 ```
 apps/
-├── blueprint/              # Blueprint apps (.bp files)
-│   ├── calculator.bp
-│   ├── notes.bp
-│   └── task-manager.bp
-│
-├── native/                 # Native TypeScript/React apps
-│   ├── file-explorer/
-│   │   ├── manifest.json   # App metadata
-│   │   ├── package.json    # npm dependencies
-│   │   ├── src/
-│   │   │   ├── index.tsx   # Entry point
-│   │   │   ├── App.tsx     # Main component
-│   │   │   ├── components/
-│   │   │   ├── hooks/
-│   │   │   └── styles/
-│   │   ├── tsconfig.json
-│   │   └── vite.config.ts  # Build config
-│   │
-│   ├── code-editor/
-│   └── terminal/
-│
-└── dist/                   # Built native apps
-    ├── file-explorer.js    # Bundled app
-    ├── code-editor.js
-    └── terminal.js
+ blueprint/              # Blueprint apps (.bp files)
+    calculator.bp
+    notes.bp
+    task-manager.bp
+
+ native/                 # Native TypeScript/React apps
+    file-explorer/
+       manifest.json   # App metadata
+       package.json    # npm dependencies
+       src/
+          index.tsx   # Entry point
+          App.tsx     # Main component
+          components/
+          hooks/
+          styles/
+       tsconfig.json
+       vite.config.ts  # Build config
+   
+    code-editor/
+    terminal/
+
+ dist/                   # Built native apps
+     file-explorer.js    # Bundled app
+     code-editor.js
+     terminal.js
 ```
 
 **manifest.json Format:**
@@ -1865,21 +1865,21 @@ npm run dev
 
 ```
 my-awesome-app/
-├── manifest.json          # App metadata (REQUIRED)
-├── package.json           # npm config
-├── tsconfig.json          # TypeScript config
-├── vite.config.ts         # Build config
-├── src/
-│   ├── index.tsx          # Entry point (exports default component)
-│   ├── App.tsx            # Main app component
-│   ├── components/        # Reusable components
-│   │   ├── Header.tsx
-│   │   └── Sidebar.tsx
-│   ├── hooks/             # Custom hooks
-│   │   └── useFileSystem.ts
-│   ├── styles/            # CSS files
-│   │   └── App.css
-│   └── types.ts           # TypeScript types
+ manifest.json          # App metadata (REQUIRED)
+ package.json           # npm config
+ tsconfig.json          # TypeScript config
+ vite.config.ts         # Build config
+ src/
+    index.tsx          # Entry point (exports default component)
+    App.tsx            # Main app component
+    components/        # Reusable components
+       Header.tsx
+       Sidebar.tsx
+    hooks/             # Custom hooks
+       useFileSystem.ts
+    styles/            # CSS files
+       App.css
+    types.ts           # TypeScript types
 ```
 
 #### **3. Writing the App**

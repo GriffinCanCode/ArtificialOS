@@ -31,10 +31,10 @@ When a file exceeds 500 lines, extract related functionality into separate modul
 **Example Structure:**
 ```
 original_file.rs (< 500 lines)
-├── operations.rs (helper operations)
-├── lifecycle.rs (creation/cleanup)
-├── validation.rs (validation logic)
-└── types.rs (internal types)
+ operations.rs (helper operations)
+ lifecycle.rs (creation/cleanup)
+ validation.rs (validation logic)
+ types.rs (internal types)
 ```
 
 ### Benefits

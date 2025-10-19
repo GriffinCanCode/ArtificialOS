@@ -100,12 +100,12 @@ See [System Architecture](architecture/system-architecture.md) for details.
 
 ## Migration Notes
 
-**Previous Structure** → **New Structure**
+**Previous Structure**  **New Structure**
 
-- `ARCHITECTURE.md` → `architecture/system-architecture.md`
-- `CODE_STANDARDS_2025.md` → `patterns/code-standards.md`
-- `NATIVE_APPS_DEV_GUIDE.md` → `apps/native-apps-dev-guide.md`
-- `FUTURE_IDEAS.md` → `planning/future-ideas.md`
+- `ARCHITECTURE.md`  `architecture/system-architecture.md`
+- `CODE_STANDARDS_2025.md`  `patterns/code-standards.md`
+- `NATIVE_APPS_DEV_GUIDE.md`  `apps/native-apps-dev-guide.md`
+- `FUTURE_IDEAS.md`  `planning/future-ideas.md`
 - *(All files reorganized with consistent naming)*
 
 ## Contributing to Docs

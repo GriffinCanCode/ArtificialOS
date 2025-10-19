@@ -571,7 +571,7 @@ You can nest tabs within tab pages for complex navigation:
                 "children": [
                   {
                     "button#back": {
-                      "text": "←",
+                      "text": "",
                       "variant": "outline",
                       "size": "small",
                       "@click": "ui.set"
@@ -579,7 +579,7 @@ You can nest tabs within tab pages for complex navigation:
                   },
                   {
                     "button#forward": {
-                      "text": "→",
+                      "text": "",
                       "variant": "outline",
                       "size": "small",
                       "@click": "ui.set"
@@ -587,7 +587,7 @@ You can nest tabs within tab pages for complex navigation:
                   },
                   {
                     "button#up": {
-                      "text": "↑",
+                      "text": "",
                       "variant": "outline",
                       "size": "small",
                       "@click": "ui.set"
@@ -606,7 +606,7 @@ You can nest tabs within tab pages for complex navigation:
                   },
                   {
                     "button#refresh": {
-                      "text": "⟳",
+                      "text": "",
                       "variant": "outline",
                       "size": "small",
                       "@click": "filesystem.list"
@@ -727,11 +727,11 @@ You can nest tabs within tab pages for complex navigation:
 
 The Blueprint parser will:
 
-1. **Parse JSON** → Internal representation
-2. **Expand shortcuts** → Full component tree
-3. **Validate services** → Check against registry
-4. **Resolve templates** → Apply reusable patterns
-5. **Generate UISpec** → Compatible with existing DynamicRenderer
+1. **Parse JSON**  Internal representation
+2. **Expand shortcuts**  Full component tree
+3. **Validate services**  Check against registry
+4. **Resolve templates**  Apply reusable patterns
+5. **Generate UISpec**  Compatible with existing DynamicRenderer
 
 ### Python Parser (ai-service)
 
@@ -923,5 +923,5 @@ Always output valid JSON. Validate your syntax.
 2. ✓ Implement Blueprint parser in Go (backend)
 3. ✓ Update registry seeder to support `.bp` files
 4. Add Blueprint validation
-5. Create migration tool: `.aiapp` → `.bp`
+5. Create migration tool: `.aiapp`  `.bp`
 6. Update documentation

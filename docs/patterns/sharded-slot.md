@@ -85,8 +85,8 @@ pub struct ShardedWait<K> {
 
 - **Before**: 2-3 allocations per wait (DashMap entry + Arc + state)
 - **After**: 0 allocations, just index into array
-- **Futex tests**: Went from hanging forever → passing in <100ms
-- **Memory**: Fixed ~32KB (512 slots × 64 bytes) vs unbounded growth
+- **Futex tests**: Went from hanging forever  passing in <100ms
+- **Memory**: Fixed ~32KB (512 slots  64 bytes) vs unbounded growth
 
 ## Design Philosophy
 
@@ -100,20 +100,20 @@ This follows **Linux futex design**:
 Ask these questions:
 
 1. **Do I need unique state per key?**
-   - YES → Use DashMap (e.g., managers, caches)
-   - NO → Consider sharded slots
+   - YES  Use DashMap (e.g., managers, caches)
+   - NO  Consider sharded slots
 
 2. **Are spurious wakes acceptable?**
-   - YES → Sharded slots OK (check condition after wake)
-   - NO → Need precise per-key tracking
+   - YES  Sharded slots OK (check condition after wake)
+   - NO  Need precise per-key tracking
 
 3. **Do I need stable memory addresses?**
-   - YES → Sharded slots perfect
-   - NO → DashMap might be simpler
+   - YES  Sharded slots perfect
+   - NO  DashMap might be simpler
 
 4. **Is allocation the bottleneck?**
-   - YES → Sharded slots will help
-   - NO → Premature optimization
+   - YES  Sharded slots will help
+   - NO  Premature optimization
 
 ## Migration Checklist
 

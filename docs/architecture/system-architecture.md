@@ -9,53 +9,53 @@ The system generates UI specifications once via LLM, then executes tools to hand
 ## Data Flow Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  1. USER/APP: "create a calculator"                         │
-└───────────────────┬─────────────────────────────────────────┘
-                    ↓
-┌───────────────────────────────────────────────────────────────┐
-│  2. AppManager (Orchestrator)                                 │
-│  - Coordinates app lifecycle                                  │
-│  - Tracks all running apps                                    │
-│  - Handles parent-child relationships                         │
-│  - Manages focus/foreground/background                        │
-└───────────────────┬───────────────────────────────────────────┘
-                    ↓
-┌───────────────────────────────────────────────────────────────┐
-│  3. UIGeneratorAgent                                          │
-│  - LLM generates UISpec (JSON) ONCE                           │
-│  - Includes all components + tool bindings                    │
-│  - NO CODE EXECUTION - pure data                              │
-└───────────────────┬───────────────────────────────────────────┘
-                    ↓
-┌───────────────────────────────────────────────────────────────┐
-│  4. Backend returns: {app_id, ui_spec, thoughts}              │
-└───────────────────┬───────────────────────────────────────────┘
-                    ↓
-┌───────────────────────────────────────────────────────────────┐
-│  5. DynamicRenderer (Frontend)                                │
-│  - Parses UISpec JSON                                         │
-│  - Renders React components                                   │
-│  - Creates ComponentState                                     │
-│  - Initializes ToolExecutor                                   │
-└───────────────────┬───────────────────────────────────────────┘
-                    ↓
-┌───────────────────────────────────────────────────────────────┐
-│  6. USER CLICKS BUTTON                                        │
-└───────────────────┬───────────────────────────────────────────┘
-                    ↓
-┌───────────────────────────────────────────────────────────────┐
-│  7. Event Handler → ToolExecutor.execute(tool_id, params)     │
-│  - calc.add: Arithmetic operations                            │
-│  - ui.set_state: Update component state                       │
-│  - system.alert: Show dialogs                                 │
-│  - app.spawn: CREATE NEW APP! (back to step 1)                │
-└───────────────────┬───────────────────────────────────────────┘
-                    ↓
-┌───────────────────────────────────────────────────────────────┐
-│  8. ComponentState updates → React re-renders                 │
-│  (automatic, no LLM needed)                                   │
-└───────────────────────────────────────────────────────────────┘
+┌
+  1. USER/APP: "create a calculator"                         
+┬┘
+                    
+┌
+  2. AppManager (Orchestrator)                                 
+  - Coordinates app lifecycle                                  
+  - Tracks all running apps                                    
+  - Handles parent-child relationships                         
+  - Manages focus/foreground/background                        
+┬┘
+                    
+┌
+  3. UIGeneratorAgent                                          
+  - LLM generates UISpec (JSON) ONCE                           
+  - Includes all components + tool bindings                    
+  - NO CODE EXECUTION - pure data                              
+┬┘
+                    
+┌
+  4. Backend returns: {app_id, ui_spec, thoughts}              
+┬┘
+                    
+┌
+  5. DynamicRenderer (Frontend)                                
+  - Parses UISpec JSON                                         
+  - Renders React components                                   
+  - Creates ComponentState                                     
+  - Initializes ToolExecutor                                   
+┬┘
+                    
+┌
+  6. USER CLICKS BUTTON                                        
+┬┘
+                    
+┌
+  7. Event Handler  ToolExecutor.execute(tool_id, params)     
+  - calc.add: Arithmetic operations                            
+  - ui.set_state: Update component state                       
+  - system.alert: Show dialogs                                 
+  - app.spawn: CREATE NEW APP! (back to step 1)                
+┬┘
+                    
+┌
+  8. ComponentState updates  React re-renders                 
+  (automatic, no LLM needed)                                   
+┘
 ```
 
 ---
@@ -68,7 +68,7 @@ The system generates UI specifications once via LLM, then executes tools to hand
 **Responsibilities:**
 - Track all running app instances
 - Handle app spawning (from user OR from apps)
-- Manage app lifecycle (spawning → active → background → destroyed)
+- Manage app lifecycle (spawning  active  background  destroyed)
 - Coordinate parent-child relationships
 - Handle focus management
 - Clean up destroyed apps
@@ -152,7 +152,7 @@ The system generates UI specifications once via LLM, then executes tools to hand
 2. Create `ComponentState` for this app
 3. Create `ToolExecutor` with state
 4. Render components recursively
-5. On user interaction → execute tool → update state → React re-renders
+5. On user interaction  execute tool  update state  React re-renders
 
 ---
 
@@ -175,12 +175,12 @@ The system generates UI specifications once via LLM, then executes tools to hand
 ```typescript
 // User clicks button bound to app.spawn
 executeAppTool('spawn', {request: 'create a todo list'})
-  → fetch('/generate-ui', {message: 'create a todo list'})
-  → Backend: AppManager.spawn_app()
-  → Backend: UIGeneratorAgent.generate_ui()
-  → Backend: returns {app_id, ui_spec}
-  → Frontend: window.postMessage({type: 'spawn_app', ui_spec})
-  → Parent component renders new app
+   fetch('/generate-ui', {message: 'create a todo list'})
+   Backend: AppManager.spawn_app()
+   Backend: UIGeneratorAgent.generate_ui()
+   Backend: returns {app_id, ui_spec}
+   Frontend: window.postMessage({type: 'spawn_app', ui_spec})
+   Parent component renders new app
 ```
 
 ---
@@ -213,8 +213,8 @@ state.subscribe('display', (value) => {
 ## App Lifecycle States
 
 ```
-SPAWNING → ACTIVE → BACKGROUND → SUSPENDED → DESTROYED
-   ↓         ↓          ↓            ↓           ↓
+SPAWNING  ACTIVE  BACKGROUND  SUSPENDED  DESTROYED
+                                             
   LLM    Running   Unfocused    Paused      Closed
   Gen
 ```
@@ -230,7 +230,7 @@ SPAWNING → ACTIVE → BACKGROUND → SUSPENDED → DESTROYED
 
 ## Key Features
 
-### ✨ Apps Can Spawn Apps
+###  Apps Can Spawn Apps
 Apps can create other apps via the `app.spawn` tool:
 
 ```json
@@ -254,13 +254,13 @@ Apps can create other apps via the `app.spawn` tool:
 
 **Traditional Approach (BAD):**
 ```
-User clicks button → LLM → Generate new UI → Render
+User clicks button  LLM  Generate new UI  Render
 (Slow, expensive, unpredictable)
 ```
 
 **Our Approach (GOOD):**
 ```
-User clicks button → ToolExecutor → Update state → React re-renders
+User clicks button  ToolExecutor  Update state  React re-renders
 (Fast, deterministic, efficient)
 ```
 
@@ -282,10 +282,10 @@ The system supports multiple concurrent apps:
 
 **Example:**
 ```
-├── Calculator (active, focused)
-├── Todo List (background)
-│   └── Add Task Dialog (active, child)
-└── Settings (background)
+ Calculator (active, focused)
+ Todo List (background)
+    Add Task Dialog (active, child)
+ Settings (background)
 ```
 
 ---
@@ -372,39 +372,39 @@ The system supports multiple concurrent apps:
 ### Scenario 1: Simple Calculator
 ```
 User: "create a calculator"
-  → AppManager.spawn_app()
-  → UIGeneratorAgent.generate_ui() [rule-based]
-  → Returns UISpec with buttons bound to calc.* tools
-  → DynamicRenderer renders
-  → User clicks "7" button
-  → ToolExecutor.execute("calc.append_digit", {digit: "7"})
-  → ComponentState.set("display", "7")
-  → React re-renders display
+   AppManager.spawn_app()
+   UIGeneratorAgent.generate_ui() [rule-based]
+   Returns UISpec with buttons bound to calc.* tools
+   DynamicRenderer renders
+   User clicks "7" button
+   ToolExecutor.execute("calc.append_digit", {digit: "7"})
+   ComponentState.set("display", "7")
+   React re-renders display
 ```
 
 ### Scenario 2: App Spawning Another App
 ```
 User: "create an app launcher"
-  → UIGeneratorAgent generates launcher with buttons
-  → Each button bound to app.spawn with different requests
-  → User clicks "Calculator" button
-  → ToolExecutor.execute("app.spawn", {request: "create calculator"})
-  → Fetch /generate-ui
-  → AppManager.spawn_app() [parent_id set]
-  → DynamicRenderer renders new calculator
-  → Now 2 apps running: Launcher (background) + Calculator (active)
+   UIGeneratorAgent generates launcher with buttons
+   Each button bound to app.spawn with different requests
+   User clicks "Calculator" button
+   ToolExecutor.execute("app.spawn", {request: "create calculator"})
+   Fetch /generate-ui
+   AppManager.spawn_app() [parent_id set]
+   DynamicRenderer renders new calculator
+   Now 2 apps running: Launcher (background) + Calculator (active)
 ```
 
 ### Scenario 3: Complex Workflow
 ```
 User: "create a project manager"
-  → Generates project list view
-  → User clicks "New Project" button
-  → app.spawn("create a project creation form")
-  → Form app spawns (child of project manager)
-  → User fills form, clicks "Create"
-  → Tool calls back to parent via IPC (future)
-  → Parent updates, form closes
+   Generates project list view
+   User clicks "New Project" button
+   app.spawn("create a project creation form")
+   Form app spawns (child of project manager)
+   User fills form, clicks "Create"
+   Tool calls back to parent via IPC (future)
+   Parent updates, form closes
 ```
 
 ---

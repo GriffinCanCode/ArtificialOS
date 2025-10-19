@@ -17,12 +17,12 @@ The Journey Tracking System provides unprecedented debugging capabilities for Ag
 
 ```
 User Action (Click) 
-  → Causality Chain Started
-    → Journey Step Added
-      → API Call Made
-        → Response Received
-          → Window Opened
-            → Journey Completed
+   Causality Chain Started
+     Journey Step Added
+       API Call Made
+         Response Received
+           Window Opened
+             Journey Completed
 ```
 
 ## Integration Points
@@ -145,7 +145,7 @@ addCausalEvent('api_call', 'Sending request to AI service');
 ### Example 1: Tracking a Complete User Flow
 
 ```tsx
-// User opens app → types prompt → submits → UI generates → window opens
+// User opens app  types prompt  submits  UI generates  window opens
 
 // 1. Journey starts automatically when AppContent mounts
 const journey = useJourney("AppContent", true, "User opened AgentOS");
@@ -169,7 +169,7 @@ addCausalEvent('api_call', 'Sending UI generation request');
 ### Example 2: Debugging Multi-Window Workflow
 
 ```tsx
-// User opens Hub → clicks on app → new window opens → user interacts
+// User opens Hub  clicks on app  new window opens  user interacts
 
 // Access journey data in development console:
 window.agentOSLogging.DEBUG.exportCausalityData();

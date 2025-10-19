@@ -10,12 +10,12 @@ CVA provides type-safe component variants that ensure consistency across AI-gene
 
 ### Frontend Flow
 ```
-AI Backend → UISpec JSON (with variant props) → DynamicRenderer → CVA → CSS Classes
+AI Backend  UISpec JSON (with variant props)  DynamicRenderer  CVA  CSS Classes
 ```
 
 ### Backend Flow
 ```
-ComponentTemplates → UIComponent (with variant props) → JSON Response
+ComponentTemplates  UIComponent (with variant props)  JSON Response
 ```
 
 ## Available Variants

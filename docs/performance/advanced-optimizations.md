@@ -122,7 +122,7 @@ impl CombinedCounter {
 **Impact**:
 - Reduces cache line transfers by **10-100x** under contention
 - Particularly effective with 8+ cores
-- Benchmark: 150M ops/sec → 1.2B ops/sec (8x improvement on 16-core)
+- Benchmark: 150M ops/sec  1.2B ops/sec (8x improvement on 16-core)
 
 **Apply to**:
 - `MemoryManager::used_memory`

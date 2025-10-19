@@ -27,27 +27,27 @@ AgentOS uses a unified, type-safe ID generation system across all four languages
 ### Two-Tier ID System
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     APPLICATION LAYER                        │
-│  (Go Backend, TypeScript UI, Python AI Service)             │
-│                                                              │
-│  ULIDs: app_01ARZ3NDEKTSV4RRFFQ69G5FAV                      │
-│  - Lexicographically sortable                               │
-│  - 26 characters (timestamp + random)                       │
-│  - Prefixed by type (app_, win_, req_)                     │
-│  - Global uniqueness                                        │
-└─────────────────────────────────────────────────────────────┘
-                              ↕
-┌─────────────────────────────────────────────────────────────┐
-│                      KERNEL LAYER                            │
-│                    (Rust Kernel)                             │
-│                                                              │
-│  u32 Atomic Counters: 1, 2, 3, ...                         │
-│  - Fast (atomic increment only)                             │
-│  - Compact (4 bytes)                                        │
-│  - Local to kernel subsystems                               │
-│  - Recycling support for IPC                                │
-└─────────────────────────────────────────────────────────────┘
+┌
+                     APPLICATION LAYER                        
+  (Go Backend, TypeScript UI, Python AI Service)             
+                                                              
+  ULIDs: app_01ARZ3NDEKTSV4RRFFQ69G5FAV                      
+  - Lexicographically sortable                               
+  - 26 characters (timestamp + random)                       
+  - Prefixed by type (app_, win_, req_)                     
+  - Global uniqueness                                        
+┘
+                              
+┌
+                      KERNEL LAYER                            
+                    (Rust Kernel)                             
+                                                              
+  u32 Atomic Counters: 1, 2, 3, ...                         
+  - Fast (atomic increment only)                             
+  - Compact (4 bytes)                                        
+  - Local to kernel subsystems                               
+  - Recycling support for IPC                                
+┘
 ```
 
 **Why Two Tiers?**

@@ -36,18 +36,18 @@ Selection shortcuts (Cmd+A for select all, Cmd+I for invert, Escape for clear) n
 ### Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│         createSelectionCommands() Factory            │
-│  (Central definition of shortcuts + interface)      │
-└─────────────────────────────────────────────────────┘
-                         │
-           ┌─────────────┼─────────────┐
+┌
+         createSelectionCommands() Factory            
+  (Central definition of shortcuts + interface)      
+┘
+                         
+           ┌┼
            ▼             ▼             ▼
-    ┌──────────┐  ┌──────────┐  ┌──────────┐
-    │ Desktop  │  │  File    │  │  Other   │
-    │ (Icons)  │  │ Explorer │  │ Context  │
-    └──────────┘  └──────────┘  └──────────┘
-         │              │              │
+    ┌  ┌  ┌
+     Desktop      File        Other   
+     (Icons)     Explorer    Context  
+    ┘  ┘  ┘
+                                     
          ▼              ▼              ▼
     Icon Store    File Store     Custom Logic
 ```

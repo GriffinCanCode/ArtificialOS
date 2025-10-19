@@ -45,28 +45,28 @@ Build a lightweight, innovative operating system powered by a local AI model (GP
 ### Three-Layer Architecture
 
 ```
-┌─────────────────────────────────────────┐
-│     User Interface Layer (Electron)     │
-│  - Dynamic UI Renderer                  │
-│  - Thought Stream Visualizer            │
-│  - Real-time Dashboard                  │
-└─────────────────────────────────────────┘
-              ↕ WebSocket/MCP
-┌─────────────────────────────────────────┐
-│   AI Integration Layer (Python/Rust)    │
-│  - GPT-OSS Model Runtime                │
-│  - LangChain Orchestration              │
-│  - MCP Protocol Handler                 │
-│  - Streaming Manager                    │
-└─────────────────────────────────────────┘
-              ↕ System Calls
-┌─────────────────────────────────────────┐
-│      OS Kernel Layer (Rust)             │
-│  - Microkernel                          │
-│  - Process Manager                      │
-│  - Memory Manager                       │
-│  - Hardware Abstraction                 │
-└─────────────────────────────────────────┘
+┌
+     User Interface Layer (Electron)     
+  - Dynamic UI Renderer                  
+  - Thought Stream Visualizer            
+  - Real-time Dashboard                  
+┘
+               WebSocket/MCP
+┌
+   AI Integration Layer (Python/Rust)    
+  - GPT-OSS Model Runtime                
+  - LangChain Orchestration              
+  - MCP Protocol Handler                 
+  - Streaming Manager                    
+┘
+               System Calls
+┌
+      OS Kernel Layer (Rust)             
+  - Microkernel                          
+  - Process Manager                      
+  - Memory Manager                       
+  - Hardware Abstraction                 
+┘
 ```
 
 ---
@@ -260,7 +260,7 @@ const DynamicComponent = ({ spec }) => {
    };
    ```
 
-3. Implement AI → UI pipeline:
+3. Implement AI  UI pipeline:
    ```python
    # LangChain agent that generates UI specs
    ui_agent = create_react_agent(
@@ -300,7 +300,7 @@ const DynamicComponent = ({ spec }) => {
 **Tasks**:
 1. Connect all three layers:
    ```
-   Rust Kernel ←→ Python AI Service ←→ Electron UI
+   Rust Kernel  Python AI Service  Electron UI
    ```
 
 2. Implement OS-level features:
@@ -526,13 +526,13 @@ async for state in app.astream({"user_input": "Create calculator"}):
 **Thought Stream** (visualized):
 ```
 1. User wants calculator
-   └─> Identified components: display, number buttons, operators
+   > Identified components: display, number buttons, operators
 2. Generating UI layout
-   └─> Grid layout (4 columns) optimal for calculator
+   > Grid layout (4 columns) optimal for calculator
 3. Implementing logic
-   └─> State management: current value, operator, previous value
+   > State management: current value, operator, previous value
 4. Rendering...
-   └─> Created window, bound event handlers
+   > Created window, bound event handlers
 ✓ Calculator ready!
 ```
 
@@ -701,16 +701,16 @@ Handles various LLM output formats:
 
 #### 5. **Smart Generation Flow**
 ```
-User Request → UIGeneratorAgent
-    ↓
+User Request  UIGeneratorAgent
+    
 Is LLM available?
-    ↓ Yes
+     Yes
 Try LLM generation
-    ↓ Success?
+     Success?
     ✅ Return UISpec
-    ↓ Fail?
+     Fail?
     ⚠️  Log warning, fall back to rules
-    ↓
+    
 Rule-based generation (fallback)
 ```
 
@@ -733,24 +733,24 @@ Rule-based generation (fallback)
 #### Request Flow
 ```
 1. User: "create a weather widget"
-   ↓
+   
 2. Backend: Load LLM (if not loaded)
-   ↓
+   
 3. UIGeneratorAgent: Generate system + user prompts
-   ↓
+   
 4. LLM: Generate JSON UI specification
-   ↓
+   
 5. Backend: Parse, validate, convert to UISpec
-   ↓
+   
 6. AppManager: Register new app instance
-   ↓
-7. Frontend: Render UISpec → React components
+   
+7. Frontend: Render UISpec  React components
 ```
 
 #### Example Requests
-- **"create a calculator"** → Calculator with display + button grid
-- **"build a todo app"** → Todo list with input, add button, tasks
-- **"make a weather widget"** → Custom weather UI
+- **"create a calculator"**  Calculator with display + button grid
+- **"build a todo app"**  Todo list with input, add button, tasks
+- **"make a weather widget"**  Custom weather UI
 
 ### Architecture Benefits
 

@@ -73,44 +73,44 @@ The system enables **true preemptive multitasking**:
 ### Scheduling Flow
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     SchedulerTask (Background)                   │
-│                                                                   │
-│  Every quantum μs:                                               │
-│    if PreemptionController available:                           │
-│      1. Call scheduler.schedule()                                │
-│      2. If process changes:                                      │
-│         - Send SIGSTOP to old process (pause)                    │
-│         - Send SIGCONT to new process (resume)                   │
-│    else:                                                         │
-│      - Just call scheduler.schedule() (logical only)             │
-└─────────────────────────────────────────────────────────────────┘
-                              │
+┌
+                     SchedulerTask (Background)                   
+                                                                   
+  Every quantum μs:                                               
+    if PreemptionController available:                           
+      1. Call scheduler.schedule()                                
+      2. If process changes:                                      
+         - Send SIGSTOP to old process (pause)                    
+         - Send SIGCONT to new process (resume)                   
+    else:                                                         
+      - Just call scheduler.schedule() (logical only)             
+┘
+                              
                               ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                         Scheduler                                │
-│                                                                   │
-│  schedule():                                                     │
-│    1. Check if current process quantum expired                   │
-│    2. If expired, preempt and requeue                           │
-│    3. Select next process based on policy:                       │
-│       - RoundRobin: FIFO order                                  │
-│       - Priority: Highest priority first                         │
-│       - Fair: Lowest vruntime first                             │
-│    4. Return selected PID                                        │
-└─────────────────────────────────────────────────────────────────┘
-                              │
+┌
+                         Scheduler                                
+                                                                   
+  schedule():                                                     
+    1. Check if current process quantum expired                   
+    2. If expired, preempt and requeue                           
+    3. Select next process based on policy:                       
+       - RoundRobin: FIFO order                                  
+       - Priority: Highest priority first                         
+       - Fair: Lowest vruntime first                             
+    4. Return selected PID                                        
+┘
+                              
                               ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                   PreemptionController                           │
-│                                                                   │
-│  schedule():                                                     │
-│    1. Get next PID from scheduler                                │
-│    2. Get OS PID from executor                                   │
-│    3. Send SIGSTOP to old OS process                            │
-│    4. Send SIGCONT to new OS process                            │
-│    5. Track new process as current                              │
-└─────────────────────────────────────────────────────────────────┘
+┌
+                   PreemptionController                           
+                                                                   
+  schedule():                                                     
+    1. Get next PID from scheduler                                
+    2. Get OS PID from executor                                   
+    3. Send SIGSTOP to old OS process                            
+    4. Send SIGCONT to new OS process                            
+    5. Track new process as current                              
+┘
 ```
 
 ## Scheduling Policies

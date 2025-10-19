@@ -8,28 +8,28 @@ The AgentOS filesystem is **automatically initialized** on first kernel startup 
 
 ```
 /storage/
-  ├── native-apps/   # Prebuilt OS applications (synced from apps/dist)
-  │   ├── browser/
-  │   ├── file-explorer/
-  │   ├── hub/
-  │   ├── settings/
-  │   └── terminal/
-  ├── apps/          # User/AI-generated applications
-  │   └── {app-id}/
-  │       ├── data/
-  │       └── config/
-  ├── user/          # User files
-  │   ├── documents/
-  │   ├── downloads/
-  │   └── projects/
-  ├── system/        # System configuration
-  └── lib/           # Shared libraries
+   native-apps/   # Prebuilt OS applications (synced from apps/dist)
+      browser/
+      file-explorer/
+      hub/
+      settings/
+      terminal/
+   apps/          # User/AI-generated applications
+      {app-id}/
+          data/
+          config/
+   user/          # User files
+      documents/
+      downloads/
+      projects/
+   system/        # System configuration
+   lib/           # Shared libraries
 
 /tmp/              # Temporary files (100MB limit, in-memory)
-  └── {app-id}/    # Per-app temp directories
+   {app-id}/    # Per-app temp directories
 
 /cache/            # Cache files (50MB limit, in-memory)
-  └── {app-id}/    # Per-app cache directories
+   {app-id}/    # Per-app cache directories
 ```
 
 ## Automatic Initialization
@@ -37,9 +37,9 @@ The AgentOS filesystem is **automatically initialized** on first kernel startup 
 ### What Happens on First Startup
 
 1. **VFS Mounts** are created automatically:
-   - `/storage` → Persistent local filesystem
-   - `/tmp` → In-memory filesystem (100MB)
-   - `/cache` → In-memory filesystem (50MB)
+   - `/storage`  Persistent local filesystem
+   - `/tmp`  In-memory filesystem (100MB)
+   - `/cache`  In-memory filesystem (50MB)
 
 2. **Standard directories** are created:
    - All directories shown above are automatically created

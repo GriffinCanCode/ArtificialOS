@@ -10,15 +10,15 @@ The prebuilt apps system allows the OS to ship with essential system application
 
 ```
 apps/
-├── system/              # Core system applications
-│   ├── file-explorer.aiapp
-│   ├── task-manager.aiapp
-│   └── settings.aiapp (seeded)
-├── productivity/        # Productivity applications
-│   ├── calculator.aiapp (seeded)
-│   └── notes.aiapp
-├── utilities/           # Utility applications
-└── creative/            # Creative applications
+ system/              # Core system applications
+    file-explorer.aiapp
+    task-manager.aiapp
+    settings.aiapp (seeded)
+ productivity/        # Productivity applications
+    calculator.aiapp (seeded)
+    notes.aiapp
+ utilities/           # Utility applications
+ creative/            # Creative applications
 ```
 
 ### Components Built

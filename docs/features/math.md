@@ -28,9 +28,9 @@ evaluateExpression("pi")              // 3.14159...
 evaluateExpression("e")               // 2.71828...
 
 // Calculator-friendly operators
-evaluateExpression("10 ÷ 2")          // 5 (unicode division)
-evaluateExpression("5 × 3")           // 15 (unicode multiplication)
-evaluateExpression("10 − 3")          // 7 (unicode minus)
+evaluateExpression("10  2")          // 5 (unicode division)
+evaluateExpression("5  3")           // 15 (unicode multiplication)
+evaluateExpression("10  3")          // 7 (unicode minus)
 ```
 
 ### ❌ INSECURE: eval() - DO NOT USE

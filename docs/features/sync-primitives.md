@@ -10,13 +10,13 @@ The kernel provides high-performance, multi-strategy synchronization primitives 
 
 ```
 kernel/src/core/sync/
-├── mod.rs       - Public API and exports
-├── traits.rs    - WaitStrategy trait abstraction
-├── wait.rs      - WaitQueue (main user-facing type)
-├── futex.rs     - Futex-based implementation (Linux)
-├── condvar.rs   - Condvar-based fallback (cross-platform)
-├── spinwait.rs  - Adaptive spinwait (low-latency)
-└── config.rs    - Strategy selection logic
+ mod.rs       - Public API and exports
+ traits.rs    - WaitStrategy trait abstraction
+ wait.rs      - WaitQueue (main user-facing type)
+ futex.rs     - Futex-based implementation (Linux)
+ condvar.rs   - Condvar-based fallback (cross-platform)
+ spinwait.rs  - Adaptive spinwait (low-latency)
+ config.rs    - Strategy selection logic
 ```
 
 ### Strategy Selection

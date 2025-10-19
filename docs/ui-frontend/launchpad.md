@@ -8,7 +8,7 @@ A macOS-style launchpad that seamlessly replaces the desktop icons with a beauti
 - **Smooth Transitions**: Desktop icons fade out as launchpad apps fade in with scale animations
 - **Search Functionality**: Real-time search to filter apps by name, description, or category
 - **Keyboard Shortcuts**: 
-  - `⌘L` - Toggle launchpad
+  - `L` - Toggle launchpad
   - `ESC` - Close launchpad
   - Type to search apps
 - **Click to Launch**: Click any app to launch it immediately
@@ -21,7 +21,7 @@ A macOS-style launchpad that seamlessly replaces the desktop icons with a beauti
 
 There are three ways to open the launchpad:
 
-1. **Keyboard Shortcut**: Press `⌘L` (Cmd+L on Mac, Ctrl+L on Windows/Linux)
+1. **Keyboard Shortcut**: Press `L` (Cmd+L on Mac, Ctrl+L on Windows/Linux)
 2. **Menu Bar Button**: Click the ⚡ lightning bolt icon in the menu bar
 3. **Programmatically**: Call `setShowLaunchpad(true)` in the app
 
