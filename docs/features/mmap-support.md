@@ -2,7 +2,7 @@
 
 ## Overview
 
-AgentOS kernel now supports memory-mapped files (mmap), providing file-backed shared memory functionality similar to POSIX mmap(). This enables efficient file I/O and inter-process communication through shared memory regions.
+The AgentOS kernel implements memory-mapped files (mmap), providing file-backed shared memory functionality similar to POSIX mmap(). This enables efficient file I/O and inter-process communication through shared memory regions.
 
 ## Architecture
 

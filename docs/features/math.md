@@ -1,14 +1,14 @@
 # Frontend Math Utilities
 
-**Security Note:** This module replaces dangerous `eval()` calls with `mathjs` for secure expression evaluation.
+**Security**: This module provides safe expression evaluation using mathjs to replace eval() calls.
 
 ## Overview
 
-Frontend-focused math utilities for UI operations, calculations, and display formatting. For comprehensive mathematical operations (advanced trigonometry, statistics, matrix operations), use the backend math provider via tool execution.
+Frontend-focused math utilities for UI operations, calculations, and display formatting. For advanced mathematical operations (trigonometry, statistics, matrix operations), use the backend math provider via tool execution.
 
-## Expression Evaluation (Security Fix)
+## Expression Evaluation
 
-### ✅ SECURE: evaluateExpression()
+### Safe Expression Evaluation
 
 ```typescript
 import { evaluateExpression } from '@/core/utils/math';
@@ -33,19 +33,14 @@ evaluateExpression("5  3")           // 15 (unicode multiplication)
 evaluateExpression("10  3")          // 7 (unicode minus)
 ```
 
-### ❌ INSECURE: eval() - DO NOT USE
+### Why mathjs Over eval()
 
-```typescript
-// NEVER do this:
-const result = eval(userInput);  // ❌ Critical security vulnerability!
-```
-
-**Why mathjs?**
-- ✅ No code injection vulnerabilities
-- ✅ Supports 200+ mathematical functions
-- ✅ Constants: pi, e, tau, phi
-- ✅ Complex numbers, units, matrices
-- ✅ Safe scope isolation
+Using mathjs avoids the security vulnerabilities of eval():
+- No code injection vulnerabilities
+- Supports 200+ mathematical functions
+- Constants: pi, e, tau, phi
+- Complex numbers, units, matrices
+- Safe scope isolation
 
 ## Number Formatting
 
@@ -198,20 +193,20 @@ randomInt(1, 6)                       // 4 (integer, inclusive)
 
 ### Replacing eval()
 
-**Before (INSECURE):**
+Before (unsafe):
 ```typescript
 try {
-  const result = eval(expression);  // ❌ Security vulnerability
+  const result = eval(expression);  // Security vulnerability
 } catch (error) {
   return "Error";
 }
 ```
 
-**After (SECURE):**
+After (safe):
 ```typescript
 import { evaluateExpression } from '@/core/utils/math';
 
-const result = evaluateExpression(expression);  // ✅ Safe
+const result = evaluateExpression(expression);  // Safe
 ```
 
 ### Replacing Duplicate Utilities
@@ -285,17 +280,18 @@ describe('Math utilities', () => {
 
 ## Performance
 
-- **Expression Evaluation**: ~0.1-1ms per evaluation
-- **Statistics**: O(n) for mean, O(n log n) for median/percentiles
-- **Formatting**: ~0.01ms per call
-- **All operations**: Optimized for UI responsiveness
+- Expression evaluation: 0.1-1ms per evaluation
+- Statistics: O(n) for mean, O(n log n) for median and percentiles
+- Formatting: 0.01ms per call
+- All operations optimized for UI responsiveness
 
 ## Security
 
-✅ **No eval() vulnerabilities**
-✅ **Sandboxed expression execution**
-✅ **Input validation**
-✅ **Safe error handling**
+This module provides:
+- No eval() vulnerabilities
+- Sandboxed expression execution
+- Input validation
+- Safe error handling
 
 ## See Also
 

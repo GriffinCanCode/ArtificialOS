@@ -2,7 +2,7 @@
 
 ## Overview
 
-The kernel provides high-performance, multi-strategy synchronization primitives optimized for different use cases. The system automatically selects the best strategy based on platform and workload characteristics.
+The kernel provides high-performance synchronization primitives optimized for different use cases. The system automatically selects the best strategy based on platform and workload characteristics.
 
 ## Architecture
 
@@ -32,11 +32,11 @@ The system supports four strategies:
 
 ### Futex Strategy
 
-**Best for:** Long waits (> 100µs) on Linux
+Best for long waits (> 100µs) on Linux
 
 **Characteristics:**
 - Direct kernel futex syscalls
-- ~1-2µs wake latency
+- 1-2µs wake latency
 - Zero CPU usage while waiting
 - Platform: Linux only
 
@@ -47,11 +47,11 @@ The system supports four strategies:
 
 ### Condvar Strategy
 
-**Best for:** Cross-platform reliability
+Best for cross-platform reliability
 
 **Characteristics:**
 - Uses parking_lot::Condvar (futex on Linux internally)
-- ~2-5µs wake latency
+- 2-5µs wake latency
 - Zero CPU usage while waiting
 - Platform: All
 
@@ -62,11 +62,11 @@ The system supports four strategies:
 
 ### SpinWait Strategy
 
-**Best for:** Very short waits (< 50µs)
+Best for very short waits (< 50µs)
 
 **Characteristics:**
 - Adaptive spinning before parking
-- ~0.1-1µs wake latency for short waits
+- 0.1-1µs wake latency for short waits
 - High CPU usage during spin phase
 - Falls back to condvar for longer waits
 
@@ -147,7 +147,7 @@ impl CompletionRing {
     pub fn complete(&self, seq: u64, result: usize) {
         // Add to completion queue...
         
-        // Wake waiters (futex-based, no busy-wait!)
+        // Wake waiters
         self.wait_queue.wake_one(seq);
     }
 
@@ -158,7 +158,7 @@ impl CompletionRing {
                 return Ok(entry);
             }
 
-            // Efficient wait (no polling!)
+            // Efficient wait (no polling)
             self.wait_queue.wait(seq, Some(Duration::from_secs(1)))?;
         }
     }
@@ -202,22 +202,22 @@ impl IpcChannel {
 
 ### Optimization Tips
 
-1. **Use appropriate configuration:**
+1. Use appropriate configuration:
    - `WaitQueue::low_latency()` for < 100µs waits
    - `WaitQueue::long_wait()` for > 1ms waits
    - `WaitQueue::with_defaults()` for general use
 
-2. **Key selection:**
+2. Key selection:
    - Use u64 for sequence numbers (efficient hashing)
    - Use tuple types for composite keys: `(Pid, SeqNum)`
    - Keep keys small (Copy types)
 
-3. **Wake strategies:**
+3. Wake strategies:
    - Use `wake_one()` for single waiter per key
    - Use `wake_all()` for broadcast patterns
    - Check `waiter_count()` for diagnostics
 
-4. **Predicate-based waiting:**
+4. Predicate-based waiting:
    - Keep predicates fast (< 1µs)
    - Avoid locks in predicates if possible
    - Use for complex wait conditions
@@ -232,10 +232,10 @@ cargo bench --bench sync_benchmark
 ```
 
 Expected results (Linux, AMD Ryzen 9):
-- Futex wake latency: ~1-2µs
-- Condvar wake latency: ~2-5µs  
-- SpinWait wake latency: ~0.5-1µs (for < 10µs waits)
-- Multi-waiter throughput: ~500K ops/sec
+- Futex wake latency: 1-2µs
+- Condvar wake latency: 2-5µs  
+- SpinWait wake latency: 0.5-1µs (for < 10µs waits)
+- Multi-waiter throughput: 500K ops/sec
 
 ## Testing
 
@@ -258,17 +258,17 @@ Tests cover:
 
 ### From Busy-Wait Polling
 
-**Before:**
+Before:
 ```rust
 loop {
     if let Some(entry) = queue.try_pop() {
         return Ok(entry);
     }
-    std::thread::yield_now(); // WASTEFUL!
+    std::thread::yield_now(); // Inefficient
 }
 ```
 
-**After:**
+After:
 ```rust
 let wait_queue = WaitQueue::<u64>::with_defaults();
 
@@ -276,7 +276,7 @@ loop {
     if let Some(entry) = queue.try_pop() {
         return Ok(entry);
     }
-    wait_queue.wait(seq, Some(timeout))?; // EFFICIENT!
+    wait_queue.wait(seq, Some(timeout))?; // Efficient
 }
 
 // On completion:
@@ -285,7 +285,7 @@ wait_queue.wake_one(seq);
 
 ### From tokio::sync::Notify
 
-**Before:**
+Before:
 ```rust
 use tokio::sync::Notify;
 
@@ -293,12 +293,12 @@ let notify = Arc::new(Notify::new());
 notify.notified().await; // Async only
 ```
 
-**After:**
+After:
 ```rust
 use ai_os_kernel::core::sync::WaitQueue;
 
 let queue = WaitQueue::<u64>::with_defaults();
-queue.wait(key, timeout)?; // Works in sync contexts!
+queue.wait(key, timeout)?; // Works in sync contexts
 ```
 
 ## Implementation Details
@@ -322,15 +322,15 @@ queue.wait(key, timeout)?; // Works in sync contexts!
 - Adaptive spinning with backoff
 - Falls back to condvar after spin phase
 - Configurable spin duration and count
-- Best for low-latency scenarios
+- Optimized for low-latency scenarios
 
 ## Future Enhancements
 
-- [ ] Cross-process futex support
-- [ ] Priority-based wakeup
-- [ ] Wait-free fast path for uncontended case
-- [ ] Integration with io_uring IORING_OP_POLL_ADD
-- [ ] Kernel-level wait queues (when running as actual kernel)
+- Cross-process futex support
+- Priority-based wakeup
+- Wait-free fast path for uncontended case
+- Integration with io_uring IORING_OP_POLL_ADD
+- Kernel-level wait queues (when running as actual kernel)
 
 ## References
 

@@ -35,7 +35,7 @@ This document describes the preemptive scheduling system implemented in the Agen
 
 ### Without Executor (Logical Scheduling)
 
-When the ProcessManager is built WITHOUT `.with_executor()`:
+When the ProcessManager is built without `.with_executor()`:
 
 ```rust
 let process_manager = ProcessManager::builder()
@@ -43,14 +43,14 @@ let process_manager = ProcessManager::builder()
     .build();
 ```
 
-The system performs **logical scheduling** only:
+The system performs logical scheduling only:
 - Scheduler tracks which process should be running
 - No OS-level process control (no SIGSTOP/SIGCONT)
 - Suitable for managing virtual processes without OS execution
 
 ### With Executor (OS-Level Preemption)
 
-When the ProcessManager is built WITH `.with_executor()`:
+When the ProcessManager is built with `.with_executor()`:
 
 ```rust
 let process_manager = ProcessManager::builder()
@@ -59,12 +59,12 @@ let process_manager = ProcessManager::builder()
     .build();
 ```
 
-The system enables **true preemptive multitasking**:
+The system enables true preemptive multitasking:
 
-1. **Process Spawning**: When a process is created with an ExecutionConfig, an actual OS process is spawned
-2. **Preemption Controller Created**: The ProcessManager creates a PreemptionController that bridges the scheduler with the executor
-3. **Autonomous Scheduling**: The SchedulerTask runs in the background, calling `preemption.schedule()` every quantum interval
-4. **OS-Level Context Switch**:
+1. Process Spawning: When a process is created with an ExecutionConfig, an actual OS process is spawned
+2. Preemption Controller Created: The ProcessManager creates a PreemptionController that bridges the scheduler with the executor
+3. Autonomous Scheduling: The SchedulerTask runs in the background, calling preemption.schedule() every quantum interval
+4. OS-Level Context Switch:
    - When quantum expires, scheduler selects next process
    - If different from current, PreemptionController sends SIGSTOP to old process
    - PreemptionController sends SIGCONT to new process

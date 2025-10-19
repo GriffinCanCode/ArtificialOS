@@ -1,10 +1,8 @@
-# Observability System Validation
+# Observability System Implementation
 
-## ✅ System Integration Validation
+## System Integration
 
-### Architecture Overview
-
-The new observability system introduces a **dual-layer architecture** that complements existing infrastructure:
+The observability system provides a dual-layer architecture that complements the existing infrastructure:
 
 ```
 Layer 1: Distributed Tracing (Existing)
@@ -14,78 +12,58 @@ Layer 1: Distributed Tracing (Existing)
 
 Layer 2: Event Streaming (New)
  Lock-free ring buffers for zero-copy events
- Adaptive sampling (auto overhead control)
- Built-in query API (no external tools)
- Anomaly detection (automatic outliers)
- Causality tracking (linked events)
-
-Bridge: Integration Layer
- Optional global collector for spanevent emission
+ Adaptive sampling (automatic overhead control)
+ Built-in query API
+ Anomaly detection
+ Causality tracking
 ```
 
 ---
 
-## Conflict Analysis
+## Implementation Status
 
-### ✅ No Conflicts Detected
+### Completed Subsystems
 
-1. **API Compatibility**: Both systems export through `monitoring` module cleanly
-2. **Memory Safety**: No shared mutable state between layers
-3. **Performance**: Event streaming is optional; existing code unaffected
-4. **Namespace**: Clear separation (e.g., `span_*` vs `Collector`)
+The following subsystems are integrated with the event collector:
 
-### Integration Points (Current)
+1. **ProcessManager** - Process lifecycle events (creation, termination, cleanup)
+2. **SyscallExecutor** - Syscall entry/exit, duration tracking, anomaly detection
+3. **Scheduler** - Context switch tracking, preemption events, scheduling latency
+4. **MemoryManager** - Memory pressure alerts, allocation/deallocation tracking
+5. **IPC QueueManager** - Message send/receive events, queue depth monitoring
+6. **IPC PipeManager** - Pipe read/write operations, throughput tracking
+7. **IPC ShmManager** - Shared memory create/read/write/destroy events
+8. **VFS MountManager** - Slow file operation detection
+9. **PermissionManager** - Permission denial tracking, audit integration
+10. **SandboxManager** - Security violation alerts, capability denial tracking
+
+### Architecture
 
 ```rust
-// ProcessManager - ✅ FULLY INTEGRATED
 pub struct ProcessManager {
     collector: Option<Arc<Collector>>,  // Event streaming
-    // ... other fields
 }
 
-// Called on process lifecycle events
-collector.process_created(pid, name, priority);
-collector.process_terminated(pid, exit_code);
-collector.resource_cleanup(pid, stats...);
-```
-
-```rust
-// SyscallExecutor - ⚠️ USES LAYER 1 ONLY
 pub struct SyscallExecutor {
-    metrics: Option<Arc<MetricsCollector>>,  // Legacy metrics
-    // NO Collector yet
+    collector: Option<Arc<Collector>>,  // Event streaming
 }
-
-// Current: Only distributed tracing
-let span = span_syscall(name, pid);
-span.record("result", success);
 ```
 
 ---
 
-## Integration Opportunities
+## Integration Points
 
-### High Value (Recommended)
+### SyscallExecutor Integration
 
-#### 1. **Syscall Performance Tracking**
-**Location**: `kernel/src/syscalls/executor.rs`
-**Value**: Real-time syscall latency and anomaly detection
+Real-time syscall performance tracking with anomaly detection:
 
 ```rust
-// Add to SyscallExecutor
-pub struct SyscallExecutor {
-    metrics: Option<Arc<MetricsCollector>>,
-    collector: Option<Arc<Collector>>,  // ADD THIS
-}
-
-// In execute() method - after line 244
 pub fn execute(&self, pid: Pid, syscall: Syscall) -> SyscallResult {
     let start = Instant::now();
     let span = span_syscall(syscall_name, pid);
     
-    // ... existing execution ...
+    // ... execution ...
     
-    // ADD: Emit event to collector
     if let Some(ref collector) = self.collector {
         let duration_us = start.elapsed().as_micros() as u64;
         let success = matches!(result, SyscallResult::Success{..});
@@ -96,19 +74,11 @@ pub fn execute(&self, pid: Pid, syscall: Syscall) -> SyscallResult {
 }
 ```
 
-**Benefits**:
-- Automatic slow syscall detection
-- Per-process syscall patterns
-- Anomaly alerts for unusual latency
+### Scheduler Integration
 
----
-
-#### 2. **Scheduler Event Tracking**
-**Location**: `kernel/src/scheduler/*.rs`
-**Value**: Understand scheduling decisions and latency
+Context switch tracking and scheduling decisions:
 
 ```rust
-// In scheduler operations - context switches
 collector.emit(Event::new(
     Severity::Debug,
     Category::Scheduler,
@@ -118,27 +88,11 @@ collector.emit(Event::new(
         reason: "time_slice_expired".to_string(),
     },
 ));
-
-// Preemption events
-collector.emit(Event::new(
-    Severity::Debug,
-    Category::Scheduler,
-    Payload::ProcessPreempted {
-        quantum_remaining_us: remaining.as_micros() as u64,
-    },
-).with_pid(pid));
 ```
 
-**Benefits**:
-- Scheduler latency monitoring
-- Context switch frequency analysis
-- Preemption pattern detection
+### Memory Monitoring
 
----
-
-#### 3. **Memory Pressure Monitoring**
-**Location**: `kernel/src/memory/manager.rs`
-**Value**: Proactive OOM prevention
+Memory pressure and allocation tracking:
 
 ```rust
 impl MemoryManager {
@@ -156,180 +110,29 @@ impl MemoryManager {
 }
 ```
 
-**Benefits**:
-- Early warning for memory exhaustion
-- Per-process memory leak detection
-- Automatic anomaly detection
-
 ---
 
-#### 4. **IPC Performance Tracking**
-**Location**: `kernel/src/ipc/*.rs`
-**Value**: Message queue latency and throughput
+## Initialization
+
+To initialize the observability system:
 
 ```rust
-// In QueueManager::send()
-let start = Instant::now();
-// ... send message ...
-
-collector.emit(Event::new(
-    Severity::Debug,
-    Category::Ipc,
-    Payload::MessageSent {
-        queue_id: queue.id(),
-        size: message.len(),
-    },
-));
-
-// In QueueManager::receive()
-collector.emit(Event::new(
-    Severity::Debug,
-    Category::Ipc,
-    Payload::MessageReceived {
-        queue_id: queue.id(),
-        size: message.len(),
-        wait_time_us: wait_time.as_micros() as u64,
-    },
-));
-```
-
-**Benefits**:
-- IPC latency tracking
-- Queue depth monitoring
-- Timeout pattern analysis
-
----
-
-#### 5. **Security Event Tracking**
-**Location**: `kernel/src/security/*.rs`, `kernel/src/permissions/*.rs`
-**Value**: Real-time security monitoring
-
-```rust
-// In PermissionManager::check()
-if !has_permission {
-    collector.emit(Event::new(
-        Severity::Warn,
-        Category::Security,
-        Payload::PermissionDenied {
-            operation: operation.to_string(),
-            required: required_perm.to_string(),
-        },
-    ).with_pid(pid));
-}
-
-// In SandboxManager
-if rate_limit_exceeded {
-    collector.emit(Event::new(
-        Severity::Error,
-        Category::Security,
-        Payload::RateLimitExceeded {
-            limit: limit,
-            current: current_rate,
-        },
-    ).with_pid(pid));
-}
-```
-
-**Benefits**:
-- Security violation alerts
-- Permission denial patterns
-- Rate limit tracking
-
----
-
-### Medium Value (Optional)
-
-#### 6. **Network Event Tracking**
-**Location**: `kernel/src/syscalls/network/*.rs`
-
-```rust
-collector.emit(Event::new(
-    Severity::Info,
-    Category::Network,
-    Payload::ConnectionEstablished {
-        protocol: "tcp".to_string(),
-        local_port: port,
-        remote_addr: addr.to_string(),
-    },
-).with_pid(pid));
-```
-
----
-
-#### 7. **VFS Operation Tracking**
-**Location**: `kernel/src/vfs/*.rs`
-
-```rust
-// Track slow file operations
-if duration > threshold {
-    collector.slow_operation(
-        format!("vfs_{}", operation),
-        duration.as_millis() as u64,
-        p99_ms,
-    );
-}
-```
-
----
-
-## Integration Strategy
-
-### Phase 1: Core Subsystems ✅ COMPLETE
-1. ✅ ProcessManager (DONE)
-2. ✅ SyscallExecutor (DONE)
-3. ✅ Scheduler (DONE)
-
-### Phase 2: Resource Management ✅ COMPLETE
-4. ✅ MemoryManager (DONE)
-5. ✅ IPC QueueManager (DONE)
-6. ✅ IPC PipeManager (DONE - Sprint 2)
-7. ✅ IPC ShmManager (DONE - Sprint 2)
-
-### Phase 3: Security & Network ✅ COMPLETE
-8. ✅ PermissionManager (DONE)
-9. ✅ SandboxManager (DONE)
-10. NetworkManager (Future)
-
-### Phase 4: VFS & Advanced IPC ✅ COMPLETE  
-11. ✅ VFS MountManager (DONE - Sprint 2)
-12. Additional VFS filesystems (Future)
-
-### All Core Integrations Complete!
-**Integration ROI Achievement**: All recommended high-value subsystems (9 total) now have full observability support, providing real-time insights into:
-- Syscall performance & latency
-- Scheduler decisions & context switches
-- Memory pressure & allocation patterns
-- IPC message queues, pipes, and shared memory
-- Security violations & permission denials
-- VFS slow file operations
-
----
-
-## Recommended Minimal Integration
-
-For immediate value with minimal changes:
-
-```rust
-// In main.rs - Initialize global collector
 use ai_os_kernel::monitoring::{init_collector, Collector};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     init_tracing();
     
-    // NEW: Initialize event streaming
     let collector = Arc::new(Collector::new());
-    init_collector(collector.clone());  // Make globally available
+    init_collector(collector.clone());
     
     // Build subsystems with collector
     let process_manager = ProcessManager::builder()
-        .with_memory_manager(memory_manager.clone())
-        .with_collector(Arc::clone(&collector))  // ✅ Already done
+        .with_collector(Arc::clone(&collector))
         .build();
     
     let syscall_executor = SyscallExecutor::new(sandbox_manager)
-        .with_metrics(Arc::clone(&metrics_collector))
-        .with_collector(Arc::clone(&collector));  // ADD THIS
+        .with_collector(Arc::clone(&collector));
     
     // ... rest of initialization
 }
@@ -342,11 +145,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
 ### Environment Variables
 
 ```bash
-# Distributed tracing (Layer 1)
+# Distributed tracing
 RUST_LOG=debug                   # Log level
 KERNEL_TRACE_JSON=true           # JSON output
 
-# Event streaming (Layer 2)
+# Event streaming
 KERNEL_SAMPLING_RATE=100         # Start at 100% (default)
 KERNEL_STREAM_SIZE=65536         # Ring buffer size (default)
 KERNEL_ANOMALY_THRESHOLD=3.0     # Z-score threshold (default)
@@ -368,19 +171,22 @@ println!("Events: {} produced, {} consumed, {} dropped",
 
 ---
 
-## Expected Performance Impact
+## Performance Impact
 
 ### Memory Overhead
-- **Event Stream**: 65,536 slots  ~200 bytes = ~13 MB
-- **Collector State**: ~1 MB (metrics, sampling, detection)
-- **Total**: ~14 MB per collector instance
+
+- Event stream: 65,536 slots with ~200 bytes each = ~13 MB
+- Collector state: ~1 MB (metrics, sampling, detection)
+- Total: ~14 MB per collector instance
 
 ### CPU Overhead
-- **Without sampling**: 1-2% at 10K events/sec
-- **With adaptive sampling**: <1% (auto-adjusts)
-- **Per-event cost**: ~50-100ns (lock-free)
+
+- Without sampling: 1-2% at 10K events/sec
+- With adaptive sampling: <1% (auto-adjusts)
+- Per-event cost: ~50-100ns (lock-free)
 
 ### Benchmark Results
+
 ```
 Event emission:        20ns
 Event filtering:       10ns
@@ -391,54 +197,27 @@ Anomaly detection:     50ns (online algorithm)
 
 ---
 
-## ✅ Validation Checklist
-
-### Integration Safety
-- [x] No namespace conflicts
-- [x] No breaking API changes
-- [x] Backwards compatible (Layer 1 still works)
-- [x] Optional integration (graceful degradation)
-- [x] Thread-safe (Arc-wrapped, lock-free)
-
-### Testing
-- [x] 46/46 unit tests passing
-- [x] Integration tests with ProcessManager
-- [x] Concurrent subscriber tests
-- [x] Causality tracking tests
-- [x] Anomaly detection tests
-- [x] Query system tests
-
-### Documentation
-- [x] API documentation in module headers
-- [x] Usage examples in tests
-- [x] Integration guide (this document)
-- [ ] Performance tuning guide (TODO)
-- [ ] Troubleshooting guide (TODO)
-
----
-
 ## Known Limitations
 
 1. **Event Ordering**: Events from different threads may be slightly out of order
-   - **Mitigation**: Use causality_id for strict ordering requirements
+   - Mitigation: Use causality_id for strict ordering requirements
 
 2. **Backpressure**: When queue is full, events are dropped
-   - **Mitigation**: Adaptive sampling reduces load automatically
-   - **Monitor**: `stream_stats().events_dropped`
+   - Mitigation: Adaptive sampling reduces load automatically
+   - Monitor: stream_stats().events_dropped
 
 3. **Memory Bounded**: Fixed-size ring buffer (65,536 events)
-   - **Mitigation**: Sufficient for most workloads at 1M events/sec
-   - **Configurable**: Can be increased if needed
+   - Sufficient for most workloads at 1M events/sec
+   - Configurable if needed
 
 4. **No Persistence**: Events are in-memory only
-   - **Future**: Add optional persistent storage backend
-   - **Workaround**: External subscriber can write to disk/DB
+   - External subscriber can write to disk/DB
 
 ---
 
 ## Usage Patterns
 
-### Pattern 1: Real-time Monitoring
+### Real-time Monitoring
 
 ```rust
 let mut sub = collector.subscribe();
@@ -446,14 +225,14 @@ let mut sub = collector.subscribe();
 loop {
     while let Some(event) = sub.next() {
         if event.severity >= Severity::Warn {
-            eprintln!("⚠️  {}: {:?}", event.category, event.payload);
+            eprintln!("{}: {:?}", event.category, event.payload);
         }
     }
     tokio::time::sleep(Duration::from_millis(100)).await;
 }
 ```
 
-### Pattern 2: Performance Analysis
+### Performance Analysis
 
 ```rust
 let mut sub = collector.subscribe();
@@ -468,106 +247,56 @@ if let Some(Aggregation::Percentile { p50, p95, p99 }) =
 }
 ```
 
-### Pattern 3: Causality Tracing
+### Causality Tracing
 
 ```rust
-// Start operation with causality tracking
 let causality_id = collector.emit_causal(Event::new(
     Severity::Info,
     Category::Process,
     Payload::ProcessCreated { name, priority },
 ));
 
-// All related events use same ID
 collector.emit_in_chain(memory_event, causality_id);
 collector.emit_in_chain(ipc_event, causality_id);
 
-// Query the chain
 let chain = CausalityTracer::trace(&events, causality_id);
-let timeline = CausalityTracer::timeline(&events, causality_id);
 ```
 
 ---
 
-## Summary
+## Testing
 
-### What Works Now
-✅ Process lifecycle tracking
-✅ Resource cleanup monitoring  
-✅ Event streaming with sampling
-✅ Built-in query API
-✅ Anomaly detection
-✅ Causality tracking
-✅ 46 comprehensive tests
-✅ **SyscallExecutor integration (Real-time syscall latency)**
-✅ **Scheduler integration (Context switches & preemption)**
-✅ **MemoryManager integration (Memory pressure alerts)**
-✅ **IPC QueueManager integration (Message patterns)**
-✅ **PermissionManager integration (Permission denials)**
-✅ **SandboxManager integration (Security violations)**
-✅ **PipeManager integration (Pipe operations - Sprint 2)**
-✅ **ShmManager integration (Shared memory - Sprint 2)**
-✅ **VFS MountManager integration (Slow file ops - Sprint 2)**
+Comprehensive test suite included:
+- 46+ unit tests
+- Integration tests with ProcessManager
+- Concurrent subscriber tests
+- Causality tracking tests
+- Anomaly detection tests
+- Query system tests
 
-### Fully Integrated Subsystems (Sprint 1)
-✅ **SyscallExecutor** - Syscall latency, anomaly detection, per-process patterns
-✅ **Scheduler** - Context switch tracking, preemption events, scheduling latency
-✅ **MemoryManager** - Memory pressure alerts, allocation/deallocation tracking
-✅ **IPC QueueManager** - Message send/receive events, queue depth monitoring
-✅ **PermissionManager** - Permission denial tracking, audit integration
-✅ **SandboxManager** - Security violation alerts, capability denial tracking
-
-### Fully Integrated Subsystems (Sprint 2)
-✅ **PipeManager** - Pipe read/write operations, throughput tracking
-✅ **ShmManager** - Shared memory create/read/write/destroy events
-✅ **VFS MountManager** - Slow file operation detection (configurable threshold)
-
-### Optional Future Integrations
- Network subsystem (Connection tracking)
- Additional VFS filesystems (per-filesystem tracking)
- eBPF integration (dynamic event filtering)
-
-### No Breaking Changes
-- Existing tracing API still works
-- Existing metrics API still works
-- New API is purely additive
-- Integration is optional and graceful (None if not configured)
+Run tests:
+```bash
+cd kernel
+cargo test --test observability
+```
 
 ---
 
-## Next Steps
+## Future Enhancements
 
-1. **Sprint 1 Completed** ✅:
-   - ✅ Integrated SyscallExecutor with Collector (syscall latency & anomaly detection)
-   - ✅ Integrated Scheduler with Collector (context switches & preemption tracking)
-   - ✅ Integrated MemoryManager with Collector (memory pressure & allocation events)
-   - ✅ Integrated IPC QueueManager with Collector (message latency & throughput)
-   - ✅ Integrated PermissionManager with Collector (permission denial events)
-   - ✅ Integrated SandboxManager with Collector (security violation events)
-
-2. **Sprint 2 Completed** ✅:
-   - ✅ Integrated PipeManager with Collector (pipe read/write operations)
-   - ✅ Integrated ShmManager with Collector (shared memory operations)
-   - ✅ Integrated VFS MountManager with Collector (slow file operation detection)
-
-3. **Future Enhancements**:
-   - Add sampling configuration via environment variables
-   - Create performance tuning guide
-   - Add persistent storage backend option
-   - Network event tracking
-
-4. **Long-term** (Future):
-   - Distributed tracing integration (trace_id propagation)
-   - External exporters (Prometheus, OpenTelemetry)
-   - ML-based anomaly detection
-   - Historical trend analysis
+1. Persistent storage backend option
+2. Sampling configuration via environment variables
+3. External exporters (Prometheus, OpenTelemetry)
+4. ML-based anomaly detection
+5. Historical trend analysis
+6. Network event tracking
 
 ---
 
 ## References
 
 - Event System: `kernel/src/monitoring/events.rs`
-- Collector API: `kernel/src/monitoring/collector.rs`
-- Query System: `kernel/src/monitoring/query.rs`
-- Integration Tests: `kernel/tests/monitoring/integration_test.rs`
+- Collector API: `kernel/src/monitoring/collection/collector.rs`
+- Query System: `kernel/src/monitoring/analysis/query.rs`
+- Integration Tests: `kernel/tests/monitoring/`
 - Public API: `kernel/src/monitoring/mod.rs`
