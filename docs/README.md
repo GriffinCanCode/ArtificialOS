@@ -2,7 +2,7 @@
 
 Comprehensive documentation for the AgentOS project, organized by category for easy navigation.
 
-## 📁 Directory Structure
+## Directory Structure
 
 ### `/architecture`
 System design, core architecture, and structural documentation.
@@ -57,7 +57,7 @@ Roadmaps, future ideas, and implementation planning.
 - **`implementation-plan.md`** - Original implementation plan
 - **`implementation-guide.md`** - Step-by-step implementation guide
 
-## 🔍 Quick Navigation
+## Quick Navigation
 
 ### Getting Started
 1. Start with [`architecture/system-architecture.md`](architecture/system-architecture.md)
@@ -79,7 +79,7 @@ Roadmaps, future ideas, and implementation planning.
 - Check [`patterns/sharded-slot.md`](patterns/sharded-slot.md) for lock-free patterns
 - See [`performance/bincode-optimization.md`](performance/bincode-optimization.md) for serialization
 
-## 📚 Documentation Standards
+## Documentation Standards
 
 ### Naming Conventions
 - **Folders**: lowercase with hyphens (e.g., `ui-frontend`, `performance`)
@@ -98,7 +98,7 @@ When referencing other docs, use relative paths:
 See [System Architecture](architecture/system-architecture.md) for details.
 ```
 
-## 🔄 Migration Notes
+## Migration Notes
 
 **Previous Structure** → **New Structure**
 
@@ -108,7 +108,7 @@ See [System Architecture](architecture/system-architecture.md) for details.
 - `FUTURE_IDEAS.md` → `planning/future-ideas.md`
 - *(All files reorganized with consistent naming)*
 
-## 🤝 Contributing to Docs
+## Contributing to Docs
 
 When adding new documentation:
 1. Choose the appropriate category folder
@@ -116,7 +116,7 @@ When adding new documentation:
 3. Add entry to this README
 4. Include cross-references to related docs
 
-## 📖 External Resources
+## External Resources
 
 - [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/)
 - [TypeScript Best Practices](https://www.typescriptlang.org/docs/)

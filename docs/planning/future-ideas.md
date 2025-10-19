@@ -6,13 +6,13 @@ This document catalogs ALL possible innovations and enhancements for AgentOS, or
 
 ---
 
-## 🎯 **TIER 1: LEVERAGE EXISTING STRENGTHS (High ROI, Low Effort)**
+## **TIER 1: LEVERAGE EXISTING STRENGTHS (High ROI, Low Effort)**
 
 These capitalize on infrastructure you've already built.
 
 ---
 
-### **1.1 Time-Travel Debugging** 🔥 HIGHEST IMPACT
+### **1.1 Time-Travel Debugging** HIGHEST IMPACT
 
 **What:** Rewind and replay kernel execution to any point in time.
 
@@ -78,7 +78,7 @@ pub struct TimeTravelDebugger {
 <TimelineControls>
   <Button onClick={() => kernel.rewind(100)}>⏪ Rewind 100 ops</Button>
   <Slider onChange={(time) => kernel.replay_from(time)}>Timeline</Slider>
-  <Button onClick={() => kernel.bisect(isBugPresent)}>🔍 Find Bug</Button>
+  <Button onClick={() => kernel.bisect(isBugPresent)}> Find Bug</Button>
 </TimelineControls>
 ```
 
@@ -97,7 +97,7 @@ pub struct TimeTravelDebugger {
 
 ---
 
-### **1.2 Self-Optimizing Kernel** 🔥 HIGH IMPACT
+### **1.2 Self-Optimizing Kernel** HIGH IMPACT
 
 **What:** Kernel automatically tunes itself based on workload patterns.
 
@@ -228,7 +228,7 @@ pub async fn auto_optimization_loop(tuner: Arc<AutoTuner>) {
 
 ---
 
-### **1.3 Application-Aware Scheduling** 🔥 HIGH IMPACT
+### **1.3 Application-Aware Scheduling** HIGH IMPACT
 
 **What:** Schedule based on app type and behavior, not just priority.
 
@@ -327,7 +327,7 @@ enum AppClass {
 
 ---
 
-### **1.4 Anomaly-Based Auto-Healing** 🔥 MEDIUM IMPACT
+### **1.4 Anomaly-Based Auto-Healing** MEDIUM IMPACT
 
 **What:** Automatically fix detected problems.
 
@@ -410,7 +410,7 @@ pub struct AutoHealer {
 
 ---
 
-### **1.5 Reversible Operations** 🔥 MEDIUM IMPACT
+### **1.5 Reversible Operations** MEDIUM IMPACT
 
 **What:** Undo any kernel operation.
 
@@ -504,7 +504,7 @@ impl UndoManager {
 
 ---
 
-### **1.6 Predictive Resource Allocation** 🔥 MEDIUM IMPACT
+### **1.6 Predictive Resource Allocation** MEDIUM IMPACT
 
 **What:** Predict resource needs before apps request them.
 
@@ -562,7 +562,7 @@ pub struct ResourcePredictor {
 
 ---
 
-### **1.7 Checkpoint/Restore** 🔥 HIGH IMPACT
+### **1.7 Checkpoint/Restore** HIGH IMPACT
 
 **What:** Save entire kernel state and restore later.
 
@@ -629,7 +629,7 @@ pub struct CheckpointManager {
 ```typescript
 <CheckpointControls>
   <Button onClick={() => kernel.checkpoint("before_upgrade")}>
-    📸 Save Checkpoint
+ Save Checkpoint
   </Button>
   <Select onChange={(name) => kernel.restore(name)}>
     <option>before_upgrade</option>
@@ -646,11 +646,11 @@ pub struct CheckpointManager {
 
 ---
 
-## 🚀 **TIER 2: NOVEL CAPABILITIES (High Impact, Medium Effort)**
+## **TIER 2: NOVEL CAPABILITIES (High Impact, Medium Effort)**
 
 ---
 
-### **2.1 Hot-Swappable Kernel Modules** 🔥 HIGH IMPACT
+### **2.1 Hot-Swappable Kernel Modules** HIGH IMPACT
 
 **What:** Upgrade kernel subsystems without restarting processes.
 
@@ -723,7 +723,7 @@ pub struct KernelModuleRegistry {
 
 ---
 
-### **2.2 Declarative Resource Management** 🔥 MEDIUM-HIGH IMPACT
+### **2.2 Declarative Resource Management** MEDIUM-HIGH IMPACT
 
 **What:** Declare intent, let kernel figure out how to fulfill it.
 
@@ -793,7 +793,7 @@ resource_spec! {
 
 ---
 
-### **2.3 Process Genealogy & Relationships** 🔥 MEDIUM IMPACT
+### **2.3 Process Genealogy & Relationships** MEDIUM IMPACT
 
 **What:** Track app relationships, dependencies, and interactions.
 
@@ -855,7 +855,7 @@ struct ProcessRelationship {
 
 ---
 
-### **2.4 Provable Safety with Rust Types** 🔥 ACADEMIC IMPACT
+### **2.4 Provable Safety with Rust Types** ACADEMIC IMPACT
 
 **What:** Compile-time guarantees for isolation.
 
@@ -901,11 +901,11 @@ mem1.read(proc2);  // ❌ Compile error - type mismatch!
 
 ---
 
-## 💼 **TIER 3: DEVELOPER EXPERIENCE (High Adoption, Medium Effort)**
+## **TIER 3: DEVELOPER EXPERIENCE (High Adoption, Medium Effort)**
 
 ---
 
-### **3.1 Interactive Kernel Shell** 🔥 HIGH DEVELOPER IMPACT
+### **3.1 Interactive Kernel Shell** HIGH DEVELOPER IMPACT
 
 **What:** REPL for kernel operations.
 
@@ -970,7 +970,7 @@ pub struct KernelShell {
 
 ---
 
-### **3.2 Visual Debugger UI** 🔥 HIGH IMPACT
+### **3.2 Visual Debugger UI** HIGH IMPACT
 
 **What:** Beautiful, interactive debugging interface.
 
@@ -1011,9 +1011,9 @@ pub struct KernelShell {
   <Timeline>
     <Scrubber onSeek={(time) => kernel.replay_from(time)} />
     <EventMarkers>
-      🔴 OOM at 15:34:20
-      🟡 High latency at 15:34:25
-      🟢 Checkpoint at 15:34:30
+ OOM at 15:34:20
+ High latency at 15:34:25
+ Checkpoint at 15:34:30
     </EventMarkers>
   </Timeline>
 </DebuggerUI>
@@ -1032,7 +1032,7 @@ pub struct KernelShell {
 
 ---
 
-### **3.3 Kernel Query Language** 🔥 MEDIUM IMPACT
+### **3.3 Kernel Query Language** MEDIUM IMPACT
 
 **What:** SQL-like language for querying kernel state.
 
@@ -1088,7 +1088,7 @@ HAVING allocations > 1000;
 
 ---
 
-### **3.4 Real-Time Profiler** 🔥 HIGH IMPACT
+### **3.4 Real-Time Profiler** HIGH IMPACT
 
 **What:** Continuous performance profiling with flamegraphs.
 
@@ -1143,11 +1143,11 @@ pub struct Profiler {
 
 ---
 
-## 🌐 **TIER 4: DISTRIBUTED & CLOUD (Future Platform)**
+## **TIER 4: DISTRIBUTED & CLOUD (Future Platform)**
 
 ---
 
-### **4.1 Multi-Kernel Coordination** 🔥 REVOLUTIONARY
+### **4.1 Multi-Kernel Coordination** REVOLUTIONARY
 
 **What:** Multiple kernel instances working together.
 
@@ -1205,7 +1205,7 @@ pub struct KernelCluster {
 
 ---
 
-### **4.2 Persistent Processes** 🔥 HIGH IMPACT
+### **4.2 Persistent Processes** HIGH IMPACT
 
 **What:** Processes survive kernel restarts.
 
@@ -1249,11 +1249,11 @@ pub struct PersistentProcessManager {
 
 ---
 
-## 🎨 **TIER 5: USER EXPERIENCE (High Delight, Various Effort)**
+## **TIER 5: USER EXPERIENCE (High Delight, Various Effort)**
 
 ---
 
-### **5.1 AI-Powered App Evolution** 🔥 HIGH IMPACT
+### **5.1 AI-Powered App Evolution** HIGH IMPACT
 
 **What:** Apps can request modifications from AI.
 
@@ -1287,7 +1287,7 @@ pub struct PersistentProcessManager {
 
 ---
 
-### **5.2 App Marketplace & Sharing** 🔥 MEDIUM IMPACT
+### **5.2 App Marketplace & Sharing** MEDIUM IMPACT
 
 **What:** Share apps with other users, community contributions.
 
@@ -1351,26 +1351,26 @@ pub struct AppMarketplace {
 
 ---
 
-### **5.3 App Templates & Variants** 🔥 LOW-MEDIUM IMPACT
+### **5.3 App Templates & Variants** LOW-MEDIUM IMPACT
 
 **What:** One-click app customization.
 
 **Example:**
 ```typescript
 <AppTemplate name="Notes">
-  <Variant name="Minimal" icon="📝">
+  <Variant name="Minimal" icon="">
     - Plain text only
     - Keyboard shortcuts
     - Auto-save
   </Variant>
   
-  <Variant name="Rich" icon="📚">
+  <Variant name="Rich" icon="">
     - Markdown support
     - Image embedding
     - Tags and search
   </Variant>
   
-  <Variant name="Code" icon="💻">
+  <Variant name="Code" icon="">
     - Syntax highlighting
     - Git integration
     - Terminal embedded
@@ -1403,7 +1403,7 @@ Templates are Blueprint with placeholders:
 
 ---
 
-### **5.4 Collaborative Apps** 🔥 HIGH IMPACT (Long-term)
+### **5.4 Collaborative Apps** HIGH IMPACT (Long-term)
 
 **What:** Multiple users in same app instance.
 
@@ -1447,11 +1447,11 @@ struct CollaborativeSession {
 
 ---
 
-## 🔬 **TIER 6: ADVANCED RESEARCH (Novel, High Effort)**
+## **TIER 6: ADVANCED RESEARCH (Novel, High Effort)**
 
 ---
 
-### **6.1 Neural Network Scheduler** 🔥 RESEARCH
+### **6.1 Neural Network Scheduler** RESEARCH
 
 **What:** ML model learns optimal scheduling from historical data.
 
@@ -1514,7 +1514,7 @@ pub struct NeuralScheduler {
 
 ---
 
-### **6.2 Speculative Execution** 🔥 RESEARCH
+### **6.2 Speculative Execution** RESEARCH
 
 **What:** Speculatively execute likely syscalls before they're called.
 
@@ -1571,7 +1571,7 @@ if last_syscall == Syscall::Open { path } {
 
 ---
 
-### **6.3 Adaptive Memory Compression** 🔥 RESEARCH
+### **6.3 Adaptive Memory Compression** RESEARCH
 
 **What:** Compress rarely-accessed memory automatically.
 
@@ -1631,11 +1631,11 @@ pub struct MemoryCompressor {
 
 ---
 
-## 🔐 **TIER 7: SECURITY INNOVATIONS**
+## **TIER 7: SECURITY INNOVATIONS**
 
 ---
 
-### **7.1 Capability Marketplace** 🔥 MEDIUM IMPACT
+### **7.1 Capability Marketplace** MEDIUM IMPACT
 
 **What:** Fine-grained capability trading between processes.
 
@@ -1693,7 +1693,7 @@ pub struct CapabilityBroker {
 
 ---
 
-### **7.2 Zero-Knowledge Sandboxing** 🔥 RESEARCH
+### **7.2 Zero-Knowledge Sandboxing** RESEARCH
 
 **What:** Process can't access its own sandbox config.
 
@@ -1724,11 +1724,11 @@ impl SandboxManager {
 
 ---
 
-## 🎮 **TIER 8: USER-FACING FEATURES**
+## **TIER 8: USER-FACING FEATURES**
 
 ---
 
-### **8.1 Desktop Widgets** 🔥 MEDIUM IMPACT
+### **8.1 Desktop Widgets** MEDIUM IMPACT
 
 **What:** Mini-apps on desktop (weather, calendar, system monitor).
 
@@ -1753,7 +1753,7 @@ impl SandboxManager {
 
 ---
 
-### **8.2 Global Search (Spotlight-like)** 🔥 HIGH IMPACT
+### **8.2 Global Search (Spotlight-like)** HIGH IMPACT
 
 **What:** Search everything (apps, files, processes, settings).
 
@@ -1764,20 +1764,20 @@ impl SandboxManager {
     <Results>
       {/* Apps */}
       <Section title="Apps">
-        <Result icon="📁">File Explorer - Launch app</Result>
-        <Result icon="🧮">Calculator - Launch app</Result>
+        <Result icon="">File Explorer - Launch app</Result>
+        <Result icon="">Calculator - Launch app</Result>
       </Section>
       
       {/* Files */}
       <Section title="Files">
-        <Result icon="📄">notes.txt - Open in Notes</Result>
-        <Result icon="📊">data.csv - Open in Sheets</Result>
+        <Result icon="">notes.txt - Open in Notes</Result>
+        <Result icon="">data.csv - Open in Sheets</Result>
       </Section>
       
       {/* Actions */}
       <Section title="Actions">
-        <Result icon="🎨">Change Theme - System setting</Result>
-        <Result icon="🔒">Lock Screen - Security</Result>
+        <Result icon="">Change Theme - System setting</Result>
+        <Result icon="">Lock Screen - Security</Result>
       </Section>
       
       {/* Processes */}
@@ -1799,7 +1799,7 @@ impl SandboxManager {
 
 ---
 
-### **8.3 Themes & Customization** 🔥 MEDIUM IMPACT
+### **8.3 Themes & Customization** MEDIUM IMPACT
 
 **What:** User-customizable appearance.
 
@@ -1849,7 +1849,7 @@ kernel.setTheme({
 
 ---
 
-### **8.4 Multi-Desktop/Workspaces** 🔥 MEDIUM IMPACT
+### **8.4 Multi-Desktop/Workspaces** MEDIUM IMPACT
 
 **What:** Multiple desktop environments, switch between them.
 
@@ -1885,13 +1885,13 @@ fn switch_to(&mut self, workspace_id: WorkspaceId) {
 ```typescript
 <WorkspaceSwitcher>
   <Workspace id="work" active>
-    💼 Work (5 apps)
+ Work (5 apps)
   </Workspace>
   <Workspace id="personal">
-    🏠 Personal (3 apps)
+ Personal (3 apps)
   </Workspace>
   <Workspace id="gaming">
-    🎮 Gaming (1 app)
+ Gaming (1 app)
   </Workspace>
 </WorkspaceSwitcher>
 
@@ -1900,11 +1900,11 @@ fn switch_to(&mut self, workspace_id: WorkspaceId) {
 
 ---
 
-## 📱 **TIER 9: MOBILE & CROSS-PLATFORM**
+## **TIER 9: MOBILE & CROSS-PLATFORM**
 
 ---
 
-### **9.1 Mobile App** 🔥 HIGH REACH
+### **9.1 Mobile App** HIGH REACH
 
 **What:** AgentOS on iOS/Android.
 
@@ -1937,7 +1937,7 @@ fn switch_to(&mut self, workspace_id: WorkspaceId) {
 
 ---
 
-### **9.2 Browser-Based (No Electron)** 🔥 HIGH REACH
+### **9.2 Browser-Based (No Electron)** HIGH REACH
 
 **What:** Run entirely in browser, no installation.
 
@@ -1965,11 +1965,11 @@ Browser:
 
 ---
 
-## 🔧 **TIER 10: DEVELOPER TOOLS**
+## **TIER 10: DEVELOPER TOOLS**
 
 ---
 
-### **10.1 Kernel SDK for Extensions** 🔥 HIGH IMPACT
+### **10.1 Kernel SDK for Extensions** HIGH IMPACT
 
 **What:** Let developers extend the kernel.
 
@@ -2011,7 +2011,7 @@ kernel.register_extension(Box::new(extension));
 
 ---
 
-### **10.2 Visual Kernel Builder** 🔥 MEDIUM IMPACT
+### **10.2 Visual Kernel Builder** MEDIUM IMPACT
 
 **What:** Drag-and-drop kernel configuration.
 
@@ -2052,11 +2052,11 @@ let kernel = Kernel::builder()
 
 ---
 
-## 🌍 **TIER 11: ECOSYSTEM**
+## **TIER 11: ECOSYSTEM**
 
 ---
 
-### **11.1 Plugin System** 🔥 HIGH IMPACT
+### **11.1 Plugin System** HIGH IMPACT
 
 **What:** Extend functionality without modifying kernel.
 
@@ -2093,7 +2093,7 @@ executor.execute('database.query', { sql: "SELECT * FROM users" });
 
 ---
 
-### **11.2 Federation** 🔥 LONG-TERM
+### **11.2 Federation** LONG-TERM
 
 **What:** Multiple AgentOS instances communicate.
 
@@ -2122,11 +2122,11 @@ pub struct Federation {
 
 ---
 
-## 📊 **TIER 12: ANALYTICS & INSIGHTS**
+## **TIER 12: ANALYTICS & INSIGHTS**
 
 ---
 
-### **12.1 App Usage Analytics** 🔥 MEDIUM IMPACT
+### **12.1 App Usage Analytics** MEDIUM IMPACT
 
 **What:** Track how apps are used, identify trends.
 
@@ -2143,7 +2143,7 @@ pub struct Federation {
 
 ---
 
-### **12.2 Performance Regression Detection** 🔥 HIGH IMPACT
+### **12.2 Performance Regression Detection** HIGH IMPACT
 
 **What:** Automatically detect when performance degrades.
 
@@ -2186,11 +2186,11 @@ Suggestion: Run GC or increase memory
 
 ---
 
-## 🎓 **TIER 13: EDUCATIONAL**
+## **TIER 13: EDUCATIONAL**
 
 ---
 
-### **13.1 Interactive Kernel Tutorial** 🔥 EDUCATIONAL
+### **13.1 Interactive Kernel Tutorial** EDUCATIONAL
 
 **What:** Learn OS concepts by interacting with kernel.
 
@@ -2234,11 +2234,11 @@ Suggestion: Run GC or increase memory
 
 ---
 
-## 🏆 **TIER 14: COMPETITIVE ADVANTAGES**
+## **TIER 14: COMPETITIVE ADVANTAGES**
 
 ---
 
-### **14.1 Instant App Cloning** 🔥 HIGH IMPACT
+### **14.1 Instant App Cloning** HIGH IMPACT
 
 **What:** Duplicate running app with all state.
 
@@ -2268,7 +2268,7 @@ fn clone_app(&self, app_id: AppId) -> Result<AppId> {
 
 ---
 
-### **14.2 App Recording & Playback** 🔥 MEDIUM IMPACT
+### **14.2 App Recording & Playback** MEDIUM IMPACT
 
 **What:** Record user interactions, replay later.
 
@@ -2305,11 +2305,11 @@ pub struct AppRecorder {
 
 ---
 
-## 🔮 **TIER 15: WILD IDEAS (Research, High Risk/Reward)**
+## **TIER 15: WILD IDEAS (Research, High Risk/Reward)**
 
 ---
 
-### **15.1 Quantum-Inspired Scheduling** 🔥 RESEARCH
+### **15.1 Quantum-Inspired Scheduling** RESEARCH
 
 **What:** Processes in superposition until observed.
 
@@ -2346,7 +2346,7 @@ pub struct QuantumScheduler {
 
 ---
 
-### **15.2 Event Sourcing for Entire System** 🔥 RESEARCH
+### **15.2 Event Sourcing for Entire System** RESEARCH
 
 **What:** Every state change is an event, no direct state mutation.
 
@@ -2386,7 +2386,7 @@ pub struct EventSourcedKernel {
 
 ---
 
-### **15.3 Blockchain-Based Process Ledger** 🔥 SPECULATIVE
+### **15.3 Blockchain-Based Process Ledger** SPECULATIVE
 
 **What:** Immutable log of all process operations.
 
@@ -2424,28 +2424,28 @@ pub struct ProcessLedger {
 
 ---
 
-## 📋 **PRIORITIZATION MATRIX**
+## **PRIORITIZATION MATRIX**
 
 | Idea | Impact | Effort | Feasibility | Priority |
 |------|--------|--------|-------------|----------|
-| **Time-Travel Debug** | 10/10 | 6/10 | 9/10 | 🔥🔥🔥 **DO FIRST** |
-| **Self-Optimizing** | 9/10 | 7/10 | 9/10 | 🔥🔥🔥 **DO FIRST** |
-| **App-Aware Scheduling** | 8/10 | 5/10 | 9/10 | 🔥🔥 **HIGH** |
-| **Auto-Healing** | 7/10 | 5/10 | 8/10 | 🔥🔥 **HIGH** |
-| **Reversible Ops** | 8/10 | 6/10 | 8/10 | 🔥🔥 **HIGH** |
-| **Hot-Swappable Modules** | 9/10 | 8/10 | 7/10 | 🔥 **MEDIUM** |
-| **Kernel Shell** | 7/10 | 3/10 | 10/10 | 🔥🔥 **QUICK WIN** |
-| **Visual Debugger** | 8/10 | 7/10 | 9/10 | 🔥🔥 **HIGH** |
-| **Global Search** | 7/10 | 4/10 | 9/10 | 🔥🔥 **QUICK WIN** |
-| **Checkpoint/Restore** | 8/10 | 7/10 | 8/10 | 🔥 **MEDIUM** |
-| **Capability Marketplace** | 6/10 | 6/10 | 7/10 | 🔥 **MEDIUM** |
-| **Neural Scheduler** | 9/10 | 10/10 | 5/10 | 🔬 **RESEARCH** |
-| **Federation** | 8/10 | 9/10 | 6/10 | 🔬 **LONG-TERM** |
-| **Mobile App** | 7/10 | 8/10 | 7/10 | 📱 **EXPANSION** |
+| **Time-Travel Debug** | 10/10 | 6/10 | 9/10 | **DO FIRST** |
+| **Self-Optimizing** | 9/10 | 7/10 | 9/10 | **DO FIRST** |
+| **App-Aware Scheduling** | 8/10 | 5/10 | 9/10 | **HIGH** |
+| **Auto-Healing** | 7/10 | 5/10 | 8/10 | **HIGH** |
+| **Reversible Ops** | 8/10 | 6/10 | 8/10 | **HIGH** |
+| **Hot-Swappable Modules** | 9/10 | 8/10 | 7/10 | **MEDIUM** |
+| **Kernel Shell** | 7/10 | 3/10 | 10/10 | **QUICK WIN** |
+| **Visual Debugger** | 8/10 | 7/10 | 9/10 | **HIGH** |
+| **Global Search** | 7/10 | 4/10 | 9/10 | **QUICK WIN** |
+| **Checkpoint/Restore** | 8/10 | 7/10 | 8/10 | **MEDIUM** |
+| **Capability Marketplace** | 6/10 | 6/10 | 7/10 | **MEDIUM** |
+| **Neural Scheduler** | 9/10 | 10/10 | 5/10 | **RESEARCH** |
+| **Federation** | 8/10 | 9/10 | 6/10 | **LONG-TERM** |
+| **Mobile App** | 7/10 | 8/10 | 7/10 | **EXPANSION** |
 
 ---
 
-## 🎯 **RECOMMENDED ROADMAP**
+## **RECOMMENDED ROADMAP**
 
 ### **Quarter 1: Leverage Existing Strengths**
 1. ✅ **Time-Travel Debugging** (2 weeks) - Highest ROI
@@ -2469,7 +2469,7 @@ pub struct ProcessLedger {
 
 ---
 
-## 🎓 **ACADEMIC PAPERS YOU COULD WRITE**
+## **ACADEMIC PAPERS YOU COULD WRITE**
 
 Based on your innovations:
 
@@ -2495,7 +2495,7 @@ Based on your innovations:
 
 ---
 
-## 💡 **THE BIG PICTURE**
+## **THE BIG PICTURE**
 
 You're not just building features. You're enabling a **new category of operating system**:
 

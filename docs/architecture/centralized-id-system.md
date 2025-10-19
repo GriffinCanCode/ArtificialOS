@@ -308,14 +308,14 @@ SELECT * FROM apps WHERE id > 'app_' || ulid_from_time(NOW() - INTERVAL '1 hour'
 - [x] Python AI service ID module
 - [x] Comprehensive test suites
 
-### Phase 2: 🔄 Integration (Next)
+### Phase 2: Integration (Next)
 
 - [ ] Migrate backend app manager to use typed AppID
 - [ ] Migrate frontend window store to use typed WindowID
 - [ ] Migrate AI service to use typed RequestID/ConversationID
 - [ ] Update protobuf definitions for cross-service IDs
 
-### Phase 3: 📊 Optimization (Future)
+### Phase 3: Optimization (Future)
 
 - [ ] Add ID caching for frequently accessed entities
 - [ ] Implement ID batch pre-generation for performance

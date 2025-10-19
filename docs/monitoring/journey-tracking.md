@@ -115,7 +115,7 @@ addCausalEvent('api_call', 'Sending request to AI service');
    - Builder window creation tracking
    - API call event tracking
 
-### 📊 What Gets Tracked
+### What Gets Tracked
 
 **User Actions:**
 - Form submissions (Spotlight/Creator)

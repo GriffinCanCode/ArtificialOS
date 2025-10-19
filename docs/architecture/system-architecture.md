@@ -1,4 +1,4 @@
-# AI-OS Architecture 🏗️
+# AI-OS Architecture️
 
 ## Core Principle: **Generate Once, Execute Many**
 
@@ -62,7 +62,7 @@ The system generates UI specifications once via LLM, then executes tools to hand
 
 ## Module Responsibilities
 
-### 🎯 AppManager (`ai-service/src/agents/app_manager.py`)
+### AppManager (`ai-service/src/agents/app_manager.py`)
 **Role:** Central orchestrator for all apps
 
 **Responsibilities:**
@@ -94,7 +94,7 @@ The system generates UI specifications once via LLM, then executes tools to hand
 
 ---
 
-### 🧠 UIGeneratorAgent (`ai-service/src/agents/ui_generator.py`)
+### UIGeneratorAgent (`ai-service/src/agents/ui_generator.py`)
 **Role:** Generate UI specifications from natural language
 
 **Responsibilities:**
@@ -130,7 +130,7 @@ The system generates UI specifications once via LLM, then executes tools to hand
 
 ---
 
-### 🎨 DynamicRenderer (`ui/src/components/DynamicRenderer.tsx`)
+### DynamicRenderer (`ui/src/components/DynamicRenderer.tsx`)
 **Role:** Render UI specs as React components
 
 **Responsibilities:**
@@ -185,7 +185,7 @@ executeAppTool('spawn', {request: 'create a todo list'})
 
 ---
 
-### 💾 ComponentState (`ui/src/components/DynamicRenderer.tsx`)
+### ComponentState (`ui/src/components/DynamicRenderer.tsx`)
 **Role:** Per-app reactive state management
 
 **Responsibilities:**
@@ -250,7 +250,7 @@ Apps can create other apps via the `app.spawn` tool:
 
 ---
 
-### 🔄 No Re-Prompting for Normal Use
+### No Re-Prompting for Normal Use
 
 **Traditional Approach (BAD):**
 ```
@@ -271,7 +271,7 @@ User clicks button → ToolExecutor → Update state → React re-renders
 
 ---
 
-### 🎯 Multi-App Support
+### Multi-App Support
 
 The system supports multiple concurrent apps:
 - Each app has its own UISpec

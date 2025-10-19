@@ -62,7 +62,7 @@ Expected response format:
     {
       "id": "app-id",
       "name": "App Name",
-      "icon": "📦",
+      "icon": "",
       "description": "App description",
       "category": "productivity",
       "type": "blueprint"

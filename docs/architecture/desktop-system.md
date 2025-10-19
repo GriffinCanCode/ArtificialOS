@@ -18,12 +18,12 @@ AgentOS now features a beautiful desktop experience with animated welcome screen
 - **Top Menu Bar**: System menu with clock, date, and Hub access
 - **Desktop Icons**: Grid of pinned apps (first 6 from registry)
 - **Dock**: macOS-style dock at bottom with:
-  - Hub (🚀) - Opens app store
-  - Files (📁) - File explorer
-  - Browser (🌐) - Web browser
-  - Calculator (🧮) - Calculator
-  - Notes (📝) - Note taking
-  - System Analysis (📊) - Performance monitoring
+  - Hub () - Opens app store
+  - Files () - File explorer
+  - Browser () - Web browser
+  - Calculator () - Calculator
+  - Notes () - Note taking
+  - System Analysis () - Performance monitoring
   - Separator line
   - Creator (✨) - Opens Cmd+K overlay
 - **Hint**: "Press ⌘K to create something" (fades in after 2s)
@@ -269,11 +269,11 @@ Glass: rgba(255,255,255,0.05-0.15) + backdrop-filter
 
 AgentOS now has a polished, modern desktop experience that:
 - ✨ Welcomes users with beautiful animation
-- 🖥️ Provides familiar desktop metaphor
+-️ Provides familiar desktop metaphor
 - ⚡ Enables fast app launching
 - ⌘K Keeps AI creation accessible
-- 📱 Works on mobile and desktop
-- 🎨 Looks gorgeous with glass morphism
+- Works on mobile and desktop
+- Looks gorgeous with glass morphism
 
 The system balances aesthetics, usability, and performance to create a delightful user experience.
 

@@ -8,7 +8,7 @@ This document provides practical guidance for applying the 15 expert-level optim
 
 ---
 
-## 📦 What Was Implemented
+## What Was Implemented
 
 ### Core Infrastructure (kernel/src/core/)
 
@@ -49,7 +49,7 @@ tikv-jemallocator = "0.5"     # Enable with 'jemalloc' feature
 
 ---
 
-## 🎯 Application Guide
+## Application Guide
 
 ### 1. Flat Combining - Atomic Counter Hotspots
 
@@ -559,7 +559,7 @@ pub fn fork_process(&self, parent_pid: Pid) -> Result<Pid> {
 
 ---
 
-## 📊 Expected Performance Gains
+## Expected Performance Gains
 
 ### By Category
 
@@ -590,7 +590,7 @@ pub fn fork_process(&self, parent_pid: Pid) -> Result<Pid> {
 
 ---
 
-## 🧪 Testing & Validation
+## Testing & Validation
 
 ### Before Applying
 
@@ -622,7 +622,7 @@ cargo bench --bench sync_benchmark
 
 ---
 
-## 🎓 Implementation Priority
+## Implementation Priority
 
 ### Phase 1: Immediate (This Week)
 1. ✅ Flat Combining (MemoryManager)
@@ -644,7 +644,7 @@ cargo bench --bench sync_benchmark
 
 ---
 
-## 📚 References
+## References
 
 - [Advanced Optimizations](ADVANCED_OPTIMIZATIONS.md) - Detailed theory
 - [Code Standards 2025](CODE_STANDARDS_2025.md) - General patterns

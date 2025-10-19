@@ -536,7 +536,7 @@ context.state.batch(() => {
 context.window.setTitle('New Title');
 
 // Set window icon
-context.window.setIcon('🎨');
+context.window.setIcon('');
 
 // Close window
 context.window.close();
@@ -707,4 +707,4 @@ describe('App', () => {
 
 ---
 
-**Happy Building! 🚀**
+**Happy Building!**

@@ -1,6 +1,6 @@
 # Native Apps Execution Plan
 
-## 🎯 Executive Summary
+## Executive Summary
 
 This document outlines the comprehensive plan to support **TWO types of native applications** alongside Blueprint apps:
 
@@ -16,7 +16,7 @@ This document outlines the comprehensive plan to support **TWO types of native a
 
 ---
 
-## 📊 Current System Analysis
+## Current System Analysis
 
 ### **Architecture Overview**
 
@@ -75,15 +75,15 @@ App Launch (Blueprint):
 | Component | Current State | Extensibility |
 |-----------|--------------|---------------|
 | **App Registry** | Stores Blueprint apps as JSON | ✅ Can store any app metadata |
-| **Package Type** | Single type (Blueprint) | 🔄 Need app type enum |
-| **Loading Mechanism** | Parse JSON, return to frontend | 🔄 Need JS bundle loading |
+| **Package Type** | Single type (Blueprint) | Need app type enum |
+| **Loading Mechanism** | Parse JSON, return to frontend | Need JS bundle loading |
 | **Rendering** | DynamicRenderer interprets JSON | ✅ Can delegate to native apps |
 | **API Access** | ToolExecutor available | ✅ Already structured for reuse |
 | **Services** | Backend providers via HTTP | ✅ API-based, works for all apps |
 
 ---
 
-## 🎨 Proposed Architecture
+## Proposed Architecture
 
 ### **Three-Tier App System**
 
@@ -157,7 +157,7 @@ App Launch (Blueprint):
 
 ---
 
-## 📦 Implementation Plan
+## Implementation Plan
 
 ### **Phase 1: Core Infrastructure** (Foundation)
 
@@ -265,7 +265,7 @@ apps/
   "name": "File Explorer",
   "type": "native",
   "version": "1.0.0",
-  "icon": "📁",
+  "icon": "",
   "category": "system",
   "author": "system",
   "description": "Browse and manage files",
@@ -946,7 +946,7 @@ cat > "$APP_DIR/manifest.json" <<EOF
   "name": "$APP_NAME",
   "type": "native",
   "version": "1.0.0",
-  "icon": "📦",
+  "icon": "",
   "category": "utilities",
   "author": "system",
   "description": "A native $APP_NAME application",
@@ -1737,7 +1737,7 @@ export default function TerminalApp({ context }: NativeAppProps) {
   "name": "Python Runner",
   "type": "native_proc",
   "version": "1.0.0",
-  "icon": "🐍",
+  "icon": "",
   "category": "developer",
   "author": "system",
   "description": "Run Python scripts",
@@ -1843,7 +1843,7 @@ func (s *Seeder) seedNativeProcessApps(dir string, loaded *int, failed *int) err
 
 ---
 
-## 🔍 How to Write Apps in YOUR System
+## How to Write Apps in YOUR System
 
 ### **For Developers: Native App Development Guide**
 
@@ -2003,7 +2003,7 @@ await executor.execute('auth.verify', {});
 
 ```typescript
 window.setTitle('New Title');
-window.setIcon('🎨');
+window.setIcon('');
 window.close();
 window.minimize();
 window.maximize();
@@ -2060,7 +2060,7 @@ const sorted = _.sortBy(data, 'name');
 
 ---
 
-## 📋 Migration Checklist
+## Migration Checklist
 
 ### **Backend Changes**
 
@@ -2118,7 +2118,7 @@ const sorted = _.sortBy(data, 'name');
 
 ---
 
-## 🎯 Success Criteria
+## Success Criteria
 
 ### **For Native TS/React Apps (Phase 1-5):**
 1. ✅ Developers can create new apps with one command
@@ -2153,7 +2153,7 @@ const sorted = _.sortBy(data, 'name');
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 **Immediate Next Steps:**
 
@@ -2179,7 +2179,7 @@ const sorted = _.sortBy(data, 'name');
 
 ---
 
-## 📚 **FINAL SUMMARY: What This Plan Enables**
+## **FINAL SUMMARY: What This Plan Enables**
 
 ### **Three Application Types:**
 

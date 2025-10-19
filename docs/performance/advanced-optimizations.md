@@ -2,15 +2,15 @@
 
 **Status**: Analysis of expert-level optimization opportunities  
 **Date**: 2025-10-08  
-**Impact Level**: 🔥 Critical | ⚡ High | 💡 Medium | 🔬 Experimental
+**Impact Level**: Critical | ⚡ High | Medium | Experimental
 
 This document identifies advanced performance optimizations beyond our current excellent patterns (cache-line alignment, Arc for PID counter, segregated free lists, lock-free rings, SIMD-JSON, bincode).
 
 ---
 
-## 🔥 Tier 1: Maximum Impact (Implement First)
+## Tier 1: Maximum Impact (Implement First)
 
-### 1. Read-Copy-Update (RCU) for Process Map Lookups 🔥
+### 1. Read-Copy-Update (RCU) for Process Map Lookups
 
 **Problem**: Process lookups are 100x more frequent than mutations, but DashMap still has read contention.
 
@@ -69,7 +69,7 @@ impl ProcessManager {
 
 ---
 
-### 2. Flat Combining for Atomic Counter Hotspots 🔥
+### 2. Flat Combining for Atomic Counter Hotspots
 
 **Problem**: `used_memory.fetch_add()` causes cache line bouncing between cores on every allocation.
 
@@ -232,7 +232,7 @@ impl Drop for PooledVec {
 
 ---
 
-### 5. Inline Small String Optimization for Errors 💡
+### 5. Inline Small String Optimization for Errors
 
 **Problem**: `SyscallError` uses `String`, allocating even for small messages like "Not found".
 
@@ -365,7 +365,7 @@ impl AdaptiveLock<u64> {
 
 ---
 
-### 8. SIMD for Permission Checking 💡
+### 8. SIMD for Permission Checking
 
 **Problem**: Permission checks iterate through rules linearly.
 
@@ -406,7 +406,7 @@ unsafe fn check_permissions_simd(path_hash: u64, rule_hashes: &[u64]) -> Option<
 
 ---
 
-### 9. Zero-Allocation Error Representation 💡
+### 9. Zero-Allocation Error Representation
 
 **Problem**: Errors allocate Strings even though they're rarely returned to user.
 
@@ -447,7 +447,7 @@ pub enum SyscallError {
 
 ---
 
-### 10. Prefetching in Process Iteration 💡
+### 10. Prefetching in Process Iteration
 
 **Problem**: Iterating over process map has poor cache locality.
 
@@ -476,7 +476,7 @@ pub fn iter_processes(&self) -> impl Iterator<Item = Arc<ProcessHandle>> {
 
 ---
 
-## 💡 Tier 3: Medium Impact (Consider for v2.0)
+## Tier 3: Medium Impact (Consider for v2.0)
 
 ### 11. Lock Striping for Per-Process FD Tables
 
@@ -533,7 +533,7 @@ pub fn handle_request(syscall: Syscall) -> SyscallResult {
 
 ---
 
-### 14. Branch Prediction Hints 🔬
+### 14. Branch Prediction Hints
 
 **Proposed**: Use likely/unlikely hints
 ```rust
@@ -555,7 +555,7 @@ pub fn check_permission(&self, pid: Pid, path: &str) -> bool {
 
 ---
 
-### 15. Copy-on-Write Process Memory 🔬
+### 15. Copy-on-Write Process Memory
 
 **Proposed**: Share memory between similar processes
 ```rust

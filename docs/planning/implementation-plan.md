@@ -1,6 +1,6 @@
 # AI-Powered Operating System - Project Plan
 
-## 🎯 Vision
+## Vision
 Build a lightweight, innovative operating system powered by a local AI model (GPT-OSS) that:
 - Live-streams the AI model's thought processes in real-time
 - Dynamically renders applications completely on-the-fly
@@ -9,7 +9,7 @@ Build a lightweight, innovative operating system powered by a local AI model (GP
 
 ---
 
-## 📚 Research: How Google & Anthropic Have Done It
+## Research: How Google & Anthropic Have Done It
 
 ### Google's Gemini OS
 - **Architecture**: AI-first platform integrated across Android, Chrome, and devices
@@ -40,7 +40,7 @@ Build a lightweight, innovative operating system powered by a local AI model (GP
 
 ---
 
-## 🏗️ System Architecture
+##️ System Architecture
 
 ### Three-Layer Architecture
 
@@ -71,7 +71,7 @@ Build a lightweight, innovative operating system powered by a local AI model (GP
 
 ---
 
-## 💻 Technology Stack
+## Technology Stack
 
 ### 1. OS Kernel Development
 **Language**: **Rust**
@@ -180,7 +180,7 @@ const DynamicComponent = ({ spec }) => {
 
 ---
 
-## 🚀 Implementation Plan
+## Implementation Plan
 
 ### Phase 1: Foundation (Weeks 1-3)
 **Goals**: Basic OS kernel + Model serving
@@ -331,7 +331,7 @@ const DynamicComponent = ({ spec }) => {
 
 ---
 
-## 🔧 LangChain Integration Details
+## LangChain Integration Details
 
 ### Core LangChain Patterns
 
@@ -474,7 +474,7 @@ async for state in app.astream({"user_input": "Create calculator"}):
 
 ---
 
-## 🎨 UI Component Examples
+## UI Component Examples
 
 ### Example 1: Calculator App Generation
 
@@ -538,7 +538,7 @@ async for state in app.astream({"user_input": "Create calculator"}):
 
 ---
 
-## 🔐 Security Considerations
+## Security Considerations
 
 1. **Sandboxing**: Run AI-generated code in isolated containers
 2. **Permission System**: User approval for:
@@ -551,7 +551,7 @@ async for state in app.astream({"user_input": "Create calculator"}):
 
 ---
 
-## 📊 Performance Targets
+## Performance Targets
 
 - **Model Inference**: < 50ms per token (with GPU)
 - **UI Render**: < 16ms (60 FPS)
@@ -561,7 +561,7 @@ async for state in app.astream({"user_input": "Create calculator"}):
 
 ---
 
-## 🔄 Future Enhancements
+## Future Enhancements
 
 1. **Multi-Agent System**: Specialized agents for different tasks
 2. **App Store**: Community-created AI prompts for apps
@@ -572,7 +572,7 @@ async for state in app.astream({"user_input": "Create calculator"}):
 
 ---
 
-## 📖 Resources & References
+## Resources & References
 
 ### Documentation
 - [LangChain Docs](https://python.langchain.com/)
@@ -592,7 +592,7 @@ async for state in app.astream({"user_input": "Create calculator"}):
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 ```bash
@@ -647,7 +647,7 @@ cargo run
 
 ---
 
-## 📝 Development Notes
+## Development Notes
 
 - **Priority**: Get streaming + basic UI working first
 - **Iterate**: Start with simple apps (calculator, notepad)
@@ -657,12 +657,12 @@ cargo run
 
 ---
 
-**Built with 🤖 for the future of computing**
+**Built with for the future of computing**
 
 
 ---
 
-## 🎉 LLM-Based UI Generation - COMPLETED
+## LLM-Based UI Generation - COMPLETED
 
 ### Date: October 3, 2025
 
@@ -819,7 +819,7 @@ Created detailed documentation:
 
 ---
 
-## 📊 Project Status
+## Project Status
 
 ### Completed ✅
 - Rust microkernel foundation
@@ -829,12 +829,12 @@ Created detailed documentation:
 - MCP protocol implementation
 - **LLM-based UI generation with hybrid fallback**
 
-### In Progress 🚧
+### In Progress
 - IPC communication (kernel ↔ AI service)
 - Advanced app management features
 - Performance optimization
 
-### Next Up 🎯
+### Next Up
 - End-to-end app spawning tests
 - Tool execution via IPC
 - Multi-app window management

@@ -38,7 +38,7 @@ Blueprint files use the `.bp` extension and are interpreted at runtime (no compi
   "app": {
     "id": "notes",
     "name": "Notes",
-    "icon": "📝",
+    "icon": "",
     "category": "productivity",
     "version": "1.0.0",
     "author": "system",
@@ -380,7 +380,7 @@ For complex applications with multiple views, use the `tabs` component with cont
             "type": "container",
             "id": "overview",
             "props": {
-              "label": "📊 Overview",
+              "label": " Overview",
               "layout": "vertical",
               "padding": "medium"
             },
@@ -399,7 +399,7 @@ For complex applications with multiple views, use the `tabs` component with cont
             "type": "container",
             "id": "details",
             "props": {
-              "label": "🔍 Details",
+              "label": " Details",
               "layout": "vertical",
               "padding": "medium"
             },
@@ -486,7 +486,7 @@ You can nest tabs within tab pages for complex navigation:
   "app": {
     "id": "file-explorer",
     "name": "File Explorer",
-    "icon": "📁",
+    "icon": "",
     "category": "system",
     "version": "1.0.0",
     "permissions": ["READ_FILE", "WRITE_FILE", "CREATE_FILE", "DELETE_FILE", "LIST_DIRECTORY"],
@@ -535,7 +535,7 @@ You can nest tabs within tab pages for complex navigation:
                 "children": [
                   {
                     "button#home-btn": {
-                      "text": "🏠 Home",
+                      "text": " Home",
                       "variant": "ghost",
                       "fullWidth": true,
                       "@click": "filesystem.list"
@@ -543,7 +543,7 @@ You can nest tabs within tab pages for complex navigation:
                   },
                   {
                     "button#documents-btn": {
-                      "text": "📄 Documents",
+                      "text": " Documents",
                       "variant": "ghost",
                       "fullWidth": true,
                       "@click": "filesystem.list"
@@ -888,7 +888,7 @@ Blueprint is a JSON-based DSL with these conventions:
 
 Example:
 {
-  "app": {"id": "calc", "name": "Calculator", "icon": "🧮"},
+  "app": {"id": "calc", "name": "Calculator", "icon": ""},
   "services": [{"storage": ["get", "set"]}],
   "ui": {
     "title": "Calculator",
